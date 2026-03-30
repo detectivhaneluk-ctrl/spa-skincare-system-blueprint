@@ -7,7 +7,7 @@ on:
 
 jobs:
   canonical-release-law:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     services:
       mysql:
         image: mysql:8.0
@@ -33,7 +33,7 @@ jobs:
           tools: composer:v2
       - name: Prepare release-law environment
         env:
-          MYSQL_SERVICE_PORT: ${{ job.services.mysql.ports[3306] }}
+          MYSQL_SERVICE_PORT: ${{ job.services.mysql.ports['3306'] }}
         run: |
           mkdir -p distribution/release-law
           cp system/.env.example system/.env.local
@@ -59,7 +59,7 @@ jobs:
           PY
       - name: Wait for MySQL on mapped host port
         env:
-          MYSQL_SERVICE_PORT: ${{ job.services.mysql.ports[3306] }}
+          MYSQL_SERVICE_PORT: ${{ job.services.mysql.ports['3306'] }}
         run: |
           set -euo pipefail
           for _ in $(seq 1 45); do
