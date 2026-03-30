@@ -64,11 +64,22 @@ final class ReleaseLawShell
 
         // Build child env from getenv() only (do not merge $_ENV: on some PHP CLI builds $_ENV is
         // incomplete and can override real OS variables with empty values, breaking subprocesses).
+        // proc_open() requires string env values; coerce or drop non-strings from getenv().
         $base = getenv();
         if (!is_array($base)) {
             throw new ReleaseLawException('getenv() did not return an environment array; cannot spawn subprocess.');
         }
-        $env = $base;
+        $env = [];
+        foreach ($base as $key => $value) {
+            if (!is_string($key)) {
+                continue;
+            }
+            if (is_string($value)) {
+                $env[$key] = $value;
+            } elseif (is_int($value) || is_float($value)) {
+                $env[$key] = (string) $value;
+            }
+        }
         foreach ($extraEnv as $key => $value) {
             $env[$key] = $value;
         }
