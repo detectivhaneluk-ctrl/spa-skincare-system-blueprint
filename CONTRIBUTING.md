@@ -26,4 +26,4 @@ Enforcement is a combination of **branch protection** (configure in GitHub — s
 ## Canonical verification
 
 - Full gate: `composer run release-law` (or the Linux handoff scripts under `handoff/`).
-- Fast local checks: `composer validate --strict --no-check-publish` and `php system/scripts/ci/verify_forbidden_tracked_paths.php`.
+- Fast local checks: `composer install` (installs PHPStan from `composer.lock`), `composer validate --strict --no-check-publish`, `php system/scripts/ci/verify_forbidden_tracked_paths.php`, and `composer run phpstan`.

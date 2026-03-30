@@ -19,7 +19,9 @@ This document states **what we treat as trustworthy** for this blueprint. It is 
 | Fast feedback on PRs | `.github/workflows/pr-fast-guardrails.yml` |
 | Security scans / audits | `.github/workflows/security-guardrails.yml` |
 | Full tenant + packaging truth | `.github/workflows/tenant-isolation-gate.yml` (canonical **release law**) |
-| Optional static analysis | `composer run phpstan` (`phpstan.neon.dist`) |
+| Optional static analysis | `composer run phpstan` (`phpstan.neon.dist`; scoped paths) |
+| Code scanning (PHP) | `.github/workflows/codeql.yml` |
+| Dependabot | `.github/dependabot.yml` |
 
 Local parity: `handoff/run_release_law_linux.sh` / `.ps1` and `composer run release-law`.
 
@@ -31,5 +33,5 @@ Local parity: `handoff/run_release_law_linux.sh` / `.ps1` and `composer run rele
 ## OPEN (honest limits)
 
 - Without **signed tags** or **provenance attestations**, consumers cannot cryptographically verify builder identity beyond GitHub’s platform guarantees.
-- Adding **`composer.lock`** would strengthen reproducible installs but is a separate adoption decision.
+- Expanding **`composer.lock`** beyond dev tooling (to pin all runtime Composer packages) is a separate adoption decision.
 - **Scorecard** (if enabled) provides a third-party readout; it does not replace release law.
