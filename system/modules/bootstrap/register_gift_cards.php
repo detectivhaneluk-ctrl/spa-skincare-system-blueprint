@@ -1,0 +1,12 @@
+<?php
+
+declare(strict_types=1);
+
+$container->singleton(\Modules\GiftCards\Repositories\GiftCardRepository::class, fn ($c) => new \Modules\GiftCards\Repositories\GiftCardRepository($c->get(\Core\App\Database::class), $c->get(\Core\Organization\OrganizationRepositoryScope::class)));
+$container->singleton(\Modules\GiftCards\Repositories\GiftCardTransactionRepository::class, fn ($c) => new \Modules\GiftCards\Repositories\GiftCardTransactionRepository($c->get(\Core\App\Database::class)));
+$container->singleton(\Modules\GiftCards\Services\GiftCardService::class, fn ($c) => new \Modules\GiftCards\Services\GiftCardService($c->get(\Modules\GiftCards\Repositories\GiftCardRepository::class), $c->get(\Modules\GiftCards\Repositories\GiftCardTransactionRepository::class), $c->get(\Core\App\Database::class), $c->get(\Core\App\SettingsService::class), $c->get(\Core\Audit\AuditService::class), $c->get(\Core\Branch\BranchContext::class), $c->get(\Modules\Clients\Repositories\ClientRepository::class)));
+$container->singleton(\Modules\GiftCards\Controllers\GiftCardController::class, fn ($c) => new \Modules\GiftCards\Controllers\GiftCardController($c->get(\Modules\GiftCards\Repositories\GiftCardRepository::class), $c->get(\Modules\GiftCards\Repositories\GiftCardTransactionRepository::class), $c->get(\Modules\GiftCards\Services\GiftCardService::class), $c->get(\Core\Contracts\ClientListProvider::class), $c->get(\Core\Branch\BranchDirectory::class), $c->get(\Core\Branch\BranchContext::class)));
+$container->singleton(\Core\Contracts\GiftCardAvailabilityProvider::class, fn ($c) => new \Modules\GiftCards\Providers\GiftCardSalesProviderImpl($c->get(\Modules\GiftCards\Services\GiftCardService::class), $c->get(\Modules\GiftCards\Repositories\GiftCardTransactionRepository::class)));
+$container->singleton(\Core\Contracts\InvoiceGiftCardRedemptionProvider::class, fn ($c) => new \Modules\GiftCards\Providers\GiftCardSalesProviderImpl($c->get(\Modules\GiftCards\Services\GiftCardService::class), $c->get(\Modules\GiftCards\Repositories\GiftCardTransactionRepository::class)));
+$container->singleton(\Core\Contracts\ClientGiftCardProfileProvider::class, fn ($c) => new \Modules\GiftCards\Providers\ClientGiftCardProfileProviderImpl($c->get(\Modules\Clients\Services\ClientProfileAccessService::class), $c->get(\Modules\GiftCards\Repositories\GiftCardRepository::class), $c->get(\Modules\GiftCards\Repositories\GiftCardTransactionRepository::class)));
+

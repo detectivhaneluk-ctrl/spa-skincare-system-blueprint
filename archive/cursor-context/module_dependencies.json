@@ -1,0 +1,36 @@
+{
+  "phases": {
+    "phase_1": [
+      "auth",
+      "system-core",
+      "settings"
+    ],
+    "phase_2": [
+      "clients",
+      "services-resources",
+      "staff",
+      "appointments"
+    ],
+    "phase_3": [
+      "sales",
+      "giftcards-packages",
+      "reports"
+    ],
+    "phase_4": [
+      "inventory",
+      "marketing",
+      "documents",
+      "dashboard"
+    ],
+    "phase_5": [
+      "online-booking"
+    ]
+  },
+  "critical_rules": [
+    "միջուկը չխառնել UI-ի հետ",
+    "կարգավորելի արժեքները չդնել կոդի մեջ",
+    "բոլոր կարևոր գործողությունները գրանցել գործողությունների պատմության մեջ",
+    "status փոփոխությունները պահել կենտրոնացված կանոններով",
+    "permission check անել middleware կամ policy շերտով"
+  ]
+}

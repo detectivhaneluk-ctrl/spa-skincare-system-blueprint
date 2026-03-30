@@ -1,0 +1,18 @@
+.env
+.env.local
+/vendor/
+storage/*
+!storage/*/
+# Runtime / dev logs under logs/ are never canonical source (see handoff/HandoffZipRules.ps1)
+storage/logs/**
+!storage/logs/.gitkeep
+storage/backups/*
+# Pasted verifier output — regenerate via CLI; do not commit into docs/
+docs/*RESULT.txt
+public/assets/uploads-temp/*
+public/media/processed/*
+!public/media/processed/.gitkeep
+*.phpunit.result.cache
+.phpunit.cache/
+.idea/
+.vscode/

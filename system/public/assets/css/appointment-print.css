@@ -1,0 +1,142 @@
+/* Appointment print consumer only — loaded by modules/appointments/views/print.php */
+
+.appt-print {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 1rem 1.25rem 2rem;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #1a1a1a;
+}
+
+.appt-print__actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #ddd;
+}
+
+.appt-print__btn {
+  padding: 0.35rem 0.85rem;
+  border: 1px solid #333;
+  background: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.appt-print__link {
+  color: #0b57d0;
+}
+
+.appt-print__section {
+  margin-bottom: 1.75rem;
+  break-inside: avoid;
+}
+
+.appt-print__h1 {
+  font-size: 1.35rem;
+  margin: 0 0 0.75rem;
+}
+
+.appt-print__h2 {
+  font-size: 1.1rem;
+  margin: 0 0 0.5rem;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 0.25rem;
+}
+
+.appt-print__h3 {
+  font-size: 1rem;
+  margin: 1rem 0 0.4rem;
+}
+
+.appt-print__dl {
+  margin: 0;
+}
+
+.appt-print__row {
+  display: grid;
+  grid-template-columns: 8rem 1fr;
+  gap: 0.35rem 1rem;
+  margin-bottom: 0.35rem;
+}
+
+.appt-print__row--block {
+  grid-template-columns: 1fr;
+}
+
+.appt-print__row--block dt {
+  font-weight: 600;
+}
+
+.appt-print__row dt {
+  margin: 0;
+  font-weight: 600;
+  color: #444;
+}
+
+.appt-print__row dd {
+  margin: 0;
+}
+
+.appt-print__p {
+  margin: 0 0 0.5rem;
+}
+
+.appt-print__scope,
+.appt-print__muted {
+  margin: 0 0 0.65rem;
+  font-size: 12px;
+  color: #555;
+}
+
+.appt-print__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.appt-print__table th,
+.appt-print__table td {
+  border: 1px solid #bbb;
+  padding: 0.35rem 0.45rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.appt-print__table th {
+  background: #f3f3f3;
+}
+
+.appt-print__tr--current {
+  background: #f0f7ff;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .appt-print {
+    padding: 0;
+    max-width: none;
+    font-size: 11pt;
+  }
+
+  .appt-print__section {
+    break-inside: avoid;
+  }
+
+  .appt-print__table {
+    font-size: 10pt;
+  }
+
+  a.appt-print__link {
+    color: inherit;
+    text-decoration: none;
+  }
+}

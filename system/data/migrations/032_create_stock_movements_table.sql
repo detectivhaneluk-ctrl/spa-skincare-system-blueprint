@@ -1,0 +1,20 @@
+CREATE TABLE stock_movements (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    product_id BIGINT UNSIGNED NOT NULL,
+    movement_type VARCHAR(30) NOT NULL,
+    quantity DECIMAL(12,3) NOT NULL,
+    reference_type VARCHAR(50) NULL,
+    reference_id BIGINT UNSIGNED NULL,
+    notes TEXT NULL,
+    branch_id BIGINT UNSIGNED NULL,
+    created_by BIGINT UNSIGNED NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_stock_movements_product_created (product_id, created_at),
+    INDEX idx_stock_movements_branch_created (branch_id, created_at),
+    INDEX idx_stock_movements_type_created (movement_type, created_at),
+    INDEX idx_stock_movements_reference (reference_type, reference_id),
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT,
+    FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE SET NULL,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

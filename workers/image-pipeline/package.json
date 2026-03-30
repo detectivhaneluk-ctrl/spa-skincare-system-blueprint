@@ -1,0 +1,16 @@
+{
+  "name": "@spa-skincare/image-pipeline-worker",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "description": "Claims media_jobs, encodes webp/jpg (+ avif when runtime supports) variants under public/media/processed/.",
+  "scripts": {
+    "start": "node src/worker.mjs",
+    "dev:loop": "node src/worker.mjs",
+    "once": "node src/worker.mjs"
+  },
+  "dependencies": {
+    "mysql2": "^3.14.0",
+    "sharp": "^0.33.5"
+  }
+}

@@ -1,0 +1,10 @@
+# DEPLOYMENT-DOCROOT-EXPOSURE-HARDENING-01 — if DocumentRoot is this repo folder, block direct HTTP access
+# to non-public trees (production should still set DocumentRoot to system/public only).
+# DEPLOYMENT-DOCROOT-ROOT-DENY-DEPTH-MARKER-02 — extended top-level deny set (logs|backups|secrets|scripts); system/ still blocks the full app tree.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /spa-skincare-system-blueprint/
+    RewriteRule ^(archive|distribution|handoff|system|workers|logs|backups|secrets|scripts)(/|$) - [F,L]
+    RewriteCond %{HTTP_HOST} ^localhost$ [NC]
+    RewriteRule ^(.*)$ http://spa-skincare-system-blueprint.test/$1 [R=302,L]
+</IfModule>

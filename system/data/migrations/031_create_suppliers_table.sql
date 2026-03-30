@@ -1,0 +1,22 @@
+CREATE TABLE suppliers (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(200) NOT NULL,
+    contact_name VARCHAR(150) NULL,
+    phone VARCHAR(50) NULL,
+    email VARCHAR(255) NULL,
+    address TEXT NULL,
+    notes TEXT NULL,
+    branch_id BIGINT UNSIGNED NULL,
+    created_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP NULL,
+    INDEX idx_suppliers_name (name),
+    INDEX idx_suppliers_branch_deleted (branch_id, deleted_at),
+    INDEX idx_suppliers_email (email),
+    INDEX idx_suppliers_phone (phone),
+    FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE SET NULL,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

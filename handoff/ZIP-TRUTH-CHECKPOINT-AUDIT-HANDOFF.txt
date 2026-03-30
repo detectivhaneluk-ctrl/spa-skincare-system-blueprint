@@ -1,0 +1,67 @@
+ZIP TRUTH CHECKPOINT — EXTERNAL AUDIT HANDOFF
+=============================================
+Generated for: 0-based full-project ZIP truth audit (upload this ZIP only).
+
+1) CHECKPOINT NAME
+   ZIP-TRUTH-CHECKPOINT-AUDIT (post foundation waves through 20D)
+
+2) HIGHEST COMPLETED VERIFIED WAVE (EXACT)
+   FOUNDATION-PRIVILEGED-PLATFORM-ACTION-GUARDRAIL-PARITY-20D
+   (Canonical platform.manage POST mutations inventoried with operator password
+   step-up except support-entry seam; registry/salon/branch create+update aligned.)
+
+3) INTENTIONALLY PAUSED
+   - No 20E or further guardrail waves until external ZIP audit completes.
+   - No PLT-MFA / second-factor implementation in this checkpoint.
+   - No feature or UI work; packaging-only prep for this artifact.
+
+4) KNOWN RESIDUAL ROOT-RISK FAMILIES (SUSPECTED — RE-VALIDATE FROM ZIP)
+   - Verifier vs implementation drift; CI surface thin vs script/proof volume.
+   - OrganizationRepositoryScope helper complexity / misuse risk.
+   - Null-branch / OR-null SQL density in tenant modules (inventory, memberships, etc.).
+   - Service-layer direct SQL in privileged/founder paths vs repository contracts.
+   - MFA absent: password step-up is single-factor knowledge only.
+   - Alternate routes: register_platform_organization_registry.php mirrors some
+     platform-admin org paths (same controllers — confirm in audit).
+
+5) EXACT COMMANDS USED TO BUILD THIS ZIP
+   From repo: handoff\build-final-zip.ps1
+   (PowerShell; run from handoff folder or invoke with full path.)
+
+   cd c:\laragon\www\spa-skincare-system-blueprint\handoff
+   .\build-final-zip.ps1 `
+     -PhpExe "C:\laragon\bin\php\php-8.3.30-Win32-vs16-x64\php.exe" `
+     -PhpExtensionDir "C:\laragon\bin\php\php-8.3.30-Win32-vs16-x64\ext" `
+     -OutputZip "distribution/spa-skincare-system-blueprint-ZIP-TRUTH-AUDIT-CHECKPOINT.zip"
+
+   Note: If PHP reports missing ext-zip, pass -PhpExtensionDir pointing to the PHP
+   ext directory that contains php_zip.dll (Laragon: typically ...\php-*\ext).
+
+6) VERIFIER / PROOF COMMANDS RUN BY THE BUILD (BEFORE ARCHIVE FINALIZED)
+   - PLT-REL-01 Tier A (all steps): 
+     php system\scripts\run_mandatory_tenant_isolation_proof_release_gate_01.php
+     (Invoked automatically by build-final-zip.ps1; Tier B not run unless env/flag.)
+   - Post-ZIP static rules twin (PLT-PKG-08 / FND-PKG-01):
+     php system\scripts\read-only\verify_handoff_zip_rules_readonly.php "<absolute-path-to-zip>"
+     (Invoked automatically by build-final-zip.ps1 on the produced ZIP.)
+
+   Optional manual spot-check (not required by build script):
+     php system\scripts\read-only\verify_platform_manage_password_step_up_barrier_readonly_20.php
+
+7) BLOCKERS / WAIVERS / HONESTY
+   - Local .env / .env.local / logs / storage logs|backups|sessions / nested *.zip /
+     node_modules / framework cache (except .gitkeep) are EXCLUDED per HandoffZipRules.ps1.
+   - Build intentionally does NOT delete local secrets; they stay on disk outside the ZIP.
+   - If php is not on PATH, -PhpExe (and usually -PhpExtensionDir for zip) are required.
+   - Tier B integration gate was NOT run for this artifact unless you set
+     TENANT_ISOLATION_GATE_INTEGRATION=1 or --with-integration.
+
+8) EXACT PATH OF FINAL ZIP ARTIFACT (UPLOAD THIS FILE)
+   c:\laragon\www\spa-skincare-system-blueprint\distribution\spa-skincare-system-blueprint-ZIP-TRUTH-AUDIT-CHECKPOINT.zip
+
+9) SINGLE CANONICAL UPLOAD
+   Upload exactly one file: spa-skincare-system-blueprint-ZIP-TRUTH-AUDIT-CHECKPOINT.zip
+   Do not nest prior handoff ZIPs inside it (build rules forbid *.zip in tree).
+
+10) THIS HANDOFF NOTE PATH
+    c:\laragon\www\spa-skincare-system-blueprint\handoff\ZIP-TRUTH-CHECKPOINT-AUDIT-HANDOFF.txt

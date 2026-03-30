@@ -1,0 +1,11 @@
+CREATE TABLE staff_schedules (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    staff_id BIGINT UNSIGNED NOT NULL,
+    day_of_week TINYINT NOT NULL,
+    start_time TIME NULL,
+    end_time TIME NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE CASCADE,
+    INDEX idx_staff_schedules_staff (staff_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

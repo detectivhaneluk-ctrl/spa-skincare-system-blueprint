@@ -1,0 +1,62 @@
+{
+  "domains": {
+    "identity": [
+      "users",
+      "sessions",
+      "roles",
+      "permissions",
+      "login_attempts"
+    ],
+    "crm": [
+      "clients",
+      "client_notes",
+      "client_medical_cards",
+      "client_consents",
+      "client_media"
+    ],
+    "appointments": [
+      "appointments",
+      "appointment_items",
+      "waitlist",
+      "resources"
+    ],
+    "sales": [
+      "invoices",
+      "invoice_items",
+      "payments",
+      "cash_shifts",
+      "cash_movements"
+    ],
+    "inventory": [
+      "products",
+      "inventory_movements",
+      "inventory_counts",
+      "suppliers",
+      "purchase_orders"
+    ],
+    "packages": [
+      "gift_cards",
+      "package_definitions",
+      "client_packages",
+      "package_usages"
+    ],
+    "staff": [
+      "staff",
+      "staff_schedules",
+      "staff_timeoff",
+      "staff_compensations"
+    ],
+    "documents": [
+      "document_templates",
+      "documents",
+      "signatures"
+    ],
+    "system": [
+      "audit_logs",
+      "timeline_entries",
+      "notification_queue",
+      "settings",
+      "branches"
+    ]
+  }
+}

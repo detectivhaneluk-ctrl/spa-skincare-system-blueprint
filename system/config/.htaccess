@@ -1,0 +1,10 @@
+# DEPLOYMENT-DOCROOT-SYSTEM-CONFIG-HTACCESS-MARKER-01 — deny-all when Apache serves this directory by mistake.
+# Block direct HTTP access to PHP config files if DocumentRoot is mis-pointed above system/public.
+# Application loads these via filesystem only.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order deny,allow
+    Deny from all
+</IfModule>

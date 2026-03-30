@@ -1,0 +1,32 @@
+-- Invoices: draft POS / open invoices
+-- Numeric strategy: DECIMAL(12,2) for all money fields (subtotal, discount, tax, total, paid)
+CREATE TABLE invoices (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    invoice_number VARCHAR(50) NOT NULL,
+    client_id BIGINT UNSIGNED NULL,
+    appointment_id BIGINT UNSIGNED NULL,
+    branch_id BIGINT UNSIGNED NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'draft',
+    subtotal_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+    discount_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+    tax_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+    total_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+    paid_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
+    notes TEXT NULL,
+    issued_at TIMESTAMP NULL,
+    created_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP NULL,
+    UNIQUE KEY uk_invoices_number (invoice_number),
+    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL,
+    FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE SET NULL,
+    FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE SET NULL,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_invoices_branch (branch_id),
+    INDEX idx_invoices_client (client_id),
+    INDEX idx_invoices_status (status),
+    INDEX idx_invoices_deleted (deleted_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

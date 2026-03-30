@@ -1,0 +1,18 @@
+# PLT-REL-01 — Tier A static tenant-isolation proof (no DB). Integration tier remains optional here; use
+# `php system/scripts/run_mandatory_tenant_isolation_proof_release_gate_01.php --with-integration` in release runbooks with seed.
+name: Tenant isolation gate (PLT-REL-01)
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  plt-rel-01-tier-a:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      - name: Run mandatory Tier A proof
+        run: php system/scripts/run_mandatory_tenant_isolation_proof_release_gate_01.php

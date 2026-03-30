@@ -1,0 +1,8 @@
+# DEPLOYMENT-DOCROOT-PUBLIC-HTACCESS-MARKER-01 — Production DocumentRoot MUST be this directory (system/public). See ../docs/DEPLOYMENT-DOCROOT-EXPOSURE-HARDENING-01.md
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>

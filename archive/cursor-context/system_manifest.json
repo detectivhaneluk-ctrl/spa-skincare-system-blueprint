@@ -1,0 +1,181 @@
+{
+  "system_name": "SPA & Skincare Premium System",
+  "language": "hy",
+  "architecture": {
+    "approach": "modular",
+    "entry_point": "single",
+    "settings_driven": true,
+    "core_separated_from_ui": true
+  },
+  "modules": [
+    {
+      "id": 1,
+      "code": "auth",
+      "name": "Նույնականացում և անվտանգություն",
+      "depends_on": [
+        "system-core",
+        "settings"
+      ]
+    },
+    {
+      "id": 2,
+      "code": "dashboard",
+      "name": "Գլխավոր վահանակ",
+      "depends_on": [
+        "appointments",
+        "clients",
+        "sales",
+        "inventory",
+        "documents"
+      ]
+    },
+    {
+      "id": 3,
+      "code": "appointments",
+      "name": "Օրացույց և ամրագրումներ",
+      "depends_on": [
+        "clients",
+        "services-resources",
+        "staff",
+        "system-core",
+        "settings"
+      ]
+    },
+    {
+      "id": 4,
+      "code": "clients",
+      "name": "Հաճախորդներ",
+      "depends_on": [
+        "system-core",
+        "settings"
+      ]
+    },
+    {
+      "id": 5,
+      "code": "sales",
+      "name": "Վաճառք, վճարումներ և դրամարկղ",
+      "depends_on": [
+        "clients",
+        "appointments",
+        "giftcards-packages",
+        "inventory",
+        "system-core",
+        "settings"
+      ]
+    },
+    {
+      "id": 6,
+      "code": "giftcards-packages",
+      "name": "Նվեր քարտեր և փաթեթներ",
+      "depends_on": [
+        "clients",
+        "sales",
+        "system-core",
+        "settings"
+      ]
+    },
+    {
+      "id": 7,
+      "code": "inventory",
+      "name": "Ապրանքներ և պահեստ",
+      "depends_on": [
+        "system-core",
+        "settings"
+      ]
+    },
+    {
+      "id": 8,
+      "code": "services-resources",
+      "name": "Ծառայություններ, սենյակներ և սարքավորումներ",
+      "depends_on": [
+        "staff",
+        "system-core",
+        "settings"
+      ]
+    },
+    {
+      "id": 9,
+      "code": "staff",
+      "name": "Անձնակազմ",
+      "depends_on": [
+        "auth",
+        "system-core",
+        "settings"
+      ]
+    },
+    {
+      "id": 10,
+      "code": "reports",
+      "name": "Հաշվետվություններ և վերլուծություն",
+      "depends_on": [
+        "sales",
+        "appointments",
+        "inventory",
+        "staff",
+        "system-core"
+      ]
+    },
+    {
+      "id": 11,
+      "code": "marketing",
+      "name": "Մարքեթինգ, լոյալթի և հաղորդակցություն",
+      "depends_on": [
+        "clients",
+        "appointments",
+        "system-core",
+        "settings"
+      ]
+    },
+    {
+      "id": 12,
+      "code": "documents",
+      "name": "Փաստաթղթեր և համաձայնություններ",
+      "depends_on": [
+        "clients",
+        "services-resources",
+        "system-core"
+      ]
+    },
+    {
+      "id": 13,
+      "code": "settings",
+      "name": "Կարգավորումներ",
+      "depends_on": [
+        "system-core"
+      ]
+    },
+    {
+      "id": 14,
+      "code": "online-booking",
+      "name": "Առցանց ամրագրում",
+      "depends_on": [
+        "appointments",
+        "settings",
+        "system-core"
+      ]
+    },
+    {
+      "id": 15,
+      "code": "system-core",
+      "name": "Համակարգային միջուկ",
+      "depends_on": []
+    }
+  ],
+  "build_order": [
+    "auth",
+    "system-core",
+    "settings",
+    "clients",
+    "services-resources",
+    "staff",
+    "appointments",
+    "sales",
+    "giftcards-packages",
+    "reports",
+    "inventory",
+    "marketing",
+    "documents",
+    "dashboard",
+    "online-booking"
+  ]
+}

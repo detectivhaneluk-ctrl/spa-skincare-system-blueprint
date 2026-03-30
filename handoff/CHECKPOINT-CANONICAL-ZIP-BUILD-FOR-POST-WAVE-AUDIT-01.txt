@@ -1,0 +1,38 @@
+CHECKPOINT: CHECKPOINT-CANONICAL-ZIP-BUILD-FOR-POST-WAVE-AUDIT-01
+================================================================
+
+1) Current checkpoint name
+   CHECKPOINT-CANONICAL-ZIP-BUILD-FOR-POST-WAVE-AUDIT-01
+
+2) Waves completed and accepted (per checkpoint brief)
+   - Waves 1–3: Accepted by program / external truth prior to this packaging stop.
+
+3) Wave not yet externally verified
+   - Wave 4: Not yet externally verified against this ZIP (implementation may be present in-tree with in-repo static proof; third-party audit still outstanding).
+
+4) Exact ZIP artifact path (upload this file)
+   c:\laragon\www\spa-skincare-system-blueprint\distribution\CHECKPOINT-CANONICAL-ZIP-BUILD-FOR-POST-WAVE-AUDIT-01.zip
+
+5) Exact commands used to build the ZIP
+   powershell -NoProfile -ExecutionPolicy Bypass -File "c:\laragon\www\spa-skincare-system-blueprint\handoff\build-final-zip.ps1" -PhpExe "C:\laragon\bin\php\php-8.3.30-Win32-vs16-x64\php.exe" -PhpExtensionDir "C:\laragon\bin\php\php-8.3.30-Win32-vs16-x64\ext" -OutputZip "distribution/CHECKPOINT-CANONICAL-ZIP-BUILD-FOR-POST-WAVE-AUDIT-01.zip"
+
+   Preconditions enforced by the script (fail-closed before ZIP write):
+   - php system/scripts/run_mandatory_tenant_isolation_proof_release_gate_01.php (Tier A only; exit 0 required)
+   - php system/scripts/read-only/verify_handoff_zip_rules_readonly.php <absolute-path-to-output-zip> (exit 0 required)
+
+6) Exact exclusions applied (canonical rules: handoff/HandoffZipRules.ps1)
+   - system/.env, system/.env.local, and any **/.env / **/.env.* except **/.env.example
+   - Any path ending in .zip (nested archives)
+   - Any **/*.log
+   - system/storage/logs/** (except .gitkeep if present)
+   - system/storage/backups/**
+   - system/storage/sessions/** (except .gitkeep if present)
+   - system/storage/framework/cache|sessions|views/** (except **/.gitkeep)
+   - **/node_modules/**, workers/image-pipeline/node_modules/**
+   - system/docs/*-RESULT.txt (pasted proof transcripts)
+   - .DS_Store, Thumbs.db
+
+7) Blocker / waiver / honesty note
+   - Local runtime files (e.g. system/.env.local, logs, sessions) are excluded from the ZIP only; they were NOT deleted from disk to produce this artifact.
+   - Tier B integration tests for PLT-REL-01 were NOT run as part of this build (script default: Tier A only).
+   - ZIP contents reflect the working tree at build time; audit should treat the ZIP as the canonical snapshot for external review.

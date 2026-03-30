@@ -1,0 +1,234 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Sales\Repositories;
+
+use Core\App\Database;
+use Core\Organization\OrganizationRepositoryScope;
+
+/**
+ * Payment methods (`payment_methods`): **global template** (`branch_id` NULL) plus **branch overlay** rows.
+ *
+ * | Class | Methods |
+ * | --- | --- |
+ * | **1–2. Strict branch ∪ org-global-null (tenant)** | {@see listActive}, {@see listAll}, {@see isActiveCode}, {@see existsActiveNameForBranch}, {@see codeExistsForBranch} (positive branch) — same scope helpers as {@see VatRateRepository} |
+ * | **3. Primary-key / id-only** | {@see getById}, {@see update}, {@see archive} — **no** org predicate |
+ * | **4. Control-plane unscoped** | *(none here)* |
+ *
+ * **File location:** `system/modules/sales/repositories/` (settings HTTP and sales payment UI consume via {@see \Modules\Sales\Services\PaymentMethodService}).
+ */
+final class PaymentMethodRepository
+{
+    private const SQL_SELECT_ROW = 'SELECT pm.id, pm.branch_id, pm.code, pm.name, pm.type_label, pm.is_active, pm.sort_order FROM payment_methods pm';
+
+    private const ORDER_LIST = ' ORDER BY pm.sort_order ASC, pm.name ASC';
+
+    public function __construct(
+        private Database $db,
+        private OrganizationRepositoryScope $orgScope,
+    ) {
+    }
+
+    /**
+     * List active methods for branch (branch_id = $branchId or branch_id IS NULL), ordered by sort_order.
+     * Optionally exclude a code (e.g. gift_card from manual payment form).
+     *
+     * @return list<array{id:int, branch_id:int|null, code:string, name:string, type_label:string|null, is_active:int, sort_order:int}>
+     */
+    public function listActive(?int $branchId = null, ?string $excludeCode = null): array
+    {
+        if ($branchId !== null && $branchId > 0) {
+            $u = $this->orgScope->settingsBackedCatalogUnionBranchRowOrGlobalNullFromOperationBranchClause('pm', $branchId);
+            $sql = self::SQL_SELECT_ROW . ' WHERE pm.is_active = 1 AND (' . $u['sql'] . ')';
+            $params = $u['params'];
+        } else {
+            $g = $this->orgScope->settingsBackedCatalogGlobalNullBranchOrgAnchoredSql('pm');
+            $sql = self::SQL_SELECT_ROW . ' WHERE pm.is_active = 1' . $g['sql'];
+            $params = $g['params'];
+        }
+        if ($excludeCode !== null && $excludeCode !== '') {
+            $sql .= ' AND pm.code != ?';
+            $params[] = $excludeCode;
+        }
+        $sql .= self::ORDER_LIST;
+        $rows = $this->db->fetchAll($sql, $params);
+
+        return array_map(fn (array $r) => [
+            'id' => (int) $r['id'],
+            'branch_id' => isset($r['branch_id']) && $r['branch_id'] !== '' ? (int) $r['branch_id'] : null,
+            'code' => (string) $r['code'],
+            'name' => (string) $r['name'],
+            'type_label' => isset($r['type_label']) && trim((string) $r['type_label']) !== '' ? trim((string) $r['type_label']) : null,
+            'is_active' => (int) $r['is_active'],
+            'sort_order' => (int) $r['sort_order'],
+        ], $rows);
+    }
+
+    /**
+     * Check if a code is an active payment method for branch (global or branch-scoped).
+     */
+    public function isActiveCode(string $code, ?int $branchId = null): bool
+    {
+        $code = trim($code);
+        if ($code === '') {
+            return false;
+        }
+        if ($branchId !== null && $branchId > 0) {
+            $u = $this->orgScope->settingsBackedCatalogUnionBranchRowOrGlobalNullFromOperationBranchClause('pm', $branchId);
+            $row = $this->db->fetchOne(
+                'SELECT 1 FROM payment_methods pm WHERE pm.code = ? AND pm.is_active = 1 AND (' . $u['sql'] . ') LIMIT 1',
+                array_merge([$code], $u['params'])
+            );
+        } else {
+            $g = $this->orgScope->settingsBackedCatalogGlobalNullBranchOrgAnchoredSql('pm');
+            $row = $this->db->fetchOne(
+                'SELECT 1 FROM payment_methods pm WHERE pm.code = ? AND pm.is_active = 1' . $g['sql'] . ' LIMIT 1',
+                array_merge([$code], $g['params'])
+            );
+        }
+
+        return $row !== null;
+    }
+
+    /**
+     * List all payment methods for branch (for admin). branch_id NULL = global template only (tenant-org anchored).
+     *
+     * @return list<array{id:int, branch_id:int|null, code:string, name:string, type_label:string|null, is_active:int, sort_order:int}>
+     */
+    public function listAll(?int $branchId = null): array
+    {
+        if ($branchId !== null && $branchId > 0) {
+            $u = $this->orgScope->settingsBackedCatalogUnionBranchRowOrGlobalNullFromOperationBranchClause('pm', $branchId);
+            $sql = self::SQL_SELECT_ROW . ' WHERE (' . $u['sql'] . ')' . self::ORDER_LIST;
+            $params = $u['params'];
+        } else {
+            $g = $this->orgScope->settingsBackedCatalogGlobalNullBranchOrgAnchoredSql('pm');
+            $sql = self::SQL_SELECT_ROW . ' WHERE 1=1' . $g['sql'] . self::ORDER_LIST;
+            $params = $g['params'];
+        }
+        $rows = $this->db->fetchAll($sql, $params);
+
+        return array_map(fn (array $r) => [
+            'id' => (int) $r['id'],
+            'branch_id' => isset($r['branch_id']) && $r['branch_id'] !== '' ? (int) $r['branch_id'] : null,
+            'code' => (string) $r['code'],
+            'name' => (string) $r['name'],
+            'type_label' => isset($r['type_label']) && trim((string) $r['type_label']) !== '' ? trim((string) $r['type_label']) : null,
+            'is_active' => (int) $r['is_active'],
+            'sort_order' => (int) $r['sort_order'],
+        ], $rows);
+    }
+
+    /**
+     * Get one payment method by id. **No org scope** — class 3.
+     *
+     * @return array{id:int, branch_id:int|null, code:string, name:string, type_label:string|null, is_active:int, sort_order:int}|null
+     */
+    public function getById(int $id): ?array
+    {
+        $row = $this->db->fetchOne('SELECT id, branch_id, code, name, type_label, is_active, sort_order FROM payment_methods WHERE id = ?', [$id]);
+        if ($row === null) {
+            return null;
+        }
+
+        return [
+            'id' => (int) $row['id'],
+            'branch_id' => isset($row['branch_id']) && $row['branch_id'] !== '' ? (int) $row['branch_id'] : null,
+            'code' => (string) $row['code'],
+            'name' => (string) $row['name'],
+            'type_label' => isset($row['type_label']) && trim((string) $row['type_label']) !== '' ? trim((string) $row['type_label']) : null,
+            'is_active' => (int) $row['is_active'],
+            'sort_order' => (int) $row['sort_order'],
+        ];
+    }
+
+    /**
+     * Check if another active row has the same name (case-insensitive, trimmed) for this branch. Exclude id for update.
+     */
+    public function existsActiveNameForBranch(?int $branchId, string $name, ?int $excludeId = null): bool
+    {
+        $name = trim($name);
+        if ($name === '') {
+            return false;
+        }
+        if ($branchId !== null && $branchId > 0) {
+            $u = $this->orgScope->settingsBackedCatalogUnionBranchRowOrGlobalNullFromOperationBranchClause('pm', $branchId);
+            $sql = 'SELECT 1 FROM payment_methods pm WHERE pm.is_active = 1 AND (' . $u['sql'] . ') AND LOWER(TRIM(pm.name)) = LOWER(?)';
+            $params = array_merge($u['params'], [$name]);
+        } else {
+            $g = $this->orgScope->settingsBackedCatalogGlobalNullBranchOrgAnchoredSql('pm');
+            $sql = 'SELECT 1 FROM payment_methods pm WHERE pm.is_active = 1' . $g['sql'] . ' AND LOWER(TRIM(pm.name)) = LOWER(?)';
+            $params = array_merge($g['params'], [$name]);
+        }
+        if ($excludeId !== null) {
+            $sql .= ' AND pm.id != ?';
+            $params[] = $excludeId;
+        }
+        $sql .= ' LIMIT 1';
+
+        return $this->db->fetchOne($sql, $params) !== null;
+    }
+
+    /**
+     * Check if code exists for branch (for uniqueness). branch_id NULL = global template scope only.
+     */
+    public function codeExistsForBranch(string $code, ?int $branchId, ?int $excludeId = null): bool
+    {
+        $code = trim($code);
+        if ($code === '') {
+            return false;
+        }
+        if ($branchId !== null && $branchId > 0) {
+            $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('pm');
+            $sql = 'SELECT 1 FROM payment_methods pm WHERE pm.code = ? AND pm.branch_id = ?' . $frag['sql'];
+            $params = array_merge([$code, $branchId], $frag['params']);
+        } else {
+            $g = $this->orgScope->settingsBackedCatalogGlobalNullBranchOrgAnchoredSql('pm');
+            $sql = 'SELECT 1 FROM payment_methods pm WHERE pm.code = ?' . $g['sql'];
+            $params = array_merge([$code], $g['params']);
+        }
+        if ($excludeId !== null) {
+            $sql .= ' AND pm.id != ?';
+            $params[] = $excludeId;
+        }
+        $sql .= ' LIMIT 1';
+
+        return $this->db->fetchOne($sql, $params) !== null;
+    }
+
+    /**
+     * Insert payment method. Returns new id.
+     */
+    public function create(?int $branchId, string $code, string $name, ?string $typeLabel, bool $isActive, int $sortOrder): int
+    {
+        $this->db->query(
+            'INSERT INTO payment_methods (branch_id, code, name, type_label, is_active, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
+            [$branchId, $code, $name, $typeLabel, $isActive ? 1 : 0, $sortOrder]
+        );
+
+        return (int) $this->db->lastInsertId();
+    }
+
+    /**
+     * Update display fields and status. Code is not changed (payments reference it). **Id-only WHERE** — class 3.
+     */
+    public function update(int $id, string $name, ?string $typeLabel, bool $isActive, int $sortOrder): void
+    {
+        $this->db->query(
+            'UPDATE payment_methods SET name = ?, type_label = ?, is_active = ?, sort_order = ?, updated_at = NOW() WHERE id = ?',
+            [$name, $typeLabel, $isActive ? 1 : 0, $sortOrder, $id]
+        );
+    }
+
+    /**
+     * Archive payment method (soft deactivation). **Id-only WHERE** — class 3.
+     */
+    public function archive(int $id): void
+    {
+        $this->db->query(
+            'UPDATE payment_methods SET is_active = 0, updated_at = NOW() WHERE id = ?',
+            [$id]
+        );
+    }
+}

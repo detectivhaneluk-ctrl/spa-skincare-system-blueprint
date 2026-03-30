@@ -1,0 +1,21 @@
+CREATE TABLE packages (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    branch_id BIGINT UNSIGNED NULL,
+    name VARCHAR(200) NOT NULL,
+    description TEXT NULL,
+    status ENUM('active','inactive') NOT NULL DEFAULT 'active',
+    total_sessions INT UNSIGNED NOT NULL,
+    validity_days INT UNSIGNED NULL,
+    price DECIMAL(12,2) NULL,
+    created_by BIGINT UNSIGNED NULL,
+    updated_by BIGINT UNSIGNED NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP NULL,
+    INDEX idx_packages_branch_status (branch_id, status),
+    INDEX idx_packages_deleted (deleted_at),
+    INDEX idx_packages_name (name),
+    FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE SET NULL,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

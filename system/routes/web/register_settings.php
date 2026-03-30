@@ -1,0 +1,29 @@
+<?php
+
+declare(strict_types=1);
+
+use Core\Middleware\AuthMiddleware;
+use Core\Middleware\GuestMiddleware;
+use Core\Middleware\PermissionMiddleware;
+
+$router->get('/settings', [\Modules\Settings\Controllers\SettingsController::class, 'index'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('settings.view')]);
+$router->post('/settings', [\Modules\Settings\Controllers\SettingsController::class, 'store'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('settings.edit')]);
+$router->get('/settings/vat-distribution-guide', [\Modules\Settings\Controllers\VatDistributionController::class, 'index'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('vat_rates.view')]);
+$router->post('/settings/vat-distribution-guide', [\Modules\Settings\Controllers\VatDistributionController::class, 'store'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('vat_rates.manage')]);
+$router->get('/settings/payment-methods', [\Modules\Settings\Controllers\PaymentMethodsController::class, 'index'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('payment_methods.view')]);
+$router->get('/settings/payment-methods/create', [\Modules\Settings\Controllers\PaymentMethodsController::class, 'create'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('payment_methods.manage')]);
+$router->post('/settings/payment-methods', [\Modules\Settings\Controllers\PaymentMethodsController::class, 'store'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('payment_methods.manage')]);
+$router->get('/settings/payment-methods/{id:\d+}/edit', [\Modules\Settings\Controllers\PaymentMethodsController::class, 'edit'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('payment_methods.manage')]);
+$router->post('/settings/payment-methods/{id:\d+}', [\Modules\Settings\Controllers\PaymentMethodsController::class, 'update'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('payment_methods.manage')]);
+$router->post('/settings/payment-methods/{id:\d+}/archive', [\Modules\Settings\Controllers\PaymentMethodsController::class, 'archive'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('payment_methods.manage')]);
+$router->get('/settings/price-modification-reasons', [\Modules\Settings\Controllers\PriceModificationReasonsController::class, 'index'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('price_modification_reasons.view')]);
+$router->get('/settings/price-modification-reasons/create', [\Modules\Settings\Controllers\PriceModificationReasonsController::class, 'create'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('price_modification_reasons.manage')]);
+$router->post('/settings/price-modification-reasons', [\Modules\Settings\Controllers\PriceModificationReasonsController::class, 'store'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('price_modification_reasons.manage')]);
+$router->get('/settings/price-modification-reasons/{id:\d+}/edit', [\Modules\Settings\Controllers\PriceModificationReasonsController::class, 'edit'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('price_modification_reasons.manage')]);
+$router->post('/settings/price-modification-reasons/{id:\d+}', [\Modules\Settings\Controllers\PriceModificationReasonsController::class, 'update'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('price_modification_reasons.manage')]);
+$router->get('/settings/vat-rates', [\Modules\Settings\Controllers\VatRatesController::class, 'index'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('vat_rates.view')]);
+$router->get('/settings/vat-rates/create', [\Modules\Settings\Controllers\VatRatesController::class, 'create'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('vat_rates.manage')]);
+$router->post('/settings/vat-rates', [\Modules\Settings\Controllers\VatRatesController::class, 'store'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('vat_rates.manage')]);
+$router->get('/settings/vat-rates/{id:\d+}/edit', [\Modules\Settings\Controllers\VatRatesController::class, 'edit'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('vat_rates.manage')]);
+$router->post('/settings/vat-rates/{id:\d+}', [\Modules\Settings\Controllers\VatRatesController::class, 'update'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('vat_rates.manage')]);
+$router->post('/settings/vat-rates/{id:\d+}/archive', [\Modules\Settings\Controllers\VatRatesController::class, 'archive'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('vat_rates.manage')]);

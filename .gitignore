@@ -1,0 +1,18 @@
+tmp-cookies*.txt
+tmp-login*.html
+handoff/verify-handoff-artifacts.failures.txt
+
+# Source / handoff hygiene (must match handoff/HandoffZipRules.ps1; keep system/.env.example unignored)
+# Local trees may keep .env and logs for runtime; they must not be treated as canonical handoff/source truth.
+system/.env
+system/.env.local
+handoff/*.zip
+**/*.zip
+**/*.log
+
+# PHP session files (keep directory via .gitkeep only)
+system/storage/sessions/*
+!system/storage/sessions/.gitkeep
+
+# image-pipeline dependencies — install with npm ci in workers/image-pipeline (not canonical source)
+workers/image-pipeline/node_modules/
