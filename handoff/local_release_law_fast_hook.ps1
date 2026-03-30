@@ -75,6 +75,10 @@ if ($errors.Count -gt 0) {
 
 $php = Get-Command php -ErrorAction SilentlyContinue
 if ($null -ne $php) {
+    & $php.Source "system/scripts/ci/verify_forbidden_tracked_paths.php" "--staged"
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
     $tempFile = New-TemporaryFile
     try {
         Set-Content -Path $tempFile.FullName -Value ($stagedPaths -join [Environment]::NewLine) -Encoding UTF8

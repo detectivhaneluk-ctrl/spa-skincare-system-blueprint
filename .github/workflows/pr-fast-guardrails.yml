@@ -1,0 +1,79 @@
+# Cheapest high-value checks on every PR (does not replace canonical release law).
+name: PR fast guardrails
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: pr-fast-${{ github.repository }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  pr-fast-guardrails:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          tools: composer:v2
+
+      - name: Composer validate
+        run: composer validate --strict --no-check-publish
+
+      - name: Composer install (dev tools e.g. PHPStan)
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Composer dump autoload (auditor + autoload consistency)
+        run: composer dump-autoload -o -a --no-interaction
+
+      - name: PHP lint changed files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(git diff --name-only --diff-filter=ACDMRT "${BASE_SHA}" "${HEAD_SHA}" | grep -E '\.php$' || true)
+          for f in "${files[@]}"; do
+            [[ -f "$f" ]] || continue
+            php -l "$f"
+          done
+
+      - name: Case/path audit (changed PHP under system/)
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          git diff --name-only --diff-filter=ACDMRT "${BASE_SHA}" "${HEAD_SHA}" | grep -E '^system/.*\.php$' > /tmp/pr-php-paths.txt || true
+          if [[ -s /tmp/pr-php-paths.txt ]]; then
+            php system/scripts/release/run_case_path_auditor.php --paths-file=/tmp/pr-php-paths.txt --json
+          fi
+
+      - name: Architecture contracts (core/module boundaries)
+        run: php system/scripts/ci/verify_architecture_contracts.php
+
+      - name: Forbidden tracked paths
+        run: php system/scripts/ci/verify_forbidden_tracked_paths.php
+
+      - name: Changed-path policy (diff vs base)
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: php system/scripts/ci/verify_changed_paths_policy.php --base="${BASE_SHA}" --head="${HEAD_SHA}"
+
+      - name: Hotspot proof metadata
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: php system/scripts/ci/verify_hotspot_proof_metadata.php --base="${BASE_SHA}" --head="${HEAD_SHA}"
+
+      - name: PHPStan (scoped baseline)
+        run: composer run phpstan

@@ -1,0 +1,7 @@
+# One relative path per line (from repo root). PHP files under system/core/ may `use Modules\...`
+# only in these paths until the dependency is refactored behind Core\Contracts.
+# CI: verify_architecture_contracts.php
+system/core/Organization/OrganizationContextResolver.php
+system/core/auth/UserAccessShapeService.php
+system/core/app/SettingsService.php
+system/core/Runtime/RateLimit/DatabaseSlidingWindowRateLimiter.php

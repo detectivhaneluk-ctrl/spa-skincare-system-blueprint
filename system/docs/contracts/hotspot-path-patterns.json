@@ -1,0 +1,9 @@
+{
+  "description": "Changed files matching any regex require @release-proof metadata (see DONE-MEANS-PROVED.md).",
+  "path_regexes": [
+    "^system/modules/[^/]+/.+/(repositories|Repositories)/.*Repository\\.php$",
+    "^system/core/.+\\.php$",
+    "^system/scripts/read-only/.+\\.php$",
+    "^system/scripts/run_mandatory_tenant_isolation_proof_release_gate_01\\.php$"
+  ]
+}

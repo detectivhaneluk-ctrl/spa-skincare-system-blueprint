@@ -1,0 +1,5 @@
+name: CodeQL (PHP blueprint)
+paths:
+  - system
+paths-ignore:
+  - "**/vendor/**"

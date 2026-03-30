@@ -54,6 +54,10 @@ jobs:
           PY
       - name: Composer validate
         run: composer validate --strict --no-check-publish
+      - name: Architecture + forbidden tracked paths
+        run: |
+          php system/scripts/ci/verify_architecture_contracts.php
+          php system/scripts/ci/verify_forbidden_tracked_paths.php
       - name: Composer authoritative autoload
         run: composer dump-autoload -o -a --no-interaction
       - name: Exact case/path auditor

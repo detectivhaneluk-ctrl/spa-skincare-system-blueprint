@@ -1,0 +1,69 @@
+name: Bug / root-cause report
+description: Report a defect with enough context to prevent repeat regressions (backbone / tenant safety).
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template when the issue is (or may be) a **recurring class** of failure, not a one-off typo.
+        See `system/docs/ROOT-CAUSE-REGISTER-01.md` for **ROOT-01**–**ROOT-05** families.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What went wrong, in one short paragraph.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction steps
+      description: Ordered steps, inputs, and environment (PHP version, branch, tenant context if relevant).
+    validations:
+      required: true
+
+  - type: dropdown
+    id: root_family
+    attributes:
+      label: Suspected ROOT family (if known)
+      options:
+        - ROOT-01 (id-only / implicit scope)
+        - ROOT-02 (null-branch / org-global ambiguity)
+        - ROOT-03 (public / guest bootstrap)
+        - ROOT-04 (repair / global fallback ambiguity)
+        - ROOT-05 (service-layer scope drift)
+        - Unknown / needs classification
+    validations:
+      required: true
+
+  - type: textarea
+    id: proof
+    attributes:
+      label: Proof / evidence
+      description: Logs, query traces, failing script output, or the exact release-law / verifier that should catch this class.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Tenant / org / branch scope
+      description: Which organization, branch, or actor type was involved? Any cross-tenant suspicion?
+    validations:
+      required: false

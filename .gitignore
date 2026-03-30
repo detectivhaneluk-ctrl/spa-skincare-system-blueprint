@@ -16,5 +16,20 @@ handoff/*.zip
 system/storage/sessions/*
 !system/storage/sessions/.gitkeep
 
+# IDE / tooling noise (never canonical)
+.cursor/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# Keys and local Composer auth (never commit)
+*.pem
+*.p12
+auth.json
+id_rsa
+*.key
+
 # image-pipeline dependencies — install with npm ci in workers/image-pipeline (not canonical source)
 workers/image-pipeline/node_modules/
