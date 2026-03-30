@@ -80,6 +80,13 @@ jobs:
         run: php system/scripts/release/run_case_path_auditor.php --json | tee distribution/release-law/ci-case-path-audit.json
       - name: Canonical release law
         run: php system/scripts/release/run_canonical_release_law.php
+      - name: Release-law report to job summary
+        if: failure()
+        run: |
+          echo '## Canonical release law report' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat distribution/release-law/canonical-release-law-report.txt >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
       - name: Upload release-law reports on failure
         if: failure()
         uses: actions/upload-artifact@v4
