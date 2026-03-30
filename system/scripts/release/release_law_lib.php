@@ -59,21 +59,43 @@ final class ReleaseLawShell
             2 => ['pipe', 'w'],
         ];
 
-        $env = array_merge($_ENV, self::readEnvironment(), $extraEnv);
         $escaped = implode(' ', array_map('escapeshellarg', $command));
         $start = microtime(true);
-        $process = proc_open($escaped, $descriptorSpec, $pipes, $cwd, $env);
 
-        if (!is_resource($process)) {
-            throw new ReleaseLawException('Unable to start command: ' . $escaped);
+        // Inherit the real process environment (proc_open $env = null). Building an env array from
+        // getenv() alone is unsafe: on many PHP CLI builds getenv() with no name returns an incomplete
+        // list when variables_order omits "E", so children lose PATH and fail to find composer, etc.
+        // Apply overrides via putenv() for this process only, then restore in finally.
+        /** @var array<string, string|false|null> $savedEnv */
+        $savedEnv = [];
+        foreach ($extraEnv as $key => $value) {
+            $savedEnv[$key] = getenv($key);
+            putenv($key . '=' . $value);
         }
 
-        fclose($pipes[0]);
-        $stdout = stream_get_contents($pipes[1]);
-        $stderr = stream_get_contents($pipes[2]);
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-        $exitCode = proc_close($process);
+        try {
+            $process = proc_open($escaped, $descriptorSpec, $pipes, $cwd, null);
+
+            if (!is_resource($process)) {
+                throw new ReleaseLawException('Unable to start command: ' . $escaped);
+            }
+
+            fclose($pipes[0]);
+            $stdout = stream_get_contents($pipes[1]);
+            $stderr = stream_get_contents($pipes[2]);
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            $exitCode = proc_close($process);
+        } finally {
+            foreach ($extraEnv as $key => $_) {
+                $prev = $savedEnv[$key];
+                if ($prev === false) {
+                    putenv($key);
+                } else {
+                    putenv($key . '=' . (string) $prev);
+                }
+            }
+        }
 
         return new ReleaseLawCommandResult(
             $command,
@@ -82,21 +104,6 @@ final class ReleaseLawShell
             $stderr === false ? '' : $stderr,
             microtime(true) - $start
         );
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private static function readEnvironment(): array
-    {
-        $env = [];
-        foreach (getenv() as $key => $value) {
-            if (is_string($key) && is_string($value)) {
-                $env[$key] = $value;
-            }
-        }
-
-        return $env;
     }
 }
 

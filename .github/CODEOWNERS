@@ -1,0 +1,9 @@
+# Code owners — replace the placeholder handle with a real GitHub user or org team
+# (Settings → Code security → Code owners). Invalid entries are skipped by GitHub
+# until updated; see CONTRIBUTING.md and docs/GITHUB-SETTINGS-CHECKLIST.md.
+* @REPLACE_WITH_GITHUB_USER_OR_ORG_TEAM
+
+# Guardrail and workflow changes: require explicit review (same owner until you split teams)
+/.github/ @REPLACE_WITH_GITHUB_USER_OR_ORG_TEAM
+/system/docs/contracts/ @REPLACE_WITH_GITHUB_USER_OR_ORG_TEAM
+/system/scripts/ci/ @REPLACE_WITH_GITHUB_USER_OR_ORG_TEAM

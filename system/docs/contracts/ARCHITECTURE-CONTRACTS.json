@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "schema_version": "1.0",
+  "title": "SPA blueprint architecture contracts",
+  "last_reviewed": "2026-03-30",
+  "rules": [
+    {
+      "id": "LAYERS.CORE_NO_MODULE_IMPORTS",
+      "statement": "Core (`system/core/`) must not depend on module PHP namespaces except paths explicitly allowlisted for incremental closure; new `use Modules\\` or `require` of module runtime code in core is forbidden without updating the allowlist and justification in the same PR.",
+      "enforcement": "script:system/scripts/ci/verify_architecture_contracts.php",
+      "rationale": "Prevents entangling platform kernel with product modules so tenant and bootstrap contracts stay reviewable."
+    },
+    {
+      "id": "LAYERS.MODULES_USE_APPROVED_CONTRACTS",
+      "statement": "Modules must not bypass approved core contracts for tenant/org/branch scope: no silent downgrade from fail-closed tenant paths to repair/global SQL; repair and global entrypoints must remain explicitly named (see ROOT-04 in ROOT-CAUSE-REGISTER-01.md).",
+      "enforcement": "human_review+release_law+read_only_verifiers",
+      "rationale": "Contract bypass is the dominant class of tenant regression; proof lives in mandatory verifiers and release law, not in a single grep."
+    },
+    {
+      "id": "PROCESS.HOTSPOT_ROOT_FAMILY",
+      "statement": "Edits to hotspot paths (repositories, core, read-only verifiers, mandatory tenant gate script) must cite task id, risk removed, proof command(s), and ROOT family or NONE in `@release-proof` metadata.",
+      "enforcement": "script:system/scripts/ci/verify_hotspot_proof_metadata.php",
+      "rationale": "Stops vague claims and missing linkage to ROOT-01..ROOT-05 classification."
+    },
+    {
+      "id": "RUNTIME.NO_SILENT_FALLBACK_INSTANTIATION",
+      "statement": "No silent fallback instantiation: tenant HTTP and default service paths must not instantiate alternate wide-scope repositories or bypass gates via generic factories without an explicit, named contract (aligned with ROOT-04 / ROOT-05).",
+      "enforcement": "human_review+tenant_isolation_proofs",
+      "rationale": "Automated detection of all factory patterns is noisy; architecture doc states the bar; proofs enforce critical paths."
+    },
+    {
+      "id": "TENANT.SCOPE_MANDATORY",
+      "statement": "Tenant, organization, and branch scope rules from charter and inventory docs are mandatory for data-plane changes; evidence is expected via existing read-only verifiers and release law, not ad-hoc testing only.",
+      "enforcement": "release_law:system/scripts/release/run_canonical_release_law.php",
+      "rationale": "Matches existing release-law / tenant-isolation philosophy."
+    }
+  ],
+  "open_gaps": [
+    "LAYERS.MODULES_USE_APPROVED_CONTRACTS has no single low-noise static rule; rely on review + verifiers.",
+    "RUNTIME.NO_SILENT_FALLBACK_INSTANTIATION is not fully machine-verifiable without high false-positive rate."
+  ]
+}

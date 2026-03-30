@@ -7,17 +7,20 @@ on:
 
 jobs:
   canonical-release-law:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     services:
       mysql:
-        image: mysql:8.0
+        # MariaDB: PDO + mysql client auth works without mysql_native_password tuning (MySQL 8.0
+        # caching_sha2 + host-mapped ports has repeatedly produced 1045 in this gate on GHA).
+        image: mariadb:10.11
         env:
           MYSQL_ROOT_PASSWORD: root
           MYSQL_DATABASE: spa_release_law
           MYSQL_USER: spa
           MYSQL_PASSWORD: spa
+        # Map MySQL to a fixed host port so PHP on the runner uses 127.0.0.1 (not localhost/socket).
         ports:
-          - 3306:3306
+          - "33306:3306"
         options: >-
           --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot --silent"
           --health-interval=10s
@@ -43,23 +46,44 @@ jobs:
               "APP_ENV": "local",
               "APP_DEBUG": "false",
               "DB_HOST": "127.0.0.1",
-              "DB_PORT": "3306",
+              "DB_PORT": "33306",
               "DB_DATABASE": "spa_release_law",
-              "DB_USERNAME": "spa",
-              "DB_PASSWORD": "spa",
+              # Use root in CI: full DDL + baseline verify; MYSQL_USER may lack privileges for some migrations.
+              "DB_USERNAME": "root",
+              "DB_PASSWORD": "root",
           }
           for key, value in replacements.items():
               text = re.sub(rf"^{key}=.*$", f"{key}={value}", text, flags=re.MULTILINE)
           path.write_text(text)
           PY
+      - name: Wait for MySQL on mapped host port
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 45); do
+            php -r '$f = @fsockopen("127.0.0.1", 33306); exit($f !== false ? 0 : 1);' && exit 0
+            sleep 2
+          done
+          echo "MySQL did not accept TCP on 127.0.0.1:33306"
+          exit 1
       - name: Composer validate
         run: composer validate --strict --no-check-publish
+      - name: Architecture + forbidden tracked paths
+        run: |
+          php system/scripts/ci/verify_architecture_contracts.php
+          php system/scripts/ci/verify_forbidden_tracked_paths.php
       - name: Composer authoritative autoload
         run: composer dump-autoload -o -a --no-interaction
       - name: Exact case/path auditor
         run: php system/scripts/release/run_case_path_auditor.php --json | tee distribution/release-law/ci-case-path-audit.json
       - name: Canonical release law
         run: php system/scripts/release/run_canonical_release_law.php
+      - name: Release-law report to job summary
+        if: failure()
+        run: |
+          echo '## Canonical release law report' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat distribution/release-law/canonical-release-law-report.txt >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
       - name: Upload release-law reports on failure
         if: failure()
         uses: actions/upload-artifact@v4

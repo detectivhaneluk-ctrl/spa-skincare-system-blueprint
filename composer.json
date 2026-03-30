@@ -6,6 +6,9 @@
   "require": {
     "php": "^8.2"
   },
+  "require-dev": {
+    "phpstan/phpstan": "^2.1"
+  },
   "config": {
     "optimize-autoloader": true,
     "sort-packages": true
@@ -115,6 +118,9 @@
   },
   "scripts": {
     "release-law:audit": "php system/scripts/release/run_case_path_auditor.php",
-    "release-law": "php system/scripts/release/run_canonical_release_law.php"
+    "release-law": "php system/scripts/release/run_canonical_release_law.php",
+    "ci:architecture": "php system/scripts/ci/verify_architecture_contracts.php",
+    "ci:forbidden-paths": "php system/scripts/ci/verify_forbidden_tracked_paths.php",
+    "phpstan": "phpstan analyse -c phpstan.neon.dist --no-progress --memory-limit=512M"
   }
 }

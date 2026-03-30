@@ -1,0 +1,7 @@
+# CI uses disposable MySQL credentials in the canonical release-law workflow only.
+# Production secrets must never be committed; this narrows known false positives.
+[allowlist]
+description = "GitHub Actions service container placeholders"
+paths = [
+  ".github/workflows/tenant-isolation-gate.yml",
+]

@@ -1,0 +1,20 @@
+# Dependency updates — align with docs/GITHUB-SETTINGS-CHECKLIST.md (Dependabot + grouped security).
+version: 2
+updates:
+  - package-ecosystem: composer
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      composer-security:
+        patterns:
+          - "*"
+        update-types:
+          - security
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

@@ -1,0 +1,2 @@
+# Files under system/core/ may require/include module paths (e.g. views) only here.
+system/core/tenant/TenantRuntimeContextEnforcer.php

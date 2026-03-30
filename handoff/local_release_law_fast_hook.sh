@@ -18,4 +18,5 @@ if ! command -v php >/dev/null 2>&1; then
   exit 1
 fi
 
+php system/scripts/ci/verify_forbidden_tracked_paths.php --staged
 php system/scripts/release/run_case_path_auditor.php --paths-file="$paths_file"
