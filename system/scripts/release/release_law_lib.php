@@ -59,44 +59,48 @@ final class ReleaseLawShell
             2 => ['pipe', 'w'],
         ];
 
-        $env = array_merge($_ENV, self::readEnvironment(), $extraEnv);
         $escaped = implode(' ', array_map('escapeshellarg', $command));
         $start = microtime(true);
-        $process = proc_open($escaped, $descriptorSpec, $pipes, $cwd, $env);
 
-        if (!is_resource($process)) {
-            throw new ReleaseLawException('Unable to start command: ' . $escaped);
+        // Inherit the real process environment (null). A merged env map can drop variables that
+        // downstream tools rely on (observed: PDO MySQL to GitHub Actions service containers).
+        $saved = [];
+        foreach ($extraEnv as $key => $value) {
+            $saved[$key] = getenv($key);
+            putenv($key . '=' . $value);
         }
 
-        fclose($pipes[0]);
-        $stdout = stream_get_contents($pipes[1]);
-        $stderr = stream_get_contents($pipes[2]);
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-        $exitCode = proc_close($process);
+        try {
+            $process = proc_open($escaped, $descriptorSpec, $pipes, $cwd, null);
 
-        return new ReleaseLawCommandResult(
-            $command,
-            $exitCode,
-            $stdout === false ? '' : $stdout,
-            $stderr === false ? '' : $stderr,
-            microtime(true) - $start
-        );
-    }
+            if (!is_resource($process)) {
+                throw new ReleaseLawException('Unable to start command: ' . $escaped);
+            }
 
-    /**
-     * @return array<string, string>
-     */
-    private static function readEnvironment(): array
-    {
-        $env = [];
-        foreach (getenv() as $key => $value) {
-            if (is_string($key) && is_string($value)) {
-                $env[$key] = $value;
+            fclose($pipes[0]);
+            $stdout = stream_get_contents($pipes[1]);
+            $stderr = stream_get_contents($pipes[2]);
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            $exitCode = proc_close($process);
+
+            return new ReleaseLawCommandResult(
+                $command,
+                $exitCode,
+                $stdout === false ? '' : $stdout,
+                $stderr === false ? '' : $stderr,
+                microtime(true) - $start
+            );
+        } finally {
+            foreach ($extraEnv as $key => $_) {
+                $prior = $saved[$key];
+                if ($prior === false) {
+                    putenv($key);
+                } else {
+                    putenv($key . '=' . $prior);
+                }
             }
         }
-
-        return $env;
     }
 }
 
