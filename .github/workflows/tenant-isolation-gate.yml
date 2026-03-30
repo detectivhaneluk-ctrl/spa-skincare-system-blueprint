@@ -16,8 +16,9 @@ jobs:
           MYSQL_DATABASE: spa_release_law
           MYSQL_USER: spa
           MYSQL_PASSWORD: spa
+        # Host port must not collide with anything binding 3306 on the runner; PHP uses DB_PORT below.
         ports:
-          - 3306:3306
+          - 33060:3306
         options: >-
           --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot --silent"
           --health-interval=10s
@@ -43,7 +44,7 @@ jobs:
               "APP_ENV": "local",
               "APP_DEBUG": "false",
               "DB_HOST": "127.0.0.1",
-              "DB_PORT": "3306",
+              "DB_PORT": "33060",
               "DB_DATABASE": "spa_release_law",
               "DB_USERNAME": "spa",
               "DB_PASSWORD": "spa",
@@ -52,6 +53,15 @@ jobs:
               text = re.sub(rf"^{key}=.*$", f"{key}={value}", text, flags=re.MULTILINE)
           path.write_text(text)
           PY
+      - name: Wait for MySQL on mapped host port
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 45); do
+            php -r '$f = @fsockopen("127.0.0.1", 33060); exit($f !== false ? 0 : 1);' && exit 0
+            sleep 2
+          done
+          echo 'MySQL did not accept TCP on 127.0.0.1:33060'
+          exit 1
       - name: Composer validate
         run: composer validate --strict --no-check-publish
       - name: Architecture + forbidden tracked paths

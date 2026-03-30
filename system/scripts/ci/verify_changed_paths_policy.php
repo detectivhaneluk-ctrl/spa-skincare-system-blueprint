@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Fails if a commit range adds or modifies paths that must never enter the repo.
+ * Fails if a commit range adds or modifies (non-deleted) paths that must never enter the repo.
  * Risk removed: secrets and runtime artifacts in PR diffs.
  * Proof: php system/scripts/ci/verify_changed_paths_policy.php --base=<sha> --head=<sha>
  * @root-family NONE
@@ -28,7 +28,8 @@ if ($base === null || $head === null || $base === '' || $head === '') {
 }
 
 $range = escapeshellarg($base) . '...' . escapeshellarg($head);
-$output = shell_exec("git diff --name-only --diff-filter=ACDMRT {$range} 2>&1");
+// Omit deleted paths: removing forbidden files (e.g. .cursor/) must not fail the policy check.
+$output = shell_exec("git diff --name-only --diff-filter=ACMRT {$range} 2>&1");
 if ($output === null) {
     fwrite(STDERR, "verify_changed_paths_policy: git diff failed\n");
     exit(1);
