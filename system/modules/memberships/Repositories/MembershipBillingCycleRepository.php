@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Modules\Memberships\Repositories;
 
 use Core\App\Database;
-use Core\Errors\AccessDeniedException;
 use Core\Organization\OrganizationRepositoryScope;
+use Core\Repository\RepositoryContractGuard;
 use Modules\Memberships\Services\MembershipBenefitEntitlementPolicy;
 
 final class MembershipBillingCycleRepository
@@ -18,11 +18,14 @@ final class MembershipBillingCycleRepository
     }
 
     /**
-     * Cycle row joined to its invoice with {@see invoicePlaneExistsClauseForMembershipReconcileQueries} (strict tenant or OrUnscoped repair).
+     * Cycle row joined to its invoice.
+     *
+     * - Tenant/runtime: strict branch-derived invoice-plane scope.
+     * - Repair/global: resolved-org scope when available; otherwise explicit deployment-global scan inline in this method.
      */
     public function findInInvoicePlane(int $cycleId): ?array
     {
-        $frag = $this->invoicePlaneExistsClauseForMembershipReconcileQueries('i');
+        $frag = $this->strictTenantInvoicePlaneBranchScope('i');
 
         return $this->db->fetchOne(
             'SELECT mbc.* FROM membership_billing_cycles mbc
@@ -32,12 +35,27 @@ final class MembershipBillingCycleRepository
         ) ?: null;
     }
 
+    public function findForRepair(int $cycleId): ?array
+    {
+        $sql = 'SELECT mbc.* FROM membership_billing_cycles mbc
+             INNER JOIN invoices i ON i.id = mbc.invoice_id AND i.deleted_at IS NULL
+             WHERE mbc.id = ?';
+        $params = [$cycleId];
+        $frag = $this->resolvedOrganizationRepairInvoicePlaneBranchScopeIfAvailable('i');
+        if ($frag !== null) {
+            $sql .= $frag['sql'];
+            $params = array_merge($params, $frag['params']);
+        }
+
+        return $this->db->fetchOne($sql, $params) ?: null;
+    }
+
     /**
      * Same as {@see findInInvoicePlane} with {@code FOR UPDATE} on the cycle row (invoice-plane proof retained).
      */
     public function findForUpdateInInvoicePlane(int $cycleId): ?array
     {
-        $frag = $this->invoicePlaneExistsClauseForMembershipReconcileQueries('i');
+        $frag = $this->strictTenantInvoicePlaneBranchScope('i');
 
         return $this->db->fetchOne(
             'SELECT mbc.* FROM membership_billing_cycles mbc
@@ -47,15 +65,39 @@ final class MembershipBillingCycleRepository
         ) ?: null;
     }
 
+    public function findForUpdateForRepair(int $cycleId): ?array
+    {
+        $sql = 'SELECT mbc.* FROM membership_billing_cycles mbc
+             INNER JOIN invoices i ON i.id = mbc.invoice_id AND i.deleted_at IS NULL
+             WHERE mbc.id = ?';
+        $params = [$cycleId];
+        $frag = $this->resolvedOrganizationRepairInvoicePlaneBranchScopeIfAvailable('i');
+        if ($frag !== null) {
+            $sql .= $frag['sql'];
+            $params = array_merge($params, $frag['params']);
+        }
+        $sql .= ' FOR UPDATE';
+
+        return $this->db->fetchOne($sql, $params) ?: null;
+    }
+
     /**
      * Correlates cycle id to a concrete invoice id (settlement / operator paths where both are known).
      */
     public function findForInvoice(int $cycleId, int $invoiceId): ?array
     {
+        RepositoryContractGuard::denyMixedSemanticsApi('MembershipBillingCycleRepository::findForInvoice', ['findForInvoiceInInvoicePlane', 'findForInvoiceForRepair']);
+    }
+
+    /**
+     * Correlates cycle id to a concrete invoice id under strict runtime invoice-plane scope.
+     */
+    public function findForInvoiceInInvoicePlane(int $cycleId, int $invoiceId): ?array
+    {
         if ($cycleId <= 0 || $invoiceId <= 0) {
             return null;
         }
-        $frag = $this->invoicePlaneExistsClauseForMembershipReconcileQueries('i');
+        $frag = $this->strictTenantInvoicePlaneBranchScope('i');
 
         return $this->db->fetchOne(
             'SELECT mbc.* FROM membership_billing_cycles mbc
@@ -65,15 +107,45 @@ final class MembershipBillingCycleRepository
         ) ?: null;
     }
 
+    public function findForInvoiceForRepair(int $cycleId, int $invoiceId): ?array
+    {
+        if ($cycleId <= 0 || $invoiceId <= 0) {
+            return null;
+        }
+
+        $sql = 'SELECT mbc.* FROM membership_billing_cycles mbc
+             INNER JOIN invoices i ON i.id = mbc.invoice_id AND i.id = ? AND i.deleted_at IS NULL
+             WHERE mbc.id = ? AND mbc.invoice_id = ?';
+        $params = [$invoiceId, $cycleId, $invoiceId];
+        $frag = $this->resolvedOrganizationRepairInvoicePlaneBranchScopeIfAvailable('i');
+        if ($frag !== null) {
+            $sql .= $frag['sql'];
+            $params = array_merge($params, $frag['params']);
+        }
+
+        return $this->db->fetchOne(
+            $sql,
+            $params
+        ) ?: null;
+    }
+
     /**
      * {@see findForInvoice} with row lock.
      */
     public function findForUpdateForInvoice(int $cycleId, int $invoiceId): ?array
     {
+        RepositoryContractGuard::denyMixedSemanticsApi('MembershipBillingCycleRepository::findForUpdateForInvoice', ['findForUpdateForInvoiceInInvoicePlane', 'findForUpdateForInvoiceForRepair']);
+    }
+
+    /**
+     * {@see findForInvoiceInInvoicePlane} with row lock.
+     */
+    public function findForUpdateForInvoiceInInvoicePlane(int $cycleId, int $invoiceId): ?array
+    {
         if ($cycleId <= 0 || $invoiceId <= 0) {
             return null;
         }
-        $frag = $this->invoicePlaneExistsClauseForMembershipReconcileQueries('i');
+        $frag = $this->strictTenantInvoicePlaneBranchScope('i');
 
         return $this->db->fetchOne(
             'SELECT mbc.* FROM membership_billing_cycles mbc
@@ -83,12 +155,35 @@ final class MembershipBillingCycleRepository
         ) ?: null;
     }
 
+    public function findForUpdateForInvoiceForRepair(int $cycleId, int $invoiceId): ?array
+    {
+        if ($cycleId <= 0 || $invoiceId <= 0) {
+            return null;
+        }
+
+        $sql = 'SELECT mbc.* FROM membership_billing_cycles mbc
+             INNER JOIN invoices i ON i.id = mbc.invoice_id AND i.id = ? AND i.deleted_at IS NULL
+             WHERE mbc.id = ? AND mbc.invoice_id = ?';
+        $params = [$invoiceId, $cycleId, $invoiceId];
+        $frag = $this->resolvedOrganizationRepairInvoicePlaneBranchScopeIfAvailable('i');
+        if ($frag !== null) {
+            $sql .= $frag['sql'];
+            $params = array_merge($params, $frag['params']);
+        }
+        $sql .= ' FOR UPDATE';
+
+        return $this->db->fetchOne(
+            $sql,
+            $params
+        ) ?: null;
+    }
+
     /**
      * Invoice-plane read by cycle id (no bare {@code SELECT * FROM membership_billing_cycles WHERE id = ?}).
      */
     public function find(int $id): ?array
     {
-        return $this->findInInvoicePlane($id);
+        RepositoryContractGuard::denyMixedSemanticsApi('MembershipBillingCycleRepository::find', ['findInInvoicePlane', 'findForRepair']);
     }
 
     /**
@@ -111,25 +206,61 @@ final class MembershipBillingCycleRepository
      */
     public function findForUpdate(int $id): ?array
     {
-        return $this->findForUpdateInInvoicePlane($id);
+        RepositoryContractGuard::denyMixedSemanticsApi('MembershipBillingCycleRepository::findForUpdate', ['findForUpdateInInvoicePlane', 'findForUpdateForRepair']);
     }
 
     /**
-     * Cycles linked to an invoice — **tenant data-plane** when org context resolves (HTTP hooks: {@see MembershipBillingService::syncBillingCycleForInvoice}
-     * after {@see \Modules\Sales\Repositories\InvoiceRepository::find}); **repair/ops** when org unset (OrUnscoped invoice-plane EXISTS).
-     * Same {@see invoicePlaneExistsClauseForMembershipReconcileQueries} contract as {@see MembershipSaleRepository::listByInvoiceId}.
+     * Cycles linked to an invoice.
+     *
+     * - Tenant/runtime: strict branch-derived invoice-plane scope.
+     * - Repair/global: resolved-org scope when available; otherwise explicit deployment-global scan inline in this method.
      *
      * @return list<array<string, mixed>>
      */
     public function listByInvoiceId(int $invoiceId): array
     {
-        $frag = $this->invoicePlaneExistsClauseForMembershipReconcileQueries('i');
+        RepositoryContractGuard::denyMixedSemanticsApi('MembershipBillingCycleRepository::listByInvoiceId', ['listByInvoiceIdInInvoicePlane', 'listByInvoiceIdForRepair']);
+    }
+
+    /**
+     * Runtime-safe invoice-plane read: strict branch-derived invoice scope only, no widening.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function listByInvoiceIdInInvoicePlane(int $invoiceId): array
+    {
+        $frag = $this->strictTenantInvoicePlaneBranchScope('i');
 
         return $this->db->fetchAll(
             'SELECT mbc.* FROM membership_billing_cycles mbc
              INNER JOIN invoices i ON i.id = mbc.invoice_id AND i.deleted_at IS NULL
-             WHERE mbc.invoice_id = ?' . $frag['sql'] . ' ORDER BY mbc.id ASC',
+             WHERE mbc.invoice_id = ?' . $frag['sql'] . '
+             ORDER BY mbc.id ASC',
             array_merge([$invoiceId], $frag['params'])
+        );
+    }
+
+    /**
+     * Explicit repair/global invoice-plane read: scope by resolved org when available, otherwise run the deployment-global scan inline.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function listByInvoiceIdForRepair(int $invoiceId): array
+    {
+        $sql = 'SELECT mbc.* FROM membership_billing_cycles mbc
+             INNER JOIN invoices i ON i.id = mbc.invoice_id AND i.deleted_at IS NULL
+             WHERE mbc.invoice_id = ?';
+        $params = [$invoiceId];
+        $frag = $this->resolvedOrganizationRepairInvoicePlaneBranchScopeIfAvailable('i');
+        if ($frag !== null) {
+            $sql .= $frag['sql'];
+            $params = array_merge($params, $frag['params']);
+        }
+        $sql .= ' ORDER BY mbc.id ASC';
+
+        return $this->db->fetchAll(
+            $sql,
+            $params
         );
     }
 
@@ -138,35 +269,87 @@ final class MembershipBillingCycleRepository
      */
     public function maxInvoicedCycleIdForMembership(int $clientMembershipId): ?int
     {
+        RepositoryContractGuard::denyMixedSemanticsApi('MembershipBillingCycleRepository::maxInvoicedCycleIdForMembership', ['maxInvoicedCycleIdForMembershipInTenantScope', 'maxInvoicedCycleIdForMembershipInResolvedTenantScope', 'maxInvoicedCycleIdForMembershipForRepair']);
+    }
+
+    public function maxInvoicedCycleIdForMembershipInTenantScope(int $clientMembershipId, int $branchId): ?int
+    {
+        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('cm');
         $row = $this->db->fetchOne(
-            'SELECT MAX(id) AS m FROM membership_billing_cycles WHERE client_membership_id = ? AND invoice_id IS NOT NULL',
-            [$clientMembershipId]
+            'SELECT MAX(mbc.id) AS m
+             FROM membership_billing_cycles mbc
+             INNER JOIN client_memberships cm ON cm.id = mbc.client_membership_id
+             WHERE mbc.client_membership_id = ?
+               AND mbc.invoice_id IS NOT NULL
+               AND cm.branch_id = ?' . $frag['sql'],
+            array_merge([$clientMembershipId, $branchId], $frag['params'])
         );
-        if (!$row || $row['m'] === null || $row['m'] === '') {
+
+        return $this->nullableMaxAggregateToInt($row);
+    }
+
+    public function maxInvoicedCycleIdForMembershipInResolvedTenantScope(int $clientMembershipId): ?int
+    {
+        $pin = $this->orgScope->getAnyLiveBranchIdForResolvedTenantOrganization();
+        if ($pin === null || $pin <= 0) {
             return null;
         }
+        $tenant = $this->orgScope->clientMembershipVisibleFromBranchContextClause('cm', $pin);
+        $row = $this->db->fetchOne(
+            'SELECT MAX(mbc.id) AS m
+             FROM membership_billing_cycles mbc
+             INNER JOIN client_memberships cm ON cm.id = mbc.client_membership_id
+             WHERE mbc.client_membership_id = ?
+               AND mbc.invoice_id IS NOT NULL
+               AND (' . $tenant['sql'] . ')',
+            array_merge([$clientMembershipId], $tenant['params'])
+        );
 
-        return (int) $row['m'];
+        return $this->nullableMaxAggregateToInt($row);
+    }
+
+    public function maxInvoicedCycleIdForMembershipForRepair(int $clientMembershipId): ?int
+    {
+        $row = $this->db->fetchOne(
+            'SELECT MAX(mbc.id) AS m
+             FROM membership_billing_cycles mbc
+             INNER JOIN client_memberships cm ON cm.id = mbc.client_membership_id
+             WHERE mbc.client_membership_id = ?
+               AND mbc.invoice_id IS NOT NULL
+               AND ' . $this->orgScope->clientMembershipRowAnchoredToLiveOrganizationSql('cm'),
+            [$clientMembershipId]
+        );
+
+        return $this->nullableMaxAggregateToInt($row);
     }
 
     /**
-     * Distinct renewal invoices pending term application — **internal control-plane / batch** (cron {@see MembershipBillingService::applyPaidRenewalTerms});
-     * invoice-plane scope via {@see invoicePlaneExistsClauseForMembershipReconcileQueries} (strict tenant or OrUnscoped for CLI without org).
+     * Distinct renewal invoices pending term application — **internal control-plane / batch** (cron {@see MembershipBillingService::applyPaidRenewalTerms}).
+     * Uses strict tenant scope when branch-derived context is active; otherwise applies resolved-org repair scope when available
+     * and leaves the deployment-global batch scan explicit in this method.
      *
      * @return list<int>
      */
     public function listDistinctInvoiceIdsPendingRenewalApplication(): array
     {
-        $frag = $this->invoicePlaneExistsClauseForMembershipReconcileQueries('i');
-        $rows = $this->db->fetchAll(
-            'SELECT DISTINCT mbc.invoice_id AS iid
+        $sql = 'SELECT DISTINCT mbc.invoice_id AS iid
              FROM membership_billing_cycles mbc
              INNER JOIN invoices i ON i.id = mbc.invoice_id AND i.deleted_at IS NULL
              WHERE mbc.renewal_applied_at IS NULL
                AND mbc.status IN (\'invoiced\', \'overdue\')
-               AND mbc.invoice_id IS NOT NULL' . $frag['sql'],
-            $frag['params']
-        );
+               AND mbc.invoice_id IS NOT NULL';
+        $params = [];
+        $frag = null;
+        if ($this->isStrictTenantInvoicePlaneContext()) {
+            $frag = $this->strictTenantInvoicePlaneBranchScope('i');
+        } else {
+            $frag = $this->resolvedOrganizationRepairInvoicePlaneBranchScopeIfAvailable('i');
+        }
+        if ($frag !== null) {
+            $sql .= $frag['sql'];
+            $params = array_merge($params, $frag['params']);
+        }
+        $rows = $this->db->fetchAll($sql, $params);
         $out = [];
         foreach ($rows as $r) {
             $out[] = (int) $r['iid'];
@@ -176,24 +359,33 @@ final class MembershipBillingCycleRepository
     }
 
     /**
-     * Invoiced/overdue cycles past due_at — **internal control-plane / batch** (cron {@see MembershipBillingService::markOverdueCycles});
-     * invoice-plane scope via {@see invoicePlaneExistsClauseForMembershipReconcileQueries}.
+     * Invoiced/overdue cycles past due_at — **internal control-plane / batch** (cron {@see MembershipBillingService::markOverdueCycles}).
+     * Uses strict tenant scope when branch-derived context is active; otherwise applies resolved-org repair scope when available
+     * and leaves the deployment-global batch scan explicit in this method.
      *
      * @return list<int>
      */
     public function listDistinctInvoiceIdsOverdueCandidates(): array
     {
-        $frag = $this->invoicePlaneExistsClauseForMembershipReconcileQueries('i');
-        $rows = $this->db->fetchAll(
-            'SELECT DISTINCT mbc.invoice_id AS iid
+        $sql = 'SELECT DISTINCT mbc.invoice_id AS iid
              FROM membership_billing_cycles mbc
              INNER JOIN invoices i ON i.id = mbc.invoice_id AND i.deleted_at IS NULL
              WHERE mbc.invoice_id IS NOT NULL
                AND mbc.status IN (\'invoiced\', \'overdue\')
                AND mbc.due_at < CURDATE()
-               AND i.status IN (\'open\', \'partial\')' . $frag['sql'],
-            $frag['params']
-        );
+               AND i.status IN (\'open\', \'partial\')';
+        $params = [];
+        $frag = null;
+        if ($this->isStrictTenantInvoicePlaneContext()) {
+            $frag = $this->strictTenantInvoicePlaneBranchScope('i');
+        } else {
+            $frag = $this->resolvedOrganizationRepairInvoicePlaneBranchScopeIfAvailable('i');
+        }
+        if ($frag !== null) {
+            $sql .= $frag['sql'];
+            $params = array_merge($params, $frag['params']);
+        }
+        $rows = $this->db->fetchAll($sql, $params);
         $out = [];
         foreach ($rows as $r) {
             $out[] = (int) $r['iid'];
@@ -204,13 +396,13 @@ final class MembershipBillingCycleRepository
 
     /**
      * Repair/backfill: distinct invoice ids for cycle↔invoice reconcile — **repair/ops** entry ({@see MembershipBillingService::reconcileBillingCyclesFromCanonicalInvoices}
-     * and CLI `memberships_reconcile_billing_cycles.php`); invoice-plane scope via {@see invoicePlaneExistsClauseForMembershipReconcileQueries}.
+     * and CLI `memberships_reconcile_billing_cycles.php`). Branch-derived tenant context uses strict invoice-plane scope;
+     * non-branch-derived repair/global flows scope by resolved org when available and otherwise run the explicit deployment-global scan inline.
      *
      * @return list<int> distinct invoice ids
      */
     public function listDistinctInvoiceIdsForReconcile(?int $invoiceId = null, ?int $clientMembershipId = null, ?int $branchId = null): array
     {
-        $frag = $this->invoicePlaneExistsClauseForMembershipReconcileQueries('i');
         $sql = 'SELECT DISTINCT mbc.invoice_id AS iid
                 FROM membership_billing_cycles mbc
                 INNER JOIN client_memberships cm ON cm.id = mbc.client_membership_id
@@ -229,8 +421,18 @@ final class MembershipBillingCycleRepository
             $where[] = 'cm.branch_id = ?';
             $params[] = $branchId;
         }
-        $sql .= ' WHERE ' . implode(' AND ', $where) . $frag['sql'] . ' ORDER BY mbc.invoice_id ASC';
-        $params = array_merge($params, $frag['params']);
+        $sql .= ' WHERE ' . implode(' AND ', $where);
+        $frag = null;
+        if ($this->isStrictTenantInvoicePlaneContext()) {
+            $frag = $this->strictTenantInvoicePlaneBranchScope('i');
+        } else {
+            $frag = $this->resolvedOrganizationRepairInvoicePlaneBranchScopeIfAvailable('i');
+        }
+        if ($frag !== null) {
+            $sql .= $frag['sql'];
+            $params = array_merge($params, $frag['params']);
+        }
+        $sql .= ' ORDER BY mbc.invoice_id ASC';
         $rows = $this->db->fetchAll($sql, $params);
         $out = [];
         foreach ($rows as $r) {
@@ -241,8 +443,8 @@ final class MembershipBillingCycleRepository
     }
 
     /**
-     * Renewal duplicate guard: when {@code $branchContextId} resolves (or org anchor exists), cycle row must sit on a {@code client_memberships}
-     * row in the same resolved organization as the pin; else repair id-only read (cron without branch context).
+     * Renewal duplicate guard: strict tenant lookup only. If there is no concrete or derived tenant branch context, the method
+     * fails closed and returns {@code null}; repair/global callers must use an explicitly named path instead of a hidden raw fallback.
      *
      * @return array<string, mixed>|null
      */
@@ -252,40 +454,19 @@ final class MembershipBillingCycleRepository
         if ($pin === null || $pin <= 0) {
             $pin = $this->orgScope->getAnyLiveBranchIdForResolvedTenantOrganization();
         }
-        if ($pin !== null && $pin > 0) {
-            $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('cm');
-            $orgSub = '(SELECT bctx.organization_id FROM branches bctx WHERE bctx.id = ? AND bctx.deleted_at IS NULL LIMIT 1)';
-            $tenantPred = '(
-                (cm.branch_id IS NOT NULL AND cm.branch_id = ?' . $frag['sql'] . ')
-                OR (
-                    cm.branch_id IS NULL
-                    AND EXISTS (
-                        SELECT 1 FROM clients cl
-                        INNER JOIN branches b ON b.id = cl.branch_id AND b.deleted_at IS NULL
-                        WHERE cl.id = cm.client_id AND cl.deleted_at IS NULL
-                          AND b.organization_id = ' . $orgSub . '
-                    )
-                )
-            )';
-
-            return $this->db->fetchOne(
-                'SELECT mbc.* FROM membership_billing_cycles mbc
-                 INNER JOIN client_memberships cm ON cm.id = mbc.client_membership_id
-                 WHERE mbc.client_membership_id = ?
-                   AND mbc.billing_period_start = ?
-                   AND mbc.billing_period_end = ?
-                   AND ' . $tenantPred,
-                array_merge(
-                    [$clientMembershipId, $periodStart, $periodEnd, $pin],
-                    $frag['params'],
-                    [$pin]
-                )
-            );
+        if ($pin === null || $pin <= 0) {
+            return null;
         }
+        $tenant = $this->orgScope->clientMembershipVisibleFromBranchContextClause('cm', $pin);
 
         return $this->db->fetchOne(
-            'SELECT * FROM membership_billing_cycles WHERE client_membership_id = ? AND billing_period_start = ? AND billing_period_end = ?',
-            [$clientMembershipId, $periodStart, $periodEnd]
+            'SELECT mbc.* FROM membership_billing_cycles mbc
+             INNER JOIN client_memberships cm ON cm.id = mbc.client_membership_id
+             WHERE mbc.client_membership_id = ?
+               AND mbc.billing_period_start = ?
+               AND mbc.billing_period_end = ?
+               AND (' . $tenant['sql'] . ')',
+            array_merge([$clientMembershipId, $periodStart, $periodEnd], $tenant['params'])
         );
     }
 
@@ -296,6 +477,30 @@ final class MembershipBillingCycleRepository
     }
 
     public function update(int $id, array $data): void
+    {
+        RepositoryContractGuard::denyMixedSemanticsApi('MembershipBillingCycleRepository::update', ['updateInInvoicePlane', 'updateForRepair']);
+    }
+
+    public function updateInInvoicePlane(int $id, array $data): void
+    {
+        $norm = $this->normalizeUpdate($data);
+        if ($norm === []) {
+            return;
+        }
+        $frag = $this->strictTenantInvoicePlaneBranchScope('i');
+        $cols = array_map(static fn (string $k): string => "mbc.{$k} = ?", array_keys($norm));
+        $vals = array_values($norm);
+        $vals[] = $id;
+        $this->db->query(
+            'UPDATE membership_billing_cycles mbc
+             INNER JOIN invoices i ON i.id = mbc.invoice_id AND i.deleted_at IS NULL
+             SET ' . implode(', ', $cols) . '
+             WHERE mbc.id = ?' . $frag['sql'],
+            array_merge($vals, $frag['params'])
+        );
+    }
+
+    public function updateForRepair(int $id, array $data): void
     {
         $norm = $this->normalizeUpdate($data);
         if ($norm === []) {
@@ -445,19 +650,42 @@ final class MembershipBillingCycleRepository
     }
 
     /**
-     * Invoice-plane EXISTS on {@code invoices.branch_id}: **strict tenant** when org resolves (normal HTTP + hooked settlement);
-     * **OrUnscoped fallback** on {@see AccessDeniedException} for repair/cron without org (same intentional family as other reconcile tooling).
-     * Same contract as {@see MembershipSaleRepository::invoicePlaneExistsClauseForMembershipReconcileQueries()} (duplicate private method by module boundary).
+     * Strict tenant helper for invoice-plane billing-cycle reads. No fallback, no silent widening.
      *
      * @return array{sql: string, params: list<mixed>}
      */
-    private function invoicePlaneExistsClauseForMembershipReconcileQueries(string $invoiceAlias = 'i'): array
+    private function strictTenantInvoicePlaneBranchScope(string $invoiceAlias = 'i'): array
     {
-        try {
-            return $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause($invoiceAlias, 'branch_id');
-        } catch (AccessDeniedException) {
-            return $this->orgScope->globalAdminBranchColumnOwnedByResolvedOrganizationExistsClauseOrUnscoped($invoiceAlias, 'branch_id');
+        return $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause($invoiceAlias, 'branch_id');
+    }
+
+    /**
+     * Explicit repair/global helper: when an organization is resolved outside branch-derived tenant mode, scope invoice-joined
+     * billing-cycle SQL to that org. Returns `null` when no org resolves so callers must choose deployment-global behavior inline.
+     *
+     * @return array{sql: string, params: list<mixed>}|null
+     */
+    private function resolvedOrganizationRepairInvoicePlaneBranchScopeIfAvailable(string $invoiceAlias = 'i'): ?array
+    {
+        if ($this->orgScope->resolvedOrganizationId() === null) {
+            return null;
         }
+
+        return $this->orgScope->globalAdminBranchColumnOwnedByResolvedOrganizationExistsClause($invoiceAlias, 'branch_id');
+    }
+
+    private function isStrictTenantInvoicePlaneContext(): bool
+    {
+        return $this->orgScope->isBranchDerivedResolvedOrganizationContext();
+    }
+
+    private function nullableMaxAggregateToInt(?array $row): ?int
+    {
+        if (!$row || $row['m'] === null || $row['m'] === '') {
+            return null;
+        }
+
+        return (int) $row['m'];
     }
 
     /**

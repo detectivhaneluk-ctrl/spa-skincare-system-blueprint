@@ -9,6 +9,7 @@ use Core\App\Application;
 use Core\App\SettingsService;
 use Core\Audit\AuditService;
 use Core\Branch\BranchContext;
+use Core\Organization\OrganizationRepositoryScope;
 use Core\Contracts\PublicCommerceFulfillmentReconciler;
 use Modules\Clients\Repositories\ClientRepository;
 use Modules\Memberships\Repositories\MembershipDefinitionRepository;
@@ -28,8 +29,9 @@ use Modules\Sales\Services\InvoiceService;
  * Paid activation also runs {@see MembershipService::assignToClientAuthoritative}, which locks the client again and rejects
  * overlapping or in-flight `client_memberships` for the same client + definition + branch scope (manual assign uses the same path).
  *
- * **Invoice-keyed repository reads** ({@see MembershipSaleRepository::listByInvoiceId}, {@see MembershipSaleRepository::listDistinctInvoiceIdsForReconcile}):
- * invoice-plane org EXISTS on `invoices.branch_id` (strict tenant vs repair OrUnscoped). Canonical invoice rows via {@see InvoiceRepository::find}.
+ * **Invoice-keyed repository reads** ({@see MembershipSaleRepository::listByInvoiceIdInInvoicePlane}, {@see MembershipSaleRepository::listByInvoiceIdForRepair},
+ * {@see MembershipSaleRepository::listDistinctInvoiceIdsForReconcile}): runtime uses strict invoice-plane scope; repair/global uses explicit repair entrypoints.
+ * Canonical invoice rows via {@see InvoiceRepository::find}.
  */
 final class MembershipSaleService
 {
@@ -51,6 +53,7 @@ final class MembershipSaleService
         private MembershipService $membershipService,
         private AuditService $audit,
         private BranchContext $branchContext,
+        private OrganizationRepositoryScope $orgScope,
         private SettingsService $settings,
         private $publicCommerceFulfillmentReconciler,
         private PublicCommerceFulfillmentReconcileRecoveryService $publicCommerceFulfillmentReconcileRecovery,
@@ -170,10 +173,10 @@ final class MembershipSaleService
                     ],
                 ],
             ]);
-            $this->sales->update($saleId, [
+            $this->sales->updateInTenantScope($saleId, [
                 'invoice_id' => $invoiceId,
                 'status' => 'invoiced',
-            ]);
+            ], $saleBranch);
             $createdMeta = [
                 'membership_definition_id' => $definitionId,
                 'client_id' => $clientId,
@@ -231,7 +234,7 @@ final class MembershipSaleService
         if ($invoiceId <= 0) {
             return;
         }
-        $saleRows = $this->sales->listByInvoiceId($invoiceId);
+        $saleRows = $this->listSaleRowsForInvoiceContract($invoiceId);
         if ($saleRows === []) {
             return;
         }
@@ -313,9 +316,7 @@ final class MembershipSaleService
     private function settleSaleForDeletedInvoice(int $saleId, array $invTrashed): void
     {
         $invBranch = (int) ($invTrashed['branch_id'] ?? 0);
-        $sale = $invBranch > 0
-            ? $this->sales->findForUpdateInTenantScope($saleId, $invBranch)
-            : $this->sales->findForUpdate($saleId);
+        $sale = $this->lockSaleForSettlementContract($saleId, $invBranch > 0 ? $invBranch : null);
         if (!$sale || (int) ($sale['invoice_id'] ?? 0) !== (int) ($invTrashed['id'] ?? 0)) {
             return;
         }
@@ -326,14 +327,14 @@ final class MembershipSaleService
             || $hasCm;
         if ($activated) {
             if ($beforeStatus !== 'refund_review') {
-                $this->sales->update($saleId, ['status' => 'refund_review']);
+                $this->updateSaleWithContract($saleId, ['status' => 'refund_review'], $sale, $invBranch > 0 ? $invBranch : null);
                 $this->audit->log('membership_sale_refund_review_required', 'membership_sale', $saleId, $this->currentUserId(), $this->branchFromSale($sale), [
                     'reason' => 'invoice_deleted_after_activation',
                     'invoice_id' => (int) ($invTrashed['id'] ?? 0),
                 ]);
             }
         } elseif (!in_array($beforeStatus, ['void', 'cancelled', 'refund_review'], true)) {
-            $this->sales->update($saleId, ['status' => 'void']);
+            $this->updateSaleWithContract($saleId, ['status' => 'void'], $sale, $invBranch > 0 ? $invBranch : null);
             $this->audit->log('membership_sale_voided', 'membership_sale', $saleId, $this->currentUserId(), $this->branchFromSale($sale), [
                 'reason' => 'invoice_deleted',
                 'invoice_id' => (int) ($invTrashed['id'] ?? 0),
@@ -347,9 +348,7 @@ final class MembershipSaleService
     private function settleSingleSaleLocked(int $saleId, array $inv, bool $operatorReevaluateRefundReview): void
     {
         $invBranch = (int) ($inv['branch_id'] ?? 0);
-        $sale = $invBranch > 0
-            ? $this->sales->findForUpdateInTenantScope($saleId, $invBranch)
-            : $this->sales->findForUpdate($saleId);
+        $sale = $this->lockSaleForSettlementContract($saleId, $invBranch > 0 ? $invBranch : null);
         if (!$sale || (int) ($sale['invoice_id'] ?? 0) !== (int) ($inv['id'] ?? 0)) {
             return;
         }
@@ -357,7 +356,7 @@ final class MembershipSaleService
         $branchId = $this->branchFromSale($sale);
 
         if ((int) ($inv['client_id'] ?? 0) !== (int) ($sale['client_id'] ?? 0)) {
-            $this->sales->update($saleId, ['status' => 'refund_review']);
+            $this->updateSaleWithContract($saleId, ['status' => 'refund_review'], $sale, $invBranch > 0 ? $invBranch : null);
             $this->audit->log('membership_sale_refund_review_required', 'membership_sale', $saleId, $this->currentUserId(), $branchId, [
                 'reason' => 'invoice_client_mismatch',
                 'invoice_id' => $invoiceId,
@@ -378,14 +377,14 @@ final class MembershipSaleService
         if ($status === 'cancelled') {
             if ($wasActivated) {
                 if ($beforeStatus !== 'refund_review') {
-                    $this->sales->update($saleId, ['status' => 'refund_review']);
+                    $this->updateSaleWithContract($saleId, ['status' => 'refund_review'], $sale, $invBranch > 0 ? $invBranch : null);
                     $this->audit->log('membership_sale_refund_review_required', 'membership_sale', $saleId, $this->currentUserId(), $branchId, [
                         'reason' => 'invoice_cancelled_after_activation',
                         'invoice_id' => $invoiceId,
                     ]);
                 }
             } elseif (!in_array($beforeStatus, ['void', 'cancelled', 'refund_review'], true)) {
-                $this->sales->update($saleId, ['status' => 'cancelled']);
+                $this->updateSaleWithContract($saleId, ['status' => 'cancelled'], $sale, $invBranch > 0 ? $invBranch : null);
                 $this->audit->log('membership_sale_cancelled', 'membership_sale', $saleId, $this->currentUserId(), $branchId, [
                     'invoice_id' => $invoiceId,
                 ]);
@@ -397,14 +396,14 @@ final class MembershipSaleService
         if ($status === 'refunded') {
             if ($wasActivated) {
                 if ($beforeStatus !== 'refund_review') {
-                    $this->sales->update($saleId, ['status' => 'refund_review']);
+                    $this->updateSaleWithContract($saleId, ['status' => 'refund_review'], $sale, $invBranch > 0 ? $invBranch : null);
                     $this->audit->log('membership_sale_refund_review_required', 'membership_sale', $saleId, $this->currentUserId(), $branchId, [
                         'reason' => 'invoice_refunded_after_activation',
                         'invoice_id' => $invoiceId,
                     ]);
                 }
             } elseif (!in_array($beforeStatus, ['void', 'cancelled', 'refund_review'], true)) {
-                $this->sales->update($saleId, ['status' => 'void']);
+                $this->updateSaleWithContract($saleId, ['status' => 'void'], $sale, $invBranch > 0 ? $invBranch : null);
                 $this->audit->log('membership_sale_voided', 'membership_sale', $saleId, $this->currentUserId(), $branchId, [
                     'reason' => 'invoice_refunded',
                     'invoice_id' => $invoiceId,
@@ -417,14 +416,14 @@ final class MembershipSaleService
         if ($total <= 0) {
             if ($wasActivated) {
                 if ($beforeStatus !== 'refund_review') {
-                    $this->sales->update($saleId, ['status' => 'refund_review']);
+                    $this->updateSaleWithContract($saleId, ['status' => 'refund_review'], $sale, $invBranch > 0 ? $invBranch : null);
                     $this->audit->log('membership_sale_refund_review_required', 'membership_sale', $saleId, $this->currentUserId(), $branchId, [
                         'reason' => 'invoice_non_positive_total_after_activation',
                         'invoice_id' => $invoiceId,
                     ]);
                 }
             } elseif (!in_array($beforeStatus, ['void', 'cancelled', 'refund_review'], true)) {
-                $this->sales->update($saleId, ['status' => 'void']);
+                $this->updateSaleWithContract($saleId, ['status' => 'void'], $sale, $invBranch > 0 ? $invBranch : null);
                 $this->audit->log('membership_sale_voided', 'membership_sale', $saleId, $this->currentUserId(), $branchId, [
                     'reason' => 'invoice_non_positive_total',
                     'invoice_id' => $invoiceId,
@@ -439,7 +438,7 @@ final class MembershipSaleService
         if ($wasActivated) {
             if (!$fullyPaid) {
                 if ($beforeStatus !== 'refund_review') {
-                    $this->sales->update($saleId, ['status' => 'refund_review']);
+                    $this->updateSaleWithContract($saleId, ['status' => 'refund_review'], $sale, $invBranch > 0 ? $invBranch : null);
                     $this->audit->log('membership_sale_refund_review_required', 'membership_sale', $saleId, $this->currentUserId(), $branchId, [
                         'reason' => 'invoice_no_longer_fully_paid',
                         'invoice_id' => $invoiceId,
@@ -454,7 +453,7 @@ final class MembershipSaleService
                 && $total > 0
                 && (int) ($inv['client_id'] ?? 0) === (int) ($sale['client_id'] ?? 0)
             ) {
-                $this->sales->update($saleId, ['status' => 'activated']);
+                $this->updateSaleWithContract($saleId, ['status' => 'activated'], $sale, $invBranch > 0 ? $invBranch : null);
                 $this->audit->log('membership_sale_refund_review_resolved_activated', 'membership_sale', $saleId, $this->currentUserId(), $branchId, [
                     'invoice_id' => $invoiceId,
                     'mechanism' => 'canonical_invoice_recovered',
@@ -475,7 +474,7 @@ final class MembershipSaleService
 
         if (!$fullyPaid) {
             if (in_array($beforeStatus, ['draft', 'invoiced', 'paid'], true)) {
-                $this->sales->update($saleId, ['status' => 'invoiced']);
+                $this->updateSaleWithContract($saleId, ['status' => 'invoiced'], $sale, $invBranch > 0 ? $invBranch : null);
             }
 
             return;
@@ -510,7 +509,7 @@ final class MembershipSaleService
 
         $snapArr = MembershipEntitlementSnapshot::decode($this->jsonColumnToString($sale['definition_snapshot_json'] ?? null));
         if ($snapArr === null) {
-            $this->sales->update($saleId, ['status' => 'refund_review']);
+            $this->updateSaleWithContract($saleId, ['status' => 'refund_review'], $sale, $resBranch);
             $this->audit->log('membership_sale_refund_review_required', 'membership_sale', $saleId, $this->currentUserId(), $branchId, [
                 'reason' => 'missing_membership_definition_snapshot',
                 'invoice_id' => $invoiceId,
@@ -519,7 +518,7 @@ final class MembershipSaleService
             return;
         }
         if ((int) ($snapArr['membership_definition_id'] ?? 0) !== $defId) {
-            $this->sales->update($saleId, ['status' => 'refund_review']);
+            $this->updateSaleWithContract($saleId, ['status' => 'refund_review'], $sale, $resBranch);
             $this->audit->log('membership_sale_refund_review_required', 'membership_sale', $saleId, $this->currentUserId(), $branchId, [
                 'reason' => 'membership_snapshot_definition_mismatch',
                 'invoice_id' => $invoiceId,
@@ -529,7 +528,7 @@ final class MembershipSaleService
         }
         $snapBranch = (int) ($snapArr['definition_branch_id'] ?? 0);
         if ($resBranch === null || $resBranch <= 0 || $snapBranch !== $resBranch) {
-            $this->sales->update($saleId, ['status' => 'refund_review']);
+            $this->updateSaleWithContract($saleId, ['status' => 'refund_review'], $sale, $resBranch);
             $this->audit->log('membership_sale_refund_review_required', 'membership_sale', $saleId, $this->currentUserId(), $branchId, [
                 'reason' => 'membership_snapshot_branch_mismatch',
                 'invoice_id' => $invoiceId,
@@ -540,7 +539,7 @@ final class MembershipSaleService
 
         $defCheck = $this->definitions->findInTenantScope($defId, $resBranch);
         if (!$defCheck || !empty($defCheck['deleted_at'])) {
-            $this->sales->update($saleId, ['status' => 'refund_review']);
+            $this->updateSaleWithContract($saleId, ['status' => 'refund_review'], $sale, $resBranch);
             $this->audit->log('membership_sale_refund_review_required', 'membership_sale', $saleId, $this->currentUserId(), $branchId, [
                 'reason' => 'definition_missing_or_deleted_at_activation',
                 'invoice_id' => $invoiceId,
@@ -569,7 +568,7 @@ final class MembershipSaleService
         try {
             $cmId = $this->membershipService->assignToClientAuthoritative($payload, $actor);
         } catch (\DomainException $e) {
-            $this->sales->update($saleId, ['status' => 'refund_review']);
+            $this->updateSaleWithContract($saleId, ['status' => 'refund_review'], $sale, $resBranch);
             $this->audit->log('membership_sale_refund_review_required', 'membership_sale', $saleId, $this->currentUserId(), $branchId, [
                 'reason' => 'activation_failed',
                 'invoice_id' => $invoiceId,
@@ -582,12 +581,12 @@ final class MembershipSaleService
         $cm = $this->membershipService->findClientMembership($cmId, $resBranch !== null && $resBranch > 0 ? $resBranch : null);
         $endsAt = $cm ? (string) ($cm['ends_at'] ?? '') : '';
 
-        $this->sales->update($saleId, [
+        $this->updateSaleWithContract($saleId, [
             'client_membership_id' => $cmId,
             'status' => 'activated',
             'activation_applied_at' => date('Y-m-d H:i:s'),
             'ends_at' => $endsAt !== '' ? $endsAt : null,
-        ]);
+        ], $sale, $resBranch);
 
         $this->audit->log('membership_sale_paid', 'membership_sale', $saleId, $this->currentUserId(), $branchId, [
             'invoice_id' => $invoiceId,
@@ -643,6 +642,75 @@ final class MembershipSaleService
         }
 
         return is_string($raw) ? $raw : null;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function listSaleRowsForInvoiceContract(int $invoiceId): array
+    {
+        if ($this->hasStrictInvoicePlaneContext()) {
+            return $this->sales->listByInvoiceIdInInvoicePlane($invoiceId);
+        }
+
+        return $this->sales->listByInvoiceIdForRepair($invoiceId);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function lockSaleForSettlementContract(int $saleId, ?int $invoiceBranchId): ?array
+    {
+        $pin = $this->resolveSaleBranchPinForContract($invoiceBranchId, null);
+        if ($pin !== null) {
+            return $this->sales->findForUpdateInTenantScope($saleId, $pin);
+        }
+        if ($this->hasStrictInvoicePlaneContext()) {
+            return $this->sales->findForUpdateInResolvedTenantScope($saleId);
+        }
+
+        return $this->sales->findForUpdateForRepair($saleId);
+    }
+
+    /**
+     * @param array<string, mixed>|null $sale
+     * @param array<string, mixed> $patch
+     */
+    private function updateSaleWithContract(int $saleId, array $patch, ?array $sale = null, ?int $invoiceBranchId = null): void
+    {
+        $pin = $this->resolveSaleBranchPinForContract($invoiceBranchId, $sale);
+        if ($pin !== null) {
+            $this->sales->updateInTenantScope($saleId, $patch, $pin);
+
+            return;
+        }
+        if ($this->hasStrictInvoicePlaneContext()) {
+            $this->sales->updateInResolvedTenantScope($saleId, $patch);
+
+            return;
+        }
+
+        $this->sales->updateForRepair($saleId, $patch);
+    }
+
+    /**
+     * @param array<string, mixed>|null $sale
+     */
+    private function resolveSaleBranchPinForContract(?int $invoiceBranchId, ?array $sale): ?int
+    {
+        if ($sale !== null && isset($sale['branch_id']) && (int) $sale['branch_id'] > 0) {
+            return (int) $sale['branch_id'];
+        }
+        if ($invoiceBranchId !== null && $invoiceBranchId > 0) {
+            return $invoiceBranchId;
+        }
+
+        return null;
+    }
+
+    private function hasStrictInvoicePlaneContext(): bool
+    {
+        return $this->orgScope->isBranchDerivedResolvedOrganizationContext();
     }
 
     /** @param array<string, mixed> $sale */

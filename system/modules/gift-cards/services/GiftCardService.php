@@ -62,7 +62,7 @@ final class GiftCardService
                 }
             }
 
-            if ($this->cards->findByCode($code, true)) {
+            if ($this->cards->findByCodeForUniquenessCheck($code, true)) {
                 throw new \DomainException('Gift card code already exists.');
             }
 
@@ -126,7 +126,7 @@ final class GiftCardService
                 throw new \DomainException('Only active gift cards can be redeemed.');
             }
 
-            $currentBalance = $this->getCurrentBalance((int) $card['id']);
+            $currentBalance = $this->getCurrentBalance((int) $card['id'], $operationBranchId);
             if ($amount > $currentBalance) {
                 throw new \DomainException('Redeem amount exceeds current balance.');
             }
@@ -146,7 +146,7 @@ final class GiftCardService
             ]);
 
             $nextStatus = $newBalance <= 0 ? 'used' : 'active';
-            $this->cards->update((int) $card['id'], [
+            $this->cards->updateInTenantScope((int) $card['id'], $operationBranchId, [
                 'status' => $nextStatus,
                 'updated_by' => $userId,
             ]);
@@ -182,7 +182,7 @@ final class GiftCardService
                 throw new \DomainException('Cancelled gift cards cannot be adjusted.');
             }
 
-            $currentBalance = $this->getCurrentBalance((int) $card['id']);
+            $currentBalance = $this->getCurrentBalance((int) $card['id'], $operationBranchId);
             $newBalance = $currentBalance + $delta;
             if ($newBalance < 0) {
                 throw new \DomainException('Adjustment cannot make balance negative.');
@@ -205,7 +205,7 @@ final class GiftCardService
             if (($card['status'] ?? '') === 'expired') {
                 $nextStatus = 'expired';
             }
-            $this->cards->update((int) $card['id'], [
+            $this->cards->updateInTenantScope((int) $card['id'], $operationBranchId, [
                 'status' => $nextStatus,
                 'updated_by' => $userId,
             ]);
@@ -235,7 +235,7 @@ final class GiftCardService
                 throw new \DomainException('Expired gift cards cannot be cancelled.');
             }
 
-            $balance = $this->getCurrentBalance((int) $card['id']);
+            $balance = $this->getCurrentBalance((int) $card['id'], $operationBranchId);
             $userId = $this->currentUserId();
 
             $this->transactions->create([
@@ -250,7 +250,7 @@ final class GiftCardService
                 'created_by' => $userId,
             ]);
 
-            $this->cards->update((int) $card['id'], [
+            $this->cards->updateInTenantScope((int) $card['id'], $operationBranchId, [
                 'status' => 'cancelled',
                 'updated_by' => $userId,
                 'notes' => $notes ?: ($card['notes'] ?? null),
@@ -306,7 +306,7 @@ final class GiftCardService
             }
 
             $userId = $this->currentUserId();
-            $this->cards->update($giftCardId, [
+            $this->cards->updateInTenantScope($giftCardId, $operationBranchId, [
                 'expires_at' => $normalized['sql'],
                 'updated_by' => $userId,
             ]);
@@ -352,13 +352,14 @@ final class GiftCardService
         return ['updated' => $updated, 'failed' => $failed];
     }
 
-    public function getCurrentBalance(int $giftCardId): float
+    public function getCurrentBalance(int $giftCardId, ?int $branchContext = null): float
     {
         $latest = $this->transactions->latestForCard($giftCardId);
         if ($latest) {
             return (float) ($latest['balance_after'] ?? 0);
         }
-        $card = $this->cards->find($giftCardId);
+        $resolvedBranchId = $this->requirePositiveBranchContext($branchContext ?? $this->branchContext->getCurrentBranchId());
+        $card = $this->cards->findInTenantScope($giftCardId, $resolvedBranchId);
         return (float) ($card['original_amount'] ?? 0);
     }
 
@@ -381,11 +382,11 @@ final class GiftCardService
             } catch (\Throwable) {
                 // Keep list resilient; strict checks occur during redemption.
             }
-            $fresh = $this->cards->find($cardId);
+            $fresh = $this->cards->findInTenantScope($cardId, $branchContext);
             if (!$fresh || ($fresh['status'] ?? '') !== 'active') {
                 continue;
             }
-            $balance = $this->getCurrentBalance($cardId);
+            $balance = $this->getCurrentBalance($cardId, $branchContext);
             if ($balance <= 0) {
                 continue;
             }
@@ -413,7 +414,7 @@ final class GiftCardService
         return [
             'gift_card_id' => (int) $card['id'],
             'status' => (string) ($card['status'] ?? 'active'),
-            'current_balance' => $this->getCurrentBalance((int) $card['id']),
+            'current_balance' => $this->getCurrentBalance((int) $card['id'], $operationBranchId),
             'currency' => (string) ($card['currency'] ?? 'USD'),
             'expires_at' => $card['expires_at'] ?? null,
             'branch_id' => $card['branch_id'] !== null ? (int) $card['branch_id'] : null,
@@ -485,7 +486,7 @@ final class GiftCardService
                 throw new \DomainException('Gift card refund adjustment is already recorded for this refund payment.');
             }
 
-            $currentBalance = $this->getCurrentBalance($giftCardId);
+            $currentBalance = $this->getCurrentBalance($giftCardId, $operationBranchId);
             $newBalance = $currentBalance + $amount;
             $userId = $this->currentUserId();
             $this->transactions->create([
@@ -499,7 +500,7 @@ final class GiftCardService
                 'notes' => $notes ?: 'Invoice redemption refund',
                 'created_by' => $userId,
             ]);
-            $this->cards->update($giftCardId, [
+            $this->cards->updateInTenantScope($giftCardId, $operationBranchId, [
                 'status' => $newBalance > 0 ? 'active' : ((string) ($card['status'] ?? 'active')),
                 'updated_by' => $userId,
             ]);
@@ -549,7 +550,7 @@ final class GiftCardService
             return false;
         }
 
-        $balance = $this->getCurrentBalance((int) $card['id']);
+        $balance = $this->getCurrentBalance((int) $card['id'], $operationBranchId);
         $userId = $this->currentUserId();
 
         $this->transactions->create([
@@ -564,7 +565,7 @@ final class GiftCardService
             'created_by' => $userId,
         ]);
 
-        $this->cards->update((int) $card['id'], [
+        $this->cards->updateInTenantScope((int) $card['id'], $operationBranchId, [
             'status' => 'expired',
             'updated_by' => $userId,
         ]);

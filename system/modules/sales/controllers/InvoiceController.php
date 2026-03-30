@@ -326,14 +326,14 @@ final class InvoiceController
             return;
         }
         $items = $this->itemRepo->getByInvoiceId($id);
-        $payments = $this->paymentRepo->getByInvoiceId($id);
+        $payments = $this->paymentRepo->listByInvoiceIdInInvoicePlane($id);
         $refundableByPaymentId = [];
         foreach ($payments as $p) {
             if (($p['entry_type'] ?? 'payment') !== 'payment' || ($p['status'] ?? '') !== 'completed') {
                 continue;
             }
             $paid = round((float) ($p['amount'] ?? 0), 2);
-            $refunded = $this->paymentRepo->getCompletedRefundedTotalForParentPayment((int) $p['id']);
+            $refunded = $this->paymentRepo->getCompletedRefundedTotalForParentPaymentInInvoicePlane((int) $p['id']);
             $refundableByPaymentId[(int) $p['id']] = max(0.0, round($paid - $refunded, 2));
         }
         $eligibleGiftCards = [];

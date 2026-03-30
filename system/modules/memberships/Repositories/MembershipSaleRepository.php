@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Modules\Memberships\Repositories;
 
 use Core\App\Database;
-use Core\Errors\AccessDeniedException;
 use Core\Organization\OrganizationRepositoryScope;
+use Core\Repository\RepositoryContractGuard;
 
 final class MembershipSaleRepository
 {
@@ -21,6 +21,14 @@ final class MembershipSaleRepository
      * (same plane as {@see update()}). Prefer {@see findInTenantScope()} when branch is known for sargability.
      */
     public function find(int $id): ?array
+    {
+        RepositoryContractGuard::denyMixedSemanticsApi('MembershipSaleRepository::find', ['findInTenantScope', 'findInResolvedTenantScope', 'findForRepair']);
+    }
+
+    /**
+     * Fail-closed resolved-tenant read: row must remain branch-owned by the resolved org, but no concrete branch pin is required.
+     */
+    public function findInResolvedTenantScope(int $id): ?array
     {
         $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('ms');
 
@@ -49,6 +57,16 @@ final class MembershipSaleRepository
      */
     public function findForUpdate(int $id): ?array
     {
+        RepositoryContractGuard::denyMixedSemanticsApi('MembershipSaleRepository::findForUpdate', ['findForUpdateInTenantScope', 'findForUpdateInResolvedTenantScope', 'findForUpdateForRepair']);
+    }
+
+    /**
+     * Fail-closed resolved-tenant row lock: row must remain branch-owned by the resolved org, but no concrete branch pin is required.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findForUpdateInResolvedTenantScope(int $id): ?array
+    {
         $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('ms');
 
         return $this->db->fetchOne(
@@ -72,7 +90,8 @@ final class MembershipSaleRepository
     }
 
     /**
-     * In-flight initial-sale pipeline for the same client + definition + branch.
+     * BRANCH_OWNED tenant blocker only for the same client + definition + concrete branch.
+     * REPAIR_ONLY / CONTROL_PLANE null-branch rows are never treated as blocking runtime candidates here.
      * Blocks while the sale is not in a terminal post-sale state, including the gap after the
      * invoice is fully paid (`paid`) but before activation completes (`activated`).
      * Terminal states that allow a new sale: `activated`, `void`, `cancelled`.
@@ -81,53 +100,78 @@ final class MembershipSaleRepository
      */
     public function findBlockingOpenInitialSale(int $clientId, int $membershipDefinitionId, ?int $branchId): ?array
     {
-        $statusList = '\'draft\', \'invoiced\', \'paid\', \'refund_review\'';
-        if ($branchId !== null && $branchId > 0) {
-            $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('ms');
-
-            return $this->db->fetchOne(
-                'SELECT ms.* FROM membership_sales ms
-                 WHERE ms.client_id = ?
-                   AND ms.membership_definition_id = ?
-                   AND ms.branch_id = ?' . $frag['sql'] . '
-                   AND ms.status IN (' . $statusList . ')
-                 ORDER BY ms.id DESC
-                 LIMIT 1',
-                array_merge([$clientId, $membershipDefinitionId, $branchId], $frag['params'])
-            );
+        if (!$this->isBranchOwnedTenantRuntimeBranchId($branchId)) {
+            return null;
         }
 
-        $invFrag = $this->invoicePlaneExistsClauseForMembershipReconcileQueries('i');
+        $statusList = '\'draft\', \'invoiced\', \'paid\', \'refund_review\'';
+        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('ms');
 
         return $this->db->fetchOne(
             'SELECT ms.* FROM membership_sales ms
-             INNER JOIN invoices i ON i.id = ms.invoice_id AND i.deleted_at IS NULL
              WHERE ms.client_id = ?
                AND ms.membership_definition_id = ?
-               AND ms.branch_id IS NULL
-               AND ms.status IN (' . $statusList . ')' . $invFrag['sql'] . '
+               AND ms.branch_id = ?' . $frag['sql'] . '
+               AND ms.status IN (' . $statusList . ')
              ORDER BY ms.id DESC
              LIMIT 1',
-            array_merge([$clientId, $membershipDefinitionId], $invFrag['params'])
+            array_merge([$clientId, $membershipDefinitionId, $branchId], $frag['params'])
         );
     }
 
     /**
-     * Rows linked to an invoice — **tenant data-plane** when org resolves (HTTP: {@see MembershipSaleService::syncMembershipSaleForInvoice} with
-     * {@see \Modules\Sales\Repositories\InvoiceRepository::find}); **repair/ops** when org unset. Same {@see invoicePlaneExistsClauseForMembershipReconcileQueries}
-     * as {@see listDistinctInvoiceIdsForReconcile}.
+     * Rows linked to an invoice.
+     *
+     * - Tenant/runtime: when branch-derived invoice-plane context is active, apply strict invoice-branch scope.
+     * - Reconcile/global repair: when only a resolved org exists, scope to that org without requiring branch-derived mode.
+     * - Deployment-global repair: when no org resolves, run the explicit unscoped backfill query inline in this method.
      *
      * @return list<array<string, mixed>>
      */
     public function listByInvoiceId(int $invoiceId): array
     {
-        $frag = $this->invoicePlaneExistsClauseForMembershipReconcileQueries('i');
+        RepositoryContractGuard::denyMixedSemanticsApi('MembershipSaleRepository::listByInvoiceId', ['listByInvoiceIdInInvoicePlane', 'listByInvoiceIdForRepair']);
+    }
+
+    /**
+     * Runtime-safe invoice-plane read: strict branch-derived invoice scope only, no widening.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function listByInvoiceIdInInvoicePlane(int $invoiceId): array
+    {
+        $frag = $this->strictTenantInvoicePlaneBranchScope('i');
 
         return $this->db->fetchAll(
             'SELECT ms.* FROM membership_sales ms
              INNER JOIN invoices i ON i.id = ms.invoice_id AND i.deleted_at IS NULL
-             WHERE ms.invoice_id = ?' . $frag['sql'] . ' ORDER BY ms.id ASC',
+             WHERE ms.invoice_id = ?' . $frag['sql'] . '
+             ORDER BY ms.id ASC',
             array_merge([$invoiceId], $frag['params'])
+        );
+    }
+
+    /**
+     * Explicit repair/global invoice-plane read: scope by resolved org when available, otherwise run the deployment-global scan inline.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function listByInvoiceIdForRepair(int $invoiceId): array
+    {
+        $sql = 'SELECT ms.* FROM membership_sales ms
+             INNER JOIN invoices i ON i.id = ms.invoice_id AND i.deleted_at IS NULL
+             WHERE ms.invoice_id = ?';
+        $params = [$invoiceId];
+        $frag = $this->resolvedOrganizationRepairInvoicePlaneBranchScopeIfAvailable('i');
+        if ($frag !== null) {
+            $sql .= $frag['sql'];
+            $params = array_merge($params, $frag['params']);
+        }
+        $sql .= ' ORDER BY ms.id ASC';
+
+        return $this->db->fetchAll(
+            $sql,
+            $params
         );
     }
 
@@ -140,6 +184,32 @@ final class MembershipSaleRepository
 
     public function update(int $id, array $data): void
     {
+        RepositoryContractGuard::denyMixedSemanticsApi('MembershipSaleRepository::update', ['updateInTenantScope', 'updateInResolvedTenantScope', 'updateForRepair']);
+    }
+
+    public function updateInTenantScope(int $id, array $data, int $branchId): void
+    {
+        $norm = $this->normalizeUpdate($data);
+        if ($norm === []) {
+            return;
+        }
+        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('ms');
+        $cols = array_map(static fn (string $k): string => "ms.{$k} = ?", array_keys($norm));
+        $vals = array_values($norm);
+        $vals[] = $id;
+        $vals[] = $branchId;
+        $vals = array_merge($vals, $frag['params']);
+        $this->db->query(
+            'UPDATE membership_sales ms
+             SET ' . implode(', ', $cols) . '
+             WHERE ms.id = ?
+               AND ms.branch_id = ?' . $frag['sql'],
+            $vals
+        );
+    }
+
+    public function updateInResolvedTenantScope(int $id, array $data): void
+    {
         $norm = $this->normalizeUpdate($data);
         if ($norm === []) {
             return;
@@ -151,6 +221,40 @@ final class MembershipSaleRepository
         $vals = array_merge($vals, $frag['params']);
         $this->db->query(
             'UPDATE membership_sales ms SET ' . implode(', ', $cols) . ' WHERE ms.id = ?' . $frag['sql'],
+            $vals
+        );
+    }
+
+    public function findForRepair(int $id): ?array
+    {
+        return $this->db->fetchOne(
+            'SELECT ms.* FROM membership_sales ms WHERE ms.id = ?',
+            [$id]
+        );
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function findForUpdateForRepair(int $id): ?array
+    {
+        return $this->db->fetchOne(
+            'SELECT ms.* FROM membership_sales ms WHERE ms.id = ? FOR UPDATE',
+            [$id]
+        );
+    }
+
+    public function updateForRepair(int $id, array $data): void
+    {
+        $norm = $this->normalizeUpdate($data);
+        if ($norm === []) {
+            return;
+        }
+        $cols = array_map(static fn (string $k): string => "{$k} = ?", array_keys($norm));
+        $vals = array_values($norm);
+        $vals[] = $id;
+        $this->db->query(
+            'UPDATE membership_sales SET ' . implode(', ', $cols) . ' WHERE id = ?',
             $vals
         );
     }
@@ -209,14 +313,13 @@ final class MembershipSaleRepository
     /**
      * Distinct invoice ids for membership_sale ↔ canonical invoice repair/sync — **repair/ops** primary entry
      * ({@see MembershipSaleService::reconcileMembershipSalesFromCanonicalInvoices}, CLI `memberships_reconcile_membership_sales.php`).
-     * **Tenant HTTP / hooks:** branch-derived invoice-plane EXISTS when org resolves; **repair/cron without org:** OrUnscoped fallback
-     * ({@see OrganizationRepositoryScope::globalAdminBranchColumnOwnedByResolvedOrganizationExistsClauseOrUnscoped}).
+     * Branch-derived tenant context uses strict invoice-plane scope; non-branch-derived repair/global flows scope by resolved org
+     * when available and otherwise run the explicit deployment-global scan inline in this method.
      *
      * @return list<int>
      */
     public function listDistinctInvoiceIdsForReconcile(?int $invoiceId = null, ?int $clientId = null, ?int $branchId = null): array
     {
-        $frag = $this->invoicePlaneExistsClauseForMembershipReconcileQueries('i');
         $sql = 'SELECT DISTINCT ms.invoice_id AS iid
                 FROM membership_sales ms
                 INNER JOIN invoices i ON i.id = ms.invoice_id AND i.deleted_at IS NULL
@@ -234,8 +337,17 @@ final class MembershipSaleRepository
             $sql .= ' AND ms.branch_id = ?';
             $params[] = $branchId;
         }
-        $sql .= $frag['sql'] . ' ORDER BY ms.invoice_id ASC';
-        $params = array_merge($params, $frag['params']);
+        $frag = null;
+        if ($this->isStrictTenantInvoicePlaneContext()) {
+            $frag = $this->strictTenantInvoicePlaneBranchScope('i');
+        } else {
+            $frag = $this->resolvedOrganizationRepairInvoicePlaneBranchScopeIfAvailable('i');
+        }
+        if ($frag !== null) {
+            $sql .= $frag['sql'];
+            $params = array_merge($params, $frag['params']);
+        }
+        $sql .= ' ORDER BY ms.invoice_id ASC';
         $rows = $this->db->fetchAll($sql, $params);
         $out = [];
         foreach ($rows as $r) {
@@ -275,17 +387,42 @@ final class MembershipSaleRepository
     }
 
     /**
-     * Same contract as {@see MembershipBillingCycleRepository} (duplicate private by module boundary): strict tenant invoice-plane EXISTS, else OrUnscoped for repair.
+     * Strict tenant helper for invoice-plane membership-sale reads. No fallback, no silent widening.
      *
      * @return array{sql: string, params: list<mixed>}
      */
-    private function invoicePlaneExistsClauseForMembershipReconcileQueries(string $invoiceAlias = 'i'): array
+    private function strictTenantInvoicePlaneBranchScope(string $invoiceAlias = 'i'): array
     {
-        try {
-            return $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause($invoiceAlias, 'branch_id');
-        } catch (AccessDeniedException) {
-            return $this->orgScope->globalAdminBranchColumnOwnedByResolvedOrganizationExistsClauseOrUnscoped($invoiceAlias, 'branch_id');
+        return $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause($invoiceAlias, 'branch_id');
+    }
+
+    /**
+     * Explicit repair/global helper: when an organization is resolved outside branch-derived tenant mode, scope invoice-joined
+     * reconcile SQL to that org. Returns `null` when no org resolves so callers must choose their deployment-global behavior inline.
+     *
+     * @return array{sql: string, params: list<mixed>}|null
+     */
+    private function resolvedOrganizationRepairInvoicePlaneBranchScopeIfAvailable(string $invoiceAlias = 'i'): ?array
+    {
+        if ($this->orgScope->resolvedOrganizationId() === null) {
+            return null;
         }
+
+        return $this->orgScope->globalAdminBranchColumnOwnedByResolvedOrganizationExistsClause($invoiceAlias, 'branch_id');
+    }
+
+    private function isStrictTenantInvoicePlaneContext(): bool
+    {
+        return $this->orgScope->isBranchDerivedResolvedOrganizationContext();
+    }
+
+    /**
+     * BRANCH_OWNED tenant runtime requires a concrete branch id.
+     * REPAIR_ONLY / CONTROL_PLANE callers must not reuse null-branch sales as runtime blockers.
+     */
+    private function isBranchOwnedTenantRuntimeBranchId(?int $branchId): bool
+    {
+        return $branchId !== null && $branchId > 0;
     }
 
     /**

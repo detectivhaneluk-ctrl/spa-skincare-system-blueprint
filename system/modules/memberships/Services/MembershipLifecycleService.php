@@ -319,7 +319,9 @@ final class MembershipLifecycleService
                 $ctxPin = $ctxPin !== null && $ctxPin > 0 ? (int) $ctxPin : null;
                 $cm = $ctxPin !== null
                     ? $this->clientMemberships->findForUpdateInTenantScope($clientMembershipId, $ctxPin)
-                    : $this->clientMemberships->findForUpdate($clientMembershipId);
+                    : ($this->orgScope->isBranchDerivedResolvedOrganizationContext()
+                        ? $this->clientMemberships->findForUpdateInResolvedTenantScope($clientMembershipId)
+                        : $this->clientMemberships->findForUpdateForRepair($clientMembershipId));
                 if (!$cm) {
                     return;
                 }
@@ -363,7 +365,9 @@ final class MembershipLifecycleService
                     ? $this->clientMemberships->findInTenantScope($clientMembershipId, $bidInner)
                     : ($ctxPin !== null
                         ? $this->clientMemberships->findInTenantScope($clientMembershipId, $ctxPin)
-                        : $this->clientMemberships->find($clientMembershipId));
+                        : ($this->orgScope->isBranchDerivedResolvedOrganizationContext()
+                            ? $this->clientMemberships->findInResolvedTenantScope($clientMembershipId)
+                            : $this->clientMemberships->findForRepair($clientMembershipId)));
                 $this->audit->log('membership_lifecycle_synced', 'client_membership', $clientMembershipId, $updatedBy, $bidInner, [
                     'transition' => $wasScheduled ? 'sync_scheduled_cancel_terminal' : 'sync_term_end_expired',
                     'after' => $after,
@@ -388,7 +392,7 @@ final class MembershipLifecycleService
 
             return;
         }
-        $this->clientMemberships->updateRepairOrUnscopedById($id, $patch);
+        $this->clientMemberships->updateForRepairById($id, $patch);
     }
 
     /** @param array<string, mixed> $cm */

@@ -46,7 +46,7 @@ Planning cleanup, backlog freeze, legacy banners, and **BACKBONE-CLOSURE-ACTIVE-
 
 | ID | Item | Notes |
 |----|------|-------|
-| **PLT-TNT-01** | Universal tenant fail-closed / mechanical repository closure | **Root-family targets (Phase 1):** **ROOT-01**–**ROOT-05** per `ROOT-CAUSE-REGISTER-01.md` — **not** parallel threads; classification only. **Next slice:** residual **F-12** (see inventory “Highest-risk areas”; **`PaymentRepository`** aggregates / existence helpers) — **one hotspot only** per charter. Tier A: `run_mandatory_tenant_isolation_proof_release_gate_01.php`. **CLOSURE-18**–**21** / **FND-TNT-29**–**32** (invoice plane + payment **`find` / `findForUpdate` / `getByInvoiceId`** explicit branch-derived entry) closed 2026-03-30. |
+| **PLT-TNT-01** | Universal tenant fail-closed / mechanical repository closure | **Root-family targets (Phase 1):** **ROOT-01**–**ROOT-05** per `ROOT-CAUSE-REGISTER-01.md` — **not** parallel threads; classification only. **Latest closure:** **CLOSURE-24** — ROOT-04 strict-vs-repair split for membership invoice-plane helpers (`MembershipSaleRepository`, `MembershipBillingCycleRepository`, `OrganizationRepositoryScope`) plus fail-closed `findByMembershipAndPeriod()`. **Next slice:** remaining explicit global/control-plane compatibility inventory outside the membership split, not new product work. Tier A: `run_mandatory_tenant_isolation_proof_release_gate_01.php`. **CLOSURE-18**–**24** closed. |
 
 ---
 

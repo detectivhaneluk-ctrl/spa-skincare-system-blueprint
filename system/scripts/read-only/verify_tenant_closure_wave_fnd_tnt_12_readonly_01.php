@@ -33,6 +33,14 @@ if (!str_contains($cycleRepo, 'function findByMembershipAndPeriod(') || !str_con
     fwrite(STDERR, "FAIL: MembershipBillingCycleRepository::findByMembershipAndPeriod must join client_memberships for scoped path.\n");
     $ok = false;
 }
+if (!str_contains($cycleRepo, 'clientMembershipVisibleFromBranchContextClause')) {
+    fwrite(STDERR, "FAIL: MembershipBillingCycleRepository::findByMembershipAndPeriod must use OrganizationRepositoryScope::clientMembershipVisibleFromBranchContextClause.\n");
+    $ok = false;
+}
+if (preg_match('/SELECT\s+\*\s+FROM\s+membership_billing_cycles\s+WHERE\s+client_membership_id\s*=\s*\?/i', $cycleRepo) === 1) {
+    fwrite(STDERR, "FAIL: MembershipBillingCycleRepository::findByMembershipAndPeriod must not fall back to raw SELECT *.\n");
+    $ok = false;
+}
 if (!str_contains($memSvc, 'findBlockingIssuanceRowInTenantScope')) {
     fwrite(STDERR, "FAIL: MembershipService must call findBlockingIssuanceRowInTenantScope.\n");
     $ok = false;

@@ -105,7 +105,7 @@ final class PaymentController
         if (!$this->ensureProtectedTenantScope()) {
             return;
         }
-        $payment = $this->paymentRepo->find($id);
+        $payment = $this->paymentRepo->findInInvoicePlane($id);
         if (!$payment) {
             Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handle(404);
             return;

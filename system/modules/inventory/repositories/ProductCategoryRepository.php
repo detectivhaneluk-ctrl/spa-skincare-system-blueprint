@@ -17,7 +17,7 @@ use Core\Organization\OrganizationRepositoryScope;
  * | --- | --- |
  * | **1–2. Branch-in-org ∪ org-global-null (operation branch)** | {@see findInTenantScope}, {@see listInTenantScope}, {@see mapByIdsForParentLabelLookupInTenantScope} — {@see OrganizationRepositoryScope::taxonomyCatalogUnionBranchInOrgOrNullGlobalFromOperationBranchClause()} |
  * | **1–2. Branch-in-org ∪ org-global-null (org-has-live-branch)** | {@see listAllLiveInResolvedTenantCatalogScope}, {@see findLiveInResolvedTenantCatalogScope}, selectable lists, scoped soft-delete, duplicate TRIM(name) family, live child list/count, parent relink/clear UPDATEs, {@see clearChildParentLinks} — {@see OrganizationRepositoryScope::taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause()} |
- * | **3. Legacy / tooling** | {@see find}, {@see list}, {@see mapByIdsForParentLabelLookup}, unscoped graph audit — **no** org EXISTS |
+ * | **3. Legacy / tooling** | {@see findUnscopedLiveByIdForRepair}, {@see listUnscopedCatalogForRepair}, {@see mapByIdsForParentLabelLookupUnscopedForRepair}, unscoped graph/duplicate repair family — **no** org EXISTS |
  * | **4. Control-plane / id-only** | {@see update}, {@see softDelete}, {@see rowByIdIncludingDeleted} — caller must prove tenancy |
  */
 final class ProductCategoryRepository
@@ -62,10 +62,25 @@ final class ProductCategoryRepository
     }
 
     /**
-     * @deprecated Prefer {@see findInTenantScope} for tenant HTTP/services; {@see findLiveInResolvedTenantCatalogScope} for org-scoped CLI audit.
+     * @deprecated Locked fail-closed to prevent ambiguous runtime reads. Use
+     * {@see findInTenantScope} (tenant runtime) or {@see findUnscopedLiveByIdForRepair} (repair/control-plane).
      */
     public function find(int $id): ?array
     {
+        throw new \LogicException('ProductCategoryRepository::find() is locked. Use findInTenantScope() or findUnscopedLiveByIdForRepair().');
+    }
+
+    /**
+     * Explicit unscoped live-row lookup for repair/control-plane paths.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findUnscopedLiveByIdForRepair(int $id): ?array
+    {
+        if ($id <= 0) {
+            return null;
+        }
+
         return $this->db->fetchOne(
             'SELECT * FROM product_categories WHERE id = ? AND deleted_at IS NULL',
             [$id]
@@ -100,15 +115,22 @@ final class ProductCategoryRepository
     }
 
     /**
-     * Batch load rows for index parent labels (includes soft-deleted parents).
+     * @deprecated Locked fail-closed to prevent ambiguous runtime reads. Use
+     * {@see mapByIdsForParentLabelLookupInTenantScope} (tenant runtime) or
+     * {@see mapByIdsForParentLabelLookupUnscopedForRepair} (repair/control-plane).
+     */
+    public function mapByIdsForParentLabelLookup(array $ids): array
+    {
+        throw new \LogicException('ProductCategoryRepository::mapByIdsForParentLabelLookup() is locked. Use mapByIdsForParentLabelLookupInTenantScope() or mapByIdsForParentLabelLookupUnscopedForRepair().');
+    }
+
+    /**
+     * Batch load rows for repair/control-plane parent-label workflows (includes soft-deleted parents).
      *
      * @param list<int> $ids
      * @return array<int, array{id: int|string, name: string, deleted_at: string|null}>
      */
-    /**
-     * @deprecated Prefer {@see mapByIdsForParentLabelLookupInTenantScope} for tenant UI.
-     */
-    public function mapByIdsForParentLabelLookup(array $ids): array
+    public function mapByIdsForParentLabelLookupUnscopedForRepair(array $ids): array
     {
         $ids = array_values(array_unique(array_filter(array_map(static fn ($v) => (int) $v, $ids), static fn (int $i): bool => $i > 0)));
         if ($ids === []) {
@@ -241,12 +263,25 @@ final class ProductCategoryRepository
     }
 
     /**
-     * @deprecated Prefer {@see listInTenantScope} (HTTP) or {@see listAllLiveInResolvedTenantCatalogScope} (tenant CLI audit).
-     *
-     * @return list<array<string, mixed>>
+     * @deprecated Locked fail-closed to prevent ambiguous runtime reads. Use
+     * {@see listInTenantScope} (tenant runtime) or {@see listUnscopedCatalogForRepair} (repair/control-plane).
      */
     public function list(?int $branchId = null): array
     {
+        throw new \LogicException('ProductCategoryRepository::list() is locked. Use listInTenantScope() or listUnscopedCatalogForRepair().');
+    }
+
+    /**
+     * Explicit unscoped category catalog listing for repair/control-plane paths.
+     * Tenant runtime callers must use {@see listInTenantScope}.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function listUnscopedCatalogForRepair(?int $branchId = null): array
+    {
+        if ($branchId !== null && $branchId <= 0) {
+            return [];
+        }
         $sql = 'SELECT * FROM product_categories WHERE deleted_at IS NULL';
         $params = [];
         if ($branchId !== null) {
@@ -319,7 +354,14 @@ final class ProductCategoryRepository
      */
     public function listSelectableForProductBranch(?int $productBranchId): array
     {
-        return $this->listSelectableGlobalOrSameBranch($productBranchId);
+        if ($productBranchId !== null && $productBranchId <= 0) {
+            return [];
+        }
+        if ($productBranchId === null) {
+            return $this->listSelectableOrgGlobalOnlyInResolvedTenantCatalog();
+        }
+
+        return $this->listSelectableBranchOwnedOrOrgGlobalInResolvedTenantCatalog($productBranchId);
     }
 
     /**
@@ -329,39 +371,62 @@ final class ProductCategoryRepository
      */
     public function listSelectableAsParentForCategoryBranch(?int $categoryBranchId): array
     {
-        return $this->listSelectableGlobalOrSameBranch($categoryBranchId);
+        if ($categoryBranchId !== null && $categoryBranchId <= 0) {
+            return [];
+        }
+        if ($categoryBranchId === null) {
+            return $this->listSelectableOrgGlobalOnlyInResolvedTenantCatalog();
+        }
+
+        return $this->listSelectableBranchOwnedOrOrgGlobalInResolvedTenantCatalog($categoryBranchId);
     }
 
     /**
      * @return list<array<string, mixed>>
      */
-    private function listSelectableGlobalOrSameBranch(?int $scopeBranchId): array
+    private function listSelectableOrgGlobalOnlyInResolvedTenantCatalog(): array
     {
         $union = $this->orgScope->taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause('pc');
-        $tenantVis = '(' . $union['sql'] . ')';
-        $baseParams = $union['params'];
-        if ($scopeBranchId === null) {
-            $sql = 'SELECT pc.* FROM product_categories pc
-                WHERE pc.deleted_at IS NULL AND pc.branch_id IS NULL AND ' . $tenantVis . '
-                ORDER BY pc.sort_order, pc.name';
 
-            return $this->db->fetchAll($sql, $baseParams);
-        }
-        $sql = 'SELECT pc.* FROM product_categories pc
-            WHERE pc.deleted_at IS NULL AND (pc.branch_id IS NULL OR pc.branch_id = ?) AND ' . $tenantVis . '
-            ORDER BY pc.sort_order, pc.name';
-
-        return $this->db->fetchAll($sql, array_merge([$scopeBranchId], $baseParams));
+        return $this->db->fetchAll(
+            'SELECT pc.* FROM product_categories pc
+             WHERE pc.deleted_at IS NULL AND pc.branch_id IS NULL AND (' . $union['sql'] . ')
+             ORDER BY pc.sort_order, pc.name',
+            $union['params']
+        );
     }
 
     /**
-     * Live rows for parent-graph / cycle audit (ordered by id for stable scans).
-     *
-     * @deprecated Prefer {@see listLiveForParentGraphAuditInResolvedTenantCatalogScope} under tenant bootstrap.
+     * @return list<array<string, mixed>>
+     */
+    private function listSelectableBranchOwnedOrOrgGlobalInResolvedTenantCatalog(int $scopeBranchId): array
+    {
+        $union = $this->orgScope->taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause('pc');
+
+        return $this->db->fetchAll(
+            'SELECT pc.* FROM product_categories pc
+             WHERE pc.deleted_at IS NULL AND (pc.branch_id IS NULL OR pc.branch_id = ?) AND (' . $union['sql'] . ')
+             ORDER BY pc.sort_order, pc.name',
+            array_merge([$scopeBranchId], $union['params'])
+        );
+    }
+
+    /**
+     * @deprecated Locked fail-closed to prevent ambiguous runtime reads. Use
+     * {@see listLiveForParentGraphAuditInResolvedTenantCatalogScope} (tenant runtime) or
+     * {@see listLiveForParentGraphAuditUnscopedForRepair} (repair/control-plane).
+     */
+    public function listLiveForParentGraphAudit(): array
+    {
+        throw new \LogicException('ProductCategoryRepository::listLiveForParentGraphAudit() is locked. Use listLiveForParentGraphAuditInResolvedTenantCatalogScope() or listLiveForParentGraphAuditUnscopedForRepair().');
+    }
+
+    /**
+     * Live rows for unscoped repair/control-plane parent-graph and cycle audits (ordered by id).
      *
      * @return list<array<string, mixed>>
      */
-    public function listLiveForParentGraphAudit(): array
+    public function listLiveForParentGraphAuditUnscopedForRepair(): array
     {
         return $this->db->fetchAll(
             'SELECT id, parent_id, name, branch_id FROM product_categories WHERE deleted_at IS NULL ORDER BY id ASC'
@@ -509,12 +574,19 @@ final class ProductCategoryRepository
     }
 
     /**
-     * True when walking ancestors from {@param $startParentId} reaches {@param $needleId}.
-     *
-     * @deprecated Unscoped parent hop via {@see find}. Prefer {@see ancestorChainContainsIdInTenantScope} or
-     * {@see ancestorChainContainsIdInResolvedTenantCatalogScope}.
+     * @deprecated Locked fail-closed to prevent ambiguous runtime reads. Use
+     * {@see ancestorChainContainsIdInTenantScope}, {@see ancestorChainContainsIdInResolvedTenantCatalogScope}, or
+     * {@see ancestorChainContainsIdUnscopedForRepair}.
      */
     public function ancestorChainContainsId(?int $startParentId, int $needleId): bool
+    {
+        throw new \LogicException('ProductCategoryRepository::ancestorChainContainsId() is locked. Use ancestorChainContainsIdInTenantScope(), ancestorChainContainsIdInResolvedTenantCatalogScope(), or ancestorChainContainsIdUnscopedForRepair().');
+    }
+
+    /**
+     * Unscoped repair/control-plane ancestor walk: true when walking from {@param $startParentId} reaches {@param $needleId}.
+     */
+    public function ancestorChainContainsIdUnscopedForRepair(?int $startParentId, int $needleId): bool
     {
         if ($startParentId === null) {
             return false;
@@ -525,7 +597,7 @@ final class ProductCategoryRepository
             if ($current === $needleId) {
                 return true;
             }
-            $row = $this->find($current);
+            $row = $this->findUnscopedLiveByIdForRepair($current);
             if ($row === null) {
                 return false;
             }
@@ -562,7 +634,7 @@ final class ProductCategoryRepository
     }
 
     /**
-     * Same as {@see ancestorChainContainsId} but each hop loads via {@see findInTenantScope} (tenant data-plane).
+     * Same as {@see ancestorChainContainsIdUnscopedForRepair} but each hop loads via {@see findInTenantScope} (tenant data-plane).
      */
     public function ancestorChainContainsIdInTenantScope(?int $startParentId, int $needleId, int $operationBranchId): bool
     {
@@ -587,14 +659,21 @@ final class ProductCategoryRepository
     }
 
     /**
-     * Report-only: non-deleted rows grouped by scope + trimmed name where more than one row exists.
+     * @deprecated Locked fail-closed to prevent ambiguous runtime reads. Use
+     * {@see listDuplicateTrimmedNameGroupsInResolvedTenantCatalogScope} (tenant runtime) or
+     * {@see listDuplicateTrimmedNameGroupsUnscopedForRepair} (repair/control-plane).
+     */
+    public function listDuplicateTrimmedNameGroups(): array
+    {
+        throw new \LogicException('ProductCategoryRepository::listDuplicateTrimmedNameGroups() is locked. Use listDuplicateTrimmedNameGroupsInResolvedTenantCatalogScope() or listDuplicateTrimmedNameGroupsUnscopedForRepair().');
+    }
+
+    /**
+     * Report-only unscoped duplicate-name groups for repair/control-plane.
      *
      * @return list<array{branch_id: int|string|null, trimmed_name: string, cnt: int|string}>
      */
-    /**
-     * @deprecated Unscoped. Prefer {@see listDuplicateTrimmedNameGroupsInResolvedTenantCatalogScope} under tenant org context.
-     */
-    public function listDuplicateTrimmedNameGroups(): array
+    public function listDuplicateTrimmedNameGroupsUnscopedForRepair(): array
     {
         return $this->db->fetchAll(
             'SELECT branch_id, TRIM(name) AS trimmed_name, COUNT(*) AS cnt

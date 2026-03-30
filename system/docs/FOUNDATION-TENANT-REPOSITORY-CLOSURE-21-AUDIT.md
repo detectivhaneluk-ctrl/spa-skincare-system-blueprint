@@ -18,4 +18,4 @@
 
 ## Out of scope (explicit)
 
-- **`getCompletedTotalByInvoiceId`**, **`existsCompletedByInvoiceAndReference`**, **`getCompletedRefundedTotalForParentPayment`**, **`hasCompletedRefundForInvoice`**, **`create`**, services/controllers.
+- **`existsCompletedByInvoiceAndReference`**, **`getCompletedRefundedTotalForParentPayment`**, **`hasCompletedRefundForInvoice`**, **`create`**, services/controllers. (**`getCompletedTotalByInvoiceId`**: **CLOSURE-22**.)

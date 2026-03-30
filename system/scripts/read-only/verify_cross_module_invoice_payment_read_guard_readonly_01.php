@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 /**
  * CROSS-MODULE-INVOICE-PAYMENT-ID-ACCESS-HARDENING-01 + CROSS-MODULE-WEAK-NOTE-CLEANUP-WAVE-01 — static inventory: non-Sales read
- * surfaces that touch invoices/payments and the guard style applied (SalesTenantScope vs org OrUnscoped for CLI-tolerant paths).
- * Membership invoice-keyed lists are **classified closed** here (invoice-plane EXISTS + static checks); remaining notes are split by surface.
+ * surfaces that touch invoices/payments and the guard style applied (SalesTenantScope vs explicit control-plane/global paths).
+ * Membership invoice-keyed lists are **classified closed** here after the strict-vs-repair split; remaining notes are split by surface.
  *
  * Usage (from repo root):
  *   php system/scripts/read-only/verify_cross_module_invoice_payment_read_guard_readonly_01.php
@@ -47,10 +47,10 @@ $inventory = [
         'guard' => 'SalesTenantScope::invoiceClause (pre-existing)',
         'files' => ['modules/sales/providers/ClientSalesProfileProviderImpl.php'],
     ],
-    'Memberships invoice-keyed lists / reconcile id discovery (CLASSIFIED: tenant strict + repair OrUnscoped)' => [
+    'Memberships invoice-keyed lists / reconcile id discovery (CLASSIFIED: strict tenant + explicit repair/global split)' => [
         'module' => 'memberships',
         'entry' => 'MembershipSaleRepository / MembershipBillingCycleRepository',
-        'guard' => 'CLOSED: JOIN invoices + listByInvoiceId + listDistinctInvoiceIds* — invoicePlaneExistsClauseForMembershipReconcileQueries (try branchColumnOwnedByResolvedOrganizationExistsClause(i.branch_id), catch AccessDenied → globalAdmin OrUnscoped). Refund-review queues (listRefundReview / listRefundReviewQueue): FND-TNT-09 resolvedOrganizationId + org EXISTS (sale/cm branch or invoice branch); empty without org.',
+        'guard' => 'CLOSED: strictTenantInvoicePlaneBranchScope() is fail-closed; resolvedOrganizationRepairInvoicePlaneBranchScopeIfAvailable() is explicit repair/global-only and returns null instead of empty SQL. Refund-review queues (listRefundReview / listRefundReviewQueue): FND-TNT-09 resolvedOrganizationId + org EXISTS (sale/cm branch or invoice branch); empty without org.',
         'files' => [
             'modules/memberships/Repositories/MembershipSaleRepository.php',
             'modules/memberships/Repositories/MembershipBillingCycleRepository.php',
@@ -100,29 +100,27 @@ $checks['Bootstrap: ReportRepository receives SalesTenantScope'] = str_contains(
 $checks['Bootstrap: DashboardReadRepository receives SalesTenantScope'] = str_contains($registerDash, 'DashboardReadRepository')
     && str_contains($registerDash, 'SalesTenantScope::class');
 
-$checks['MembershipSaleRepository::listByInvoiceId uses invoice-plane tenant-or-repair helper'] = preg_match(
-    '/function\s+listByInvoiceId[\s\S]*?invoicePlaneExistsClauseForMembershipReconcileQueries\s*\(\s*[\'"]i[\'"]\s*\)/',
-    $memSaleRepo
-) === 1 && str_contains($memSaleRepo, 'INNER JOIN invoices i');
-$checks['MembershipSaleRepository::listDistinctInvoiceIdsForReconcile uses invoice-plane tenant-or-repair helper'] = str_contains(
+$checks['MembershipSaleRepository invoice-plane paths use strict helper + explicit repair helper'] = str_contains(
     $memSaleRepo,
-    'listDistinctInvoiceIdsForReconcile'
-) && str_contains($memSaleRepo, 'invoicePlaneExistsClauseForMembershipReconcileQueries')
-    && str_contains($memSaleRepo, 'branchColumnOwnedByResolvedOrganizationExistsClause')
-    && str_contains($memSaleRepo, 'globalAdminBranchColumnOwnedByResolvedOrganizationExistsClauseOrUnscoped')
-    && preg_match('/listDistinctInvoiceIdsForReconcile[\s\S]*?INNER JOIN invoices i[\s\S]*?invoicePlaneExistsClauseForMembershipReconcileQueries/', $memSaleRepo) === 1;
+    'strictTenantInvoicePlaneBranchScope'
+) && str_contains($memSaleRepo, 'resolvedOrganizationRepairInvoicePlaneBranchScopeIfAvailable')
+    && !str_contains($memSaleRepo, 'invoicePlaneExistsClauseForMembershipReconcileQueries')
+    && !str_contains($memSaleRepo, 'catch (AccessDeniedException)')
+    && preg_match('/function\s+findBlockingOpenInitialSale[\s\S]*?strictTenantInvoicePlaneBranchScope\s*\(\s*[\'"]i[\'"]\s*\)/', $memSaleRepo) === 1
+    && preg_match('/function\s+listDistinctInvoiceIdsForReconcile[\s\S]*?resolvedOrganizationRepairInvoicePlaneBranchScopeIfAvailable/', $memSaleRepo) === 1;
 
-$checks['MembershipBillingCycleRepository invoice-joined reads use invoice-plane tenant-or-repair helper'] = preg_match(
-    '/function\s+listByInvoiceId[\s\S]*?invoicePlaneExistsClauseForMembershipReconcileQueries\s*\(\s*[\'"]i[\'"]\s*\)/',
-    $memCycleRepo
-) === 1
+$checks['MembershipBillingCycleRepository invoice-plane paths use strict helper + explicit repair helper'] = str_contains($memCycleRepo, 'strictTenantInvoicePlaneBranchScope')
+    && str_contains($memCycleRepo, 'resolvedOrganizationRepairInvoicePlaneBranchScopeIfAvailable')
+    && !str_contains($memCycleRepo, 'invoicePlaneExistsClauseForMembershipReconcileQueries')
+    && !str_contains($memCycleRepo, 'catch (AccessDeniedException)')
     && str_contains($memCycleRepo, 'listDistinctInvoiceIdsOverdueCandidates')
     && str_contains($memCycleRepo, 'listDistinctInvoiceIdsPendingRenewalApplication')
     && str_contains($memCycleRepo, 'listDistinctInvoiceIdsForReconcile')
-    && preg_match('/function\s+listDistinctInvoiceIdsPendingRenewalApplication[\s\S]*?invoicePlaneExistsClauseForMembershipReconcileQueries/', $memCycleRepo) === 1
-    && preg_match('/function\s+listDistinctInvoiceIdsOverdueCandidates[\s\S]*?invoicePlaneExistsClauseForMembershipReconcileQueries/', $memCycleRepo) === 1
-    && preg_match('/function\s+listDistinctInvoiceIdsForReconcile[\s\S]*?invoicePlaneExistsClauseForMembershipReconcileQueries/', $memCycleRepo) === 1
-    && substr_count($memCycleRepo, 'private function invoicePlaneExistsClauseForMembershipReconcileQueries') === 1;
+    && preg_match('/function\s+listDistinctInvoiceIdsPendingRenewalApplication[\s\S]*?resolvedOrganizationRepairInvoicePlaneBranchScopeIfAvailable/', $memCycleRepo) === 1
+    && preg_match('/function\s+listDistinctInvoiceIdsOverdueCandidates[\s\S]*?resolvedOrganizationRepairInvoicePlaneBranchScopeIfAvailable/', $memCycleRepo) === 1
+    && preg_match('/function\s+listDistinctInvoiceIdsForReconcile[\s\S]*?resolvedOrganizationRepairInvoicePlaneBranchScopeIfAvailable/', $memCycleRepo) === 1
+    && preg_match('/function\s+findByMembershipAndPeriod[\s\S]*?clientMembershipVisibleFromBranchContextClause/', $memCycleRepo) === 1
+    && !preg_match('/SELECT\s+\*\s+FROM\s+membership_billing_cycles\s+WHERE\s+client_membership_id\s*=\s*\?/i', $memCycleRepo);
 
 $checks['MembershipBillingCycleRepository::listRefundReviewQueue org-bound + InTenantScope named'] =
     str_contains($memCycleRepo, 'function listRefundReviewQueue(')
@@ -137,11 +135,11 @@ $checks['MembershipSaleRepository::listRefundReview org-bound + InTenantScope na
     && str_contains($memSaleRepo, 'listRefundReviewInTenantScope');
 
 $checks['MembershipBillingService class doc references invoice-keyed cycle repo methods'] =
-    str_contains($memBillSvc, 'MembershipBillingCycleRepository::listByInvoiceId')
+    str_contains($memBillSvc, 'MembershipBillingCycleRepository::listByInvoiceIdInInvoicePlane')
     && str_contains($memBillSvc, 'listDistinctInvoiceIdsForReconcile');
 
 $checks['MembershipSaleService class doc references invoice-keyed sale repo methods'] =
-    str_contains($memSaleSvc, 'MembershipSaleRepository::listByInvoiceId')
+    str_contains($memSaleSvc, 'MembershipSaleRepository::listByInvoiceIdInInvoicePlane')
     && str_contains($memSaleSvc, 'listDistinctInvoiceIdsForReconcile');
 
 $checks['ProductInvoice audit: OrganizationRepositoryScope + OrUnscoped on fetchScopedProductInvoiceLines'] = str_contains(
@@ -157,7 +155,7 @@ $checks['InvoiceRepository::find still uses tenantScope->invoiceClause'] = str_c
 echo PHP_EOL . 'CLASSIFICATION SUMMARY (CROSS-MODULE-WEAK-NOTE-CLEANUP-WAVE-01)' . PHP_EOL;
 echo str_repeat('-', 72) . PHP_EOL;
 echo 'CLOSED — Membership invoice-keyed SQL (listByInvoiceId, listDistinctInvoiceIds* on sales + billing cycles): '
-    . 'invoice-plane EXISTS + AccessDenied → OrUnscoped; proven by checks above. No remaining ambiguous weak-note on this surface.' . PHP_EOL;
+    . 'strict tenant helper split from explicit repair/global helper; no AccessDenied catch-to-unscoped fallback remains in membership invoice-plane helpers.' . PHP_EOL;
 echo PHP_EOL;
 echo 'SEPARATE MODULE — Payroll invoice-linked eligibility: verify_payroll_invoice_payment_tenant_guard_readonly_01.php' . PHP_EOL;
 echo PHP_EOL;
@@ -165,8 +163,8 @@ echo 'UPDATED — MembershipSaleRepository::find / findForUpdate: FND-TNT-08 fai
     . 'invoice settlement uses findForUpdateInTenantScope when invoice.branch_id > 0. '
     . 'MembershipBillingCycleRepository::find / findForUpdate: FND-TNT-10 invoice-plane JOIN + findForUpdateForInvoice in settlement (see verify_tenant_closure_wave_fnd_tnt_10_readonly_01.php).' . PHP_EOL;
 echo PHP_EOL;
-echo 'INTENTIONAL — OrUnscoped fallback on invoice-plane helper when org unresolved: repair/cron/CLI only; '
-    . 'same contract family as inventory audit OrUnscoped paths (not a gap).' . PHP_EOL;
+echo 'SEPARATE MODULE — Inventory refund/settlement visibility audit still uses its own explicit global control-plane helper family.'
+    . PHP_EOL;
 
 $failed = [];
 foreach ($checks as $label => $ok) {

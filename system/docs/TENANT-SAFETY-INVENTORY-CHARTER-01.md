@@ -219,11 +219,35 @@
 |------|--------|-------|
 | **Payments by invoice (`PaymentRepository::getByInvoiceId`)** | **`requireBranchDerivedOrganizationIdForInvoicePlane()`** before SQL; unchanged **`paymentByInvoiceExistsClause('p','si')`** and **`ORDER BY p.created_at`**. | `verify_payment_repository_get_by_invoice_id_invoice_plane_closure_21_readonly_01.php` (Tier A in PLT-REL-01) |
 
+## CLOSURE-22 wave (2026-03-30) — closed slice (FOUNDATION-TENANT-REPOSITORY-CLOSURE-22 / PLT-TNT-01)
+
+**ROOT:** **ROOT-01** (primary — invoice-keyed **aggregate** read without explicit named invoice-plane entry), **ROOT-05** (secondary — parity with **CLOSURE-21**)
+
+| Area | Change | Proof |
+|------|--------|-------|
+| **Completed net by invoice (`PaymentRepository::getCompletedTotalByInvoiceId`)** | **`requireBranchDerivedOrganizationIdForInvoicePlane()`** before SQL; unchanged **`paymentByInvoiceExistsClause('p','si')`** and signed net **`CASE`** for refunds. | `verify_payment_repository_get_completed_total_by_invoice_id_invoice_plane_closure_22_readonly_01.php` (Tier A in PLT-REL-01) |
+
+## CLOSURE-23 wave (2026-03-30) — closed slice (FOUNDATION-TENANT-REPOSITORY-CLOSURE-23 / PLT-TNT-01)
+
+**ROOT:** **ROOT-05** (primary — helper-method invoice-plane contract drift inside `PaymentRepository`), **ROOT-01** (secondary — invoice/payment helper reads without explicit named branch-derived entry)
+
+| Area | Change | Proof |
+|------|--------|-------|
+| **Payment helper trio (`PaymentRepository::existsCompletedByInvoiceAndReference`, `getCompletedRefundedTotalForParentPayment`, `hasCompletedRefundForInvoice`)** | **`requireBranchDerivedOrganizationIdForInvoicePlane()`** before SQL on all three methods; unchanged **`paymentByInvoiceExistsClause('p','si')`** and existing query semantics. | `verify_payment_repository_helper_invoice_plane_closure_23_readonly_01.php` (Tier A in PLT-REL-01) |
+
+## CLOSURE-24 wave (2026-03-30) — closed slice (FOUNDATION-TENANT-REPOSITORY-CLOSURE-24 / PLT-TNT-01)
+
+**ROOT:** **ROOT-04** (primary — strict-vs-repair split for membership invoice-plane helpers), **ROOT-05** (secondary — ambiguous helper contract drift)
+
+| Area | Change | Proof |
+|------|--------|-------|
+| **Membership invoice-plane helper split (`MembershipSaleRepository`, `MembershipBillingCycleRepository`, `OrganizationRepositoryScope`)** | Removed hidden `AccessDeniedException` => `OrUnscoped` helper widening from membership invoice-plane helpers. Added explicit strict helper family (`strictTenantInvoicePlaneBranchScope`) and explicit repair/global helper family (`resolvedOrganizationRepairInvoicePlaneBranchScopeIfAvailable`). `findByMembershipAndPeriod()` now fails closed and no longer falls back to raw `SELECT *`. | `verify_root_04_strict_repair_split_membership_invoice_plane_readonly_01.php`, `verify_cross_module_invoice_payment_read_guard_readonly_01.php`, `verify_tenant_closure_wave_fnd_tnt_08_readonly_01.php`, `verify_tenant_closure_wave_fnd_tnt_12_readonly_01.php` |
+
 ## Highest-risk areas (next wave)
 
 | Area | Why | Primary files | Root family(ies) |
 |------|-----|---------------|------------------|
-| Sales **`PaymentRepository`** aggregates / existence helpers (**`getCompletedTotalByInvoiceId`**, **`existsCompletedByInvoiceAndReference`**, etc.) (residual F-12; **`find` / `findForUpdate` / `getByInvoiceId`** closed **CLOSURE-20**–**21**; register aggregate **CLOSURE-16**) | Indirect tenant contract without named entry on some methods | `PaymentRepository.php`, controllers | **ROOT-01**, **ROOT-05** |
+| Explicit global/control-plane compatibility helper name still contains legacy **`OrUnscoped`** wording outside the membership split wave | Membership helper family is now split, but one compatibility wrapper name remains in `OrganizationRepositoryScope` for non-target call sites until the remaining control-plane/global inventory is rotated in | `OrganizationRepositoryScope.php` | **ROOT-04** |
 
 ## Repository `find(int $id)` pattern (illustrative)
 

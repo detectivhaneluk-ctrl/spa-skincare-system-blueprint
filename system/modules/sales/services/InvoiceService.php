@@ -147,7 +147,7 @@ final class InvoiceService
             $data['updated_by'] = $this->currentUserId();
             $data = $this->computeTotals($data);
 
-            $paid = round($this->paymentRepo->getCompletedTotalByInvoiceId($id), 2);
+            $paid = round($this->paymentRepo->getCompletedTotalByInvoiceIdInInvoicePlane($id), 2);
             $newTotal = round((float) $data['total_amount'], 2);
             if ($paid > 0 && $newTotal < $paid) {
                 throw new \DomainException('Invoice total cannot be reduced below the amount already paid.');
@@ -275,8 +275,8 @@ final class InvoiceService
             $oldSubtotal = round((float) ($inv['subtotal_amount'] ?? 0), 2);
             $oldTotal = round((float) ($inv['total_amount'] ?? 0), 2);
 
-            $paid = round($this->paymentRepo->getCompletedTotalByInvoiceId($invoiceId), 2);
-            $hasRefund = $this->paymentRepo->hasCompletedRefundForInvoice($invoiceId);
+            $paid = round($this->paymentRepo->getCompletedTotalByInvoiceIdInInvoicePlane($invoiceId), 2);
+            $hasRefund = $this->paymentRepo->hasCompletedRefundForInvoiceInInvoicePlane($invoiceId);
             $status = $this->deriveStatusFromPaid($newTotal, $paid, (string) ($inv['status'] ?? 'draft'), $hasRefund);
 
             $branchId = $inv['branch_id'] !== null && $inv['branch_id'] !== '' ? (int) $inv['branch_id'] : null;

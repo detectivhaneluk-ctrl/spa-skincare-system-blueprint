@@ -98,7 +98,7 @@ final class PaymentService
             }
             $status = (string) ($data['status'] ?? 'completed');
             $reference = trim((string) ($data['transaction_reference'] ?? ''));
-            if ($status === 'completed' && $reference !== '' && $this->repo->existsCompletedByInvoiceAndReference($invoiceId, $reference)) {
+            if ($status === 'completed' && $reference !== '' && $this->repo->existsCompletedByInvoiceAndReferenceInInvoicePlane($invoiceId, $reference)) {
                 throw new \DomainException('A completed payment with this reference already exists for the invoice.');
             }
             $currentPaid = round((float) ($inv['paid_amount'] ?? 0), 2);
@@ -193,7 +193,7 @@ final class PaymentService
             if (!is_finite($amount) || $amount <= 0) {
                 throw new \DomainException('Refund amount must be greater than zero.');
             }
-            $original = $this->repo->findForUpdate($paymentId);
+            $original = $this->repo->findForUpdateInInvoicePlane($paymentId);
             if (!$original) {
                 throw new \RuntimeException('Payment not found.');
             }
@@ -220,7 +220,7 @@ final class PaymentService
                 : null;
             $paymentCurrency = $this->invoiceCurrencyForAudit($invoice, $branchIdForInvoice);
 
-            $alreadyRefunded = $this->repo->getCompletedRefundedTotalForParentPayment($paymentId);
+            $alreadyRefunded = $this->repo->getCompletedRefundedTotalForParentPaymentInInvoicePlane($paymentId);
             $originalAmount = round((float) ($original['amount'] ?? 0), 2);
             $remainingRefundable = round($originalAmount - $alreadyRefunded, 2);
             $refundAmount = round($amount, 2);

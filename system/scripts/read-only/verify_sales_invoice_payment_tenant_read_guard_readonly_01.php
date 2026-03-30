@@ -27,7 +27,11 @@ $checks['InvoiceRepository::find uses tenant invoiceClause'] = str_contains($inv
     && str_contains($invRepo, 'function find(');
 $checks['InvoiceRepository::findForUpdate uses tenant invoiceClause'] = str_contains($invRepo, 'function findForUpdate')
     && preg_match('/findForUpdate[\s\S]*tenantScope->invoiceClause/', $invRepo) === 1;
-$checks['PaymentRepository::find uses paymentByInvoiceExistsClause'] = str_contains($payRepo, 'function find(')
+$checks['PaymentRepository explicit invoice-plane read methods use guard + paymentByInvoiceExistsClause'] =
+    str_contains($payRepo, 'function findInInvoicePlane(')
+    && str_contains($payRepo, 'function findForUpdateInInvoicePlane(')
+    && str_contains($payRepo, 'denyMixedSemanticsApi(\'PaymentRepository::find\'')
+    && str_contains($payRepo, 'denyMixedSemanticsApi(\'PaymentRepository::findForUpdate\'')
     && str_contains($payRepo, 'paymentByInvoiceExistsClause');
 $checks['InvoiceController::show gates branch after find'] = str_contains($invCtl, 'function show(')
     && preg_match('/function show\([\s\S]*?\$this->repo->find\(\$id\)[\s\S]*?ensureBranchAccess\(\$invoice\)/', $invCtl) === 1;
@@ -43,7 +47,7 @@ $checks['PaymentController::store gates branch after invoice find'] = preg_match
     $payCtl
 ) === 1;
 $checks['PaymentController::refund loads invoice and gates branch'] = preg_match(
-    '/function refund\([\s\S]*?paymentRepo->find\(\$id\)[\s\S]*?invoiceRepo->find\(\$invoiceId\)[\s\S]*?ensureBranchAccessForInvoice\(\$invoice\)/',
+    '/function refund\([\s\S]*?paymentRepo->findInInvoicePlane\(\$id\)[\s\S]*?invoiceRepo->find\(\$invoiceId\)[\s\S]*?ensureBranchAccessForInvoice\(\$invoice\)/',
     $payCtl
 ) === 1;
 $checks['Routes: GET invoice show + payment create registered'] = str_contains($routes, "get('/sales/invoices/{id}', [\\Modules\\Sales\\Controllers\\InvoiceController::class, 'show']")

@@ -64,7 +64,7 @@ $checks['PaymentController::store pre-checks tenant scope, find, branch before c
 
 $checks['PaymentController::refund pre-checks tenant scope, payment find, invoice resolve, branch before refund'] = preg_match(
     '/function\s+refund\s*\(\s*int\s+\$id\s*\)\s*:\s*void[\s\S]*?ensureProtectedTenantScope\(\)[\s\S]*?'
-    . '\$payment\s*=\s*\$this->paymentRepo->find\(\$id\)[\s\S]*?'
+    . '\$payment\s*=\s*\$this->paymentRepo->findInInvoicePlane\(\$id\)[\s\S]*?'
     . '\$invoice\s*=\s*\$invoiceId\s*>\s*0\s*\?\s*\$this->invoiceRepo->find\(\$invoiceId\)\s*:\s*null[\s\S]*?'
     . 'ensureBranchAccessForInvoice\(\$invoice\)[\s\S]*?\$this->service->refund\(\$id/',
     $payCtl

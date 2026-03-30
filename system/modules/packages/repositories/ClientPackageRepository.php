@@ -6,6 +6,7 @@ namespace Modules\Packages\Repositories;
 
 use Core\App\Database;
 use Core\Organization\OrganizationRepositoryScope;
+use Core\Repository\RepositoryContractGuard;
 
 final class ClientPackageRepository
 {
@@ -124,102 +125,22 @@ final class ClientPackageRepository
 
     public function find(int $id): ?array
     {
-        return $this->db->fetchOne(
-            'SELECT cp.*,
-                    p.name AS package_name,
-                    p.total_sessions AS package_total_sessions,
-                    c.first_name AS client_first_name,
-                    c.last_name AS client_last_name
-             FROM client_packages cp
-             INNER JOIN packages p ON p.id = cp.package_id
-             INNER JOIN clients c ON c.id = cp.client_id
-             WHERE cp.id = ?',
-            [$id]
-        );
+        RepositoryContractGuard::denyMixedSemanticsApi('ClientPackageRepository::find', ['findInTenantScope']);
     }
 
     public function findForUpdate(int $id): ?array
     {
-        return $this->db->fetchOne('SELECT * FROM client_packages WHERE id = ? FOR UPDATE', [$id]);
+        RepositoryContractGuard::denyMixedSemanticsApi('ClientPackageRepository::findForUpdate', ['findForUpdateInTenantScope']);
     }
 
     public function list(array $filters = [], int $limit = 50, int $offset = 0): array
     {
-        $limit = (int) $limit;
-        $offset = (int) $offset;
-        $sql = 'SELECT cp.*,
-                       p.name AS package_name,
-                       c.first_name AS client_first_name,
-                       c.last_name AS client_last_name
-                FROM client_packages cp
-                INNER JOIN packages p ON p.id = cp.package_id
-                INNER JOIN clients c ON c.id = cp.client_id
-                WHERE 1=1';
-        $params = [];
-
-        if (!empty($filters['status'])) {
-            $sql .= ' AND cp.status = ?';
-            $params[] = $filters['status'];
-        }
-        if (!empty($filters['search'])) {
-            $q = '%' . trim((string) $filters['search']) . '%';
-            $sql .= ' AND (p.name LIKE ? OR c.first_name LIKE ? OR c.last_name LIKE ?)';
-            $params = array_merge($params, [$q, $q, $q]);
-        }
-        if (!empty($filters['branch_scope']) && $filters['branch_scope'] === 'global') {
-            $sql .= ' AND cp.branch_id IS NULL';
-        } elseif (array_key_exists('branch_id', $filters) && $filters['branch_id'] !== null && $filters['branch_id'] !== '') {
-            $sql .= ' AND cp.branch_id = ?';
-            $params[] = (int) $filters['branch_id'];
-        }
-        if (array_key_exists('client_id', $filters) && $filters['client_id']) {
-            $sql .= ' AND cp.client_id = ?';
-            $params[] = (int) $filters['client_id'];
-        }
-        if (array_key_exists('package_id', $filters) && $filters['package_id']) {
-            $sql .= ' AND cp.package_id = ?';
-            $params[] = (int) $filters['package_id'];
-        }
-
-        $sql .= ' ORDER BY cp.created_at DESC, cp.id DESC LIMIT ? OFFSET ?';
-        $params[] = $limit;
-        $params[] = $offset;
-        return $this->db->fetchAll($sql, $params);
+        RepositoryContractGuard::denyMixedSemanticsApi('ClientPackageRepository::list', ['listInTenantScope']);
     }
 
     public function count(array $filters = []): int
     {
-        $sql = 'SELECT COUNT(*) AS c
-                FROM client_packages cp
-                INNER JOIN packages p ON p.id = cp.package_id
-                INNER JOIN clients c ON c.id = cp.client_id
-                WHERE 1=1';
-        $params = [];
-        if (!empty($filters['status'])) {
-            $sql .= ' AND cp.status = ?';
-            $params[] = $filters['status'];
-        }
-        if (!empty($filters['search'])) {
-            $q = '%' . trim((string) $filters['search']) . '%';
-            $sql .= ' AND (p.name LIKE ? OR c.first_name LIKE ? OR c.last_name LIKE ?)';
-            $params = array_merge($params, [$q, $q, $q]);
-        }
-        if (!empty($filters['branch_scope']) && $filters['branch_scope'] === 'global') {
-            $sql .= ' AND cp.branch_id IS NULL';
-        } elseif (array_key_exists('branch_id', $filters) && $filters['branch_id'] !== null && $filters['branch_id'] !== '') {
-            $sql .= ' AND cp.branch_id = ?';
-            $params[] = (int) $filters['branch_id'];
-        }
-        if (array_key_exists('client_id', $filters) && $filters['client_id']) {
-            $sql .= ' AND cp.client_id = ?';
-            $params[] = (int) $filters['client_id'];
-        }
-        if (array_key_exists('package_id', $filters) && $filters['package_id']) {
-            $sql .= ' AND cp.package_id = ?';
-            $params[] = (int) $filters['package_id'];
-        }
-        $row = $this->db->fetchOne($sql, $params);
-        return (int) ($row['c'] ?? 0);
+        RepositoryContractGuard::denyMixedSemanticsApi('ClientPackageRepository::count', ['countInTenantScope']);
     }
 
     public function create(array $data): int
@@ -228,16 +149,26 @@ final class ClientPackageRepository
         return $this->db->lastInsertId();
     }
 
-    public function update(int $id, array $data): void
+    public function updateInTenantScope(int $id, int $branchId, array $data): void
     {
         $norm = $this->normalize($data);
-        if (empty($norm)) {
+        if ($norm === []) {
             return;
         }
-        $cols = array_map(fn ($k) => "{$k} = ?", array_keys($norm));
+        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('cp');
+        $cols = array_map(fn ($k) => "cp.{$k} = ?", array_keys($norm));
         $vals = array_values($norm);
         $vals[] = $id;
-        $this->db->query('UPDATE client_packages SET ' . implode(', ', $cols) . ' WHERE id = ?', $vals);
+        $vals[] = $branchId;
+        $this->db->query(
+            'UPDATE client_packages cp SET ' . implode(', ', $cols) . ' WHERE cp.id = ? AND cp.branch_id = ?' . $frag['sql'],
+            array_merge($vals, $frag['params'])
+        );
+    }
+
+    public function update(int $id, array $data): void
+    {
+        RepositoryContractGuard::denyMixedSemanticsApi('ClientPackageRepository::update', ['updateInTenantScope']);
     }
 
     /**

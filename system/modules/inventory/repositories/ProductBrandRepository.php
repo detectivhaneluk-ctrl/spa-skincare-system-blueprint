@@ -17,8 +17,8 @@ use Core\Organization\OrganizationRepositoryScope;
  * | --- | --- |
  * | **1–2. Branch-in-org ∪ org-global-null (operation branch)** | {@see findInTenantScope}, {@see listInTenantScope} — {@see OrganizationRepositoryScope::taxonomyCatalogUnionBranchInOrgOrNullGlobalFromOperationBranchClause()} |
  * | **1–2. Branch-in-org ∪ org-global-null (org-has-live-branch)** | {@see findLiveInResolvedTenantCatalogScope}, {@see listSelectableForProductBranch}, scoped soft-delete, duplicate TRIM(name) family — {@see OrganizationRepositoryScope::taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause()} |
- * | **3. Legacy / tooling** | {@see list}, {@see listDuplicateTrimmedNameGroups} — **no** org EXISTS |
- * | **4. Control-plane / id-only** | {@see find}, {@see update}, {@see softDelete}, {@see rowByIdIncludingDeleted} — caller must prove tenancy |
+ * | **3. Legacy / tooling** | {@see listUnscopedCatalogForRepair}, {@see listDuplicateTrimmedNameGroupsUnscopedForRepair} — **no** org EXISTS |
+ * | **4. Control-plane / id-only** | {@see findUnscopedLiveByIdForRepair}, {@see update}, {@see softDelete}, {@see rowByIdIncludingDeleted} — caller must prove tenancy |
  */
 final class ProductBrandRepository
 {
@@ -48,8 +48,26 @@ final class ProductBrandRepository
         return ['sql' => $sql, 'params' => $params];
     }
 
+    /**
+     * @deprecated Locked fail-closed to prevent ambiguous runtime reads. Use
+     * {@see findInTenantScope} (tenant runtime) or {@see findUnscopedLiveByIdForRepair} (repair/control-plane).
+     */
     public function find(int $id): ?array
     {
+        throw new \LogicException('ProductBrandRepository::find() is locked. Use findInTenantScope() or findUnscopedLiveByIdForRepair().');
+    }
+
+    /**
+     * Explicit unscoped live-row lookup for repair/control-plane paths.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findUnscopedLiveByIdForRepair(int $id): ?array
+    {
+        if ($id <= 0) {
+            return null;
+        }
+
         return $this->db->fetchOne(
             'SELECT * FROM product_brands WHERE id = ? AND deleted_at IS NULL',
             [$id]
@@ -188,10 +206,25 @@ final class ProductBrandRepository
     }
 
     /**
-     * @return list<array<string, mixed>>
+     * @deprecated Locked fail-closed to prevent ambiguous runtime reads. Use
+     * {@see listInTenantScope} (tenant runtime) or {@see listUnscopedCatalogForRepair} (repair/control-plane).
      */
     public function list(?int $branchId = null): array
     {
+        throw new \LogicException('ProductBrandRepository::list() is locked. Use listInTenantScope() or listUnscopedCatalogForRepair().');
+    }
+
+    /**
+     * Explicit unscoped brand catalog listing for repair/control-plane paths.
+     * Tenant runtime callers must use {@see listInTenantScope}.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function listUnscopedCatalogForRepair(?int $branchId = null): array
+    {
+        if ($branchId !== null && $branchId <= 0) {
+            return [];
+        }
         $sql = 'SELECT * FROM product_brands WHERE deleted_at IS NULL';
         $params = [];
         if ($branchId !== null) {
@@ -228,21 +261,45 @@ final class ProductBrandRepository
      */
     public function listSelectableForProductBranch(?int $productBranchId): array
     {
-        $union = $this->orgScope->taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause('pb');
-        $tenantVis = '(' . $union['sql'] . ')';
-        $baseParams = $union['params'];
-        if ($productBranchId === null) {
-            $sql = 'SELECT pb.* FROM product_brands pb
-                WHERE pb.deleted_at IS NULL AND pb.branch_id IS NULL AND ' . $tenantVis . '
-                ORDER BY pb.sort_order, pb.name';
-
-            return $this->db->fetchAll($sql, $baseParams);
+        if ($productBranchId !== null && $productBranchId <= 0) {
+            return [];
         }
-        $sql = 'SELECT pb.* FROM product_brands pb
-            WHERE pb.deleted_at IS NULL AND (pb.branch_id IS NULL OR pb.branch_id = ?) AND ' . $tenantVis . '
-            ORDER BY pb.sort_order, pb.name';
+        $union = $this->orgScope->taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause('pb');
+        if ($productBranchId === null) {
+            return $this->listSelectableOrgGlobalOnlyInResolvedTenantCatalog();
+        }
 
-        return $this->db->fetchAll($sql, array_merge([$productBranchId], $baseParams));
+        return $this->listSelectableBranchOwnedOrOrgGlobalInResolvedTenantCatalog($productBranchId);
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function listSelectableOrgGlobalOnlyInResolvedTenantCatalog(): array
+    {
+        $union = $this->orgScope->taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause('pb');
+
+        return $this->db->fetchAll(
+            'SELECT pb.* FROM product_brands pb
+             WHERE pb.deleted_at IS NULL AND pb.branch_id IS NULL AND (' . $union['sql'] . ')
+             ORDER BY pb.sort_order, pb.name',
+            $union['params']
+        );
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function listSelectableBranchOwnedOrOrgGlobalInResolvedTenantCatalog(int $productBranchId): array
+    {
+        $union = $this->orgScope->taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause('pb');
+
+        return $this->db->fetchAll(
+            'SELECT pb.* FROM product_brands pb
+             WHERE pb.deleted_at IS NULL AND (pb.branch_id IS NULL OR pb.branch_id = ?) AND (' . $union['sql'] . ')
+             ORDER BY pb.sort_order, pb.name',
+            array_merge([$productBranchId], $union['params'])
+        );
     }
 
     public function create(array $data): int
@@ -299,14 +356,21 @@ final class ProductBrandRepository
     }
 
     /**
-     * Report-only: non-deleted rows grouped by scope + trimmed name where more than one row exists.
+     * @deprecated Locked fail-closed to prevent ambiguous runtime reads. Use
+     * {@see listDuplicateTrimmedNameGroupsInResolvedTenantCatalogScope} (tenant runtime) or
+     * {@see listDuplicateTrimmedNameGroupsUnscopedForRepair} (repair/control-plane).
+     */
+    public function listDuplicateTrimmedNameGroups(): array
+    {
+        throw new \LogicException('ProductBrandRepository::listDuplicateTrimmedNameGroups() is locked. Use listDuplicateTrimmedNameGroupsInResolvedTenantCatalogScope() or listDuplicateTrimmedNameGroupsUnscopedForRepair().');
+    }
+
+    /**
+     * Report-only unscoped duplicate-name groups for repair/control-plane.
      *
      * @return list<array{branch_id: int|string|null, trimmed_name: string, cnt: int|string}>
      */
-    /**
-     * @deprecated Unscoped. Prefer {@see listDuplicateTrimmedNameGroupsInResolvedTenantCatalogScope}.
-     */
-    public function listDuplicateTrimmedNameGroups(): array
+    public function listDuplicateTrimmedNameGroupsUnscopedForRepair(): array
     {
         return $this->db->fetchAll(
             'SELECT branch_id, TRIM(name) AS trimmed_name, COUNT(*) AS cnt

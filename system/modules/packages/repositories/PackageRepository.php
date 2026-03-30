@@ -6,6 +6,7 @@ namespace Modules\Packages\Repositories;
 
 use Core\App\Database;
 use Core\Organization\OrganizationRepositoryScope;
+use Core\Repository\RepositoryContractGuard;
 
 final class PackageRepository
 {
@@ -76,6 +77,32 @@ final class PackageRepository
         return (int) ($row['c'] ?? 0);
     }
 
+    public function updateInTenantScope(int $id, int $branchId, array $data): void
+    {
+        $norm = $this->normalize($data);
+        if ($norm === []) {
+            return;
+        }
+        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('p');
+        $cols = array_map(fn ($k) => "p.{$k} = ?", array_keys($norm));
+        $vals = array_values($norm);
+        $vals[] = $id;
+        $vals[] = $branchId;
+        $this->db->query(
+            'UPDATE packages p SET ' . implode(', ', $cols) . ' WHERE p.id = ? AND p.branch_id IS NOT NULL AND p.branch_id = ?' . $frag['sql'],
+            array_merge($vals, $frag['params'])
+        );
+    }
+
+    public function softDeleteInTenantScope(int $id, int $branchId): void
+    {
+        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('p');
+        $this->db->query(
+            'UPDATE packages p SET p.deleted_at = NOW() WHERE p.id = ? AND p.branch_id IS NOT NULL AND p.branch_id = ?' . $frag['sql'],
+            array_merge([$id, $branchId], $frag['params'])
+        );
+    }
+
     /**
      * @return list<array<string, mixed>>
      */
@@ -93,68 +120,22 @@ final class PackageRepository
     }
 
     /**
-     * Unscoped primary-key read — **not** tenant/branch-safe. Internal tooling, migrations, or explicit cross-tenant
-     * repair only; tenant/public runtime must use {@see findInTenantScope()} / {@see findBranchOwnedPublicPurchasable()}.
+     * Compatibility-only legacy generic read. Mixed-semantics primary-key reads are locked fail-closed;
+     * use {@see findInTenantScope()} or {@see findBranchOwnedPublicPurchasable()}.
      */
     public function find(int $id, bool $withTrashed = false): ?array
     {
-        $sql = 'SELECT * FROM packages WHERE id = ?';
-        if (!$withTrashed) {
-            $sql .= ' AND deleted_at IS NULL';
-        }
-        return $this->db->fetchOne($sql, [$id]);
+        RepositoryContractGuard::denyMixedSemanticsApi('PackageRepository::find', ['findInTenantScope', 'findBranchOwnedPublicPurchasable']);
     }
 
     public function list(array $filters = [], int $limit = 50, int $offset = 0): array
     {
-        $limit = (int) $limit;
-        $offset = (int) $offset;
-        $sql = 'SELECT * FROM packages WHERE deleted_at IS NULL';
-        $params = [];
-
-        if (!empty($filters['search'])) {
-            $q = '%' . trim((string) $filters['search']) . '%';
-            $sql .= ' AND name LIKE ?';
-            $params[] = $q;
-        }
-        if (!empty($filters['status'])) {
-            $sql .= ' AND status = ?';
-            $params[] = $filters['status'];
-        }
-        if (!empty($filters['branch_scope']) && $filters['branch_scope'] === 'global') {
-            $sql .= ' AND branch_id IS NULL';
-        } elseif (array_key_exists('branch_id', $filters) && $filters['branch_id'] !== null && $filters['branch_id'] !== '') {
-            $sql .= ' AND branch_id = ?';
-            $params[] = (int) $filters['branch_id'];
-        }
-
-        $sql .= ' ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?';
-        $params[] = $limit;
-        $params[] = $offset;
-        return $this->db->fetchAll($sql, $params);
+        RepositoryContractGuard::denyMixedSemanticsApi('PackageRepository::list', ['listInTenantScope']);
     }
 
     public function count(array $filters = []): int
     {
-        $sql = 'SELECT COUNT(*) AS c FROM packages WHERE deleted_at IS NULL';
-        $params = [];
-        if (!empty($filters['search'])) {
-            $q = '%' . trim((string) $filters['search']) . '%';
-            $sql .= ' AND name LIKE ?';
-            $params[] = $q;
-        }
-        if (!empty($filters['status'])) {
-            $sql .= ' AND status = ?';
-            $params[] = $filters['status'];
-        }
-        if (!empty($filters['branch_scope']) && $filters['branch_scope'] === 'global') {
-            $sql .= ' AND branch_id IS NULL';
-        } elseif (array_key_exists('branch_id', $filters) && $filters['branch_id'] !== null && $filters['branch_id'] !== '') {
-            $sql .= ' AND branch_id = ?';
-            $params[] = (int) $filters['branch_id'];
-        }
-        $row = $this->db->fetchOne($sql, $params);
-        return (int) ($row['c'] ?? 0);
+        RepositoryContractGuard::denyMixedSemanticsApi('PackageRepository::count', ['countInTenantScope']);
     }
 
     public function create(array $data): int
@@ -165,19 +146,12 @@ final class PackageRepository
 
     public function update(int $id, array $data): void
     {
-        $norm = $this->normalize($data);
-        if (empty($norm)) {
-            return;
-        }
-        $cols = array_map(fn ($k) => "{$k} = ?", array_keys($norm));
-        $vals = array_values($norm);
-        $vals[] = $id;
-        $this->db->query('UPDATE packages SET ' . implode(', ', $cols) . ' WHERE id = ?', $vals);
+        RepositoryContractGuard::denyMixedSemanticsApi('PackageRepository::update', ['updateInTenantScope']);
     }
 
     public function softDelete(int $id): void
     {
-        $this->db->query('UPDATE packages SET deleted_at = NOW() WHERE id = ?', [$id]);
+        RepositoryContractGuard::denyMixedSemanticsApi('PackageRepository::softDelete', ['softDeleteInTenantScope']);
     }
 
     /**

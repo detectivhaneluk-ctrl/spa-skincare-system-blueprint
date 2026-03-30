@@ -45,9 +45,10 @@ use Core\Errors\AccessDeniedException;
  * **Staff scheduling at a concrete branch:** {@see self::staffSelectableAtOperationBranchTenantClause()} — replaces raw {@code (staff.branch_id = ? OR staff.branch_id IS NULL)}
  * with org-pinned home branch and NULL-home rules aligned to {@see \Modules\Staff\Repositories\StaffGroupRepository}.
  *
- * **Global / control-plane (explicit):** {@see self::globalAdminBranchColumnOwnedByResolvedOrganizationExistsClauseOrUnscoped()}
- * preserves the legacy empty-fragment contract when org id does not resolve (deployment-global queries). It does **not**
- * require branch-derived mode; use only from true platform/bootstrap tooling.
+ * **Global / control-plane (explicit):** {@see self::globalAdminBranchColumnOwnedByResolvedOrganizationExistsClause()}
+ * scopes by resolved organization **without** requiring branch-derived mode; unresolved org now fails closed instead of
+ * returning an empty fragment. The legacy {@see self::globalAdminBranchColumnOwnedByResolvedOrganizationExistsClauseOrUnscoped()}
+ * name remains as a compatibility wrapper only and no longer widens silently.
  *
  * **{@see self::resolvedOrganizationId()}:** positive id or `null` when unset or not positive — for guards and global helper only.
  *
@@ -78,6 +79,12 @@ final class OrganizationRepositoryScope
         $id = $this->organizationContext->getCurrentOrganizationId();
 
         return ($id !== null && $id > 0) ? $id : null;
+    }
+
+    public function isBranchDerivedResolvedOrganizationContext(): bool
+    {
+        return $this->resolvedOrganizationId() !== null
+            && $this->organizationContext->getResolutionMode() === OrganizationContext::MODE_BRANCH_DERIVED;
     }
 
     /**
@@ -723,8 +730,28 @@ final class OrganizationRepositoryScope
     }
 
     /**
-     * Control-plane / bootstrap only: same EXISTS predicate when {@see self::resolvedOrganizationId()} is non-null;
-     * otherwise returns an empty fragment (legacy-global query). Does **not** require branch-derived mode.
+     * Control-plane / bootstrap only: same EXISTS predicate as tenant helpers, but does **not** require branch-derived mode.
+     * Requires a resolved positive organization id and fails closed otherwise.
+     *
+     * @return array{sql: string, params: list<mixed>}
+     *
+     * @throws AccessDeniedException when organization context is missing or not positive
+     */
+    public function globalAdminBranchColumnOwnedByResolvedOrganizationExistsClause(
+        string $tableAlias,
+        string $branchColumn = 'branch_id'
+    ): array {
+        $orgId = $this->resolvedOrganizationId();
+        if ($orgId === null) {
+            throw new AccessDeniedException(self::EXCEPTION_DATA_PLANE_ORGANIZATION_REQUIRED);
+        }
+
+        return $this->buildBranchColumnOwnedByOrganizationExistsClause($orgId, $tableAlias, $branchColumn);
+    }
+
+    /**
+     * Compatibility wrapper for legacy call sites. Despite the old name, this no longer returns an empty/unscoped fragment;
+     * it delegates to {@see self::globalAdminBranchColumnOwnedByResolvedOrganizationExistsClause()} and fails closed when org is unresolved.
      *
      * @return array{sql: string, params: list<mixed>}
      */
@@ -732,12 +759,7 @@ final class OrganizationRepositoryScope
         string $tableAlias,
         string $branchColumn = 'branch_id'
     ): array {
-        $orgId = $this->resolvedOrganizationId();
-        if ($orgId === null) {
-            return ['sql' => '', 'params' => []];
-        }
-
-        return $this->buildBranchColumnOwnedByOrganizationExistsClause($orgId, $tableAlias, $branchColumn);
+        return $this->globalAdminBranchColumnOwnedByResolvedOrganizationExistsClause($tableAlias, $branchColumn);
     }
 
     /**

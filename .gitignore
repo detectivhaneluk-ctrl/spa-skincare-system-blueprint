@@ -1,6 +1,8 @@
 tmp-cookies*.txt
 tmp-login*.html
 handoff/verify-handoff-artifacts.failures.txt
+vendor/
+distribution/release-law/
 
 # Source / handoff hygiene (must match handoff/HandoffZipRules.ps1; keep system/.env.example unignored)
 # Local trees may keep .env and logs for runtime; they must not be treated as canonical handoff/source truth.

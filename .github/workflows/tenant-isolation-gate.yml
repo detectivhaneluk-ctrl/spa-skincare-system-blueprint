@@ -1,18 +1,71 @@
-# PLT-REL-01 — Tier A static tenant-isolation proof (no DB). Integration tier remains optional here; use
-# `php system/scripts/run_mandatory_tenant_isolation_proof_release_gate_01.php --with-integration` in release runbooks with seed.
-name: Tenant isolation gate (PLT-REL-01)
+# Canonical release law: Linux truth, Composer authoritative autoload, DB-backed proof, and final ZIP validation.
+name: Canonical release law
 
 on:
   push:
   pull_request:
 
 jobs:
-  plt-rel-01-tier-a:
+  canonical-release-law:
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: spa_release_law
+          MYSQL_USER: spa
+          MYSQL_PASSWORD: spa
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-      - name: Run mandatory Tier A proof
-        run: php system/scripts/run_mandatory_tenant_isolation_proof_release_gate_01.php
+          extensions: pdo_mysql, zip
+          tools: composer:v2
+      - name: Prepare release-law environment
+        run: |
+          mkdir -p distribution/release-law
+          cp system/.env.example system/.env.local
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          path = Path("system/.env.local")
+          text = path.read_text()
+          replacements = {
+              "APP_ENV": "local",
+              "APP_DEBUG": "false",
+              "DB_HOST": "127.0.0.1",
+              "DB_PORT": "3306",
+              "DB_DATABASE": "spa_release_law",
+              "DB_USERNAME": "spa",
+              "DB_PASSWORD": "spa",
+          }
+          for key, value in replacements.items():
+              text = re.sub(rf"^{key}=.*$", f"{key}={value}", text, flags=re.MULTILINE)
+          path.write_text(text)
+          PY
+      - name: Composer validate
+        run: composer validate --strict --no-check-publish
+      - name: Composer authoritative autoload
+        run: composer dump-autoload -o -a --no-interaction
+      - name: Exact case/path auditor
+        run: php system/scripts/release/run_case_path_auditor.php --json | tee distribution/release-law/ci-case-path-audit.json
+      - name: Canonical release law
+        run: php system/scripts/release/run_canonical_release_law.php
+      - name: Upload release-law reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: canonical-release-law-report
+          path: |
+            distribution/release-law
+            distribution/*.zip
+          if-no-files-found: warn

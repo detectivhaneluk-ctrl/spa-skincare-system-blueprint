@@ -6,6 +6,7 @@ namespace Modules\GiftCards\Repositories;
 
 use Core\App\Database;
 use Core\Organization\OrganizationRepositoryScope;
+use Core\Repository\RepositoryContractGuard;
 
 /**
  * {@code gift_cards} tenancy contract (data-plane reads/writes must use the right class):
@@ -20,8 +21,8 @@ use Core\Organization\OrganizationRepositoryScope;
  * 3. **Null-branch legacy (intentionally gated)** — {@code branch_id IS NULL} + {@code client_id} set: visible only when the client’s home
  *    branch’s organization matches the **context branch’s org** ({@code bctx} subquery, same family as client_memberships). No silent
  *    cross-tenant read; {@see listEligibleForClient()} delegates here when branch context is positive.
- * 4. **Control-plane / id-only unscoped** — {@see find()}, {@see findByCode()}, {@see list()}, {@see count()}, {@see update()}:
- *    no tenant predicates; callers must authorize by id or run in non-HTTP repair contexts.
+ * 4. **Compatibility-only legacy generics** — ambiguous generic reads/mutations are locked fail-closed; runtime must use
+ *    explicit tenant-scoped methods, and non-runtime uniqueness probes use {@see findByCodeForUniquenessCheck()}.
  */
 final class GiftCardRepository
 {
@@ -215,30 +216,11 @@ final class GiftCardRepository
     }
 
     /**
-     * Control-plane / id-only: **no** org/branch predicates.
+     * Unscoped uniqueness probe for gift-card code generation; not a tenant visibility API.
      *
      * @return array<string, mixed>|null
      */
-    public function find(int $id, bool $withTrashed = false): ?array
-    {
-        $sql = 'SELECT gc.*,
-                       c.first_name AS client_first_name,
-                       c.last_name AS client_last_name
-                FROM gift_cards gc
-                LEFT JOIN clients c ON c.id = gc.client_id
-                WHERE gc.id = ?';
-        if (!$withTrashed) {
-            $sql .= ' AND gc.deleted_at IS NULL';
-        }
-        return $this->db->fetchOne($sql, [$id]);
-    }
-
-    /**
-     * Control-plane / code lookup: **no** tenant scope (unique code is not a tenancy proof).
-     *
-     * @return array<string, mixed>|null
-     */
-    public function findByCode(string $code, bool $withTrashed = false): ?array
+    public function findByCodeForUniquenessCheck(string $code, bool $withTrashed = false): ?array
     {
         $sql = 'SELECT gc.*,
                        c.first_name AS client_first_name,
@@ -253,42 +235,33 @@ final class GiftCardRepository
     }
 
     /**
+     * Compatibility-only legacy generic read. Mixed-semantics primary-key reads are locked fail-closed.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function find(int $id, bool $withTrashed = false): ?array
+    {
+        RepositoryContractGuard::denyMixedSemanticsApi('GiftCardRepository::find', ['findInTenantScope']);
+    }
+
+    /**
+     * Compatibility-only legacy code lookup. Use {@see findByCodeForUniquenessCheck()} for non-visibility uniqueness probes.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findByCode(string $code, bool $withTrashed = false): ?array
+    {
+        RepositoryContractGuard::denyMixedSemanticsApi('GiftCardRepository::findByCode', ['findByCodeForUniquenessCheck']);
+    }
+
+    /**
      * Unscoped listing (optional filter narrowing only). **Not** a tenant-safe index; prefer {@see listInTenantScope}.
      *
      * @return list<array<string, mixed>>
      */
     public function list(array $filters = [], int $limit = 50, int $offset = 0): array
     {
-        $limit = (int) $limit;
-        $offset = (int) $offset;
-        $sql = 'SELECT gc.*,
-                       c.first_name AS client_first_name,
-                       c.last_name AS client_last_name
-                FROM gift_cards gc
-                LEFT JOIN clients c ON c.id = gc.client_id
-                WHERE gc.deleted_at IS NULL';
-        $params = [];
-
-        if (!empty($filters['search'])) {
-            $q = '%' . trim((string) $filters['search']) . '%';
-            $sql .= ' AND (gc.code LIKE ? OR c.first_name LIKE ? OR c.last_name LIKE ?)';
-            $params = array_merge($params, [$q, $q, $q]);
-        }
-        if (!empty($filters['status'])) {
-            $sql .= ' AND gc.status = ?';
-            $params[] = $filters['status'];
-        }
-        if (!empty($filters['branch_scope']) && $filters['branch_scope'] === 'global') {
-            $sql .= ' AND gc.branch_id IS NULL';
-        } elseif (array_key_exists('branch_id', $filters) && $filters['branch_id'] !== null && $filters['branch_id'] !== '') {
-            $sql .= ' AND gc.branch_id = ?';
-            $params[] = (int) $filters['branch_id'];
-        }
-
-        $sql .= ' ORDER BY gc.created_at DESC, gc.id DESC LIMIT ? OFFSET ?';
-        $params[] = $limit;
-        $params[] = $offset;
-        return $this->db->fetchAll($sql, $params);
+        RepositoryContractGuard::denyMixedSemanticsApi('GiftCardRepository::list', ['listInTenantScope']);
     }
 
     /**
@@ -296,30 +269,7 @@ final class GiftCardRepository
      */
     public function count(array $filters = []): int
     {
-        $sql = 'SELECT COUNT(*) AS c
-                FROM gift_cards gc
-                LEFT JOIN clients c ON c.id = gc.client_id
-                WHERE gc.deleted_at IS NULL';
-        $params = [];
-
-        if (!empty($filters['search'])) {
-            $q = '%' . trim((string) $filters['search']) . '%';
-            $sql .= ' AND (gc.code LIKE ? OR c.first_name LIKE ? OR c.last_name LIKE ?)';
-            $params = array_merge($params, [$q, $q, $q]);
-        }
-        if (!empty($filters['status'])) {
-            $sql .= ' AND gc.status = ?';
-            $params[] = $filters['status'];
-        }
-        if (!empty($filters['branch_scope']) && $filters['branch_scope'] === 'global') {
-            $sql .= ' AND gc.branch_id IS NULL';
-        } elseif (array_key_exists('branch_id', $filters) && $filters['branch_id'] !== null && $filters['branch_id'] !== '') {
-            $sql .= ' AND gc.branch_id = ?';
-            $params[] = (int) $filters['branch_id'];
-        }
-
-        $row = $this->db->fetchOne($sql, $params);
-        return (int) ($row['c'] ?? 0);
+        RepositoryContractGuard::denyMixedSemanticsApi('GiftCardRepository::count', ['countInTenantScope']);
     }
 
     public function create(array $data): int
@@ -328,19 +278,28 @@ final class GiftCardRepository
         return $this->db->lastInsertId();
     }
 
+    public function updateInTenantScope(int $id, int $branchId, array $data): void
+    {
+        $norm = $this->normalize($data);
+        if ($norm === []) {
+            return;
+        }
+        $vis = $this->giftCardTenantVisibilityFromBranch($branchId);
+        $cols = array_map(fn ($k) => "gc.{$k} = ?", array_keys($norm));
+        $vals = array_values($norm);
+        $vals[] = $id;
+        $this->db->query(
+            'UPDATE gift_cards gc SET ' . implode(', ', $cols) . ' WHERE gc.id = ? AND (' . $vis['sql'] . ')',
+            array_merge($vals, $vis['params'])
+        );
+    }
+
     /**
-     * Id-only UPDATE by primary key — **no** tenant WHERE; caller must prove authorization.
+     * Compatibility-only legacy generic mutation. Mixed-semantics primary-key writes are locked fail-closed.
      */
     public function update(int $id, array $data): void
     {
-        $norm = $this->normalize($data);
-        if (empty($norm)) {
-            return;
-        }
-        $cols = array_map(fn ($k) => "{$k} = ?", array_keys($norm));
-        $vals = array_values($norm);
-        $vals[] = $id;
-        $this->db->query('UPDATE gift_cards SET ' . implode(', ', $cols) . ' WHERE id = ?', $vals);
+        RepositoryContractGuard::denyMixedSemanticsApi('GiftCardRepository::update', ['updateInTenantScope']);
     }
 
     /**

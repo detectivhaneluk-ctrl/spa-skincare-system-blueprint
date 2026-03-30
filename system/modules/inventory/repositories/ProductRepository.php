@@ -15,7 +15,7 @@ use Core\Organization\OrganizationRepositoryScope;
  * | **1. Strict branch-owned** | {@see findInTenantScope}, {@see findLockedInTenantScope}, {@see listInTenantScope}, {@see countInTenantScope}, tenant-scoped writes; **search + taxonomy substring filters** use {@see OrganizationRepositoryScope::taxonomyCatalogUnionBranchInOrgOrNullGlobalFromOperationBranchClause()} on {@code pc}/{@code pb} anchored to the list/count operation branch |
  * | **2. Org-global but safe** | {@see findGlobalCatalogProductForHqInvoiceSettlementInResolvedOrg}, {@see listActiveOrgGlobalCatalogInResolvedOrg} — {@code branch_id IS NULL} + org live-branch EXISTS |
  * | **1–2. Resolved-tenant full product catalog** | {@see detachActiveProductsFromCategory}, {@see detachActiveProductsFromBrand}, {@see countActiveProductsReferencingCategoryIds}, {@see countActiveProductsReferencingBrandIds}, {@see relinkActiveProductCategoryIdsToCanonical}, {@see relinkActiveProductBrandIdsToCanonical} — {@see resolvedTenantCatalogProductVisibilityClause()} (same as org-has taxonomy union on {@code products}) |
- * | **3. Null-branch / legacy / tooling** | {@see find}, {@see findLocked}, {@see list}, {@see listActiveForUnifiedCatalog}, {@see count} — **no** org scope; migration/repair only — **tenant modules must not call** (FND-TNT-20 readonly gate). **Resolved-catalog repair:** {@see updateTaxonomyFkPatchInResolvedTenantCatalog} (FND-TNT-21) |
+ * | **3. Null-branch / legacy / tooling** | weak legacy read names ({@see find}, {@see findLocked}, {@see list}, {@see listActiveForUnifiedCatalog}, {@see count}, backfill/orphan unscoped families) are locked fail-closed; explicit repair/control-plane methods use `*UnscopedForRepair` names ({@see findUnscopedByIdForRepair}, {@see findLockedUnscopedForRepair}, {@see listUnscopedCatalogForRepair}, {@see listActiveForUnifiedCatalogUnscopedForRepair}, {@see countUnscopedCatalogForRepair}, plus backfill/orphan `*UnscopedForRepair`) — **no** org scope; migration/repair only — **tenant modules must not call** (FND-TNT-20 readonly gate). **Resolved-catalog repair:** {@see updateTaxonomyFkPatchInResolvedTenantCatalog} (FND-TNT-21) |
  * | **4. Control-plane unscoped** | {@see update}, {@see softDelete} — id-only; **tenant modules must not call** (FND-TNT-21 readonly gate) |
  *
  * Branch **∪** org-global-null **product** reads for stock and unified catalog use
@@ -35,24 +35,49 @@ final class ProductRepository
     }
 
     /**
-     * @deprecated Tooling / migration only — no org scope. Prefer {@see findInTenantScope} or org-scoped settlement/catalog helpers.
+     * @deprecated Locked fail-closed to prevent ambiguous runtime reads. Use {@see findInTenantScope},
+     * {@see findReadableForStockMutationInResolvedOrg}, {@see findGlobalCatalogProductForHqInvoiceSettlementInResolvedOrg},
+     * or {@see findUnscopedByIdForRepair}.
      */
     public function find(int $id, bool $withTrashed = false): ?array
     {
+        throw new \LogicException('ProductRepository::find() is locked. Use findInTenantScope(), resolved-org read helpers, or findUnscopedByIdForRepair().');
+    }
+
+    /**
+     * Explicit unscoped id read for repair/control-plane tooling.
+     */
+    public function findUnscopedByIdForRepair(int $id, bool $withTrashed = false): ?array
+    {
+        if ($id <= 0) {
+            return null;
+        }
         $sql = 'SELECT * FROM products WHERE id = ?';
         if (!$withTrashed) {
             $sql .= ' AND deleted_at IS NULL';
         }
+
         return $this->db->fetchOne($sql, [$id]);
     }
 
     /**
-     * @deprecated Tooling only — no org scope. Prefer {@see findLockedInTenantScope} / {@see findLockedForStockMutationInResolvedOrg}.
-     *
-     * Same row as {@see find} but locks the product for update (caller must hold an open transaction).
+     * @deprecated Locked fail-closed to prevent ambiguous runtime reads. Use {@see findLockedInTenantScope},
+     * {@see findLockedForStockMutationInResolvedOrg}, or {@see findLockedUnscopedForRepair}.
      */
     public function findLocked(int $id): ?array
     {
+        throw new \LogicException('ProductRepository::findLocked() is locked. Use findLockedInTenantScope(), findLockedForStockMutationInResolvedOrg(), or findLockedUnscopedForRepair().');
+    }
+
+    /**
+     * Explicit unscoped id lock for repair/control-plane tooling (caller must hold an open transaction).
+     */
+    public function findLockedUnscopedForRepair(int $id): ?array
+    {
+        if ($id <= 0) {
+            return null;
+        }
+
         return $this->db->fetchOne(
             'SELECT * FROM products WHERE id = ? AND deleted_at IS NULL FOR UPDATE',
             [$id]
@@ -173,10 +198,20 @@ final class ProductRepository
     }
 
     /**
-     * @deprecated No org EXISTS — cross-tenant leak risk when used under tenant runtime. Prefer {@see listInTenantScope} or
-     * {@see listActiveForUnifiedCatalogInResolvedOrg} / {@see listActiveOrgGlobalCatalogInResolvedOrg}.
+     * @deprecated Locked fail-closed to prevent ambiguous runtime reads. Use {@see listInTenantScope},
+     * {@see listActiveForUnifiedCatalogInResolvedOrg}, {@see listActiveOrgGlobalCatalogInResolvedOrg}, or
+     * {@see listUnscopedCatalogForRepair}.
      */
     public function list(array $filters = [], int $limit = 50, int $offset = 0): array
+    {
+        throw new \LogicException('ProductRepository::list() is locked. Use listInTenantScope(), resolved-org catalog reads, or listUnscopedCatalogForRepair().');
+    }
+
+    /**
+     * Explicit unscoped repair/control-plane catalog listing.
+     * No tenant org guard; runtime callers must use {@see listInTenantScope} or resolved-org catalog helpers.
+     */
+    public function listUnscopedCatalogForRepair(array $filters = [], int $limit = 50, int $offset = 0): array
     {
         $limit = (int) $limit;
         $offset = (int) $offset;
@@ -240,6 +275,9 @@ final class ProductRepository
 
     public function listInTenantScope(array $filters = [], int $branchId = 0, int $limit = 50, int $offset = 0): array
     {
+        if ($branchId <= 0) {
+            return [];
+        }
         $limit = (int) $limit;
         $offset = (int) $offset;
         $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('p');
@@ -291,14 +329,22 @@ final class ProductRepository
     }
 
     /**
-     * @deprecated No org scope. Use {@see listActiveForUnifiedCatalogInResolvedOrg} when {@code $branchId} is a tenant branch, or
-     * {@see listActiveOrgGlobalCatalogInResolvedOrg} for HQ / null-branch catalog slices.
-     *
-     * Active products for unified catalog reads: global ∪ branch when {@param $branchId} is set (matches service list overlay).
+     * @deprecated Locked fail-closed to prevent ambiguous runtime reads. Use
+     * {@see listActiveForUnifiedCatalogInResolvedOrg}, {@see listActiveOrgGlobalCatalogInResolvedOrg}, or
+     * {@see listActiveForUnifiedCatalogUnscopedForRepair}.
+     */
+    public function listActiveForUnifiedCatalog(?int $branchId, int $limit = 10000): array
+    {
+        throw new \LogicException('ProductRepository::listActiveForUnifiedCatalog() is locked. Use listActiveForUnifiedCatalogInResolvedOrg(), listActiveOrgGlobalCatalogInResolvedOrg(), or listActiveForUnifiedCatalogUnscopedForRepair().');
+    }
+
+    /**
+     * Explicit unscoped legacy unified catalog read (repair/control-plane only).
+     * Runtime tenant flows must use resolved-org helpers.
      *
      * @return list<array<string, mixed>>
      */
-    public function listActiveForUnifiedCatalog(?int $branchId, int $limit = 10000): array
+    public function listActiveForUnifiedCatalogUnscopedForRepair(?int $branchId, int $limit = 10000): array
     {
         $limit = max(1, min(20000, $limit));
         $sql = 'SELECT * FROM products WHERE deleted_at IS NULL AND is_active = 1';
@@ -352,6 +398,15 @@ final class ProductRepository
     }
 
     public function count(array $filters = []): int
+    {
+        throw new \LogicException('ProductRepository::count() is locked. Use countInTenantScope() or countUnscopedCatalogForRepair().');
+    }
+
+    /**
+     * Explicit unscoped repair/control-plane catalog count.
+     * No tenant org guard; runtime callers must use {@see countInTenantScope}.
+     */
+    public function countUnscopedCatalogForRepair(array $filters = []): int
     {
         $sql = 'SELECT COUNT(*) AS c FROM products WHERE deleted_at IS NULL';
         $params = [];
@@ -410,6 +465,9 @@ final class ProductRepository
 
     public function countInTenantScope(array $filters = [], int $branchId = 0): int
     {
+        if ($branchId <= 0) {
+            return 0;
+        }
         $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('p');
         $sql = 'SELECT COUNT(*) AS c FROM products p WHERE p.deleted_at IS NULL AND p.branch_id = ?' . $frag['sql'];
         $params = array_merge([$branchId], $frag['params']);
@@ -555,13 +613,21 @@ final class ProductRepository
     }
 
     /**
-     * @deprecated Unscoped full catalog. Prefer {@see listNonDeletedForTaxonomyBackfillInResolvedTenantCatalog} under tenant org context.
-     *
-     * Non-deleted products for legacy taxonomy backfill (minimal columns).
+     * @deprecated Locked fail-closed to prevent ambiguous runtime reads. Use
+     * {@see listNonDeletedForTaxonomyBackfillInResolvedTenantCatalog} or
+     * {@see listNonDeletedForTaxonomyBackfillUnscopedForRepair}.
+     */
+    public function listNonDeletedForTaxonomyBackfill(): array
+    {
+        throw new \LogicException('ProductRepository::listNonDeletedForTaxonomyBackfill() is locked. Use listNonDeletedForTaxonomyBackfillInResolvedTenantCatalog() or listNonDeletedForTaxonomyBackfillUnscopedForRepair().');
+    }
+
+    /**
+     * Non-deleted products for unscoped taxonomy backfill repair (minimal columns).
      *
      * @return list<array<string, mixed>>
      */
-    public function listNonDeletedForTaxonomyBackfill(): array
+    public function listNonDeletedForTaxonomyBackfillUnscopedForRepair(): array
     {
         return $this->db->fetchAll(
             'SELECT id, branch_id, category, brand, product_category_id, product_brand_id FROM products WHERE deleted_at IS NULL ORDER BY id ASC'
@@ -614,9 +680,15 @@ final class ProductRepository
     }
 
     /**
-     * @deprecated Unscoped count. Prefer {@see countNonDeletedProductsInResolvedTenantCatalog}.
+     * @deprecated Locked fail-closed to prevent ambiguous runtime reads. Use
+     * {@see countNonDeletedProductsInResolvedTenantCatalog} or {@see countNonDeletedProductsUnscopedForRepair}.
      */
     public function countNonDeletedProducts(): int
+    {
+        throw new \LogicException('ProductRepository::countNonDeletedProducts() is locked. Use countNonDeletedProductsInResolvedTenantCatalog() or countNonDeletedProductsUnscopedForRepair().');
+    }
+
+    public function countNonDeletedProductsUnscopedForRepair(): int
     {
         $row = $this->db->fetchOne('SELECT COUNT(*) AS c FROM products WHERE deleted_at IS NULL');
 
@@ -635,9 +707,16 @@ final class ProductRepository
     }
 
     /**
-     * @deprecated Unscoped orphan count. Prefer {@see countActiveWithOrphanProductCategoryFkInResolvedTenantCatalog}.
+     * @deprecated Locked fail-closed to prevent ambiguous runtime reads. Use
+     * {@see countActiveWithOrphanProductCategoryFkInResolvedTenantCatalog} or
+     * {@see countActiveWithOrphanProductCategoryFkUnscopedForRepair}.
      */
     public function countActiveWithOrphanProductCategoryFk(): int
+    {
+        throw new \LogicException('ProductRepository::countActiveWithOrphanProductCategoryFk() is locked. Use countActiveWithOrphanProductCategoryFkInResolvedTenantCatalog() or countActiveWithOrphanProductCategoryFkUnscopedForRepair().');
+    }
+
+    public function countActiveWithOrphanProductCategoryFkUnscopedForRepair(): int
     {
         $row = $this->db->fetchOne(
             'SELECT COUNT(*) AS c FROM products p
@@ -664,9 +743,16 @@ final class ProductRepository
     }
 
     /**
-     * @deprecated Unscoped orphan count. Prefer {@see countActiveWithOrphanProductBrandFkInResolvedTenantCatalog}.
+     * @deprecated Locked fail-closed to prevent ambiguous runtime reads. Use
+     * {@see countActiveWithOrphanProductBrandFkInResolvedTenantCatalog} or
+     * {@see countActiveWithOrphanProductBrandFkUnscopedForRepair}.
      */
     public function countActiveWithOrphanProductBrandFk(): int
+    {
+        throw new \LogicException('ProductRepository::countActiveWithOrphanProductBrandFk() is locked. Use countActiveWithOrphanProductBrandFkInResolvedTenantCatalog() or countActiveWithOrphanProductBrandFkUnscopedForRepair().');
+    }
+
+    public function countActiveWithOrphanProductBrandFkUnscopedForRepair(): int
     {
         $row = $this->db->fetchOne(
             'SELECT COUNT(*) AS c FROM products p
@@ -694,9 +780,19 @@ final class ProductRepository
 
     /**
      * @return list<array{branch_id: int|string|null, c: int|string}>
-     * @deprecated Unscoped. Prefer {@see listOrphanProductCategoryFkCountsByProductBranchInResolvedTenantCatalog}.
+     * @deprecated Locked fail-closed to prevent ambiguous runtime reads. Use
+     * {@see listOrphanProductCategoryFkCountsByProductBranchInResolvedTenantCatalog} or
+     * {@see listOrphanProductCategoryFkCountsByProductBranchUnscopedForRepair}.
      */
     public function listOrphanProductCategoryFkCountsByProductBranch(): array
+    {
+        throw new \LogicException('ProductRepository::listOrphanProductCategoryFkCountsByProductBranch() is locked. Use listOrphanProductCategoryFkCountsByProductBranchInResolvedTenantCatalog() or listOrphanProductCategoryFkCountsByProductBranchUnscopedForRepair().');
+    }
+
+    /**
+     * @return list<array{branch_id: int|string|null, c: int|string}>
+     */
+    public function listOrphanProductCategoryFkCountsByProductBranchUnscopedForRepair(): array
     {
         return $this->db->fetchAll(
             'SELECT p.branch_id, COUNT(*) AS c FROM products p
@@ -726,9 +822,19 @@ final class ProductRepository
 
     /**
      * @return list<array{branch_id: int|string|null, c: int|string}>
-     * @deprecated Unscoped. Prefer {@see listOrphanProductBrandFkCountsByProductBranchInResolvedTenantCatalog}.
+     * @deprecated Locked fail-closed to prevent ambiguous runtime reads. Use
+     * {@see listOrphanProductBrandFkCountsByProductBranchInResolvedTenantCatalog} or
+     * {@see listOrphanProductBrandFkCountsByProductBranchUnscopedForRepair}.
      */
     public function listOrphanProductBrandFkCountsByProductBranch(): array
+    {
+        throw new \LogicException('ProductRepository::listOrphanProductBrandFkCountsByProductBranch() is locked. Use listOrphanProductBrandFkCountsByProductBranchInResolvedTenantCatalog() or listOrphanProductBrandFkCountsByProductBranchUnscopedForRepair().');
+    }
+
+    /**
+     * @return list<array{branch_id: int|string|null, c: int|string}>
+     */
+    public function listOrphanProductBrandFkCountsByProductBranchUnscopedForRepair(): array
     {
         return $this->db->fetchAll(
             'SELECT p.branch_id, COUNT(*) AS c FROM products p
@@ -758,9 +864,19 @@ final class ProductRepository
 
     /**
      * @return list<array{product_id: int|string, branch_id: int|string|null, fk_id: int|string}>
-     * @deprecated Unscoped. Prefer {@see listOrphanProductCategoryFkExamplesInResolvedTenantCatalog}.
+     * @deprecated Locked fail-closed to prevent ambiguous runtime reads. Use
+     * {@see listOrphanProductCategoryFkExamplesInResolvedTenantCatalog} or
+     * {@see listOrphanProductCategoryFkExamplesUnscopedForRepair}.
      */
     public function listOrphanProductCategoryFkExamples(int $limit): array
+    {
+        throw new \LogicException('ProductRepository::listOrphanProductCategoryFkExamples() is locked. Use listOrphanProductCategoryFkExamplesInResolvedTenantCatalog() or listOrphanProductCategoryFkExamplesUnscopedForRepair().');
+    }
+
+    /**
+     * @return list<array{product_id: int|string, branch_id: int|string|null, fk_id: int|string}>
+     */
+    public function listOrphanProductCategoryFkExamplesUnscopedForRepair(int $limit): array
     {
         $limit = max(1, min(100, $limit));
 
@@ -795,9 +911,19 @@ final class ProductRepository
 
     /**
      * @return list<array{product_id: int|string, branch_id: int|string|null, fk_id: int|string}>
-     * @deprecated Unscoped. Prefer {@see listOrphanProductBrandFkExamplesInResolvedTenantCatalog}.
+     * @deprecated Locked fail-closed to prevent ambiguous runtime reads. Use
+     * {@see listOrphanProductBrandFkExamplesInResolvedTenantCatalog} or
+     * {@see listOrphanProductBrandFkExamplesUnscopedForRepair}.
      */
     public function listOrphanProductBrandFkExamples(int $limit): array
+    {
+        throw new \LogicException('ProductRepository::listOrphanProductBrandFkExamples() is locked. Use listOrphanProductBrandFkExamplesInResolvedTenantCatalog() or listOrphanProductBrandFkExamplesUnscopedForRepair().');
+    }
+
+    /**
+     * @return list<array{product_id: int|string, branch_id: int|string|null, fk_id: int|string}>
+     */
+    public function listOrphanProductBrandFkExamplesUnscopedForRepair(int $limit): array
     {
         $limit = max(1, min(100, $limit));
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Sales\Repositories;
 
 use Core\App\Database;
+use Core\Repository\RepositoryContractGuard;
 use Modules\Sales\Services\SalesTenantScope;
 
 final class PaymentRepository
@@ -24,6 +25,17 @@ final class PaymentRepository
      */
     public function find(int $id): ?array
     {
+        RepositoryContractGuard::denyMixedSemanticsApi('PaymentRepository::find', ['findInInvoicePlane']);
+    }
+
+    /**
+     * Tenant payment read by id: explicit {@see SalesTenantScope::requireBranchDerivedOrganizationIdForInvoicePlane()} before SQL,
+     * then {@see SalesTenantScope::paymentByInvoiceExistsClause} (invoice-plane EXISTS on {@code si}, same basis as {@see InvoiceRepository::find}).
+     *
+     * @throws \Core\Errors\AccessDeniedException when tenant invoice-plane context is not branch-derived
+     */
+    public function findInInvoicePlane(int $id): ?array
+    {
         $this->tenantScope->requireBranchDerivedOrganizationIdForInvoicePlane();
 
         $sql = 'SELECT p.* FROM payments p WHERE p.id = ?';
@@ -42,6 +54,17 @@ final class PaymentRepository
      * @throws \Core\Errors\AccessDeniedException when tenant invoice-plane context is not branch-derived
      */
     public function findForUpdate(int $id): ?array
+    {
+        RepositoryContractGuard::denyMixedSemanticsApi('PaymentRepository::findForUpdate', ['findForUpdateInInvoicePlane']);
+    }
+
+    /**
+     * Tenant payment lock read by id: explicit {@see SalesTenantScope::requireBranchDerivedOrganizationIdForInvoicePlane()} before
+     * {@code FOR UPDATE}, then {@see SalesTenantScope::paymentByInvoiceExistsClause} (same entry contract as {@see findInInvoicePlane()}).
+     *
+     * @throws \Core\Errors\AccessDeniedException when tenant invoice-plane context is not branch-derived
+     */
+    public function findForUpdateInInvoicePlane(int $id): ?array
     {
         $this->tenantScope->requireBranchDerivedOrganizationIdForInvoicePlane();
 
@@ -64,6 +87,19 @@ final class PaymentRepository
      */
     public function getByInvoiceId(int $invoiceId): array
     {
+        RepositoryContractGuard::denyMixedSemanticsApi('PaymentRepository::getByInvoiceId', ['listByInvoiceIdInInvoicePlane']);
+    }
+
+    /**
+     * Tenant payments list for one invoice: explicit {@see SalesTenantScope::requireBranchDerivedOrganizationIdForInvoicePlane()} before SQL,
+     * then {@see SalesTenantScope::paymentByInvoiceExistsClause} (same entry contract as {@see findInInvoicePlane()} / {@see findForUpdateInInvoicePlane()}).
+     *
+     * @return list<array<string, mixed>>
+     *
+     * @throws \Core\Errors\AccessDeniedException when tenant invoice-plane context is not branch-derived
+     */
+    public function listByInvoiceIdInInvoicePlane(int $invoiceId): array
+    {
         $this->tenantScope->requireBranchDerivedOrganizationIdForInvoicePlane();
 
         $sql = 'SELECT p.* FROM payments p WHERE p.invoice_id = ?';
@@ -75,8 +111,27 @@ final class PaymentRepository
         return $this->db->fetchAll($sql, $params);
     }
 
+    /**
+     * Tenant completed payment net total for one invoice: explicit {@see SalesTenantScope::requireBranchDerivedOrganizationIdForInvoicePlane()} before SQL,
+     * then {@see SalesTenantScope::paymentByInvoiceExistsClause} (same entry contract as {@see getByInvoiceId()}).
+     *
+     * @throws \Core\Errors\AccessDeniedException when tenant invoice-plane context is not branch-derived
+     */
     public function getCompletedTotalByInvoiceId(int $invoiceId): float
     {
+        RepositoryContractGuard::denyMixedSemanticsApi('PaymentRepository::getCompletedTotalByInvoiceId', ['getCompletedTotalByInvoiceIdInInvoicePlane']);
+    }
+
+    /**
+     * Tenant completed payment net total for one invoice: explicit {@see SalesTenantScope::requireBranchDerivedOrganizationIdForInvoicePlane()} before SQL,
+     * then {@see SalesTenantScope::paymentByInvoiceExistsClause} (same entry contract as {@see listByInvoiceIdInInvoicePlane()}).
+     *
+     * @throws \Core\Errors\AccessDeniedException when tenant invoice-plane context is not branch-derived
+     */
+    public function getCompletedTotalByInvoiceIdInInvoicePlane(int $invoiceId): float
+    {
+        $this->tenantScope->requireBranchDerivedOrganizationIdForInvoicePlane();
+
         $scope = $this->tenantScope->paymentByInvoiceExistsClause('p', 'si');
         $row = $this->db->fetchOne(
             "SELECT COALESCE(
@@ -155,6 +210,13 @@ final class PaymentRepository
 
     public function existsCompletedByInvoiceAndReference(int $invoiceId, string $reference): bool
     {
+        RepositoryContractGuard::denyMixedSemanticsApi('PaymentRepository::existsCompletedByInvoiceAndReference', ['existsCompletedByInvoiceAndReferenceInInvoicePlane']);
+    }
+
+    public function existsCompletedByInvoiceAndReferenceInInvoicePlane(int $invoiceId, string $reference): bool
+    {
+        $this->tenantScope->requireBranchDerivedOrganizationIdForInvoicePlane();
+
         $scope = $this->tenantScope->paymentByInvoiceExistsClause('p', 'si');
         $reference = trim($reference);
         if ($reference === '') {
@@ -174,6 +236,13 @@ final class PaymentRepository
 
     public function getCompletedRefundedTotalForParentPayment(int $parentPaymentId): float
     {
+        RepositoryContractGuard::denyMixedSemanticsApi('PaymentRepository::getCompletedRefundedTotalForParentPayment', ['getCompletedRefundedTotalForParentPaymentInInvoicePlane']);
+    }
+
+    public function getCompletedRefundedTotalForParentPaymentInInvoicePlane(int $parentPaymentId): float
+    {
+        $this->tenantScope->requireBranchDerivedOrganizationIdForInvoicePlane();
+
         $scope = $this->tenantScope->paymentByInvoiceExistsClause('p', 'si');
         $row = $this->db->fetchOne(
             "SELECT COALESCE(SUM(p.amount), 0) AS total
@@ -188,6 +257,13 @@ final class PaymentRepository
 
     public function hasCompletedRefundForInvoice(int $invoiceId): bool
     {
+        RepositoryContractGuard::denyMixedSemanticsApi('PaymentRepository::hasCompletedRefundForInvoice', ['hasCompletedRefundForInvoiceInInvoicePlane']);
+    }
+
+    public function hasCompletedRefundForInvoiceInInvoicePlane(int $invoiceId): bool
+    {
+        $this->tenantScope->requireBranchDerivedOrganizationIdForInvoicePlane();
+
         $scope = $this->tenantScope->paymentByInvoiceExistsClause('p', 'si');
         $row = $this->db->fetchOne(
             "SELECT p.id

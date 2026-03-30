@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*)
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$repo_root/handoff/local_release_law_fast_hook.ps1"
+    ;;
+  *)
+    "$repo_root/handoff/local_release_law_fast_hook.sh"
+    ;;
+esac

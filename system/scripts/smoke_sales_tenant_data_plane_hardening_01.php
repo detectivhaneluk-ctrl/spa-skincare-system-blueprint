@@ -141,7 +141,7 @@ $setScope($scopeA['branch_id'], $scopeA['organization_id']);
 ($invoiceRepo->find($invoiceAId) !== null && count($invoiceRepo->list(['branch_id' => $scopeA['branch_id']], 50, 0)) > 0)
     ? salesPass('tenant_can_read_own_invoices')
     : salesFail('tenant_can_read_own_invoices', 'missing own invoice read/list access');
-($paymentRepo->find($paymentAId) !== null && count($paymentRepo->getByInvoiceId($invoiceAId)) > 0)
+($paymentRepo->findInInvoicePlane($paymentAId) !== null && count($paymentRepo->listByInvoiceIdInInvoicePlane($invoiceAId)) > 0)
     ? salesPass('tenant_can_read_own_payments')
     : salesFail('tenant_can_read_own_payments', 'missing own payment read access');
 ($registerRepo->find($registerAId) !== null && count($registerRepo->listRecent($scopeA['branch_id'], 20, 0)) > 0)
@@ -149,7 +149,7 @@ $setScope($scopeA['branch_id'], $scopeA['organization_id']);
     : salesFail('tenant_can_read_own_register_sessions', 'missing own register read access');
 
 ($invoiceRepo->find($invoiceCId) === null) ? salesPass('foreign_invoice_by_id_denied') : salesFail('foreign_invoice_by_id_denied', 'expected null');
-($paymentRepo->find($paymentCId) === null) ? salesPass('foreign_payment_by_id_denied') : salesFail('foreign_payment_by_id_denied', 'expected null');
+($paymentRepo->findInInvoicePlane($paymentCId) === null) ? salesPass('foreign_payment_by_id_denied') : salesFail('foreign_payment_by_id_denied', 'expected null');
 ($registerRepo->find($registerCId) === null) ? salesPass('foreign_register_by_id_denied') : salesFail('foreign_register_by_id_denied', 'expected null');
 
 salesExpectThrows(static fn () => $invoiceService->cancel($invoiceCId))

@@ -9,7 +9,7 @@
 --      plus composites (branch_id, status, sort, id) and (status, sort, id).
 
 ALTER TABLE public_commerce_purchases
-    ADD COLUMN verification_queue_sort_at TIMESTAMP NOT NULL
+    ADD COLUMN verification_queue_sort_at TIMESTAMP
         GENERATED ALWAYS AS (COALESCE(finalize_last_received_at, updated_at)) STORED
         COMMENT 'Queue sort key for awaiting_verification staff list (PUBLIC-COMMERCE-QUEUE-INDEX-HARDENING-01)'
         AFTER finalize_last_received_at,

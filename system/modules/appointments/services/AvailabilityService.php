@@ -377,6 +377,12 @@ final class AvailabilityService
         return true;
     }
 
+    /**
+     * Availability runtime service scope:
+     * - BRANCH_OWNED: concrete `services.branch_id` must match the operation branch.
+     * - ORG_GLOBAL: `services.branch_id IS NULL` is allowed only as explicit catalog visibility.
+     * - REPAIR_ONLY / CONTROL_PLANE: a null operation branch never widens to branch-owned services.
+     */
     public function getActiveServiceForScope(int $serviceId, ?int $branchId = null): ?array
     {
         $service = $this->getActiveService($serviceId);
@@ -384,7 +390,7 @@ final class AvailabilityService
             return null;
         }
         $serviceBranch = $service['branch_id'] !== null ? (int) $service['branch_id'] : null;
-        if ($branchId !== null && $serviceBranch !== null && $serviceBranch !== $branchId) {
+        if (!$this->serviceIsBranchOwnedOrOrgGlobalForOperationBranch($serviceBranch, $branchId)) {
             return null;
         }
         return [
@@ -765,14 +771,47 @@ final class AvailabilityService
             WHERE ssg.service_id = ?';
         $params = [$serviceId];
         if ($branchId === null) {
-            $sql .= ' AND sg.branch_id IS NULL';
+            $sql .= $this->orgGlobalOnlyServiceStaffGroupBranchScopeSql();
         } else {
-            $sql .= ' AND (sg.branch_id IS NULL OR sg.branch_id = ?)';
-            $params[] = $branchId;
+            [$scopeSql, $scopeParams] = $this->branchOwnedOrOrgGlobalServiceStaffGroupBranchScopeSql($branchId);
+            $sql .= $scopeSql;
+            $params = array_merge($params, $scopeParams);
         }
         $sql .= ')';
 
         return [$sql, $params];
+    }
+
+    /**
+     * BRANCH_OWNED services require a concrete branch match.
+     * ORG_GLOBAL services (`branch_id IS NULL`) remain explicitly visible from any operation branch.
+     * REPAIR_ONLY / CONTROL_PLANE null-branch runtime can only see ORG_GLOBAL rows.
+     */
+    private function serviceIsBranchOwnedOrOrgGlobalForOperationBranch(?int $serviceBranchId, ?int $operationBranchId): bool
+    {
+        if ($operationBranchId === null) {
+            return $serviceBranchId === null;
+        }
+
+        return $serviceBranchId === null || $serviceBranchId === $operationBranchId;
+    }
+
+    /**
+     * ORG_GLOBAL only: null operation branch may use only intentionally shared staff-group rows.
+     */
+    private function orgGlobalOnlyServiceStaffGroupBranchScopeSql(): string
+    {
+        return ' AND sg.branch_id IS NULL';
+    }
+
+    /**
+     * BRANCH_OWNED or ORG_GLOBAL: concrete branch runtime may use its own staff groups plus intentional org-global rows.
+     *
+     * @return array{0: string, 1: list<mixed>}
+     */
+    private function branchOwnedOrOrgGlobalServiceStaffGroupBranchScopeSql(int $branchId): array
+    {
+        return [' AND (sg.branch_id IS NULL OR sg.branch_id = ?)', [$branchId]];
     }
 
     /**

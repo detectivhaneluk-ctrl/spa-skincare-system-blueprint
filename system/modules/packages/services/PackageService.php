@@ -104,7 +104,7 @@ final class PackageService
             if (array_key_exists('public_online_eligible', $payload)) {
                 $payload['public_online_eligible'] = !empty($payload['public_online_eligible']) ? 1 : 0;
             }
-            $this->packages->update($id, $payload);
+            $this->packages->updateInTenantScope($id, $tenantBranchId, $payload);
             $updated = $this->packages->findInTenantScope($id, $tenantBranchId);
             $this->audit->log('package_updated', 'package', $id, $userId, $current['branch_id'] ?? null, [
                 'before' => $current,
@@ -244,7 +244,7 @@ final class PackageService
             if (($cp['status'] ?? '') !== 'active') {
                 throw new \DomainException('Only active client packages can be used.');
             }
-            $currentRemaining = $this->getRemainingSessions((int) $cp['id']);
+            $currentRemaining = $this->getRemainingSessions((int) $cp['id'], $branchId);
             if ($quantity > $currentRemaining) {
                 throw new \DomainException('Use quantity exceeds remaining sessions.');
             }
@@ -264,7 +264,7 @@ final class PackageService
                 'created_by' => $userId,
             ]);
 
-            $this->clientPackages->update((int) $cp['id'], [
+            $this->clientPackages->updateInTenantScope((int) $cp['id'], $branchId, [
                 'remaining_sessions' => $newRemaining,
                 'status' => $newStatus,
                 'updated_by' => $userId,
@@ -300,7 +300,7 @@ final class PackageService
             if (($cp['status'] ?? '') === 'cancelled') {
                 throw new \DomainException('Cancelled client package cannot be adjusted.');
             }
-            $currentRemaining = $this->getRemainingSessions((int) $cp['id']);
+            $currentRemaining = $this->getRemainingSessions((int) $cp['id'], $branchId);
             $assignedSessions = (int) ($cp['assigned_sessions'] ?? 0);
             $newRemaining = $currentRemaining + $delta;
             if ($newRemaining < 0) {
@@ -324,7 +324,7 @@ final class PackageService
                 'created_by' => $userId,
             ]);
 
-            $this->clientPackages->update((int) $cp['id'], [
+            $this->clientPackages->updateInTenantScope((int) $cp['id'], $branchId, [
                 'remaining_sessions' => $newRemaining,
                 'status' => $newStatus,
                 'updated_by' => $userId,
@@ -361,7 +361,7 @@ final class PackageService
                 throw new \DomainException('Usage row already reversed.');
             }
 
-            $currentRemaining = $this->getRemainingSessions((int) $cp['id']);
+            $currentRemaining = $this->getRemainingSessions((int) $cp['id'], $branchId);
             $assignedSessions = (int) ($cp['assigned_sessions'] ?? 0);
 
             $originalEffect = match ($original['usage_type']) {
@@ -395,7 +395,7 @@ final class PackageService
                 'created_by' => $userId,
             ]);
 
-            $this->clientPackages->update((int) $cp['id'], [
+            $this->clientPackages->updateInTenantScope((int) $cp['id'], $branchId, [
                 'remaining_sessions' => $newRemaining,
                 'status' => $newStatus,
                 'updated_by' => $userId,
@@ -426,7 +426,7 @@ final class PackageService
             if (($cp['status'] ?? '') === 'expired') {
                 throw new \DomainException('Expired client package cannot be cancelled.');
             }
-            $remaining = $this->getRemainingSessions((int) $cp['id']);
+            $remaining = $this->getRemainingSessions((int) $cp['id'], $branchContext);
             $userId = $this->currentUserId();
 
             $this->usages->create([
@@ -441,7 +441,7 @@ final class PackageService
                 'created_by' => $userId,
             ]);
 
-            $this->clientPackages->update((int) $cp['id'], [
+            $this->clientPackages->updateInTenantScope((int) $cp['id'], $branchContext, [
                 'status' => 'cancelled',
                 'updated_by' => $userId,
                 'notes' => $notes ?: ($cp['notes'] ?? null),
@@ -466,13 +466,14 @@ final class PackageService
         }, 'package expire check');
     }
 
-    public function getRemainingSessions(int $clientPackageId): int
+    public function getRemainingSessions(int $clientPackageId, ?int $branchContext = null): int
     {
         $latest = $this->usages->latestForClientPackage($clientPackageId);
         if ($latest) {
             return (int) ($latest['remaining_after'] ?? 0);
         }
-        $cp = $this->clientPackages->find($clientPackageId);
+        $resolvedBranchId = $this->requirePositiveBranchId($branchContext ?? $this->branchContext->getCurrentBranchId());
+        $cp = $this->clientPackages->findInTenantScope($clientPackageId, $resolvedBranchId);
         return (int) ($cp['remaining_sessions'] ?? 0);
     }
 
@@ -487,7 +488,7 @@ final class PackageService
         $rows = $this->clientPackages->listEligibleForClientInTenantScope($clientId, $branchContext);
         $eligible = [];
         foreach ($rows as $row) {
-            $remaining = $this->getRemainingSessions((int) $row['client_package_id']);
+            $remaining = $this->getRemainingSessions((int) $row['client_package_id'], $branchContext);
             if ($remaining <= 0) {
                 continue;
             }
@@ -546,7 +547,7 @@ final class PackageService
                 throw new \DomainException('Only active client packages can be consumed for appointments.');
             }
 
-            $currentRemaining = $this->getRemainingSessions((int) $cp['id']);
+            $currentRemaining = $this->getRemainingSessions((int) $cp['id'], $operationBranch);
             if ($quantity > $currentRemaining) {
                 throw new \DomainException('Appointment quantity exceeds remaining sessions.');
             }
@@ -567,7 +568,7 @@ final class PackageService
                 'created_by' => $userId,
             ]);
 
-            $this->clientPackages->update((int) $cp['id'], [
+            $this->clientPackages->updateInTenantScope((int) $cp['id'], $operationBranch, [
                 'remaining_sessions' => $newRemaining,
                 'status' => $newStatus,
                 'updated_by' => $userId,
@@ -596,7 +597,7 @@ final class PackageService
             return false;
         }
 
-        $remaining = $this->getRemainingSessions((int) $cp['id']);
+        $remaining = $this->getRemainingSessions((int) $cp['id'], $branchContext);
         $userId = $this->currentUserId();
         $this->usages->create([
             'client_package_id' => (int) $cp['id'],
@@ -610,7 +611,7 @@ final class PackageService
             'created_by' => $userId,
         ]);
 
-        $this->clientPackages->update((int) $cp['id'], [
+        $this->clientPackages->updateInTenantScope((int) $cp['id'], $branchContext, [
             'status' => 'expired',
             'updated_by' => $userId,
         ]);

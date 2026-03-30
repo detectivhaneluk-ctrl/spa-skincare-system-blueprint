@@ -25,6 +25,7 @@ use Modules\Payroll\Services\PayrollService;
 use Modules\PublicCommerce\Repositories\PublicCommercePurchaseRepository;
 use Modules\PublicCommerce\Services\PublicCommerceService;
 use Modules\Sales\Repositories\InvoiceRepository;
+use Modules\Sales\Repositories\RegisterSessionRepository;
 use Modules\Sales\Services\InvoiceService;
 use Modules\Sales\Services\PaymentService;
 
@@ -32,6 +33,7 @@ $db = app(\Core\App\Database::class);
 $branchContext = app(BranchContext::class);
 $orgContext = app(OrganizationContext::class);
 $invoiceRepo = app(InvoiceRepository::class);
+$registerRepo = app(RegisterSessionRepository::class);
 $paymentService = app(PaymentService::class);
 $invoiceService = app(InvoiceService::class);
 $pcPurchases = app(PublicCommercePurchaseRepository::class);
@@ -80,6 +82,21 @@ $scopeA = $resolveScope('SMOKE_A');
 $scopeB = $resolveScope('SMOKE_B');
 $scopeC = $resolveScope('SMOKE_C');
 $now = date('Y-m-d H:i:s');
+
+$registerRepo->create([
+    'branch_id' => $scopeA['branch_id'],
+    'opened_by' => 1,
+    'opened_at' => $now,
+    'opening_cash_amount' => 100.00,
+    'status' => 'open',
+]);
+$registerRepo->create([
+    'branch_id' => $scopeB['branch_id'],
+    'opened_by' => 1,
+    'opened_at' => $now,
+    'opening_cash_amount' => 100.00,
+    'status' => 'open',
+]);
 
 if ($scopeA['organization_id'] !== $scopeB['organization_id']) {
     mrFail('fixture_smoke_a_b_same_org', 'SMOKE_A and SMOKE_B must share organization_id for wrong-branch tests');

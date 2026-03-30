@@ -31,7 +31,7 @@ foreach ($files as $path) {
     }
     foreach ($matches[0] as $idx => $full) {
         $table = $matches[1][$idx][0];
-        $startPos = $matches[0][$idx][1] + strlen($full);
+        $startPos = $matches[0][$idx][1] + strlen($full[0]);
         $rest = substr($sql, $startPos);
         if (!preg_match('/\)\s*ENGINE/is', $rest, $endM, PREG_OFFSET_CAPTURE)) {
             continue;

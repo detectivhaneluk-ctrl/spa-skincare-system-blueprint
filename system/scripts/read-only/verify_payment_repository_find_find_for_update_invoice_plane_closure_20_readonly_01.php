@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 /**
  * PLT-TNT-01 — FOUNDATION-TENANT-REPOSITORY-CLOSURE-20 (**FND-TNT-31**): static proof for
- * {@see \Modules\Sales\Repositories\PaymentRepository::find} and
- * {@see \Modules\Sales\Repositories\PaymentRepository::findForUpdate} explicit branch-derived invoice-plane entry
+ * {@see \Modules\Sales\Repositories\PaymentRepository::findInInvoicePlane} and
+ * {@see \Modules\Sales\Repositories\PaymentRepository::findForUpdateInInvoicePlane} explicit branch-derived invoice-plane entry
  * ({@see \Modules\Sales\Services\SalesTenantScope::requireBranchDerivedOrganizationIdForInvoicePlane}) before SQL +
  * {@see \Modules\Sales\Services\SalesTenantScope::paymentByInvoiceExistsClause} on {@code p} / {@code si}.
  *
@@ -21,23 +21,35 @@ $src = (string) file_get_contents($path);
 
 $checks = [];
 
-$checks['PaymentRepository: find() requires branch-derived invoice plane before SQL'] =
+$checks['PaymentRepository: find() is locked through the central guard'] =
     preg_match(
-        '/function\s+find\s*\([\s\S]*?requireBranchDerivedOrganizationIdForInvoicePlane\s*\(\s*\)/',
+        '/function\s+find\s*\([\s\S]*?denyMixedSemanticsApi\s*\(\s*[\'"]PaymentRepository::find[\'"]\s*,\s*\[[^\]]*findInInvoicePlane/s',
         $src
     ) === 1;
 
-$checks['PaymentRepository: find() still applies paymentByInvoiceExistsClause(p, si)'] =
-    preg_match('/function\s+find\s*\([\s\S]*?paymentByInvoiceExistsClause\s*\(\s*[\'"]p[\'"]\s*,\s*[\'"]si[\'"]\s*\)/', $src) === 1;
-
-$checks['PaymentRepository: findForUpdate() requires branch-derived invoice plane before FOR UPDATE SQL'] =
+$checks['PaymentRepository: findInInvoicePlane() requires branch-derived invoice plane before SQL'] =
     preg_match(
-        '/function\s+findForUpdate\s*\([\s\S]*?requireBranchDerivedOrganizationIdForInvoicePlane\s*\(\s*\)/',
+        '/function\s+findInInvoicePlane\s*\([\s\S]*?requireBranchDerivedOrganizationIdForInvoicePlane\s*\(\s*\)/',
         $src
     ) === 1;
 
-$checks['PaymentRepository: findForUpdate() still applies paymentByInvoiceExistsClause(p, si)'] =
-    preg_match('/function\s+findForUpdate\s*\([\s\S]*?paymentByInvoiceExistsClause\s*\(\s*[\'"]p[\'"]\s*,\s*[\'"]si[\'"]\s*\)/', $src) === 1;
+$checks['PaymentRepository: findInInvoicePlane() still applies paymentByInvoiceExistsClause(p, si)'] =
+    preg_match('/function\s+findInInvoicePlane\s*\([\s\S]*?paymentByInvoiceExistsClause\s*\(\s*[\'"]p[\'"]\s*,\s*[\'"]si[\'"]\s*\)/', $src) === 1;
+
+$checks['PaymentRepository: findForUpdate() is locked through the central guard'] =
+    preg_match(
+        '/function\s+findForUpdate\s*\([\s\S]*?denyMixedSemanticsApi\s*\(\s*[\'"]PaymentRepository::findForUpdate[\'"]\s*,\s*\[[^\]]*findForUpdateInInvoicePlane/s',
+        $src
+    ) === 1;
+
+$checks['PaymentRepository: findForUpdateInInvoicePlane() requires branch-derived invoice plane before FOR UPDATE SQL'] =
+    preg_match(
+        '/function\s+findForUpdateInInvoicePlane\s*\([\s\S]*?requireBranchDerivedOrganizationIdForInvoicePlane\s*\(\s*\)/',
+        $src
+    ) === 1;
+
+$checks['PaymentRepository: findForUpdateInInvoicePlane() still applies paymentByInvoiceExistsClause(p, si)'] =
+    preg_match('/function\s+findForUpdateInInvoicePlane\s*\([\s\S]*?paymentByInvoiceExistsClause\s*\(\s*[\'"]p[\'"]\s*,\s*[\'"]si[\'"]\s*\)/', $src) === 1;
 
 $failed = [];
 foreach ($checks as $label => $ok) {
@@ -52,5 +64,5 @@ if ($failed !== []) {
     exit(1);
 }
 
-echo PHP_EOL . 'PaymentRepository::find / findForUpdate invoice-plane closure (CLOSURE-20) checks passed.' . PHP_EOL;
+echo PHP_EOL . 'PaymentRepository::find* invoice-plane closure (CLOSURE-20) checks passed.' . PHP_EOL;
 exit(0);

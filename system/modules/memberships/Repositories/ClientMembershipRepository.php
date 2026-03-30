@@ -6,6 +6,7 @@ namespace Modules\Memberships\Repositories;
 
 use Core\App\Database;
 use Core\Organization\OrganizationRepositoryScope;
+use Core\Repository\RepositoryContractGuard;
 use Modules\Memberships\Services\MembershipBenefitEntitlementPolicy;
 
 /**
@@ -14,8 +15,8 @@ use Modules\Memberships\Services\MembershipBenefitEntitlementPolicy;
  *
  * | Class | Methods |
  * | --- | --- |
- * | **1–2. Tenant branch context** | {@see findInTenantScope}, {@see findForUpdateInTenantScope}, {@see listInTenantScope}, {@see countInTenantScope}, {@see lockWithDefinitionInTenantScope}, {@see updateInTenantScope}, {@see lockWithDefinitionForBillingInTenantScope}, {@see findBlockingIssuanceRowInTenantScope} |
- * | **3. Legacy / repair** | {@see find}, {@see findForUpdate}, {@see lockWithDefinition}, {@see lockWithDefinitionForBilling} when org context does not resolve — id-only FOR UPDATE or any-live-branch anchor; {@see updateRepairOrUnscopedById} |
+ * | **1–2. Tenant branch/resolved-tenant runtime** | {@see findInTenantScope}, {@see findInResolvedTenantScope}, {@see findForUpdateInTenantScope}, {@see findForUpdateInResolvedTenantScope}, {@see listInTenantScope}, {@see countInTenantScope}, {@see lockWithDefinitionInTenantScope}, {@see lockWithDefinitionInResolvedTenantScope}, {@see updateInTenantScope}, {@see lockWithDefinitionForBillingInTenantScope}, {@see lockWithDefinitionForBillingInResolvedTenantScope}, {@see findBlockingIssuanceRowInTenantScope} |
+ * | **3. Explicit repair** | {@see findForRepair}, {@see findForUpdateForRepair}, {@see lockWithDefinitionForRepair}, {@see lockWithDefinitionForBillingForRepair}, {@see updateForRepairById} |
  * | **4. Control-plane cross-tenant** | {@see listActiveNonExpiredForRenewalScanGlobalOps}, {@see listExpiryTerminalCandidatesForGlobalCron} — **explicit** global cron reads; not tenant HTTP |
  */
 final class ClientMembershipRepository
@@ -55,6 +56,16 @@ final class ClientMembershipRepository
         );
     }
 
+    public function findInResolvedTenantScope(int $id): ?array
+    {
+        $any = $this->orgScope->getAnyLiveBranchIdForResolvedTenantOrganization();
+        if ($any === null || $any <= 0) {
+            return null;
+        }
+
+        return $this->findInTenantScope($id, $any);
+    }
+
     /**
      * Row lock for lifecycle / HTTP mutations (transaction required).
      *
@@ -69,6 +80,16 @@ final class ClientMembershipRepository
              WHERE cm.id = ? AND (' . $vis['sql'] . ') FOR UPDATE',
             array_merge([$id], $vis['params'])
         );
+    }
+
+    public function findForUpdateInResolvedTenantScope(int $id): ?array
+    {
+        $any = $this->orgScope->getAnyLiveBranchIdForResolvedTenantOrganization();
+        if ($any === null || $any <= 0) {
+            return null;
+        }
+
+        return $this->findForUpdateInTenantScope($id, $any);
     }
 
     /**
@@ -154,15 +175,7 @@ final class ClientMembershipRepository
      */
     public function findForUpdate(int $id): ?array
     {
-        $any = $this->orgScope->getAnyLiveBranchIdForResolvedTenantOrganization();
-        if ($any !== null && $any > 0) {
-            return $this->findForUpdateInTenantScope($id, $any);
-        }
-
-        return $this->db->fetchOne(
-            'SELECT * FROM client_memberships WHERE id = ? FOR UPDATE',
-            [$id]
-        );
+        RepositoryContractGuard::denyMixedSemanticsApi('ClientMembershipRepository::findForUpdate', ['findForUpdateInTenantScope', 'findForUpdateInResolvedTenantScope', 'findForUpdateForRepair']);
     }
 
     /**
@@ -171,11 +184,11 @@ final class ClientMembershipRepository
      */
     public function find(int $id): ?array
     {
-        $any = $this->orgScope->getAnyLiveBranchIdForResolvedTenantOrganization();
-        if ($any !== null && $any > 0) {
-            return $this->findInTenantScope($id, $any);
-        }
+        RepositoryContractGuard::denyMixedSemanticsApi('ClientMembershipRepository::find', ['findInTenantScope', 'findInResolvedTenantScope', 'findForRepair']);
+    }
 
+    public function findForRepair(int $id): ?array
+    {
         return $this->db->fetchOne(
             'SELECT cm.*,
                     md.name AS definition_name,
@@ -186,6 +199,14 @@ final class ClientMembershipRepository
              INNER JOIN membership_definitions md ON md.id = cm.membership_definition_id
              INNER JOIN clients c ON c.id = cm.client_id
              WHERE cm.id = ?',
+            [$id]
+        );
+    }
+
+    public function findForUpdateForRepair(int $id): ?array
+    {
+        return $this->db->fetchOne(
+            'SELECT * FROM client_memberships WHERE id = ? FOR UPDATE',
             [$id]
         );
     }
@@ -236,11 +257,21 @@ final class ClientMembershipRepository
      */
     public function lockWithDefinition(int $id): ?array
     {
+        RepositoryContractGuard::denyMixedSemanticsApi('ClientMembershipRepository::lockWithDefinition', ['lockWithDefinitionInTenantScope', 'lockWithDefinitionInResolvedTenantScope', 'lockWithDefinitionForRepair']);
+    }
+
+    public function lockWithDefinitionInResolvedTenantScope(int $id): ?array
+    {
         $any = $this->orgScope->getAnyLiveBranchIdForResolvedTenantOrganization();
-        if ($any !== null && $any > 0) {
-            return $this->lockWithDefinitionInTenantScope($id, $any);
+        if ($any === null || $any <= 0) {
+            return null;
         }
 
+        return $this->lockWithDefinitionInTenantScope($id, $any);
+    }
+
+    public function lockWithDefinitionForRepair(int $id): ?array
+    {
         return $this->db->fetchOne(
             'SELECT cm.*,
                     CASE
@@ -297,6 +328,14 @@ final class ClientMembershipRepository
      * Repair / cron / ops only: id-keyed {@code UPDATE} with **no** intrinsic org predicate. Not for tenant HTTP paths.
      */
     public function updateRepairOrUnscopedById(int $id, array $data): void
+    {
+        RepositoryContractGuard::denyMixedSemanticsApi('ClientMembershipRepository::updateRepairOrUnscopedById', ['updateForRepairById']);
+    }
+
+    /**
+     * Repair / cron / ops only: id-keyed {@code UPDATE} with **no** intrinsic org predicate. Not for tenant HTTP paths.
+     */
+    public function updateForRepairById(int $id, array $data): void
     {
         $norm = $this->normalize($data);
         if ($norm === []) {
@@ -450,14 +489,21 @@ final class ClientMembershipRepository
      */
     public function lockWithDefinitionForBilling(int $id, ?int $membershipBranchId = null): ?array
     {
-        if ($membershipBranchId !== null && $membershipBranchId > 0) {
-            return $this->lockWithDefinitionForBillingInTenantScope($id, $membershipBranchId);
-        }
+        RepositoryContractGuard::denyMixedSemanticsApi('ClientMembershipRepository::lockWithDefinitionForBilling', ['lockWithDefinitionForBillingInTenantScope', 'lockWithDefinitionForBillingInResolvedTenantScope', 'lockWithDefinitionForBillingForRepair']);
+    }
+
+    public function lockWithDefinitionForBillingInResolvedTenantScope(int $id): ?array
+    {
         $any = $this->orgScope->getAnyLiveBranchIdForResolvedTenantOrganization();
-        if ($any !== null && $any > 0) {
-            return $this->lockWithDefinitionForBillingInTenantScope($id, $any);
+        if ($any === null || $any <= 0) {
+            return null;
         }
 
+        return $this->lockWithDefinitionForBillingInTenantScope($id, $any);
+    }
+
+    public function lockWithDefinitionForBillingForRepair(int $id): ?array
+    {
         return $this->db->fetchOne(
             'SELECT cm.*,
                     CASE

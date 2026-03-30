@@ -22,9 +22,9 @@ use Modules\Sales\Services\InvoiceService;
  * Settlement is driven by {@see syncBillingCycleForInvoice} after canonical invoice/payment mutations (and cron/repair).
  * No payment gateway; dunning = cycle/row state + invoice balance checks.
  *
- * **Invoice-keyed repository reads** ({@see MembershipBillingCycleRepository::listByInvoiceId}, {@see MembershipBillingCycleRepository::listDistinctInvoiceIdsForReconcile},
- * {@see MembershipBillingCycleRepository::findForInvoice}, {@see MembershipBillingCycleRepository::findForUpdateForInvoice},
- * overdue/pending lists): invoice-plane org EXISTS on `invoices.branch_id` — strict under normal tenant context, OrUnscoped fallback for repair/cron without org.
+ * **Invoice-keyed repository reads** ({@see MembershipBillingCycleRepository::listByInvoiceIdInInvoicePlane}, {@see MembershipBillingCycleRepository::listByInvoiceIdForRepair},
+ * {@see MembershipBillingCycleRepository::findForInvoiceInInvoicePlane}, {@see MembershipBillingCycleRepository::findForUpdateForInvoiceInInvoicePlane},
+ * overdue/pending lists): runtime uses strict invoice-plane scope; repair/global uses explicit repair entrypoints.
  * Canonical invoice truth for settlement still flows through {@see InvoiceRepository::find} / {@see InvoiceService}.
  */
 final class MembershipBillingService
@@ -161,7 +161,7 @@ final class MembershipBillingService
      */
     public function operatorReconcileBillingCycleRefundReview(int $cycleId): array
     {
-        $cycle = $this->cycles->find($cycleId);
+        $cycle = $this->readCycleForOperatorContract($cycleId);
         if (!$cycle) {
             throw new \DomainException('Membership billing cycle not found.');
         }
@@ -182,7 +182,7 @@ final class MembershipBillingService
         $before = $this->cycleSnapshot($cycle);
         $actor = $this->currentUserId();
         $this->syncBillingCycleForInvoice($invoiceId);
-        $afterCycle = $this->cycles->findForInvoice($cycleId, $invoiceId) ?? $cycle;
+        $afterCycle = $this->findCycleForInvoiceContract($cycleId, $invoiceId) ?? $cycle;
         $after = $this->cycleSnapshot($afterCycle);
         $this->audit->log('membership_billing_cycle_refund_review_operator_reconcile', 'membership_billing_cycle', $cycleId, $actor, $branchId, [
             'client_membership_id' => $cmId,
@@ -203,7 +203,7 @@ final class MembershipBillingService
      */
     public function operatorAcknowledgeBillingCycleRefundReview(int $cycleId, ?string $note): void
     {
-        $cycle = $this->cycles->find($cycleId);
+        $cycle = $this->readCycleForOperatorContract($cycleId);
         if (!$cycle) {
             throw new \DomainException('Membership billing cycle not found.');
         }
@@ -234,7 +234,7 @@ final class MembershipBillingService
         if ($invoiceId <= 0) {
             return;
         }
-        $cycleRows = $this->cycles->listByInvoiceId($invoiceId);
+        $cycleRows = $this->listCycleRowsForInvoiceContract($invoiceId);
         if ($cycleRows === []) {
             return;
         }
@@ -278,11 +278,11 @@ final class MembershipBillingService
         $marked = 0;
         foreach ($invoiceIds as $iid) {
             $before = [];
-            foreach ($this->cycles->listByInvoiceId($iid) as $c) {
+            foreach ($this->listCycleRowsForInvoiceContract($iid) as $c) {
                 $before[(int) $c['id']] = (string) ($c['status'] ?? '');
             }
             $this->syncBillingCycleForInvoice($iid);
-            foreach ($this->cycles->listByInvoiceId($iid) as $c) {
+            foreach ($this->listCycleRowsForInvoiceContract($iid) as $c) {
                 $id = (int) $c['id'];
                 $prev = $before[$id] ?? null;
                 if (($c['status'] ?? '') === 'overdue' && $prev !== 'overdue') {
@@ -305,7 +305,7 @@ final class MembershipBillingService
         $applied = 0;
         foreach ($invoiceIds as $iid) {
             $hadPending = false;
-            foreach ($this->cycles->listByInvoiceId($iid) as $c) {
+            foreach ($this->listCycleRowsForInvoiceContract($iid) as $c) {
                 if ($c['renewal_applied_at'] === null || $c['renewal_applied_at'] === '') {
                     $hadPending = true;
                     break;
@@ -313,7 +313,7 @@ final class MembershipBillingService
             }
             $this->syncBillingCycleForInvoice($iid);
             $stillPending = false;
-            foreach ($this->cycles->listByInvoiceId($iid) as $c) {
+            foreach ($this->listCycleRowsForInvoiceContract($iid) as $c) {
                 if ($c['renewal_applied_at'] === null || $c['renewal_applied_at'] === '') {
                     $stillPending = true;
                     break;
@@ -336,16 +336,16 @@ final class MembershipBillingService
     {
         $invIdTrashed = (int) ($invTrashed['id'] ?? 0);
         $invBranchTrashed = (int) ($invTrashed['branch_id'] ?? 0);
-        $cycle = $this->cycles->findForUpdateForInvoice($cycleId, $invIdTrashed);
+        $cycle = $this->lockCycleForInvoiceContract($cycleId, $invIdTrashed);
         if (!$cycle) {
             return;
         }
         $before = $this->cycleSnapshot($cycle);
         $cmId = (int) ($cycle['client_membership_id'] ?? 0);
-        $primary = $this->isPrimaryInvoicedCycle($cmId, $cycleId);
+        $primary = $this->isPrimaryInvoicedCycle($cmId, $cycleId, $invBranchTrashed > 0 ? $invBranchTrashed : null);
 
         if (($cycle['status'] ?? '') !== 'void') {
-            $this->cycles->update($cycleId, ['status' => 'void']);
+            $this->updateCycleWithContract($cycleId, ['status' => 'void']);
             $this->patchPrimaryMembershipAfterVoid($cmId, $primary, $invBranchTrashed > 0 ? $invBranchTrashed : null);
             $branchId = $this->branchIdForClientMembership($cmId, $invBranchTrashed > 0 ? $invBranchTrashed : null);
             $this->audit->log('membership_billing_cycle_voided', 'membership_billing_cycle', $cycleId, null, $branchId, [
@@ -354,7 +354,7 @@ final class MembershipBillingService
                 'reason' => 'invoice_deleted',
             ]);
         }
-        $cycle = $this->cycles->findForInvoice($cycleId, $invIdTrashed) ?? $cycle;
+        $cycle = $this->findCycleForInvoiceContract($cycleId, $invIdTrashed) ?? $cycle;
         $this->maybeLogSettlementSynced($before, $cycle, $cmId, $invIdTrashed, $invBranchTrashed > 0 ? $invBranchTrashed : null);
     }
 
@@ -365,13 +365,13 @@ final class MembershipBillingService
     {
         $invoiceId = (int) ($inv['id'] ?? 0);
         $invBranch = (int) ($inv['branch_id'] ?? 0);
-        $cycle = $this->cycles->findForUpdateForInvoice($cycleId, $invoiceId);
+        $cycle = $this->lockCycleForInvoiceContract($cycleId, $invoiceId);
         if (!$cycle) {
             return;
         }
         $before = $this->cycleSnapshot($cycle);
         $cmId = (int) ($cycle['client_membership_id'] ?? 0);
-        $primary = $this->isPrimaryInvoicedCycle($cmId, $cycleId);
+        $primary = $this->isPrimaryInvoicedCycle($cmId, $cycleId, $invBranch > 0 ? $invBranch : null);
         $branchId = $this->branchIdForClientMembership($cmId, $invBranch > 0 ? $invBranch : null);
 
         $status = (string) ($inv['status'] ?? '');
@@ -383,7 +383,7 @@ final class MembershipBillingService
 
         if ($status === 'cancelled') {
             if (($cycle['status'] ?? '') !== 'void') {
-                $this->cycles->update($cycleId, ['status' => 'void']);
+                $this->updateCycleWithContract($cycleId, ['status' => 'void']);
                 $this->patchPrimaryMembershipAfterVoid($cmId, $primary, $invBranch > 0 ? $invBranch : null);
                 $this->audit->log('membership_billing_cycle_voided', 'membership_billing_cycle', $cycleId, null, $branchId, [
                     'client_membership_id' => $cmId,
@@ -391,7 +391,7 @@ final class MembershipBillingService
                     'reason' => 'invoice_cancelled',
                 ]);
             }
-            $cycle = $this->cycles->findForInvoice($cycleId, $invoiceId) ?? $cycle;
+            $cycle = $this->findCycleForInvoiceContract($cycleId, $invoiceId) ?? $cycle;
             $this->maybeLogSettlementSynced($before, $cycle, $cmId, $invoiceId, $invBranch > 0 ? $invBranch : null);
 
             return;
@@ -402,7 +402,7 @@ final class MembershipBillingService
                 $this->applyRefundReviewState($cycle, $cycleId, $cmId, $primary, $invoiceId, $branchId, (string) $before['status'], $invBranch > 0 ? $invBranch : null);
             } else {
                 if (($cycle['status'] ?? '') !== 'void') {
-                    $this->cycles->update($cycleId, ['status' => 'void']);
+                    $this->updateCycleWithContract($cycleId, ['status' => 'void']);
                     $this->patchPrimaryMembershipAfterVoid($cmId, $primary, $invBranch > 0 ? $invBranch : null);
                     $this->audit->log('membership_billing_cycle_voided', 'membership_billing_cycle', $cycleId, null, $branchId, [
                         'client_membership_id' => $cmId,
@@ -411,7 +411,7 @@ final class MembershipBillingService
                     ]);
                 }
             }
-            $cycle = $this->cycles->findForInvoice($cycleId, $invoiceId) ?? $cycle;
+            $cycle = $this->findCycleForInvoiceContract($cycleId, $invoiceId) ?? $cycle;
             $this->maybeLogSettlementSynced($before, $cycle, $cmId, $invoiceId, $invBranch > 0 ? $invBranch : null);
 
             return;
@@ -419,7 +419,7 @@ final class MembershipBillingService
 
         if ($total <= 0) {
             if (($cycle['status'] ?? '') !== 'void') {
-                $this->cycles->update($cycleId, ['status' => 'void']);
+                $this->updateCycleWithContract($cycleId, ['status' => 'void']);
                 $this->patchPrimaryMembershipAfterVoid($cmId, $primary, $invBranch > 0 ? $invBranch : null);
                 $this->audit->log('membership_billing_cycle_voided', 'membership_billing_cycle', $cycleId, null, $branchId, [
                     'client_membership_id' => $cmId,
@@ -427,7 +427,7 @@ final class MembershipBillingService
                     'reason' => 'invoice_non_positive_total',
                 ]);
             }
-            $cycle = $this->cycles->findForInvoice($cycleId, $invoiceId) ?? $cycle;
+            $cycle = $this->findCycleForInvoiceContract($cycleId, $invoiceId) ?? $cycle;
             $this->maybeLogSettlementSynced($before, $cycle, $cmId, $invoiceId, $invBranch > 0 ? $invBranch : null);
 
             return;
@@ -437,7 +437,7 @@ final class MembershipBillingService
 
         if ($fullyPaid) {
             $this->settleFullyPaidRenewal($cycle, $cycleId, $cmId, $primary, $invoiceId, $branchId, $renewalApplied, (string) $before['status'], $invBranch > 0 ? $invBranch : null);
-            $cycle = $this->cycles->findForInvoice($cycleId, $invoiceId) ?? $cycle;
+            $cycle = $this->findCycleForInvoiceContract($cycleId, $invoiceId) ?? $cycle;
             $this->maybeLogSettlementSynced($before, $cycle, $cmId, $invoiceId, $invBranch > 0 ? $invBranch : null);
 
             return;
@@ -445,7 +445,7 @@ final class MembershipBillingService
 
         if ($renewalApplied) {
             $this->applyRefundReviewState($cycle, $cycleId, $cmId, $primary, $invoiceId, $branchId, (string) $before['status'], $invBranch > 0 ? $invBranch : null);
-            $cycle = $this->cycles->findForInvoice($cycleId, $invoiceId) ?? $cycle;
+            $cycle = $this->findCycleForInvoiceContract($cycleId, $invoiceId) ?? $cycle;
             $this->maybeLogSettlementSynced($before, $cycle, $cmId, $invoiceId, $invBranch > 0 ? $invBranch : null);
 
             return;
@@ -454,7 +454,7 @@ final class MembershipBillingService
         $pastDue = $dueAt !== '' && $dueAt < $today;
         $newStatus = $pastDue ? 'overdue' : 'invoiced';
         if (($cycle['status'] ?? '') !== $newStatus) {
-            $this->cycles->update($cycleId, ['status' => $newStatus]);
+            $this->updateCycleWithContract($cycleId, ['status' => $newStatus]);
         }
         $cm = $this->clientMembershipReadForSettlement($cmId, $invBranch > 0 ? $invBranch : null);
         if ($primary && $cm && ($cm['status'] ?? '') === 'active') {
@@ -469,7 +469,7 @@ final class MembershipBillingService
                 'invoice_id' => $invoiceId,
             ]);
         }
-        $cycle = $this->cycles->findForInvoice($cycleId, $invoiceId) ?? $cycle;
+        $cycle = $this->findCycleForInvoiceContract($cycleId, $invoiceId) ?? $cycle;
         $this->maybeLogSettlementSynced($before, $cycle, $cmId, $invoiceId, $invBranch > 0 ? $invBranch : null);
     }
 
@@ -489,7 +489,7 @@ final class MembershipBillingService
     ): void {
         if ($renewalAlreadyApplied) {
             if (($cycle['status'] ?? '') !== 'paid') {
-                $this->cycles->update($cycleId, ['status' => 'paid']);
+                $this->updateCycleWithContract($cycleId, ['status' => 'paid']);
             }
             if ($previousCycleStatus !== 'paid') {
                 $this->audit->log('membership_billing_cycle_paid', 'membership_billing_cycle', $cycleId, null, $branchId, [
@@ -508,7 +508,7 @@ final class MembershipBillingService
         }
         $def = $this->definitions->findForClientMembershipContext((int) ($cm['membership_definition_id'] ?? 0), $cmId);
         if (!$def || (int) ($def['billing_enabled'] ?? 0) !== 1) {
-            $this->cycles->update($cycleId, [
+            $this->updateCycleWithContract($cycleId, [
                 'status' => 'paid',
                 'renewal_applied_at' => date('Y-m-d H:i:s'),
             ]);
@@ -538,7 +538,7 @@ final class MembershipBillingService
             $skipReason = !empty($cm['cancel_at_period_end'])
                 ? 'cancellation_scheduled_at_period_end'
                 : 'client_membership_not_active';
-            $this->cycles->update($cycleId, [
+            $this->updateCycleWithContract($cycleId, [
                 'status' => 'paid',
                 'renewal_applied_at' => date('Y-m-d H:i:s'),
             ]);
@@ -551,7 +551,7 @@ final class MembershipBillingService
             return;
         }
 
-        $this->cycles->update($cycleId, [
+        $this->updateCycleWithContract($cycleId, [
             'status' => 'paid',
             'renewal_applied_at' => date('Y-m-d H:i:s'),
         ]);
@@ -581,7 +581,7 @@ final class MembershipBillingService
         ?int $invoiceBranchId = null
     ): void {
         if (($cycle['status'] ?? '') !== 'invoiced') {
-            $this->cycles->update($cycleId, ['status' => 'invoiced']);
+            $this->updateCycleWithContract($cycleId, ['status' => 'invoiced']);
         }
         $cm = $this->clientMembershipReadForSettlement($cmId, $invoiceBranchId);
         if ($primary && $cm && ($cm['status'] ?? '') === 'active') {
@@ -640,6 +640,75 @@ final class MembershipBillingService
         return isset($user['id']) ? (int) $user['id'] : null;
     }
 
+    /**
+     * Runtime-sensitive operator path: strict invoice-plane read only.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function readCycleForOperatorContract(int $cycleId): ?array
+    {
+        return $this->cycles->findInInvoicePlane($cycleId);
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function listCycleRowsForInvoiceContract(int $invoiceId): array
+    {
+        if ($this->hasStrictInvoicePlaneContext()) {
+            return $this->cycles->listByInvoiceIdInInvoicePlane($invoiceId);
+        }
+
+        return $this->cycles->listByInvoiceIdForRepair($invoiceId);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function lockCycleForInvoiceContract(int $cycleId, int $invoiceId): ?array
+    {
+        if ($this->hasStrictInvoicePlaneContext()) {
+            return $this->cycles->findForUpdateForInvoiceInInvoicePlane($cycleId, $invoiceId);
+        }
+
+        return $this->cycles->findForUpdateForInvoiceForRepair($cycleId, $invoiceId);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function findCycleForInvoiceContract(int $cycleId, int $invoiceId): ?array
+    {
+        if ($this->hasStrictInvoicePlaneContext()) {
+            return $this->cycles->findForInvoiceInInvoicePlane($cycleId, $invoiceId);
+        }
+
+        return $this->cycles->findForInvoiceForRepair($cycleId, $invoiceId);
+    }
+
+    private function updateCycleWithContract(int $cycleId, array $patch): void
+    {
+        if ($this->orgScope->isBranchDerivedResolvedOrganizationContext()) {
+            $this->cycles->updateInInvoicePlane($cycleId, $patch);
+
+            return;
+        }
+
+        $this->cycles->updateForRepair($cycleId, $patch);
+    }
+
+    private function lockClientMembershipForBillingContract(int $clientMembershipId, ?int $membershipBranchId): ?array
+    {
+        if ($membershipBranchId !== null && $membershipBranchId > 0) {
+            return $this->clientMemberships->lockWithDefinitionForBillingInTenantScope($clientMembershipId, $membershipBranchId);
+        }
+        if ($this->orgScope->isBranchDerivedResolvedOrganizationContext()) {
+            return $this->clientMemberships->lockWithDefinitionForBillingInResolvedTenantScope($clientMembershipId);
+        }
+
+        return $this->clientMemberships->lockWithDefinitionForBillingForRepair($clientMembershipId);
+    }
+
     private function patchPrimaryMembershipAfterVoid(int $cmId, bool $primary, ?int $invoiceBranchId = null): void
     {
         if (!$primary || $cmId <= 0) {
@@ -659,11 +728,28 @@ final class MembershipBillingService
         }
     }
 
-    private function isPrimaryInvoicedCycle(int $clientMembershipId, int $cycleId): bool
+    private function isPrimaryInvoicedCycle(int $clientMembershipId, int $cycleId, ?int $invoiceBranchId = null): bool
     {
-        $maxId = $this->cycles->maxInvoicedCycleIdForMembership($clientMembershipId);
+        $maxId = $this->maxInvoicedCycleIdForMembershipContract($clientMembershipId, $invoiceBranchId);
 
         return $maxId !== null && $maxId === $cycleId;
+    }
+
+    private function maxInvoicedCycleIdForMembershipContract(int $clientMembershipId, ?int $invoiceBranchId = null): ?int
+    {
+        if ($invoiceBranchId !== null && $invoiceBranchId > 0) {
+            return $this->cycles->maxInvoicedCycleIdForMembershipInTenantScope($clientMembershipId, $invoiceBranchId);
+        }
+        if ($this->hasStrictInvoicePlaneContext()) {
+            return $this->cycles->maxInvoicedCycleIdForMembershipInResolvedTenantScope($clientMembershipId);
+        }
+
+        return $this->cycles->maxInvoicedCycleIdForMembershipForRepair($clientMembershipId);
+    }
+
+    private function hasStrictInvoicePlaneContext(): bool
+    {
+        return $this->orgScope->isBranchDerivedResolvedOrganizationContext();
     }
 
     private function branchIdForClientMembership(int $cmId, ?int $invoiceBranchHint = null): ?int
@@ -700,7 +786,11 @@ final class MembershipBillingService
             }
         }
 
-        return $this->clientMemberships->find($cmId);
+        if ($this->orgScope->isBranchDerivedResolvedOrganizationContext()) {
+            return $this->clientMemberships->findInResolvedTenantScope($cmId);
+        }
+
+        return $this->clientMemberships->findForRepair($cmId);
     }
 
     /**
@@ -720,7 +810,7 @@ final class MembershipBillingService
 
             return;
         }
-        $this->clientMemberships->updateRepairOrUnscopedById($cmId, $patch);
+        $this->clientMemberships->updateForRepairById($cmId, $patch);
     }
 
     private function resolveUpdatePinForCmPatch(?int $invoiceBranchId, ?array $cmRow): ?int
@@ -777,7 +867,7 @@ final class MembershipBillingService
      */
     private function processDueRenewalSingle(int $clientMembershipId, ?int $membershipBranchId = null): string
     {
-        $row = $this->clientMemberships->lockWithDefinitionForBilling($clientMembershipId, $membershipBranchId);
+        $row = $this->lockClientMembershipForBillingContract($clientMembershipId, $membershipBranchId);
         if (!$row) {
             return 'skipped';
         }
@@ -885,7 +975,7 @@ final class MembershipBillingService
                 ],
             ],
         ]);
-        $this->cycles->update($cycleId, [
+        $this->updateCycleWithContract($cycleId, [
             'invoice_id' => $invoiceId,
             'status' => 'invoiced',
         ]);

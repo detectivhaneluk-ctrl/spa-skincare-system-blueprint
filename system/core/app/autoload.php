@@ -2,8 +2,38 @@
 
 declare(strict_types=1);
 
+if (defined('SPA_AUTOLOAD_BOOTSTRAPPED')) {
+    return;
+}
+
+define('SPA_AUTOLOAD_BOOTSTRAPPED', true);
+
+$repoRoot = dirname(__DIR__, 3);
+$vendorAutoload = $repoRoot . '/vendor/autoload.php';
+$autoloadMode = strtolower(trim((string) getenv('SPA_AUTOLOAD_MODE')));
+$composerAutoloadAvailable = is_file($vendorAutoload);
+
+if (($autoloadMode === 'composer_only' || $autoloadMode === 'release_law') && !$composerAutoloadAvailable) {
+    throw new RuntimeException(
+        'Composer autoload is required in strict mode. Run `composer dump-autoload -o -a` before bootstrapping.'
+    );
+}
+
+if ($composerAutoloadAvailable && $autoloadMode !== 'legacy_only') {
+    require_once $vendorAutoload;
+
+    if ($autoloadMode === 'composer_only' || $autoloadMode === 'release_law') {
+        return;
+    }
+
+    if ((string) getenv('SPA_AUTOLOAD_ENABLE_LEGACY_FALLBACK') !== '1') {
+        return;
+    }
+}
+
 spl_autoload_register(function (string $class): void {
     $base = dirname(__DIR__, 2);
+    // Core prefixes are single-path, exact-case mappings. Do not add fallback casing here.
     $prefixes = [
         'Core\\App\\' => $base . '/core/app/',
         'Core\\Contracts\\' => $base . '/core/contracts/',
@@ -15,7 +45,8 @@ spl_autoload_register(function (string $class): void {
         'Core\\Audit\\' => $base . '/core/audit/',
         'Core\\Branch\\' => $base . '/core/Branch/',
         'Core\\Organization\\' => $base . '/core/Organization/',
-        'Core\\Tenant\\' => $base . '/core/Tenant/',
+        'Core\\Tenant\\' => $base . '/core/tenant/',
+        'Core\\Repository\\' => $base . '/core/Repository/',
         'Core\\Storage\\' => $base . '/core/Storage/',
         'Core\\Observability\\' => $base . '/core/Observability/',
         'Core\\Errors\\' => $base . '/core/errors/',

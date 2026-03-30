@@ -50,8 +50,16 @@ if (!str_contains($body, 'findBlockingOpenInitialSale')) {
     fwrite(STDERR, "FAIL: findBlockingOpenInitialSale missing.\n");
     $failed = true;
 }
-if (!str_contains($body, 'INNER JOIN invoices i ON i.id = ms.invoice_id') || !str_contains($body, 'invoicePlaneExistsClauseForMembershipReconcileQueries')) {
-    fwrite(STDERR, "FAIL: findBlockingOpenInitialSale null-branch path must invoice-join + invoicePlane clause.\n");
+if (!str_contains($body, 'INNER JOIN invoices i ON i.id = ms.invoice_id') || !str_contains($body, 'strictTenantInvoicePlaneBranchScope')) {
+    fwrite(STDERR, "FAIL: findBlockingOpenInitialSale null-branch path must invoice-join + strict tenant invoice-plane clause.\n");
+    $failed = true;
+}
+if (str_contains($body, 'invoicePlaneExistsClauseForMembershipReconcileQueries') || str_contains($body, 'catch (AccessDeniedException)')) {
+    fwrite(STDERR, "FAIL: MembershipSaleRepository must not retain old invoice-plane helper catch-to-unscoped fallback.\n");
+    $failed = true;
+}
+if (!str_contains($body, 'resolvedOrganizationRepairInvoicePlaneBranchScopeIfAvailable')) {
+    fwrite(STDERR, "FAIL: MembershipSaleRepository must expose explicit resolved-org repair helper for reconcile/global paths.\n");
     $failed = true;
 }
 
@@ -70,8 +78,8 @@ if (!str_contains($svc, 'findForUpdateInTenantScope($saleId, $branchId)') || !st
     fwrite(STDERR, "FAIL: operator path must use findForUpdateInTenantScope + findInTenantScope.\n");
     $failed = true;
 }
-if (!str_contains($svc, 'findForUpdateInTenantScope($saleId, $invBranch)')) {
-    fwrite(STDERR, "FAIL: settlement paths should use invoice-branch findForUpdateInTenantScope when branch > 0.\n");
+if (!str_contains($svc, 'lockSaleForSettlementContract(') || !str_contains($svc, 'updateSaleWithContract(')) {
+    fwrite(STDERR, "FAIL: settlement paths should use explicit sale contract helpers, not generic repo methods.\n");
     $failed = true;
 }
 

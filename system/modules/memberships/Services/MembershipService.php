@@ -411,7 +411,7 @@ final class MembershipService
             }
         }
 
-        return $this->clientMemberships->find($id);
+        return $this->clientMemberships->findInResolvedTenantScope($id);
     }
 
     public function cancelClientMembership(int $id, ?string $notes = null): void
