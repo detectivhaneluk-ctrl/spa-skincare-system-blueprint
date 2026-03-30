@@ -62,45 +62,37 @@ final class ReleaseLawShell
         $escaped = implode(' ', array_map('escapeshellarg', $command));
         $start = microtime(true);
 
-        // Inherit the real process environment (null). A merged env map can drop variables that
-        // downstream tools rely on (observed: PDO MySQL to GitHub Actions service containers).
-        $saved = [];
+        // Build child env from getenv() only (do not merge $_ENV: on some PHP CLI builds $_ENV is
+        // incomplete and can override real OS variables with empty values, breaking subprocesses).
+        $base = getenv();
+        if (!is_array($base)) {
+            throw new ReleaseLawException('getenv() did not return an environment array; cannot spawn subprocess.');
+        }
+        $env = $base;
         foreach ($extraEnv as $key => $value) {
-            $saved[$key] = getenv($key);
-            putenv($key . '=' . $value);
+            $env[$key] = $value;
         }
 
-        try {
-            $process = proc_open($escaped, $descriptorSpec, $pipes, $cwd, null);
+        $process = proc_open($escaped, $descriptorSpec, $pipes, $cwd, $env);
 
-            if (!is_resource($process)) {
-                throw new ReleaseLawException('Unable to start command: ' . $escaped);
-            }
-
-            fclose($pipes[0]);
-            $stdout = stream_get_contents($pipes[1]);
-            $stderr = stream_get_contents($pipes[2]);
-            fclose($pipes[1]);
-            fclose($pipes[2]);
-            $exitCode = proc_close($process);
-
-            return new ReleaseLawCommandResult(
-                $command,
-                $exitCode,
-                $stdout === false ? '' : $stdout,
-                $stderr === false ? '' : $stderr,
-                microtime(true) - $start
-            );
-        } finally {
-            foreach ($extraEnv as $key => $_) {
-                $prior = $saved[$key];
-                if ($prior === false) {
-                    putenv($key);
-                } else {
-                    putenv($key . '=' . $prior);
-                }
-            }
+        if (!is_resource($process)) {
+            throw new ReleaseLawException('Unable to start command: ' . $escaped);
         }
+
+        fclose($pipes[0]);
+        $stdout = stream_get_contents($pipes[1]);
+        $stderr = stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        $exitCode = proc_close($process);
+
+        return new ReleaseLawCommandResult(
+            $command,
+            $exitCode,
+            $stdout === false ? '' : $stdout,
+            $stderr === false ? '' : $stderr,
+            microtime(true) - $start
+        );
     }
 }
 
