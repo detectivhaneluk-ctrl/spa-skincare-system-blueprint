@@ -46,8 +46,9 @@ jobs:
               "DB_HOST": "127.0.0.1",
               "DB_PORT": "33306",
               "DB_DATABASE": "spa_release_law",
-              "DB_USERNAME": "spa",
-              "DB_PASSWORD": "spa",
+              # Use root in CI: full DDL + baseline verify; MYSQL_USER may lack privileges for some migrations.
+              "DB_USERNAME": "root",
+              "DB_PASSWORD": "root",
           }
           for key, value in replacements.items():
               text = re.sub(rf"^{key}=.*$", f"{key}={value}", text, flags=re.MULTILINE)
