@@ -62,40 +62,40 @@ final class ReleaseLawShell
         $escaped = implode(' ', array_map('escapeshellarg', $command));
         $start = microtime(true);
 
-        // Build child env from getenv() only (do not merge $_ENV: on some PHP CLI builds $_ENV is
-        // incomplete and can override real OS variables with empty values, breaking subprocesses).
-        // proc_open() requires string env values; coerce or drop non-strings from getenv().
-        $base = getenv();
-        if (!is_array($base)) {
-            throw new ReleaseLawException('getenv() did not return an environment array; cannot spawn subprocess.');
-        }
-        $env = [];
-        foreach ($base as $key => $value) {
-            if (!is_string($key)) {
-                continue;
-            }
-            if (is_string($value)) {
-                $env[$key] = $value;
-            } elseif (is_int($value) || is_float($value)) {
-                $env[$key] = (string) $value;
-            }
-        }
+        // Inherit the real process environment (proc_open $env = null). Building an env array from
+        // getenv() alone is unsafe: on many PHP CLI builds getenv() with no name returns an incomplete
+        // list when variables_order omits "E", so children lose PATH and fail to find composer, etc.
+        // Apply overrides via putenv() for this process only, then restore in finally.
+        /** @var array<string, string|false|null> $savedEnv */
+        $savedEnv = [];
         foreach ($extraEnv as $key => $value) {
-            $env[$key] = $value;
+            $savedEnv[$key] = getenv($key);
+            putenv($key . '=' . $value);
         }
 
-        $process = proc_open($escaped, $descriptorSpec, $pipes, $cwd, $env);
+        try {
+            $process = proc_open($escaped, $descriptorSpec, $pipes, $cwd, null);
 
-        if (!is_resource($process)) {
-            throw new ReleaseLawException('Unable to start command: ' . $escaped);
+            if (!is_resource($process)) {
+                throw new ReleaseLawException('Unable to start command: ' . $escaped);
+            }
+
+            fclose($pipes[0]);
+            $stdout = stream_get_contents($pipes[1]);
+            $stderr = stream_get_contents($pipes[2]);
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            $exitCode = proc_close($process);
+        } finally {
+            foreach ($extraEnv as $key => $_) {
+                $prev = $savedEnv[$key];
+                if ($prev === false) {
+                    putenv($key);
+                } else {
+                    putenv($key . '=' . (string) $prev);
+                }
+            }
         }
-
-        fclose($pipes[0]);
-        $stdout = stream_get_contents($pipes[1]);
-        $stderr = stream_get_contents($pipes[2]);
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-        $exitCode = proc_close($process);
 
         return new ReleaseLawCommandResult(
             $command,
