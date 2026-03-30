@@ -10,7 +10,9 @@ jobs:
     runs-on: ubuntu-22.04
     services:
       mysql:
-        image: mysql:8.0
+        # MariaDB: PDO + mysql client auth works without mysql_native_password tuning (MySQL 8.0
+        # caching_sha2 + host-mapped ports has repeatedly produced 1045 in this gate on GHA).
+        image: mariadb:10.11
         env:
           MYSQL_ROOT_PASSWORD: root
           MYSQL_DATABASE: spa_release_law
