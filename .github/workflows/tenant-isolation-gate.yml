@@ -16,9 +16,9 @@ jobs:
           MYSQL_DATABASE: spa_release_law
           MYSQL_USER: spa
           MYSQL_PASSWORD: spa
-        # Host port must not collide with anything binding 3306 on the runner; PHP uses DB_PORT below.
+        # Map container 3306 to a free host port (see job.services.mysql.ports[3306] in steps).
         ports:
-          - 33060:3306
+          - 3306
         options: >-
           --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot --silent"
           --health-interval=10s
@@ -32,19 +32,23 @@ jobs:
           extensions: pdo_mysql, zip
           tools: composer:v2
       - name: Prepare release-law environment
+        env:
+          MYSQL_SERVICE_PORT: ${{ job.services.mysql.ports[3306] }}
         run: |
           mkdir -p distribution/release-law
           cp system/.env.example system/.env.local
           python3 - <<'PY'
           from pathlib import Path
+          import os
           import re
           path = Path("system/.env.local")
           text = path.read_text()
+          port = os.environ["MYSQL_SERVICE_PORT"]
           replacements = {
               "APP_ENV": "local",
               "APP_DEBUG": "false",
               "DB_HOST": "127.0.0.1",
-              "DB_PORT": "33060",
+              "DB_PORT": port,
               "DB_DATABASE": "spa_release_law",
               "DB_USERNAME": "spa",
               "DB_PASSWORD": "spa",
@@ -54,13 +58,15 @@ jobs:
           path.write_text(text)
           PY
       - name: Wait for MySQL on mapped host port
+        env:
+          MYSQL_SERVICE_PORT: ${{ job.services.mysql.ports[3306] }}
         run: |
           set -euo pipefail
           for _ in $(seq 1 45); do
-            php -r '$f = @fsockopen("127.0.0.1", 33060); exit($f !== false ? 0 : 1);' && exit 0
+            php -r '$p=(int)getenv("MYSQL_SERVICE_PORT"); $f = @fsockopen("127.0.0.1", $p); exit($f !== false ? 0 : 1);' && exit 0
             sleep 2
           done
-          echo 'MySQL did not accept TCP on 127.0.0.1:33060'
+          echo "MySQL did not accept TCP on 127.0.0.1:${MYSQL_SERVICE_PORT}"
           exit 1
       - name: Composer validate
         run: composer validate --strict --no-check-publish
