@@ -108,7 +108,8 @@ final class SessionAuth
                     'expires' => time() - 86400,
                     'path' => $cfg['path'] ?? '/',
                     'domain' => $cfg['domain'] ?? '',
-                    'secure' => $cfg['secure'] ?? false,
+                    // Match {@see configureSession()} defaults so the deletion cookie reaches the same client storage as the session cookie (esp. when SESSION_SECURE is unset).
+                    'secure' => $cfg['secure'] ?? true,
                     'httponly' => $cfg['httponly'] ?? true,
                     'samesite' => $cfg['samesite'] ?? 'Lax',
                 ]

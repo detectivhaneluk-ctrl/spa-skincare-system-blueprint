@@ -84,6 +84,7 @@ final class AuthService
         if ($userId === null) {
             throw new \InvalidArgumentException('Not authenticated.');
         }
+        $this->assertAccountPasswordChangeAllowed($userId);
         $newPassword = trim($newPassword);
         if (strlen($newPassword) < 8) {
             throw new \InvalidArgumentException('New password must be at least 8 characters.');
@@ -95,9 +96,12 @@ final class AuthService
         if ($row === null) {
             throw new \InvalidArgumentException('User not found.');
         }
+        $throttleId = self::accountPasswordChangeThrottleId($userId);
         if (!password_verify($currentPassword, (string) $row['password_hash'])) {
+            $this->throttle->recordAttempt($throttleId, false);
             throw new \InvalidArgumentException('Current password is incorrect.');
         }
+        $this->throttle->clearFailures($throttleId);
         $hash = password_hash($newPassword, PASSWORD_DEFAULT);
         try {
             $this->db()->query(
@@ -117,6 +121,28 @@ final class AuthService
         $this->sessionEpochs->incrementSessionVersion($userId);
         $_SESSION[SessionAuth::SESSION_EPOCH_KEY] = $this->sessionEpochs->getSessionVersion($userId);
         Application::container()->get(AuditService::class)->log('password_changed', 'user', $userId, $userId, null, null, 'success', 'auth');
+    }
+
+    /**
+     * Throttle bucket for POST /account/password (wrong current-password attempts); separate from login and platform step-up keys.
+     */
+    public static function accountPasswordChangeThrottleId(int $userId): string
+    {
+        return 'account_password_change:' . $userId;
+    }
+
+    /**
+     * @throws \InvalidArgumentException when temporarily locked out after failed current-password checks
+     */
+    public function assertAccountPasswordChangeAllowed(int $userId): void
+    {
+        $id = self::accountPasswordChangeThrottleId($userId);
+        $rem = $this->throttle->remainingLockoutSeconds($id);
+        if ($rem > 0) {
+            throw new \InvalidArgumentException(
+                'Too many password change attempts. Try again in ' . $rem . ' seconds.'
+            );
+        }
     }
 
     /**

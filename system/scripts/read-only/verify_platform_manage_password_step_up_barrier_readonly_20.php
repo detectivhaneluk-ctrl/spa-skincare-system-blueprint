@@ -20,6 +20,7 @@ $safePreviewView = (string) file_get_contents($system . '/modules/organizations/
 $archiveConfirm = (string) file_get_contents($system . '/modules/organizations/views/platform_salons/archive_confirm.php');
 $salonCreate = (string) file_get_contents($system . '/modules/organizations/views/platform_salons/create.php');
 $registryCreate = (string) file_get_contents($system . '/modules/organizations/views/platform-registry/create.php');
+$orgRegistryRoutes = (string) file_get_contents($system . '/routes/web/register_platform_organization_registry.php');
 
 /**
  * @return non-empty-string|null
@@ -103,6 +104,10 @@ $checks = [
     'AuthService defines platform_manage_stepup throttle + assert + verify' => str_contains($auth, 'platform_manage_stepup:')
         && str_contains($auth, 'function assertPlatformManagePasswordStepUpAllowed')
         && str_contains($auth, 'function verifyPasswordForPlatformManageStepUp'),
+    'AuthService defines account_password_change throttle + assert (account password POST hardening)' => str_contains($auth, 'account_password_change:')
+        && str_contains($auth, 'function assertAccountPasswordChangeAllowed'),
+    'register_platform_organization_registry manageMw includes PlatformManagePostRateLimitMiddleware (parity with /platform-admin/*)' => str_contains($orgRegistryRoutes, 'use Core\\Middleware\\PlatformManagePostRateLimitMiddleware;')
+        && str_contains($orgRegistryRoutes, 'PlatformManagePostRateLimitMiddleware::class'),
     'FounderSafeActionGuardrailService password + risk policy + TOTP field + requirePlatformManagePasswordStepUp(action key)' => str_contains($guard, 'PLATFORM_MANAGE_PASSWORD_CONFIRM_FIELD')
         && str_contains($guard, 'platform_manage_password_confirm')
         && str_contains($guard, 'PLATFORM_CONTROL_PLANE_TOTP_FIELD')
