@@ -51,14 +51,21 @@ final class BranchDirectory
 
     /**
      * Tenant entry / resolver only: all active branches in the deployment (caller filters to allowed ids).
+     * Returns organization_id and organization_name so the chooser can group branches per org when a
+     * multi-org principal sees same-name branches from different organisations.
      * Do not use from tenant-protected module controllers.
      *
-     * @return list<array{id: int|string, name: string, code: string|null}>
+     * @return list<array{id: int|string, name: string, code: string|null, organization_id: int|string, organization_name: string}>
      */
     public function listAllActiveBranchesUnscopedForTenantEntryResolver(): array
     {
         return $this->db->fetchAll(
-            'SELECT id, name, code FROM branches WHERE deleted_at IS NULL ORDER BY name'
+            'SELECT b.id, b.name, b.code, b.organization_id,
+                    o.name AS organization_name
+             FROM branches b
+             INNER JOIN organizations o ON o.id = b.organization_id
+             WHERE b.deleted_at IS NULL
+             ORDER BY o.name, b.name'
         );
     }
 
