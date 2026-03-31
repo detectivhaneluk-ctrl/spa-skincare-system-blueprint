@@ -23,8 +23,8 @@ $router->post('/support-entry/stop', [\Modules\Auth\Controllers\SupportEntryCont
 $router->get('/account/password', [\Modules\Auth\Controllers\AccountPasswordController::class, 'show'], [AuthMiddleware::class]);
 $router->post('/account/password', [\Modules\Auth\Controllers\AccountPasswordController::class, 'update'], [AuthMiddleware::class]);
 
-$router->get('/api/public/booking/slots', [\Modules\OnlineBooking\Controllers\PublicBookingController::class, 'slots'], []);
-$router->post('/api/public/booking/book', [\Modules\OnlineBooking\Controllers\PublicBookingController::class, 'book'], [], ['csrf_exempt' => true]);
+$router->get('/api/public/booking/slots', [\Modules\OnlineBooking\Controllers\PublicBookingController::class, 'slots'], [\Core\Middleware\PublicBookingRateLimitMiddleware::class]);
+$router->post('/api/public/booking/book', [\Modules\OnlineBooking\Controllers\PublicBookingController::class, 'book'], [\Core\Middleware\PublicBookingRateLimitMiddleware::class], ['csrf_exempt' => true]);
 $router->get('/api/public/booking/consent-check', [\Modules\OnlineBooking\Controllers\PublicBookingController::class, 'consentCheck'], []);
 $router->post('/api/public/booking/manage', [\Modules\OnlineBooking\Controllers\PublicBookingController::class, 'manageLookup'], [], ['csrf_exempt' => true]);
 $router->post('/api/public/booking/manage/slots', [\Modules\OnlineBooking\Controllers\PublicBookingController::class, 'manageRescheduleSlots'], [], ['csrf_exempt' => true]);

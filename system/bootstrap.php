@@ -237,4 +237,7 @@ $container->singleton(\Core\Middleware\RequestLatencyMiddleware::class, fn ($c) 
     (float) ($c->get(\Core\App\Config::class)->get('observability.slow_request_threshold_ms', 1000))
 ));
 
+// WAVE-05: Public booking outer IP-level rate gate — fail-open, supplemental to controller's own limits.
+$container->singleton(\Core\Middleware\PublicBookingRateLimitMiddleware::class, fn () => new \Core\Middleware\PublicBookingRateLimitMiddleware());
+
 return $container;

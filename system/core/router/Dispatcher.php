@@ -27,6 +27,8 @@ use Core\Storage\StorageKey;
 final class Dispatcher
 {
     private array $globalMiddleware = [
+        // WAVE-05: RequestLatencyMiddleware is first so it wraps the entire pipeline and measures full round-trip.
+        \Core\Middleware\RequestLatencyMiddleware::class,
         \Core\Middleware\CsrfMiddleware::class,
         \Core\Middleware\ErrorHandlerMiddleware::class,
         \Core\Middleware\BranchContextMiddleware::class,

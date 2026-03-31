@@ -1,7 +1,7 @@
 # Scale Wave Execution Charter — 01
 
 **Date:** 2026-03-31  
-**Status:** WAVE-01 DONE · WAVE-02 DONE · WAVE-03 DONE · WAVE-04 LIVE  
+**Status:** WAVE-01 DONE · WAVE-02 DONE · WAVE-03 DONE · WAVE-04 DONE · WAVE-05 LIVE  
 **Authority:** Architect verdict (2026-03-31 scalability & load assessment).  
 **Relationship to FOUNDATION-A series:** Foundation A1–A7 established the tenant/auth/service kernel. This charter launches on top of that kernel to address the **runtime, infrastructure, and scale** layer. These waves do **not** reopen or contradict Foundation work — they build on it.  
 **Active queue:** This file. Exactly one LIVE wave at a time.  
@@ -100,7 +100,7 @@ These are in order of production urgency. The waves execute exactly in this orde
 
 ## WAVE-04 — SAFE SCALE OPERATIONS
 
-**Status:** PLANNED
+**Status:** DONE (2026-03-31)  
 
 **Scope:**
 
@@ -112,6 +112,38 @@ These are in order of production urgency. The waves execute exactly in this orde
 | W4-D | Shard-readiness guardrails: `organization_id` enforcement audit + documentation |
 
 **Entry condition:** WAVE-03 proof passes.
+
+---
+
+## WAVE-05 — LIVE ENFORCEMENT FOUNDATIONS
+
+**Status:** LIVE (2026-03-31)
+
+**Why this wave exists:**  
+WAVE-01 through WAVE-04 built the foundations. WAVE-05 wires two foundations that were created but left dead (not connected to the runtime pipeline):
+
+| Foundation | Current state | Gap |
+|---|---|---|
+| `RequestLatencyMiddleware` | Registered in DI | Never added to global middleware pipeline — zero requests timed |
+| `RuntimeProtectedPathRateLimiter` booking buckets | Methods implemented | Never called on any booking route — public booking has no IP-level outer gate via this path |
+
+**Scope:**
+
+| ID | Deliverable | Proof |
+|----|-------------|-------|
+| W5-A | `RequestLatencyMiddleware` wired as first entry in `Dispatcher::$globalMiddleware` | Every HTTP request is now timed; slow requests emit `endpoint_latency` slog |
+| W5-B | `PublicBookingRateLimitMiddleware` — new middleware consuming `BUCKET_BOOKING_SUBMIT` (20/600s) and `BUCKET_BOOKING_AVAILABILITY_READ` (120/60s) | Middleware fails-open on rate-limiter errors; wired to `/api/public/booking/slots` and `/api/public/booking/book` |
+| W5-C | Proof script confirming both wired paths are live and middleware chain is correct | `verify_wave05_live_enforcement_foundations_01.php` passes |
+
+**Must not touch:**
+- Booking transaction correctness / `AppointmentService` write paths
+- Session / auth / tenant isolation kernel
+- Existing `PublicBookingController` rate-limit logic (supplemental layer, not a replacement)
+
+**Entry condition:** WAVE-04 proof passes.  
+**Exit condition:** `verify_wave05_live_enforcement_foundations_01.php` passes; HTTP regression sweep clean.
+
+---
 
 ---
 
