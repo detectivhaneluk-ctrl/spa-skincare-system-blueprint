@@ -30,6 +30,14 @@ $registerService = app(RegisterSessionService::class);
 $clientService = app(ClientService::class);
 $clientRepo = app(\Modules\Clients\Repositories\ClientRepository::class);
 
+// Resolve smoke admin actor for permission-bearing context (admin role has all tenant permissions).
+$smokeAdminRow = $db->fetchOne('SELECT id FROM users WHERE email = ? LIMIT 1', ['tenant-admin-a@example.test']);
+if ($smokeAdminRow === null) {
+    fwrite(STDERR, "Missing smoke admin user tenant-admin-a@example.test — run seed_branch_smoke_data.php first.\n");
+    exit(1);
+}
+$smokeActorId = (int) $smokeAdminRow['id'];
+
 $passed = 0;
 $failed = 0;
 function salesPass(string $name): void { global $passed; $passed++; echo "PASS  {$name}\n"; }
@@ -55,11 +63,11 @@ $resolveScope = static function (string $branchCode) use ($db): array {
     return ['branch_id' => (int) $row['branch_id'], 'organization_id' => (int) $row['organization_id']];
 };
 
-$setScope = static function (int $branchId, int $orgId) use ($branchContext, $orgContext, $contextHolder): void {
+$setScope = static function (int $branchId, int $orgId) use ($branchContext, $orgContext, $contextHolder, $smokeActorId): void {
     $branchContext->setCurrentBranchId($branchId);
     $orgContext->setFromResolution($orgId, OrganizationContext::MODE_BRANCH_DERIVED);
     $contextHolder->set(\Core\Kernel\TenantContext::resolvedTenant(
-        actorId: 1,
+        actorId: $smokeActorId,
         organizationId: $orgId,
         branchId: $branchId,
         isSupportEntry: false,
