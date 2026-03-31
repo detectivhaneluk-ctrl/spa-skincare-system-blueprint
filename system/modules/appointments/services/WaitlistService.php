@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 declare(strict_types=1);
 
@@ -8,6 +8,7 @@ use Core\App\Application;
 use Core\App\Database;
 use Core\App\SettingsService;
 use Core\Audit\AuditService;
+use Core\Contracts\DistributedLockInterface;
 use Core\Kernel\RequestContextHolder;
 use Modules\Appointments\Repositories\AppointmentRepository;
 use Modules\Appointments\Repositories\WaitlistRepository;
@@ -21,10 +22,10 @@ use Modules\Notifications\Services\OutboundTransactionalNotificationService;
  */
 final class WaitlistService
 {
-    /** MySQL GET_LOCK name (max 64 chars); global — all sweep entry points share one engine. */
-    private const EXPIRY_SWEEP_MYSQL_LOCK = 'spa_waitlist_expiry_sweep';
+    /** Distributed lock key for the global expiry sweep (all sweep entry points share one engine). */
+    private const EXPIRY_SWEEP_LOCK_KEY = 'spa_waitlist_expiry_sweep';
 
-    /** Prefix for per–slot-context advisory locks (name must stay under MySQL's 64-char GET_LOCK limit). */
+    /** Prefix for per-slot-context distributed locks. */
     private const SLOT_AUTO_OFFER_LOCK_PREFIX = 'wl_slot_offer_';
 
     private const VALID_STATUSES = ['waiting', 'offered', 'matched', 'booked', 'cancelled'];
@@ -46,7 +47,8 @@ final class WaitlistService
         private SettingsService $settings,
         private NotificationService $notifications,
         private OutboundTransactionalNotificationService $outboundTransactional,
-        private AvailabilityService $availability
+        private AvailabilityService $availability,
+        private DistributedLockInterface $distributedLock
     ) {
     }
 
@@ -477,11 +479,7 @@ final class WaitlistService
             'lock_held' => true,
         ];
 
-        $lockRow = $this->db->fetchOne(
-            'SELECT GET_LOCK(?, ?) AS acquired',
-            [self::EXPIRY_SWEEP_MYSQL_LOCK, 0]
-        );
-        $acquired = isset($lockRow['acquired']) && (int) $lockRow['acquired'] === 1;
+        $acquired = $this->distributedLock->tryAcquire(self::EXPIRY_SWEEP_LOCK_KEY, 120);
         if (!$acquired) {
             return $skipped;
         }
@@ -489,7 +487,7 @@ final class WaitlistService
         try {
             return $this->doExecuteExpirySweepBody($branchId);
         } finally {
-            $this->db->fetchOne('SELECT RELEASE_LOCK(?) AS released', [self::EXPIRY_SWEEP_MYSQL_LOCK]);
+            $this->distributedLock->release(self::EXPIRY_SWEEP_LOCK_KEY);
         }
     }
 
@@ -663,7 +661,7 @@ final class WaitlistService
 
     /**
      * Shared auto-offer: next waiting row for date/service/staff (optional exclude), no duplicate open offer for slot.
-     * Serialized with {@see slotAutoOfferMysqlLockName()} and MySQL GET_LOCK so concurrent slot-freed handlers cannot
+     * Serialized with {@see slotAutoOfferLockKey()} and a distributed lock so concurrent slot-freed handlers cannot
      * both pass {@see WaitlistRepository::existsOpenOfferForSlot()} before either promotes a row (TOCTOU).
      *
      * @param int $excludeWaitlistId Pass > 0 to skip the just-expired entry.
@@ -688,13 +686,13 @@ final class WaitlistService
             return false;
         }
 
-        $lockName = $this->slotAutoOfferMysqlLockName($branchId, $dateYmd, $serviceId, $staffId);
-        $acquired = $this->db->fetchOne('SELECT GET_LOCK(?, 0) AS acquired', [$lockName]);
-        if (!isset($acquired['acquired']) || (int) $acquired['acquired'] !== 1) {
+        $lockName = $this->slotAutoOfferLockKey($branchId, $dateYmd, $serviceId, $staffId);
+        $acquired = $this->distributedLock->tryAcquire($lockName, 60);
+        if (!$acquired) {
             $auditTarget = $sourceAppointmentId !== null && $sourceAppointmentId > 0 ? 'appointment' : 'appointment_waitlist';
             $auditId = $sourceAppointmentId !== null && $sourceAppointmentId > 0 ? $sourceAppointmentId : null;
             $this->audit->log('waitlist_slot_offer_duplicate_prevented', $auditTarget, $auditId, $this->currentUserId(), $branchId, [
-                'reason' => 'slot_offer_mysql_lock_unavailable',
+                'reason' => 'slot_offer_lock_unavailable',
                 'preferred_date' => $dateYmd,
                 'service_id' => $serviceId,
                 'preferred_staff_id' => $staffId,
@@ -732,7 +730,7 @@ final class WaitlistService
                 $meta = [
                     'source' => $auditSource,
                     'default_expiry_minutes' => $this->settings->getWaitlistSettings($entryBranchId)['default_expiry_minutes'],
-                    'slot_offer_mysql_lock' => true,
+                    'slot_offer_distributed_lock' => true,
                 ];
                 if ($sourceAppointmentId !== null && $sourceAppointmentId > 0) {
                     $meta['appointment_id'] = $sourceAppointmentId;
@@ -746,16 +744,16 @@ final class WaitlistService
                 return true;
             }, 'waitlist slot auto offer');
         } finally {
-            $this->db->fetchOne('SELECT RELEASE_LOCK(?) AS released', [$lockName]);
+            $this->distributedLock->release($lockName);
         }
     }
 
     /**
-     * Deterministic MySQL user lock name (≤ 64 chars) for one auto-offer “slot context”.
+     * Deterministic distributed lock key for one auto-offer вЂњslot contextвЂќ.
      *
      * @see WaitlistRepository::existsOpenOfferForSlot()
      */
-    private function slotAutoOfferMysqlLockName(?int $branchId, string $dateYmd, int $serviceId, int $staffId): string
+    private function slotAutoOfferLockKey(?int $branchId, string $dateYmd, int $serviceId, int $staffId): string
     {
         $b = $branchId === null ? 'g' : (string) $branchId;
 
@@ -801,7 +799,7 @@ final class WaitlistService
         $expStr = $expRaw !== null && $expRaw !== '' ? (string) $expRaw : null;
         $outreach = $this->enqueueWaitlistOfferOutreach($waitlistId, $waitlistRow, $offerStarted, $expStr, $auditSource);
 
-        $title = sprintf('Waitlist offer opened (#%d) · %s', $waitlistId, $offerStarted);
+        $title = sprintf('Waitlist offer opened (#%d) В· %s', $waitlistId, $offerStarted);
         if ($this->notifications->existsByTypeEntityAndTitle('waitlist_offer_created', 'appointment_waitlist', $waitlistId, $title)) {
             return;
         }
@@ -869,7 +867,7 @@ final class WaitlistService
             return;
         }
         $expAt = trim((string) ($rowBefore['offer_expires_at'] ?? ''));
-        $title = sprintf('Waitlist offer #%d expired · %s', $waitlistId, $expAt !== '' ? $expAt : 'unknown');
+        $title = sprintf('Waitlist offer #%d expired В· %s', $waitlistId, $expAt !== '' ? $expAt : 'unknown');
         if ($this->notifications->existsByTypeEntityAndTitle('waitlist_offer_expired', 'appointment_waitlist', $waitlistId, $title)) {
             return;
         }
@@ -884,7 +882,7 @@ final class WaitlistService
                 'type' => 'waitlist_offer_expired',
                 'title' => $title,
                 'message' => sprintf(
-                    '%s — waitlist entry #%d reverted to waiting (offer expired).',
+                    '%s вЂ” waitlist entry #%d reverted to waiting (offer expired).',
                     $clientLabel,
                     $waitlistId
                 ),
@@ -963,11 +961,11 @@ final class WaitlistService
         return match ($o) {
             'pending_enqueued' => 'Customer email queued for outbound worker only (not proof of delivery; may be log capture or MTA handoff per transport).',
             'duplicate_ignored' => 'Outbound idempotency: no new queue row for this offer instant.',
-            'outbound_event_gated' => 'Outbound waitlist.offer disabled by settings — no customer email queued.',
-            'skipped_no_client_id' => 'No client on entry — customer email not queued.',
-            'skipped_client_not_found' => 'Client record missing — customer email not queued.',
-            'skipped_no_client_email' => 'No valid customer email — outbound skipped row recorded.',
-            'skipped_template_error' => 'Template render failed — outbound skipped row recorded.',
+            'outbound_event_gated' => 'Outbound waitlist.offer disabled by settings вЂ” no customer email queued.',
+            'skipped_no_client_id' => 'No client on entry вЂ” customer email not queued.',
+            'skipped_client_not_found' => 'Client record missing вЂ” customer email not queued.',
+            'skipped_no_client_email' => 'No valid customer email вЂ” outbound skipped row recorded.',
+            'skipped_template_error' => 'Template render failed вЂ” outbound skipped row recorded.',
             'enqueue_exception' => 'Outbound enqueue error: ' . trim((string) ($outreach['detail'] ?? '')),
             default => 'Outbound outreach outcome: ' . $o,
         };

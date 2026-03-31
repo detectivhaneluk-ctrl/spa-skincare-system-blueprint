@@ -46,9 +46,10 @@ $protectedServices = [
     'system/modules/marketing/services/MarketingGiftCardTemplateService.php',
     // APPOINTMENTS_P1 phase — migrated 2026-03-31 (BIG-04 / FOUNDATION-A7 Phase-1)
     'system/modules/appointments/services/BlockedSlotService.php',
-    // WaitlistService is excluded from the strict DB-ban: it uses db->fetchOne for MySQL
-    // advisory locking (SELECT GET_LOCK / RELEASE_LOCK) which is infrastructure, not business
-    // data access. This is an explicit architectural exception noted in BIG-04 closure.
+    // WaitlistService: WAVE-01 (2026-03-31) removed the MySQL advisory lock (GET_LOCK/RELEASE_LOCK)
+    // calls by replacing them with DistributedLockInterface injection. The service now only uses
+    // db->connection() for transaction management (permitted). Added to strict DB-ban as of WAVE-01.
+    'system/modules/appointments/services/WaitlistService.php',
 
     // SALES_P3 phase — migrated 2026-03-31 (BIG-06 / FOUNDATION-A7 Phase-3)
     // ReceiptInvoicePresentationService is excluded from the strict DB-ban: it retains a single

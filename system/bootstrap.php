@@ -102,32 +102,48 @@ $container->singleton(\Core\Runtime\Queue\RuntimeAsyncJobRepository::class, fn (
     $c->get(\Core\App\Database::class)
 ));
 $container->singleton(\Core\Runtime\Cache\SharedCacheMetrics::class, fn () => new \Core\Runtime\Cache\SharedCacheMetrics());
+// WAVE-01: Centralised Redis connection — shared by cache, session handler, and distributed lock.
+$container->singleton(\Core\Runtime\Redis\RedisConnectionProvider::class, function ($c) {
+    $config = $c->get(\Core\App\Config::class);
+    $url = trim((string) $config->get('app.redis_url', ''));
+    if ($url === '') {
+        return new \Core\Runtime\Redis\RedisConnectionProvider(null, 'noop');
+    }
+    if (!extension_loaded('redis')) {
+        return new \Core\Runtime\Redis\RedisConnectionProvider(null, 'redis_extension_missing');
+    }
+    try {
+        $redis = \Core\Runtime\Redis\RedisFactory::connect($url);
+        return new \Core\Runtime\Redis\RedisConnectionProvider($redis, 'redis');
+    } catch (\Throwable) {
+        return new \Core\Runtime\Redis\RedisConnectionProvider(null, 'redis_connect_failed');
+    }
+});
 $container->singleton(\Core\Contracts\SharedCacheInterface::class, function ($c) {
     /** @var \Core\Runtime\Cache\SharedCacheMetrics $metrics */
     $metrics = $c->get(\Core\Runtime\Cache\SharedCacheMetrics::class);
+    /** @var \Core\Runtime\Redis\RedisConnectionProvider $provider */
+    $provider = $c->get(\Core\Runtime\Redis\RedisConnectionProvider::class);
     $config = $c->get(\Core\App\Config::class);
-    $url = trim((string) $config->get('app.redis_url', ''));
     $prefix = (string) $config->get('app.redis_key_prefix', 'spa');
-    $inner = null;
-    if ($url !== '' && extension_loaded('redis')) {
-        try {
-            $redis = \Core\Runtime\Redis\RedisFactory::connect($url);
-            $inner = new \Core\Runtime\Cache\RedisSharedCache($redis, $prefix);
-            $metrics->setBackend('redis');
-        } catch (\Throwable) {
-            $metrics->setBackend('redis_connect_failed');
-            $inner = new \Core\Runtime\Cache\NoopSharedCache();
-        }
+    $metrics->setBackend($provider->backend());
+    if ($provider->isConnected()) {
+        $inner = new \Core\Runtime\Cache\RedisSharedCache($provider->redis(), $prefix);
     } else {
-        if ($url !== '' && !extension_loaded('redis')) {
-            $metrics->setBackend('redis_extension_missing');
-        } else {
-            $metrics->setBackend('noop');
-        }
         $inner = new \Core\Runtime\Cache\NoopSharedCache();
     }
-
     return new \Core\Runtime\Cache\InstrumentedSharedCache($inner, $metrics);
+});
+// WAVE-01: Distributed lock — Redis primary (production), MySQL advisory lock fallback (non-production dev).
+$container->singleton(\Core\Contracts\DistributedLockInterface::class, function ($c) {
+    /** @var \Core\Runtime\Redis\RedisConnectionProvider $provider */
+    $provider = $c->get(\Core\Runtime\Redis\RedisConnectionProvider::class);
+    $config = $c->get(\Core\App\Config::class);
+    $prefix = (string) $config->get('app.redis_key_prefix', 'spa');
+    if ($provider->isConnected()) {
+        return new \Core\Runtime\Redis\RedisDistributedLock($provider->redis(), $prefix);
+    }
+    return new \Core\Runtime\Redis\MysqlDistributedLock($c->get(\Core\App\Database::class));
 });
 $container->singleton(\Core\App\SettingsService::class, fn ($c) => new \Core\App\SettingsService(
     $c->get(\Core\App\Database::class),
@@ -180,5 +196,26 @@ $container->singleton(\Core\Middleware\PlatformManagePostRateLimitMiddleware::cl
 // PLT-AUTH-02: AuthorizationMiddleware is per-route, not a singleton (instantiated via ::forAction() factory).
 // The class is autoloaded; no container singleton registration needed for the middleware class itself.
 $container->singleton(\Core\Router\RootController::class, fn () => new \Core\Router\RootController());
+
+// WAVE-01: Eager-resolve Redis provider + cache to trigger backend detection before any request work.
+// This ensures ProductionRuntimeGuard can evaluate the real backend state at bootstrap time.
+$redisProvider = $container->get(\Core\Runtime\Redis\RedisConnectionProvider::class);
+$container->get(\Core\Contracts\SharedCacheInterface::class); // populates SharedCacheMetrics::backend()
+
+// WAVE-01: Production runtime guard — fail-closed: 503 + exit if Redis unavailable in production.
+\Core\Runtime\Guard\ProductionRuntimeGuard::assertRedisOrDie(
+    $container->get(\Core\App\Config::class),
+    $container->get(\Core\Runtime\Cache\SharedCacheMetrics::class)
+);
+
+// WAVE-01: Redis session handler — register before any session_start().
+// Replaces file-based sessions with Redis-backed sessions for multi-server readiness.
+// In non-production without Redis, falls back to PHP default file sessions silently.
+{
+    $config = $container->get(\Core\App\Config::class);
+    $prefix = (string) $config->get('app.redis_key_prefix', 'spa');
+    $lifetime = max(60, (int) $config->get('session.lifetime', 120)) * 60;
+    \Core\Runtime\Redis\RedisSessionHandler::registerIfAvailable($redisProvider, $prefix, $lifetime);
+}
 
 return $container;

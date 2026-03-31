@@ -6,6 +6,14 @@
 **Platform facts + layer proofs:** `FOUNDATION-PRODUCTION-HARDENING-TRUTH-MAP-CHARTER-01.md`  
 **Deferred product/polish and Phase 1 inventory not promoted here:** `DEFERRED-AND-HISTORICAL-TASK-REGISTRY-01.md`
 
+> **SCALE WAVE LAUNCH — 2026-03-31:**  
+> Foundation A1–A7 (all phases) and PLT-Q-01 are **CLOSED**. PLT-AUTH-02 is **PARKED** (auth wiring continues after scale infrastructure is in place).  
+> The new active execution lane is **SCALE-WAVE-EXECUTION-CHARTER-01.md** — four infrastructure waves targeting 1000+ salon readiness.  
+> Active single LIVE task: **WAVE-01 — PRODUCTION RUNTIME FOUNDATION** (Redis mandatory, session handler, distributed lock, startup guardrails).  
+> Parked/next: **WAVE-02 — QUEUE THROUGHPUT HARDENING**.  
+> See `system/docs/SCALE-WAVE-EXECUTION-CHARTER-01.md` for full scope, wave order, and success criteria.  
+> PLT-AUTH-02 remaining surfaces (appointments service wiring, staff/settings service wiring, full platform control-plane action enforcement) are **DEFERRED** to after WAVE-04 closes or can be promoted individually if a specific auth gap blocks a scale wave deliverable.
+
 > **ARCHITECTURE RESET — 2026-03-31:**  
 > The old ROOT-01 id-only closure wave (PLT-TNT-01 incremental module-by-module repository patching) has been **ARCHIVED / SUPERSEDED** by this reset.  
 > All active work derived from the PLT-TNT-01 wave pattern — availability/public-booking cluster closure, id-only closure wave, follow-on wave-style repository patching, scattered verifier-first patch waves across appointments / inventory / memberships / notifications / packages / sales / services-resources / settings / staff — is **no longer the active roadmap**.  
@@ -290,7 +298,11 @@ These items were the prior active roadmap. They are retained as **sealed evidenc
 
 | ID | Item | Notes |
 |----|------|-------|
-| — | No deferred items yet — promote from TASK-STATE-MATRIX.md when PLT-Q-01 successor is chosen | PLT-Q-01 CLOSED 2026-03-31. Next lane TBD. |
+| **PLT-AUTH-02** | Authorization enforcement wiring — remaining surfaces (appointments service, staff/settings/services-resources services, full platform control-plane action enforcement) | **PARKED** during Scale Wave execution. First vertical slice (client + sales mutation services) is PARTIAL in repo truth. Resume after WAVE-04 closes or promote individually if a scale wave deliverable needs it. |
+| — | Synchronous complex reporting features | **DEFERRED** — see Scale Wave charter deferred list |
+| — | Extra marketing automation complexity before queue hardening | **DEFERRED** — see Scale Wave charter deferred list |
+| — | UI/UX polish not tied to runtime truth | **DEFERRED** — see Scale Wave charter deferred list |
+| — | Database-backed feature-flag expansion before mandatory Redis caching enforced | **DEFERRED** — see Scale Wave charter deferred list |
 
 ---
 
