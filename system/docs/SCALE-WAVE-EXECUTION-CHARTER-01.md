@@ -77,7 +77,8 @@ These are in order of production urgency. The waves executed in order **WAVE-01 
 | W1-E | Cache key conventions, invalidation contract, ops notes | `WAVE-01-PRODUCTION-RUNTIME-FOUNDATION-OPS.md` |
 
 **Entry condition:** Foundation A1–A7 CLOSED (confirmed). CI green on main.  
-**Exit condition:** All of W1-A through W1-E delivered with proof script `verify_wave01_production_runtime_foundation_01.php` passing.
+**Exit condition:** All of W1-A through W1-E delivered with proof script `verify_wave01_production_runtime_foundation_01.php` passing.  
+**Closed by commit:** `76d8791` feat(wave01): production runtime foundation - Redis mandatory, session handler, distributed lock
 
 **Must not touch:**
 - Booking correctness / `AppointmentService` write paths
@@ -100,7 +101,8 @@ These are in order of production urgency. The waves executed in order **WAVE-01 
 | W2-D | Queue health metrics / logging / truth surface |
 | W2-E | Durability preserved — job correctness and lock safety maintained |
 
-**Entry condition:** WAVE-01 proof script passes.
+**Entry condition:** WAVE-01 proof script passes.  
+**Closed by commit:** `b6d41b4` feat(wave02): queue throughput hardening - SKIP LOCKED, stale reclaim cron, queue depth metrics
 
 ---
 
@@ -117,13 +119,15 @@ These are in order of production urgency. The waves executed in order **WAVE-01 
 | W3-C | Endpoint latency / queue depth / connection saturation observability foundations |
 | W3-D | Tenant-aware slow query logging / tracing correlation |
 
-**Entry condition:** WAVE-02 proof passes.
+**Entry condition:** WAVE-02 proof passes.  
+**Closed by commit:** `6e803fa` WAVE-03: Scale Readiness + Observability — ProxySQL package, SlowQueryLogger, RequestLatencyMiddleware, guard CLI fix
 
 ---
 
 ## WAVE-04 — SAFE SCALE OPERATIONS
 
 **Status:** DONE (2026-03-31)  
+**Closed by commit:** `d167acf` WAVE-04: Safe Scale Ops — online DDL policy, audit archival, booking rate limits, shard-readiness guardrail
 
 **Scope:**
 
@@ -164,7 +168,8 @@ WAVE-01 through WAVE-04 built the foundations. WAVE-05 wires two foundations tha
 - Existing `PublicBookingController` rate-limit logic (supplemental layer, not a replacement)
 
 **Entry condition:** WAVE-04 proof passes.  
-**Exit condition:** `verify_wave05_live_enforcement_foundations_01.php` passes; HTTP regression sweep clean.
+**Exit condition:** `verify_wave05_live_enforcement_foundations_01.php` passes; HTTP regression sweep clean.  
+**Closed by commit:** `082c409` feat(wave05): wire RequestLatencyMiddleware and PublicBookingRateLimitMiddleware into runtime
 
 ---
 
@@ -202,7 +207,9 @@ WAVE-01 established `SharedCacheInterface` (Redis-backed in production). WAVE-05
 - Session / tenant isolation kernel
 
 **Entry condition:** WAVE-05 proof passes.  
-**Exit condition:** `verify_wave06_hot_path_cache_effectiveness_01.php` passes; release-law Tier A green.
+**Exit condition:** `verify_wave06_hot_path_cache_effectiveness_01.php` passes; HTTP regression sweep clean.  
+**Closed by commit:** `517056c` feat(wave06): hot-path cache effectiveness — permission + day-calendar cache  
+**Hardened by commit:** see repo-truth-consolidation commit for WAVE-06-CLOSURE (invalidation gap patches + proof extensions)
 
 ---
 
@@ -216,3 +223,54 @@ See `DEFERRED-AND-HISTORICAL-TASK-REGISTRY-01.md` for full list. Summary of what
 - Database-backed feature-flag expansion before mandatory Redis caching is enforced
 - FND-PERF-03 (invoice sequence partitioning) — deferred past WAVE-02
 - APPOINTMENTS-P2 (`AppointmentService::findForUpdate` migration) — deferred, low urgency
+
+---
+
+## CURRENT CANONICAL HARDENING STATUS
+
+*Last updated: 2026-03-31 — REPO-TRUTH-CONSOLIDATION-AND-WAVE-06-CLOSURE*
+
+| Wave | Title | Status | Proof Script | Closing Commit |
+|------|-------|--------|-------------|----------------|
+| WAVE-01 | Production Runtime Foundation | **DONE** | `verify_wave01_production_runtime_foundation_01.php` | `76d8791` |
+| WAVE-02 | Queue Throughput Hardening | **DONE** | (included in WAVE-02 commit) | `b6d41b4` |
+| WAVE-03 | Scale Readiness + Observability | **DONE** | (included in WAVE-03 commit) | `6e803fa` |
+| WAVE-04 | Safe Scale Operations | **DONE** | (included in WAVE-04 commit) | `d167acf` |
+| WAVE-05 | Live Enforcement Foundations | **DONE** | `verify_wave05_live_enforcement_foundations_01.php` (18/18 PASS) | `082c409` |
+| WAVE-06 | Hot Path Cache Effectiveness | **DONE** | `verify_wave06_hot_path_cache_effectiveness_01.php` | `517056c` + consolidation commit |
+| WAVE-07 | *(not started)* | **PLANNED** | — | — |
+
+**What is DONE:**
+- Redis is mandatory in production; NoopSharedCache blocked at runtime startup
+- Sessions stored in Redis; file-based sessions eliminated
+- WaitlistService distributed lock via Redis (MySQL fallback for non-production)
+- Queue workers use SKIP LOCKED; stale reclaim moved to cron
+- ProxySQL deployment artifacts + SlowQueryLogger + RequestLatencyMiddleware created
+- Online-DDL migration policy + audit archival + rate-limit foundations
+- RequestLatencyMiddleware wired as first global middleware (all requests timed)
+- PublicBookingRateLimitMiddleware wired on /api/public/booking/slots and /book
+- PermissionService cross-request cache: `perm_v1:u{userId}:b{branchId}`, TTL 120s
+- AvailabilityService day-calendar cache: `cal_v1:day_apts:{branchId}:{date}`, TTL 30s
+- Calendar cache invalidated on: appointment create/update/cancel/reschedule/updateStatus/delete + blocked-slot create/delete + all slot booking paths (createFromSlot/createFromPublicBooking/createFromSeriesOccurrence)
+- Permission cache cross-request invalidation wired: StaffGroupPermissionService (group permission pivot), StaffGroupService (member attach/detach)
+- Final booking revalidation (`isSlotAvailable` with `forAvailabilitySearch=false`) is NEVER cached
+- All cache paths fail-open; Redis unavailable never breaks production request
+
+**What is NOT started (WAVE-07 candidates):**
+- Read/write routing via ProxySQL at the application layer (artifacts exist, runtime routing not wired)
+- High-risk shard-readiness hotspots audit
+
+---
+
+## NEXT GATE TO OPEN NEW WAVE
+
+**Gate:** WAVE-07 may be opened when:
+1. This file shows WAVE-06 DONE (confirmed above)
+2. `verify_wave06_hot_path_cache_effectiveness_01.php` exits 0
+3. No open regression or proof gap on /gift-cards or /appointments/calendar/day
+4. Exactly one WAVE-07 candidate is chosen (see below)
+
+**WAVE-07 CANDIDATE — RECOMMENDED:**  
+**WAVE-07: READ/WRITE ROUTING + PROXYSQL RUNTIME PROOF**  
+*Rationale:* WAVE-03 created ProxySQL deployment artifacts but the application DB layer has no read/write routing. At 1000+ salons, the single DB endpoint will saturate on heavy read traffic (calendar polls, availability search). Wiring read replicas via ProxySQL is the next highest-impact infra move. Alternatively: WAVE-07 HIGH-RISK SHARD-READINESS HOTSPOTS if DB scaling is already in place.  
+*Do not open WAVE-07 in the same session as this consolidation unless proof budget is fully satisfied.*

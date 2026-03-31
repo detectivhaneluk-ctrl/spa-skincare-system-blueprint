@@ -159,7 +159,8 @@ final class AppointmentService
     {
         $waitlistSlotFreedSnapshot = null;
         $clearedSeriesIdFromMove = null;
-        $this->transactional(function () use ($id, $data, &$waitlistSlotFreedSnapshot, &$clearedSeriesIdFromMove): void {
+        $captureUpdateInvalidation = null;
+        $this->transactional(function () use ($id, $data, &$waitlistSlotFreedSnapshot, &$clearedSeriesIdFromMove, &$captureUpdateInvalidation): void {
             $ctx = $this->contextHolder->requireContext();
             $scope = $ctx->requireResolvedTenant();
             $current = $this->repo->loadForUpdate($ctx, $id);
@@ -258,6 +259,12 @@ final class AppointmentService
             $beforeAudit = $this->repo->find($id);
             $data['updated_by'] = $this->currentUserId();
             $this->repo->update($id, $data);
+            // WAVE-06: capture dates/branch for calendar cache invalidation after transaction commits.
+            $captureUpdateInvalidation = [
+                'old_start_at' => (string) ($current['start_at'] ?? ''),
+                'new_start_at' => isset($data['start_at']) && $data['start_at'] !== '' ? (string) $data['start_at'] : null,
+                'branch_id' => $current['branch_id'] !== null && $current['branch_id'] !== '' ? (int) $current['branch_id'] : null,
+            ];
             $afterAudit = $this->repo->find($id);
             $this->audit->log('appointment_updated', 'appointment', $id, $this->currentUserId(), $current['branch_id'] ?? null, [
                 'before' => $beforeAudit ?? $current,
@@ -276,6 +283,22 @@ final class AppointmentService
         }, 'appointment update', true);
         if ($waitlistSlotFreedSnapshot !== null) {
             $this->invokeWaitlistAutoOfferAfterSlotFreed($waitlistSlotFreedSnapshot, $id);
+        }
+        // WAVE-06: invalidate calendar display cache after appointment update (old date + new date if scheduling changed).
+        if ($captureUpdateInvalidation !== null) {
+            try {
+                $oldStart = $captureUpdateInvalidation['old_start_at'];
+                $newStart = $captureUpdateInvalidation['new_start_at'];
+                $updBranchId = $captureUpdateInvalidation['branch_id'];
+                $oldDate = $oldStart !== '' ? date('Y-m-d', strtotime($oldStart)) : null;
+                $newDate = $newStart !== null && $newStart !== '' ? date('Y-m-d', strtotime($newStart)) : null;
+                if ($oldDate !== null && $oldDate !== false && preg_match('/^\d{4}-\d{2}-\d{2}$/', $oldDate) === 1) {
+                    $this->availability->invalidateDayCalendarCache($oldDate, $updBranchId);
+                }
+                if ($newDate !== null && $newDate !== $oldDate && preg_match('/^\d{4}-\d{2}-\d{2}$/', $newDate) === 1) {
+                    $this->availability->invalidateDayCalendarCache($newDate, $updBranchId);
+                }
+            } catch (\Throwable) {}
         }
     }
 
@@ -1403,6 +1426,13 @@ final class AppointmentService
             if ($started) {
                 $pdo->commit();
             }
+            // WAVE-06: invalidate calendar display cache after successful slot appointment creation.
+            try {
+                $slotDate = date('Y-m-d', strtotime($startAt));
+                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $slotDate) === 1) {
+                    $this->availability->invalidateDayCalendarCache($slotDate, $branchId > 0 ? $branchId : null);
+                }
+            } catch (\Throwable) {}
             try {
                 $this->outboundTransactional->enqueueAppointmentConfirmation($id);
             } catch (\Throwable $e) {

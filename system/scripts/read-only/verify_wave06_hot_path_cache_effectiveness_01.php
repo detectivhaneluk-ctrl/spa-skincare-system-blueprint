@@ -8,9 +8,10 @@ declare(strict_types=1);
  * Verifies all WAVE-06 deliverables:
  * W6-A: PermissionService cross-request cache (SharedCacheInterface, 120s TTL)
  * W6-B: AvailabilityService day-calendar short-TTL cache (30s TTL)
- * W6-C: Explicit invalidation wired in all appointment/blocked-slot mutation paths
+ * W6-C: Explicit invalidation wired in all appointment/blocked-slot mutation paths (incl. update + slot booking)
  * W6-D: Booking write path (isSlotAvailable with forAvailabilitySearch=false) is NOT cached
  * W6-E: This script passes all assertions
+ * W6-F: Permission cache cross-request invalidation wired to all RBAC mutation paths
  */
 
 $systemPath = dirname(__DIR__, 2);
@@ -214,6 +215,18 @@ assert_wave06(
     $results, $pass
 );
 
+assert_wave06(
+    'W6-C.12 AppointmentService update() calls invalidateDayCalendarCache (old date + new date if scheduling changed)',
+    str_contains($aptContent, 'WAVE-06: invalidate calendar display cache after appointment update'),
+    $results, $pass
+);
+
+assert_wave06(
+    'W6-C.13 AppointmentService insertNewSlotAppointmentWithLocks() calls invalidateDayCalendarCache (covers createFromSlot/createFromPublicBooking/createFromSeriesOccurrence)',
+    str_contains($aptContent, 'WAVE-06: invalidate calendar display cache after successful slot appointment creation'),
+    $results, $pass
+);
+
 // ── BlockedSlotService — invalidation wired ───────────────────────────────────
 
 $blockedSlotFile = $systemPath . '/modules/appointments/services/BlockedSlotService.php';
@@ -228,6 +241,23 @@ assert_wave06(
 assert_wave06(
     'W6-C.11 BlockedSlotService delete() calls invalidateDayCalendarCache',
     str_contains($blockedContent, 'WAVE-06: invalidate calendar display cache after blocked slot deletion'),
+    $results, $pass
+);
+
+// ── W6-C.12/W6-C.13: Calendar cache invalidation in AppointmentService ───────
+
+$aptServiceFile = $systemPath . '/modules/appointments/services/AppointmentService.php';
+$aptContent = (string) file_get_contents($aptServiceFile);
+
+assert_wave06(
+    'W6-C.12 AppointmentService::update() invalidates calendar cache for old+new date after scheduling change',
+    str_contains($aptContent, 'WAVE-06: invalidate calendar display cache after appointment update'),
+    $results, $pass
+);
+
+assert_wave06(
+    'W6-C.13 AppointmentService::insertNewSlotAppointmentWithLocks() invalidates calendar cache after slot creation',
+    str_contains($aptContent, 'WAVE-06: invalidate calendar display cache after successful slot appointment creation'),
     $results, $pass
 );
 
@@ -348,7 +378,7 @@ assert_wave06(
 // ── Output ────────────────────────────────────────────────────────────────────
 
 echo PHP_EOL;
-echo '=== WAVE-06 HOT PATH CACHE EFFECTIVENESS PROOF ===' . PHP_EOL;
+echo '=== WAVE-06 HOT PATH CACHE EFFECTIVENESS PROOF (v2 — WAVE-06-CLOSURE) ===' . PHP_EOL;
 echo PHP_EOL;
 foreach ($results as $line) {
     echo $line . PHP_EOL;
