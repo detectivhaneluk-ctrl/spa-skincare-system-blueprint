@@ -6,6 +6,7 @@ namespace Modules\Clients\Repositories;
 
 use Core\App\Database;
 use Core\Branch\BranchContext;
+use Core\Kernel\TenantContext;
 use Core\Organization\OrganizationRepositoryScope;
 use Modules\Clients\Support\ClientNormalizedSearchSchemaReadiness;
 use Modules\Clients\Support\ClientSearchNormalization;
@@ -979,5 +980,112 @@ final class ClientRepository
         );
 
         return $row !== null;
+    }
+
+    // -------------------------------------------------------------------------
+    // Canonical TenantContext-first methods (FOUNDATION-A7 PHASE-4, BIG-07)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Canonical: find a client by id, scoped to resolved tenant organization.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findOwnedClientById(TenantContext $ctx, int $id, bool $withTrashed = false): ?array
+    {
+        $ctx->requireResolvedTenant();
+        $frag = $this->orgScope->clientProfileOrgMembershipExistsClause('c');
+        $sql = 'SELECT * FROM clients c WHERE c.id = ?';
+        if (!$withTrashed) {
+            $sql .= ' AND c.deleted_at IS NULL';
+        }
+        $sql .= $frag['sql'];
+        $params = array_merge([$id], $frag['params']);
+
+        return $this->db->fetchOne($sql, $params) ?: null;
+    }
+
+    /**
+     * Canonical: find a live client row locked FOR UPDATE, scoped to resolved tenant organization.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function loadOwnedClientForUpdate(TenantContext $ctx, int $id): ?array
+    {
+        $ctx->requireResolvedTenant();
+        $frag = $this->orgScope->clientProfileOrgMembershipExistsClause('c');
+        $sql = 'SELECT * FROM clients c WHERE c.id = ? AND c.deleted_at IS NULL' . $frag['sql'] . ' FOR UPDATE';
+        $params = array_merge([$id], $frag['params']);
+
+        return $this->db->fetchOne($sql, $params) ?: null;
+    }
+
+    /**
+     * Canonical: find a live, unmerged client for profile reads, scoped to resolved TenantContext branch.
+     * Uses the branch from TenantContext when the client has a concrete branch.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function loadOwnedLiveReadableForProfile(TenantContext $ctx, int $clientId): ?array
+    {
+        $scope = $ctx->requireResolvedTenant();
+        if ($clientId <= 0) {
+            return null;
+        }
+        $frag = $this->orgScope->clientProfileOrgMembershipExistsClause('c');
+        $sql = 'SELECT * FROM clients c
+             WHERE c.id = ?
+               AND c.deleted_at IS NULL
+               AND c.merged_into_client_id IS NULL
+               AND (c.branch_id IS NULL OR c.branch_id = ?)';
+        $params = [$clientId, $scope['branch_id']];
+        $sql .= $frag['sql'];
+        $params = array_merge($params, $frag['params']);
+
+        return $this->db->fetchOne($sql, $params) ?: null;
+    }
+
+    /**
+     * Canonical: list live, unmerged clients scoped to the resolved TenantContext branch.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function listOwnedClientsForBranch(TenantContext $ctx, array $filters = [], int $limit = 50, int $offset = 0): array
+    {
+        $scope = $ctx->requireResolvedTenant();
+        $frag = $this->orgScope->clientProfileOrgMembershipExistsClause('c');
+        $limit = max(1, (int) $limit);
+        $offset = max(0, (int) $offset);
+        $sql = 'SELECT * FROM clients c WHERE c.deleted_at IS NULL AND c.merged_into_client_id IS NULL';
+        $params = [];
+        $this->applyClientListFilters($sql, $params, $filters);
+        $sql .= ' AND (c.branch_id IS NULL OR c.branch_id = ?)';
+        $params[] = $scope['branch_id'];
+        $sql .= $frag['sql'];
+        $params = array_merge($params, $frag['params']);
+        $sql .= ' ORDER BY c.last_name, c.first_name LIMIT ? OFFSET ?';
+        $params[] = $limit;
+        $params[] = $offset;
+
+        return $this->db->fetchAll($sql, $params);
+    }
+
+    /**
+     * Canonical: count live, unmerged clients scoped to the resolved TenantContext branch.
+     */
+    public function countOwnedClientsForBranch(TenantContext $ctx, array $filters = []): int
+    {
+        $scope = $ctx->requireResolvedTenant();
+        $frag = $this->orgScope->clientProfileOrgMembershipExistsClause('c');
+        $sql = 'SELECT COUNT(*) AS c FROM clients c WHERE c.deleted_at IS NULL AND c.merged_into_client_id IS NULL';
+        $params = [];
+        $this->applyClientListFilters($sql, $params, $filters);
+        $sql .= ' AND (c.branch_id IS NULL OR c.branch_id = ?)';
+        $params[] = $scope['branch_id'];
+        $sql .= $frag['sql'];
+        $params = array_merge($params, $frag['params']);
+        $row = $this->db->fetchOne($sql, $params);
+
+        return (int) ($row['c'] ?? 0);
     }
 }

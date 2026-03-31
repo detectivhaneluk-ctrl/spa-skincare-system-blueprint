@@ -53,32 +53,35 @@ final class PolicyAuthorizer implements AuthorizerInterface
         // Appointments
         'appointment:view'        => 'appointments.view',
         'appointment:create'      => 'appointments.create',
-        'appointment:modify'      => 'appointments.update',
-        'appointment:cancel'      => 'appointments.cancel',
+        'appointment:modify'      => 'appointments.edit',
+        'appointment:cancel'      => 'appointments.edit',
         // Clients
         'client:view'             => 'clients.view',
         'client:create'           => 'clients.create',
-        'client:modify'           => 'clients.update',
+        'client:modify'           => 'clients.edit',
         'client:delete'           => 'clients.delete',
         // Profile images (FOUNDATION-A5 pilot)
         'profile-image:upload'    => 'clients.media.upload',
         'profile-image:delete'    => 'clients.media.delete',
         // Services and resources
-        'service:view'            => 'services.view',
-        'service:manage'          => 'services.manage',
+        'service:view'            => 'services-resources.view',
+        'service:manage'          => 'services-resources.edit',
         // Staff
         'staff:view'              => 'staff.view',
-        'staff:manage'            => 'staff.manage',
+        'staff:manage'            => 'staff.edit',
         // Sales / invoices
-        'invoice:view'            => 'invoices.view',
-        'invoice:create'          => 'invoices.create',
-        'invoice:void'            => 'invoices.void',
+        'invoice:view'            => 'sales.view',
+        'invoice:create'          => 'sales.create',
+        'invoice:edit'            => 'sales.edit',
+        'invoice:delete'          => 'sales.delete',
+        'invoice:void'            => 'sales.edit',
+        'invoice:pay'             => 'sales.pay',
         // Packages and memberships
         'membership:view'         => 'memberships.view',
         'membership:manage'       => 'memberships.manage',
         // Branch settings
         'branch-settings:view'    => 'settings.view',
-        'branch-settings:manage'  => 'settings.manage',
+        'branch-settings:manage'  => 'settings.edit',
         // Platform actions — FOUNDER only, null = deny for all non-founder principals
         'platform:support-entry'  => null,
         'platform:org-manage'     => null,

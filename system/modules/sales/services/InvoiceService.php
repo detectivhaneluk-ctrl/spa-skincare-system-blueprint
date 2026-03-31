@@ -8,7 +8,10 @@ use Core\App\Application;
 use Core\App\Database;
 use Core\App\SettingsService;
 use Core\Audit\AuditService;
-use Core\Branch\BranchContext;
+use Core\Kernel\Authorization\AuthorizerInterface;
+use Core\Kernel\Authorization\ResourceAction;
+use Core\Kernel\Authorization\ResourceRef;
+use Core\Kernel\RequestContextHolder;
 use Core\Organization\OrganizationScopedBranchAssert;
 use Core\Contracts\GiftCardAvailabilityProvider;
 use Core\Contracts\InvoiceStockSettlementProvider;
@@ -59,7 +62,7 @@ final class InvoiceService
         private Database $db,
         private InvoiceGiftCardRedemptionProvider $giftCardRedemptionProvider,
         private GiftCardAvailabilityProvider $giftCardAvailability,
-        private BranchContext $branchContext,
+        private RequestContextHolder $contextHolder,
         private OrganizationScopedBranchAssert $organizationScopedBranchAssert,
         private ServiceListProvider $serviceList,
         private VatRateService $vatRateService,
@@ -71,14 +74,20 @@ final class InvoiceService
         private PublicCommerceFulfillmentReconcileRecoveryService $publicCommerceFulfillmentReconcileRecovery,
         private CashierLineDomainEffectsApplier $cashierLineDomainEffects,
         /** @var callable(): PublicCommerceFulfillmentReconciler */
-        private $publicCommerceFulfillmentReconciler
+        private $publicCommerceFulfillmentReconciler,
+        private AuthorizerInterface $authorizer,
     ) {
     }
 
     public function create(array $data): int
     {
         return $this->transactional(function () use ($data): int {
-            $data = $this->branchContext->enforceBranchOnCreate($data);
+            $ctx = $this->contextHolder->requireContext();
+            $resolved = $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::INVOICE_CREATE, ResourceRef::collection('invoice'));
+            if (!isset($data['branch_id']) || $data['branch_id'] === null || $data['branch_id'] === '') {
+                $data['branch_id'] = $resolved['branch_id'];
+            }
             $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization(
                 $this->nullableInvoiceBranchId($data['branch_id'] ?? null)
             );
@@ -126,10 +135,14 @@ final class InvoiceService
         $this->transactional(function () use ($id, $data): void {
             $current = $this->repo->findForUpdate($id);
             if (!$current) throw new \RuntimeException('Invoice not found');
-            $this->branchContext->assertBranchMatchOrGlobalEntity($current['branch_id'] !== null && $current['branch_id'] !== '' ? (int) $current['branch_id'] : null);
-            $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization(
-                $current['branch_id'] !== null && $current['branch_id'] !== '' ? (int) $current['branch_id'] : null
-            );
+            $ctx = $this->contextHolder->requireContext();
+            $resolved = $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::INVOICE_EDIT, ResourceRef::instance('invoice', $id));
+            $currentBranchId = $current['branch_id'] !== null && $current['branch_id'] !== '' ? (int) $current['branch_id'] : null;
+            if ($currentBranchId !== null && $currentBranchId !== $resolved['branch_id']) {
+                throw new \DomainException('Invoice branch does not match current branch context.');
+            }
+            $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization($currentBranchId);
             if (!in_array($current['status'], self::EDITABLE_STATUSES, true)) {
                 throw new \DomainException('Cannot edit invoice in status: ' . $current['status']);
             }
@@ -185,10 +198,14 @@ final class InvoiceService
         $this->transactional(function () use ($id): void {
             $inv = $this->repo->find($id);
             if (!$inv) throw new \RuntimeException('Invoice not found');
-            $this->branchContext->assertBranchMatchOrGlobalEntity($inv['branch_id'] !== null && $inv['branch_id'] !== '' ? (int) $inv['branch_id'] : null);
-            $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization(
-                $inv['branch_id'] !== null && $inv['branch_id'] !== '' ? (int) $inv['branch_id'] : null
-            );
+            $ctx = $this->contextHolder->requireContext();
+            $resolved = $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::INVOICE_VOID, ResourceRef::instance('invoice', $id));
+            $invBranchId = $inv['branch_id'] !== null && $inv['branch_id'] !== '' ? (int) $inv['branch_id'] : null;
+            if ($invBranchId !== null && $invBranchId !== $resolved['branch_id']) {
+                throw new \DomainException('Invoice branch does not match current branch context.');
+            }
+            $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization($invBranchId);
             if (($inv['status'] ?? '') === 'cancelled') {
                 return;
             }
@@ -212,10 +229,14 @@ final class InvoiceService
         $this->transactional(function () use ($id): void {
             $inv = $this->repo->find($id);
             if (!$inv) throw new \RuntimeException('Invoice not found');
-            $this->branchContext->assertBranchMatchOrGlobalEntity($inv['branch_id'] !== null && $inv['branch_id'] !== '' ? (int) $inv['branch_id'] : null);
-            $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization(
-                $inv['branch_id'] !== null && $inv['branch_id'] !== '' ? (int) $inv['branch_id'] : null
-            );
+            $ctx = $this->contextHolder->requireContext();
+            $resolved = $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::INVOICE_DELETE, ResourceRef::instance('invoice', $id));
+            $invBranchId = $inv['branch_id'] !== null && $inv['branch_id'] !== '' ? (int) $inv['branch_id'] : null;
+            if ($invBranchId !== null && $invBranchId !== $resolved['branch_id']) {
+                throw new \DomainException('Invoice branch does not match current branch context.');
+            }
+            $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization($invBranchId);
             if (in_array((string) ($inv['status'] ?? ''), ['paid', 'partial', 'refunded'], true) || (float) ($inv['paid_amount'] ?? 0) > 0) {
                 throw new \DomainException('Financially posted invoice cannot be deleted.');
             }
@@ -343,10 +364,13 @@ final class InvoiceService
             if (!$invoice) {
                 throw new \RuntimeException('Invoice not found.');
             }
-            $this->branchContext->assertBranchMatchOrGlobalEntity($invoice['branch_id'] !== null && $invoice['branch_id'] !== '' ? (int) $invoice['branch_id'] : null);
-            $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization(
-                $invoice['branch_id'] !== null && $invoice['branch_id'] !== '' ? (int) $invoice['branch_id'] : null
-            );
+            $ctx = $this->contextHolder->requireContext();
+            $resolved = $ctx->requireResolvedTenant();
+            $invoiceBranchIdForCheck = $invoice['branch_id'] !== null && $invoice['branch_id'] !== '' ? (int) $invoice['branch_id'] : null;
+            if ($invoiceBranchIdForCheck !== null && $invoiceBranchIdForCheck !== $resolved['branch_id']) {
+                throw new \DomainException('Invoice branch does not match current branch context.');
+            }
+            $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization($invoiceBranchIdForCheck);
             if (empty($invoice['client_id'])) {
                 throw new \DomainException('Invoice must have a client before redeeming gift cards.');
             }

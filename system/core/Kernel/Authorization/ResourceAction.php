@@ -48,7 +48,10 @@ enum ResourceAction: string
     // -- Sales / invoices --
     case INVOICE_VIEW           = 'invoice:view';
     case INVOICE_CREATE         = 'invoice:create';
+    case INVOICE_EDIT           = 'invoice:edit';
+    case INVOICE_DELETE         = 'invoice:delete';
     case INVOICE_VOID           = 'invoice:void';
+    case INVOICE_PAY            = 'invoice:pay';
 
     // -- Packages and memberships --
     case MEMBERSHIP_VIEW        = 'membership:view';

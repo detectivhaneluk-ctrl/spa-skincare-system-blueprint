@@ -7,10 +7,13 @@ namespace Modules\Clients\Services;
 use Core\App\Application;
 use Core\App\Database;
 use Core\Audit\AuditService;
+use Core\Errors\AccessDeniedException;
 use Core\Errors\SafeDomainException;
-use Core\Branch\BranchContext;
+use Core\Kernel\Authorization\AuthorizerInterface;
+use Core\Kernel\Authorization\ResourceAction;
+use Core\Kernel\Authorization\ResourceRef;
+use Core\Kernel\RequestContextHolder;
 use Core\Organization\OrganizationScopedBranchAssert;
-use Core\Tenant\TenantOwnedDataScopeGuard;
 use Modules\Clients\Repositories\ClientFieldDefinitionRepository;
 use Modules\Clients\Repositories\ClientFieldValueRepository;
 use Modules\Clients\Repositories\ClientRepository;
@@ -26,9 +29,9 @@ final class ClientService
         private Database $db,
         private ClientFieldDefinitionRepository $fieldDefinitions,
         private ClientFieldValueRepository $fieldValues,
-        private BranchContext $branchContext,
+        private RequestContextHolder $contextHolder,
         private OrganizationScopedBranchAssert $organizationScopedBranchAssert,
-        private TenantOwnedDataScopeGuard $tenantScopeGuard,
+        private AuthorizerInterface $authorizer,
     ) {
     }
 
@@ -53,8 +56,12 @@ final class ClientService
     public function create(array $data): int
     {
         return $this->transactional(function () use ($data): int {
-            $this->tenantScopeGuard->requireResolvedTenantScope();
-            $data = $this->branchContext->enforceBranchOnCreate($data);
+            $ctx = $this->contextHolder->requireContext();
+            $scope = $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::CLIENT_CREATE, ResourceRef::collection('client'));
+            if (!isset($data['branch_id']) || $data['branch_id'] === '' || $data['branch_id'] === null) {
+                $data['branch_id'] = $scope['branch_id'];
+            }
             $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization(
                 isset($data['branch_id']) && $data['branch_id'] !== '' && $data['branch_id'] !== null
                     ? (int) $data['branch_id']
@@ -82,15 +89,18 @@ final class ClientService
     public function updateProfileNotes(int $id, ?string $notes): void
     {
         $this->transactional(function () use ($id, $notes): void {
-            $this->tenantScopeGuard->requireResolvedTenantScope();
+            $ctx = $this->contextHolder->requireContext();
+            $scope = $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::CLIENT_MODIFY, ResourceRef::instance('client', $id));
             $current = $this->repo->find($id);
             if (!$current) {
                 throw new \RuntimeException('Client not found');
             }
-            $this->branchContext->assertBranchMatchOrGlobalEntity($current['branch_id'] !== null && $current['branch_id'] !== '' ? (int) $current['branch_id'] : null);
-            $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization(
-                $current['branch_id'] !== null && $current['branch_id'] !== '' ? (int) $current['branch_id'] : null
-            );
+            $entityBranchId = $current['branch_id'] !== null && $current['branch_id'] !== '' ? (int) $current['branch_id'] : null;
+            if ($entityBranchId !== null && $entityBranchId !== $scope['branch_id']) {
+                throw new AccessDeniedException('Client is not accessible in the current branch context.');
+            }
+            $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization($entityBranchId);
             $userId = $this->currentUserId();
             $patch = ['notes' => $notes, 'updated_by' => $userId];
             $this->repo->update($id, $patch);
@@ -105,15 +115,18 @@ final class ClientService
     public function update(int $id, array $data): void
     {
         $this->transactional(function () use ($id, $data): void {
-            $this->tenantScopeGuard->requireResolvedTenantScope();
+            $ctx = $this->contextHolder->requireContext();
+            $scope = $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::CLIENT_MODIFY, ResourceRef::instance('client', $id));
             $current = $this->repo->find($id);
             if (!$current) {
                 throw new \RuntimeException('Client not found');
             }
-            $this->branchContext->assertBranchMatchOrGlobalEntity($current['branch_id'] !== null && $current['branch_id'] !== '' ? (int) $current['branch_id'] : null);
-            $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization(
-                $current['branch_id'] !== null && $current['branch_id'] !== '' ? (int) $current['branch_id'] : null
-            );
+            $entityBranchId = $current['branch_id'] !== null && $current['branch_id'] !== '' ? (int) $current['branch_id'] : null;
+            if ($entityBranchId !== null && $entityBranchId !== $scope['branch_id']) {
+                throw new AccessDeniedException('Client is not accessible in the current branch context.');
+            }
+            $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization($entityBranchId);
             $customFields = is_array($data['custom_fields'] ?? null) ? $data['custom_fields'] : [];
             unset($data['custom_fields']);
             $this->finalizeContactAddressForPersistence($data, $current);
@@ -131,15 +144,18 @@ final class ClientService
     public function delete(int $id): void
     {
         $this->transactional(function () use ($id): void {
-            $this->tenantScopeGuard->requireResolvedTenantScope();
+            $ctx = $this->contextHolder->requireContext();
+            $scope = $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::CLIENT_DELETE, ResourceRef::instance('client', $id));
             $client = $this->repo->find($id);
             if (!$client) {
                 throw new \RuntimeException('Client not found');
             }
-            $this->branchContext->assertBranchMatchOrGlobalEntity($client['branch_id'] !== null && $client['branch_id'] !== '' ? (int) $client['branch_id'] : null);
-            $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization(
-                $client['branch_id'] !== null && $client['branch_id'] !== '' ? (int) $client['branch_id'] : null
-            );
+            $entityBranchId = $client['branch_id'] !== null && $client['branch_id'] !== '' ? (int) $client['branch_id'] : null;
+            if ($entityBranchId !== null && $entityBranchId !== $scope['branch_id']) {
+                throw new AccessDeniedException('Client is not accessible in the current branch context.');
+            }
+            $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization($entityBranchId);
             $this->repo->softDelete($id);
             $this->audit->log('client_deleted', 'client', $id, $this->currentUserId(), $client['branch_id'] ?? null, [
                 'client' => $client,
@@ -161,15 +177,17 @@ final class ClientService
         }
 
         return $this->transactional(function () use ($clientId, $content): int {
-            $this->tenantScopeGuard->requireResolvedTenantScope();
+            $ctx = $this->contextHolder->requireContext();
+            $scope = $ctx->requireResolvedTenant();
             $client = $this->repo->find($clientId);
             if (!$client) {
                 throw new \RuntimeException('Client not found');
             }
-            $this->branchContext->assertBranchMatchOrGlobalEntity($client['branch_id'] !== null && $client['branch_id'] !== '' ? (int) $client['branch_id'] : null);
-            $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization(
-                $client['branch_id'] !== null && $client['branch_id'] !== '' ? (int) $client['branch_id'] : null
-            );
+            $entityBranchId = $client['branch_id'] !== null && $client['branch_id'] !== '' ? (int) $client['branch_id'] : null;
+            if ($entityBranchId !== null && $entityBranchId !== $scope['branch_id']) {
+                throw new AccessDeniedException('Client is not accessible in the current branch context.');
+            }
+            $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization($entityBranchId);
             $userId = $this->currentUserId();
             $noteId = $this->repo->createNote($clientId, $content, $userId);
             $branchId = $client['branch_id'] !== null && $client['branch_id'] !== '' ? (int) $client['branch_id'] : null;
@@ -185,15 +203,17 @@ final class ClientService
     public function deleteClientNote(int $clientId, int $noteId): void
     {
         $this->transactional(function () use ($clientId, $noteId): void {
-            $this->tenantScopeGuard->requireResolvedTenantScope();
+            $ctx = $this->contextHolder->requireContext();
+            $scope = $ctx->requireResolvedTenant();
             $client = $this->repo->find($clientId);
             if (!$client) {
                 throw new \RuntimeException('Client not found');
             }
-            $this->branchContext->assertBranchMatchOrGlobalEntity($client['branch_id'] !== null && $client['branch_id'] !== '' ? (int) $client['branch_id'] : null);
-            $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization(
-                $client['branch_id'] !== null && $client['branch_id'] !== '' ? (int) $client['branch_id'] : null
-            );
+            $entityBranchId = $client['branch_id'] !== null && $client['branch_id'] !== '' ? (int) $client['branch_id'] : null;
+            if ($entityBranchId !== null && $entityBranchId !== $scope['branch_id']) {
+                throw new AccessDeniedException('Client is not accessible in the current branch context.');
+            }
+            $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization($entityBranchId);
             $note = $this->repo->findNoteForClient($clientId, $noteId);
             if (!$note) {
                 throw new \RuntimeException('Note not found');
@@ -208,14 +228,14 @@ final class ClientService
 
     public function isNormalizedSearchSchemaReady(): bool
     {
-        $this->tenantScopeGuard->requireResolvedTenantScope();
+        $this->contextHolder->requireContext()->requireResolvedTenant();
 
         return $this->repo->isNormalizedSearchSchemaReady();
     }
 
     public function findDuplicates(int $excludeId, array $criteria): array
     {
-        $this->tenantScopeGuard->requireResolvedTenantScope();
+        $this->contextHolder->requireContext()->requireResolvedTenant();
         return $this->repo->findDuplicates($excludeId, $criteria);
     }
 
@@ -230,7 +250,7 @@ final class ClientService
         int $limit = 30,
         int $offset = 0,
     ): array {
-        $this->tenantScopeGuard->requireResolvedTenantScope();
+        $this->contextHolder->requireContext()->requireResolvedTenant();
 
         return $this->repo->searchDuplicates($criteria, $excludeId, $exact, $partial, $limit, $offset);
     }
@@ -249,7 +269,7 @@ final class ClientService
         int $page,
         int $perPage,
     ): array {
-        $this->tenantScopeGuard->requireResolvedTenantScope();
+        $this->contextHolder->requireContext()->requireResolvedTenant();
         $page = max(1, $page);
         $perPage = max(1, min(100, $perPage));
         if (!$this->repo->isNormalizedSearchSchemaReady()) {
@@ -289,7 +309,7 @@ final class ClientService
 
     public function getMergePreview(int $primaryId, int $secondaryId): array
     {
-        $this->tenantScopeGuard->requireResolvedTenantScope();
+        $this->contextHolder->requireContext()->requireResolvedTenant();
         if ($primaryId <= 0 || $secondaryId <= 0 || $primaryId === $secondaryId) {
             throw new \InvalidArgumentException('Primary and secondary clients must be different valid ids.');
         }
@@ -319,10 +339,14 @@ final class ClientService
     /**
      * Core merge execution (advisory lock + transaction). Use {@see mergeClients} for request-scoped actor;
      * async jobs pass the enqueueing operator id as {@code $actorUserId}.
+     *
+     * db->fetchOne is retained for MySQL advisory locking (SELECT GET_LOCK / RELEASE_LOCK) which is
+     * infrastructure (mutex for concurrent merge of the same client pair), not tenant data access.
+     * This is an explicit architectural exception — same rationale as WaitlistService advisory lock (BIG-04).
      */
     public function mergeClientsAsActor(int $primaryId, int $secondaryId, ?string $notes, ?int $actorUserId): array
     {
-        $this->tenantScopeGuard->requireResolvedTenantScope();
+        $this->contextHolder->requireContext()->requireResolvedTenant();
         if ($primaryId <= 0 || $secondaryId <= 0 || $primaryId === $secondaryId) {
             throw new \InvalidArgumentException('Primary and secondary clients must be different valid ids.');
         }
@@ -338,19 +362,23 @@ final class ClientService
         }
         try {
             return $this->transactional(function () use ($primaryId, $secondaryId, $notes, $actorUserId): array {
+                $ctx = $this->contextHolder->requireContext();
+                $scope = $ctx->requireResolvedTenant();
                 $primary = $this->repo->findForUpdate($primaryId);
                 $secondary = $this->repo->findForUpdate($secondaryId);
                 if (!$primary || !$secondary) {
                     throw new \RuntimeException('Primary or secondary client not found.');
                 }
-                $this->branchContext->assertBranchMatchOrGlobalEntity($primary['branch_id'] !== null && $primary['branch_id'] !== '' ? (int) $primary['branch_id'] : null);
-                $this->branchContext->assertBranchMatchOrGlobalEntity($secondary['branch_id'] !== null && $secondary['branch_id'] !== '' ? (int) $secondary['branch_id'] : null);
-                $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization(
-                    $primary['branch_id'] !== null && $primary['branch_id'] !== '' ? (int) $primary['branch_id'] : null
-                );
-                $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization(
-                    $secondary['branch_id'] !== null && $secondary['branch_id'] !== '' ? (int) $secondary['branch_id'] : null
-                );
+                $primaryBranchId = $primary['branch_id'] !== null && $primary['branch_id'] !== '' ? (int) $primary['branch_id'] : null;
+                if ($primaryBranchId !== null && $primaryBranchId !== $scope['branch_id']) {
+                    throw new AccessDeniedException('Primary client is not accessible in the current branch context.');
+                }
+                $secondaryBranchId = $secondary['branch_id'] !== null && $secondary['branch_id'] !== '' ? (int) $secondary['branch_id'] : null;
+                if ($secondaryBranchId !== null && $secondaryBranchId !== $scope['branch_id']) {
+                    throw new AccessDeniedException('Secondary client is not accessible in the current branch context.');
+                }
+                $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization($primaryBranchId);
+                $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization($secondaryBranchId);
                 if (!empty($secondary['merged_into_client_id'])) {
                     throw new \DomainException('Secondary client is already merged.');
                 }
@@ -405,7 +433,8 @@ final class ClientService
     public function createCustomFieldDefinition(array $data): int
     {
         return $this->transactional(function () use ($data): int {
-            $this->tenantScopeGuard->requireResolvedTenantScope();
+            $ctx = $this->contextHolder->requireContext();
+            $scope = $ctx->requireResolvedTenant();
             $fieldKey = trim((string) ($data['field_key'] ?? ''));
             $label = trim((string) ($data['label'] ?? ''));
             $fieldType = trim((string) ($data['field_type'] ?? 'text'));
@@ -429,7 +458,9 @@ final class ClientService
                 'created_by' => $userId,
                 'updated_by' => $userId,
             ];
-            $payload = $this->branchContext->enforceBranchOnCreate($payload);
+            if ($payload['branch_id'] === null) {
+                $payload['branch_id'] = $scope['branch_id'];
+            }
             $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization(
                 isset($payload['branch_id']) && $payload['branch_id'] !== '' && $payload['branch_id'] !== null
                     ? (int) $payload['branch_id']
@@ -446,15 +477,17 @@ final class ClientService
     public function updateCustomFieldDefinition(int $id, array $data): void
     {
         $this->transactional(function () use ($id, $data): void {
-            $this->tenantScopeGuard->requireResolvedTenantScope();
+            $ctx = $this->contextHolder->requireContext();
+            $scope = $ctx->requireResolvedTenant();
             $existing = $this->fieldDefinitions->find($id);
             if (!$existing) {
                 throw new \RuntimeException('Custom field definition not found.');
             }
-            $this->branchContext->assertBranchMatchOrGlobalEntity($existing['branch_id'] !== null && $existing['branch_id'] !== '' ? (int) $existing['branch_id'] : null);
-            $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization(
-                $existing['branch_id'] !== null && $existing['branch_id'] !== '' ? (int) $existing['branch_id'] : null
-            );
+            $entityBranchId = $existing['branch_id'] !== null && $existing['branch_id'] !== '' ? (int) $existing['branch_id'] : null;
+            if ($entityBranchId !== null && $entityBranchId !== $scope['branch_id']) {
+                throw new AccessDeniedException('Custom field definition is not accessible in the current branch context.');
+            }
+            $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization($entityBranchId);
             $patch = [];
             if (array_key_exists('label', $data)) {
                 $patch['label'] = trim((string) $data['label']);
@@ -491,15 +524,17 @@ final class ClientService
     public function deleteCustomFieldDefinition(int $id): void
     {
         $this->transactional(function () use ($id): void {
-            $this->tenantScopeGuard->requireResolvedTenantScope();
+            $ctx = $this->contextHolder->requireContext();
+            $scope = $ctx->requireResolvedTenant();
             $existing = $this->fieldDefinitions->find($id);
             if (!$existing) {
                 throw new \RuntimeException('Custom field definition not found.');
             }
-            $this->branchContext->assertBranchMatchOrGlobalEntity($existing['branch_id'] !== null && $existing['branch_id'] !== '' ? (int) $existing['branch_id'] : null);
-            $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization(
-                $existing['branch_id'] !== null && $existing['branch_id'] !== '' ? (int) $existing['branch_id'] : null
-            );
+            $entityBranchId = $existing['branch_id'] !== null && $existing['branch_id'] !== '' ? (int) $existing['branch_id'] : null;
+            if ($entityBranchId !== null && $entityBranchId !== $scope['branch_id']) {
+                throw new AccessDeniedException('Custom field definition is not accessible in the current branch context.');
+            }
+            $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization($entityBranchId);
             $this->fieldDefinitions->softDelete($id, $this->currentUserId());
             $this->audit->log('client_custom_field_deleted', 'client_field_definition', $id, $this->currentUserId(), $existing['branch_id'] ?? null, [
                 'field' => $existing,
@@ -625,7 +660,7 @@ final class ClientService
     }
 
     /**
-     * Definitions are branch-scoped in the DB; use the client's branch, else current branch, else all branches in the org.
+     * Definitions are branch-scoped in the DB; use the client's branch, else resolved TenantContext branch.
      *
      * @param array<string, mixed>|null $clientRow
      */
@@ -637,9 +672,12 @@ final class ClientService
                 return (int) $b;
             }
         }
-        $cb = $this->branchContext->getCurrentBranchId();
+        $ctx = $this->contextHolder->get();
+        if ($ctx !== null && $ctx->tenantContextResolved && $ctx->branchId !== null && $ctx->branchId > 0) {
+            return $ctx->branchId;
+        }
 
-        return ($cb !== null && $cb > 0) ? $cb : null;
+        return null;
     }
 
     private function mergeCustomFieldValues(int $primaryId, int $secondaryId): void

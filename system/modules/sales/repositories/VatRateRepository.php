@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Sales\Repositories;
 
 use Core\App\Database;
+use Core\Kernel\TenantContext;
 use Core\Organization\OrganizationRepositoryScope;
 
 /**
@@ -267,6 +268,140 @@ final class VatRateRepository
                 array_merge([$appliesToJson, (int) $vatRateId], $orgHas['params'])
             );
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // FOUNDATION-A7 PHASE-3 — canonical TenantContext-first methods
+    // These are the authoritative entry points for all tenant-protected operations.
+    // All methods call $ctx->requireResolvedTenant() before any data access.
+    // -------------------------------------------------------------------------
+
+    /**
+     * Canonical: list active VAT rates for branch (global + branch overlay), ordered by sort_order.
+     * Fail-closed: requires resolved tenant context.
+     *
+     * @return list<array{id:int, branch_id:int|null, code:string, name:string, rate_percent:float, is_flexible:int, price_includes_tax:int, applies_to_json:list<string>, is_active:int, sort_order:int}>
+     */
+    public function listOwnedActiveRatesForBranch(TenantContext $ctx, ?int $branchId = null): array
+    {
+        $ctx->requireResolvedTenant();
+        return $this->listActive($branchId);
+    }
+
+    /**
+     * Canonical: list all VAT rates for branch (admin view, including inactive).
+     * Fail-closed: requires resolved tenant context.
+     *
+     * @return list<array{id:int, branch_id:int|null, code:string, name:string, rate_percent:float, is_flexible:int, price_includes_tax:int, applies_to_json:list<string>, is_active:int, sort_order:int}>
+     */
+    public function listOwnedAllRatesForBranch(TenantContext $ctx, ?int $branchId = null): array
+    {
+        $ctx->requireResolvedTenant();
+        return $this->listAll($branchId);
+    }
+
+    /**
+     * Canonical: find active rate by code for branch.
+     * Fail-closed: requires resolved tenant context.
+     */
+    public function findOwnedRateByCode(TenantContext $ctx, string $code, ?int $branchId = null): ?array
+    {
+        $ctx->requireResolvedTenant();
+        return $this->findByCode($code, $branchId);
+    }
+
+    /**
+     * Canonical: row by id for the resolved global catalog (settings admin path).
+     * Fail-closed: requires resolved tenant context.
+     */
+    public function findOwnedGlobalCatalogRateById(TenantContext $ctx, int $id): ?array
+    {
+        $ctx->requireResolvedTenant();
+        return $this->findGlobalCatalogRateInResolvedTenantById($id);
+    }
+
+    /**
+     * Canonical: tenant runtime visible rate by id (any branch in org, or global).
+     * Fail-closed: requires resolved tenant context.
+     */
+    public function findOwnedTenantVisibleRateById(TenantContext $ctx, int $id): ?array
+    {
+        $ctx->requireResolvedTenant();
+        return $this->findTenantVisibleRateById($id);
+    }
+
+    /**
+     * Canonical: true when the rate id is active and in the service branch catalog.
+     * Fail-closed: requires resolved tenant context.
+     */
+    public function isOwnedActiveIdInServiceBranchCatalog(TenantContext $ctx, int $id, ?int $serviceBranchId): bool
+    {
+        $ctx->requireResolvedTenant();
+        return $this->isActiveIdInServiceBranchCatalog($id, $serviceBranchId);
+    }
+
+    /**
+     * Canonical: check if another active row has the same name for this branch.
+     * Fail-closed: requires resolved tenant context.
+     */
+    public function existsOwnedActiveNameForBranch(TenantContext $ctx, ?int $branchId, string $name, ?int $excludeId = null): bool
+    {
+        $ctx->requireResolvedTenant();
+        return $this->existsActiveNameForBranch($branchId, $name, $excludeId);
+    }
+
+    /**
+     * Canonical: check if code exists for branch (uniqueness check).
+     * Fail-closed: requires resolved tenant context.
+     */
+    public function existsOwnedCodeForBranch(TenantContext $ctx, string $code, ?int $branchId, ?int $excludeId = null): bool
+    {
+        $ctx->requireResolvedTenant();
+        return $this->codeExistsForBranch($code, $branchId, $excludeId);
+    }
+
+    /**
+     * Canonical: create VAT rate.
+     * Fail-closed: requires resolved tenant context.
+     *
+     * @return int new id
+     */
+    public function mutateCreateOwnedRate(TenantContext $ctx, ?int $branchId, string $code, string $name, float $ratePercent, bool $isFlexible, bool $priceIncludesTax, ?string $appliesToJson, bool $isActive, int $sortOrder): int
+    {
+        $ctx->requireResolvedTenant();
+        return $this->create($branchId, $code, $name, $ratePercent, $isFlexible, $priceIncludesTax, $appliesToJson, $isActive, $sortOrder);
+    }
+
+    /**
+     * Canonical: update VAT rate by id.
+     * Fail-closed: requires resolved tenant context.
+     */
+    public function mutateUpdateOwnedGlobalCatalogRateById(TenantContext $ctx, int $id, string $name, float $ratePercent, bool $isFlexible, bool $priceIncludesTax, ?string $appliesToJson, bool $isActive, int $sortOrder): void
+    {
+        $ctx->requireResolvedTenant();
+        $this->updateGlobalCatalogRateInResolvedTenantById($id, $name, $ratePercent, $isFlexible, $priceIncludesTax, $appliesToJson, $isActive, $sortOrder);
+    }
+
+    /**
+     * Canonical: archive (soft-deactivate) VAT rate by id.
+     * Fail-closed: requires resolved tenant context.
+     */
+    public function mutateArchiveOwnedGlobalCatalogRateById(TenantContext $ctx, int $id): void
+    {
+        $ctx->requireResolvedTenant();
+        $this->archiveGlobalCatalogRateInResolvedTenantById($id);
+    }
+
+    /**
+     * Canonical: bulk update applicability matrix for active global rates.
+     * Fail-closed: requires resolved tenant context.
+     *
+     * @param array<int, list<string>> $appliesToByVatRateId
+     */
+    public function mutateBulkUpdateOwnedGlobalActiveApplicability(TenantContext $ctx, array $appliesToByVatRateId): void
+    {
+        $ctx->requireResolvedTenant();
+        $this->bulkUpdateGlobalActiveApplicability($appliesToByVatRateId);
     }
 
     private function normalizeRow(array $r): array

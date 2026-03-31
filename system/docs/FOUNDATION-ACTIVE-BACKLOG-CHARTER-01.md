@@ -140,11 +140,111 @@ Planning cleanup, backlog freeze, legacy banners, and **BACKBONE-CLOSURE-ACTIVE-
 
 ---
 
+## FOUNDATION-A7 PHASE-3 — **CLOSED** (2026-03-31)
+
+**BIG-06: Sales Domain Phase-3 Kernel Migration**
+
+| Item | Evidence |
+|------|----------|
+| `InvoiceService`: `BranchContext` removed; `RequestContextHolder` + `requireResolvedTenant()` guards used for invoice create/update/cancel/delete/redeemGiftCard | `system/modules/sales/services/InvoiceService.php` |
+| `PaymentService`: `BranchContext` removed; `RequestContextHolder` + `requireResolvedTenant()` guards used for payment create and refund | `system/modules/sales/services/PaymentService.php` |
+| `RegisterSessionService`: `BranchContext` removed; `RequestContextHolder` + branch equality check used for openSession / closeSession / addCashMovement | `system/modules/sales/services/RegisterSessionService.php` |
+| `PaymentMethodService`: `RequestContextHolder` injected (no legacy direct DB access was present) | `system/modules/sales/services/PaymentMethodService.php` |
+| `VatRateService`: `RequestContextHolder` injected (no legacy direct DB access was present) | `system/modules/sales/services/VatRateService.php` |
+| `ReceiptInvoicePresentationService`: product barcode `db->fetchAll()` moved to `ProductRepository::lookupBarcodesByIds()`; remaining `db->fetchOne` is presentation-only infrastructure (user name for receipt display) — explicitly excepted from guardrail per same rationale as `WaitlistService` advisory locks | `system/modules/sales/services/ReceiptInvoicePresentationService.php`, `system/modules/inventory/repositories/ProductRepository.php` |
+| `PaymentMethodRepository`: 9 canonical `TenantContext`-first methods added (`listOwnedActiveMethodsForBranch`, `listOwnedAllMethodsForBranch`, `isOwnedActiveCode`, `findOwnedGlobalCatalogMethodById`, `existsOwnedActiveNameForBranch`, `existsOwnedCodeForBranch`, `mutateCreateOwnedMethod`, `mutateUpdateOwnedGlobalCatalogMethodById`, `mutateArchiveOwnedGlobalCatalogMethodById`) | `system/modules/sales/repositories/PaymentMethodRepository.php` |
+| `VatRateRepository`: 12 canonical `TenantContext`-first methods added (`listOwnedActiveRatesForBranch`, `listOwnedAllRatesForBranch`, `findOwnedRateByCode`, `findOwnedGlobalCatalogRateById`, `findOwnedTenantVisibleRateById`, `isOwnedActiveIdInServiceBranchCatalog`, `existsOwnedActiveNameForBranch`, `existsOwnedCodeForBranch`, `mutateCreateOwnedRate`, `mutateUpdateOwnedGlobalCatalogRateById`, `mutateArchiveOwnedGlobalCatalogRateById`, `mutateBulkUpdateOwnedGlobalActiveApplicability`) | `system/modules/sales/repositories/VatRateRepository.php` |
+| All canonical methods call `$ctx->requireResolvedTenant()` — fail-closed | Both repository files |
+| Bootstrap DI updated — all five migrated sales services inject `RequestContextHolder` (not `BranchContext`); `ReceiptInvoicePresentationService` gets `ProductRepository` | `system/modules/bootstrap/register_sales_public_commerce_memberships_settings.php` |
+| Guardrail 1 (service DB ban) expanded: 5 Sales services added; `ReceiptInvoicePresentationService` + truth audit services explicitly excluded with documented rationale | `system/scripts/ci/guardrail_service_layer_db_ban.php` |
+| Guardrail 2 (id-only repo API freeze) expanded: `PaymentMethodRepository` + `VatRateRepository` added with legacy method allowlists frozen at 2026-03-31 | `system/scripts/ci/guardrail_id_only_repo_api_freeze.php` |
+| Truth audit services (`SalesLineDomainBoundaryTruthAuditService`, `InvoicePaymentSettlementTruthAuditService`, `InvoiceFinancialRollupTruthAuditService`) classified as read-only infrastructure/diagnostic — explicitly excluded from strict DB ban | Guardrail comment; same rationale as `WaitlistService` advisory lock exception |
+| `OrganizationScopedBranchAssert` preserved as complementary org-level safety guard in `InvoiceService` + `PaymentService` | Both service files |
+| Core behavior contracts preserved: invoice create/update/cancel/delete, payment create/refund, register session open/close/movement, VAT and payment method catalog ops | All migrated service files |
+| Verifier added | `system/scripts/read-only/verify_big_06_sales_migration_01.php` |
+| Live closure proof: both guardrails PASS + verifier **126/126** PASS (explicit PHP binary) | `system/scripts/ci/guardrail_service_layer_db_ban.php`, `system/scripts/ci/guardrail_id_only_repo_api_freeze.php`, `system/scripts/read-only/verify_big_06_sales_migration_01.php` |
+
+---
+
+## FOUNDATION-A7 PHASE-4 — **CLOSED** (2026-03-31)
+
+**BIG-07: Client-Owned Resources Domain Phase-4 Kernel Migration**
+
+| Item | Evidence |
+|------|----------|
+| `ClientService`: `BranchContext` + `TenantOwnedDataScopeGuard` removed; `RequestContextHolder` + `requireResolvedTenant()` guards used for create/update/delete/notes/merge/customField ops | `system/modules/clients/services/ClientService.php` |
+| `ClientIssueFlagService`: `BranchContext` + `TenantOwnedDataScopeGuard` removed; `RequestContextHolder` + inline branch validation used for flag create/resolve | `system/modules/clients/services/ClientIssueFlagService.php` |
+| `ClientRegistrationService`: `BranchContext` + `TenantOwnedDataScopeGuard` removed; `RequestContextHolder` + inline branch validation used for registration create/updateStatus/convert | `system/modules/clients/services/ClientRegistrationService.php` |
+| `ClientMergeJobService`: direct DB claim calls (`fetchOne`, `query`) moved to `ClientMergeJobRepository`; `RequestContextHolder` injected for enqueue/getJob paths; `BranchContext` + `OrganizationContext` retained for background worker async context establishment only (not data access) | `system/modules/clients/services/ClientMergeJobService.php` |
+| `ClientRepository`: 5 canonical `TenantContext`-first methods added (`findOwnedClientById`, `loadOwnedClientForUpdate`, `loadOwnedLiveReadableForProfile`, `listOwnedClientsForBranch`, `countOwnedClientsForBranch`) | `system/modules/clients/repositories/ClientRepository.php` |
+| `ClientIssueFlagRepository`: 4 canonical `TenantContext`-first methods added (`findOwnedFlagById`, `listOwnedFlagsForClient`, `mutateCreateOwnedFlag`, `mutateUpdateOwnedFlag`) | `system/modules/clients/repositories/ClientIssueFlagRepository.php` |
+| `ClientMergeJobRepository`: `insert()` renamed to `createJob()`; 3 new methods added (`findOwnedJobById`, `claimNextQueuedJob`, `claimSpecificQueuedJob`) — claim methods handle own transaction internally | `system/modules/clients/repositories/ClientMergeJobRepository.php` |
+| `ClientRegistrationRequestRepository`: 5 canonical `TenantContext`-first methods added (`findOwnedRegistration`, `listOwnedRegistrations`, `countOwnedRegistrations`, `mutateCreateOwnedRegistration`, `mutateUpdateOwnedRegistration`) | `system/modules/clients/repositories/ClientRegistrationRequestRepository.php` |
+| `ClientFieldDefinitionRepository`: 5 canonical `TenantContext`-first methods added (`listOwnedDefinitionsForBranch`, `findOwnedDefinition`, `mutateCreateOwnedDefinition`, `mutateUpdateOwnedDefinition`, `mutateSoftDeleteOwnedDefinition`) | `system/modules/clients/repositories/ClientFieldDefinitionRepository.php` |
+| All canonical methods call `$ctx->requireResolvedTenant()` — fail-closed | All five repository files |
+| Bootstrap DI updated — `ClientService`, `ClientMergeJobService`, `ClientRegistrationService`, `ClientIssueFlagService` all inject `RequestContextHolder` (not `BranchContext` or `TenantOwnedDataScopeGuard`) | `system/modules/bootstrap/register_clients.php` |
+| Guardrail 1 (service DB ban) expanded to `ClientMergeJobService`, `ClientRegistrationService`, `ClientIssueFlagService`; `ClientService` advisory lock exception (`GET_LOCK`/`RELEASE_LOCK`) documented per same rationale as `WaitlistService` | `system/scripts/ci/guardrail_service_layer_db_ban.php` |
+| Guardrail 2 (id-only repo API freeze) expanded to all 5 client repos; legacy `lockActiveByEmailBranch`/`lockActiveByPhoneDigitsBranch`/`findActiveClientIdByPhoneDigitsExcluding` (anonymous public resolution) and `ClientFieldDefinitionRepository::list` frozen in allowlists | `system/scripts/ci/guardrail_id_only_repo_api_freeze.php` |
+| Core behavior contracts preserved: client CRUD, profile notes, merge/merge-preview, custom field definitions, issue flag create/resolve, registration create/convert/updateStatus, merge job enqueue/reconcile | All migrated service files |
+| Live closure proof: both guardrails PASS + verifier **152/152** PASS | `system/scripts/ci/guardrail_service_layer_db_ban.php`, `system/scripts/ci/guardrail_id_only_repo_api_freeze.php`, `system/scripts/read-only/verify_big_07_client_owned_resources_migration_01.php` |
+
+---
+
+## PLT-AUTH-02 — **PARTIAL** (2026-03-31, first vertical slice)
+
+**PLT-AUTH-02: Authorization Enforcement Wiring** — Client + Sales domain service-layer wiring landed.
+
+| Item | Evidence |
+|------|----------|
+| `ResourceAction` enum: 3 new cases added (`INVOICE_EDIT`, `INVOICE_DELETE`, `INVOICE_PAY`) | `system/core/Kernel/Authorization/ResourceAction.php` |
+| `PolicyAuthorizer::ACTION_PERMISSION_MAP`: 10 permission code mismatches corrected (clients.edit, appointments.edit, sales.*, services-resources.*, staff.edit, settings.edit) | `system/core/Kernel/Authorization/PolicyAuthorizer.php` |
+| `AuthorizerInterface::requireAuthorized()` wired into **ClientService** at `create`, `updateProfileNotes`, `update`, `delete` | `system/modules/clients/services/ClientService.php` |
+| `AuthorizerInterface::requireAuthorized()` wired into **ClientIssueFlagService** at `create`, `resolve` | `system/modules/clients/services/ClientIssueFlagService.php` |
+| `AuthorizerInterface::requireAuthorized()` wired into **ClientMergeJobService** at `enqueueMergeJob` (HTTP path only; background worker paths explicitly excluded) | `system/modules/clients/services/ClientMergeJobService.php` |
+| `AuthorizerInterface::requireAuthorized()` wired into **ClientRegistrationService** at `create`, `updateStatus`, `convert` | `system/modules/clients/services/ClientRegistrationService.php` |
+| `AuthorizerInterface::requireAuthorized()` wired into **InvoiceService** at `create`, `update`, `cancel`, `delete` | `system/modules/sales/services/InvoiceService.php` |
+| `AuthorizerInterface::requireAuthorized()` wired into **PaymentService** at `create`, `refund` | `system/modules/sales/services/PaymentService.php` |
+| `AuthorizerInterface::requireAuthorized()` wired into **RegisterSessionService** at `openSession`, `closeSession`, `addCashMovement` | `system/modules/sales/services/RegisterSessionService.php` |
+| Bootstrap DI updated — all 7 migrated services receive `AuthorizerInterface::class` from container | `register_clients.php`, `register_sales_public_commerce_memberships_settings.php` |
+| `AuthorizationMiddleware` — new HTTP-level resource action enforcement middleware (`::forAction()` factory, MiddlewareInterface, 403 deny semantics, reason not exposed to client) | `system/core/middleware/AuthorizationMiddleware.php` |
+| Bootstrap comment updated — `AuthorizationMiddleware` documented as per-route factory pattern | `system/bootstrap.php` |
+| Guardrail 4 — PLT-AUTH-02 service authorizer enforcement: CI script fails if any migrated service drops `requireAuthorized()` call | `system/scripts/ci/guardrail_plt_auth_02_service_authorizer_enforcement.php` |
+| All prior guardrails PASS: service DB ban (11 services), id-only repo freeze (13 repos), async state machine ban (777 files) | No regression |
+| All prior verifiers PASS: BIG-06 126/126, BIG-07 152/152, PLT-Q-01 100/100 | No regression |
+| PLT-AUTH-02 verifier: **104/104** assertions pass | `system/scripts/read-only/verify_plt_auth_02_authorization_enforcement_wiring_01.php` |
+| **STATUS: PARTIAL** — Remaining surfaces: appointments domain service wiring, staff/services-resources/settings services, full platform control-plane action enforcement | Scope for PLT-AUTH-02 continuation |
+
+---
+
+## PLT-Q-01 — **CLOSED** (2026-03-31)
+
+**PLT-Q-01: Unified Async / Queue Control-Plane** — canonical backbone installed and all three active async slices migrated.
+
+| Item | Evidence |
+|------|----------|
+| `AsyncJobHandlerInterface` — typed contract for all async job handlers | `system/core/Runtime/Queue/AsyncJobHandlerInterface.php` |
+| `AsyncJobHandlerRegistry` — maps `job_type` → handler; duplicate registration throws; NOOP_TYPES built-in | `system/core/Runtime/Queue/AsyncJobHandlerRegistry.php` |
+| `AsyncQueueWorkerLoop` — canonical drain loop: reserve → dispatch → succeed/fail; no hard-coded match table | `system/core/Runtime/Queue/AsyncQueueWorkerLoop.php` |
+| `AsyncQueueStatusReader` — operator visibility: `getQueueDepthByStatus`, `getStuckJobs`, `getDeadJobs`, `getRetryingJobs`, `getRecentCompletions`, `getSummary` | `system/core/Runtime/Queue/AsyncQueueStatusReader.php` |
+| `ClientMergeExecuteHandler` — migrated `clients.merge_execute` onto canonical handler contract | `system/modules/clients/Queue/ClientMergeExecuteHandler.php` |
+| `MediaImagePipelineHandler` — migrated `media.image_pipeline` onto canonical handler contract | `system/modules/media/Queue/MediaImagePipelineHandler.php` |
+| `NotificationsOutboundDrainHandler` — migrated `notifications.outbound_drain_batch` onto canonical handler contract | `system/modules/notifications/Queue/NotificationsOutboundDrainHandler.php` |
+| Bootstrap DI for control-plane: `AsyncJobHandlerRegistry`, `AsyncQueueWorkerLoop`, `AsyncQueueStatusReader` + all three handlers registered | `system/modules/bootstrap/register_async_queue.php` |
+| `bootstrap.php` updated — `register_async_queue.php` appended to registrar list | `system/modules/bootstrap.php` |
+| Worker script migrated to use `AsyncQueueWorkerLoop`; hard-coded `match` dispatch table removed | `system/scripts/worker_runtime_async_jobs_cli_02.php` |
+| Guardrail 3 — async state machine ban: CI script fails on new ad-hoc status constant files (≥2 canonical markers) outside allowlist; 776 PHP files scanned, 0 violations | `system/scripts/ci/guardrail_async_state_machine_ban.php` |
+| Allowlisted pre-canonical exception: `ClientMergeJobStatuses` (domain-level parallel state, documented) | Guardrail allowlist |
+| Prior guardrails PASS: `guardrail_service_layer_db_ban` (11 services), `guardrail_id_only_repo_api_freeze` (13 repos) | No regression |
+| Prior verifiers PASS: `verify_runtime_async_jobs_queue_contract_readonly_02`, `verify_client_merge_async_job_hardening_01` | No regression |
+| 100/100 PLT-Q-01 verifier assertions pass | `system/scripts/read-only/verify_plt_q_01_unified_async_queue_control_plane_01.php` |
+
+---
+
 ## LIVE (exactly one)
 
 | ID | Item | Notes |
 |----|------|-------|
-| **FOUNDATION-A7 PHASE-2** | Online-booking domain migration | **Successor to PHASE-1 (CLOSED 2026-03-31).** Migrate online-booking services and repositories to TenantContext + canonical scoped API. Follow BIG-04 pattern. Expand guardrails to online-booking scope. See `docs/FOUNDATION-A7-MIGRATION-MAP-01.md`. |
+| **PLT-AUTH-02** | Authorization enforcement wiring | **PARTIAL — first vertical slice landed 2026-03-31.** Client domain (4 services) + Sales domain (3 services) migrated to `AuthorizerInterface::requireAuthorized()` at write mutation boundaries. PolicyAuthorizer permission map corrected. AuthorizationMiddleware added. 104/104 verifier assertions pass. All prior guardrails PASS. Remaining: appointment service wiring, staff/services-resources/settings service wiring, full platform control-plane action checks. |
 
 ---
 
@@ -152,13 +252,13 @@ Planning cleanup, backlog freeze, legacy banners, and **BACKBONE-CLOSURE-ACTIVE-
 
 | ID | Item | Notes |
 |----|------|-------|
-| **FOUNDATION-A7 PHASE-3** | Sales domain migration | **Successor to PHASE-2.** Migrate sales services and repositories. Blocked on PHASE-2 complete. |
+| — | No parked successor promoted yet | PLT-AUTH-02 is now LIVE. Do not add a successor until this charter is explicitly updated again. |
 
 ---
 
 ## FOUNDATION ROADMAP (A1–A8) — 2026 Foundation Plan
 
-Full ordered roadmap. **FOUNDATION-A1..A7 PHASE-1** are CLOSED. **FOUNDATION-A7 PHASE-2** is LIVE. Remaining tasks are **PLANNED** inventory — not in-progress, not concurrent.
+Full ordered roadmap. **FOUNDATION-A1..A7 PHASE-4** are all CLOSED. All FOUNDATION-A7 phases complete. **PLT-Q-01** is CLOSED. **PLT-AUTH-02** is now the single **LIVE** lane. Remaining items are **PLANNED** inventory — not in-progress, not concurrent.
 
 | Order | ID | Name | Status | Notes |
 |-------|----|------|--------|-------|
@@ -168,7 +268,7 @@ Full ordered roadmap. **FOUNDATION-A1..A7 PHASE-1** are CLOSED. **FOUNDATION-A7 
 | 4 | **FOUNDATION-A4** | Canonical Scoped Repository API | **CLOSED** (2026-03-31) | 9 canonical methods on `MarketingGiftCardTemplateRepository` (`loadVisibleTemplate`, `loadVisibleImage`, `loadSelectableImageForTemplate`, `loadUploadedMediaAssetInScope`, `mutateUpdateTemplate`, `mutateArchiveTemplate`, `deleteOwnedImage`, `clearArchivedTemplateImageRef`, `countOwnedMediaAssetReferences`) + 4 canonical methods on `ClientProfileImageRepository` (`loadVisibleImage`, `loadVisibleEnrichedImage`, `loadUploadedMediaAssetInScope`, `deleteOwned`). All take TenantContext as first param. All call requireResolvedTenant() — fail-closed. |
 | 5 | **FOUNDATION-A5** | Media Pilot Rewrite | **CLOSED** (2026-03-31) | `ClientProfileImageService` and `MarketingGiftCardTemplateService` fully migrated to TenantContext + canonical scoped repository API. BranchContext replaced. Id-only acquisition patterns eliminated. Purge/ref-count behavior preserved. 77/77 verification assertions pass. |
 | 6 | **FOUNDATION-A6** | Mechanical Guardrails | **CLOSED** (2026-03-31) | `guardrail_service_layer_db_ban.php`: fails on direct DB data access in protected services. `guardrail_id_only_repo_api_freeze.php`: fails on new non-allowlisted id-only repo methods in protected repos. Both PASS on media pilot lane. Policy documented in `FOUNDATION-A6-GUARDRAILS-POLICY-01.md`. |
-| 7 | **FOUNDATION-A7** | Migration Map | **CLOSED** (2026-03-31) | 4-phase migration order defined: PHASE-1 Appointments, PHASE-2 Online-booking, PHASE-3 Sales, PHASE-4 Client-owned resources. Each phase has migration goal, blocking condition, and out-of-scope definition. `docs/FOUNDATION-A7-MIGRATION-MAP-01.md`. PHASE-1 CLOSED (BIG-04, 2026-03-31). PHASE-2 is now LIVE. |
+| 7 | **FOUNDATION-A7** | Migration Map | **CLOSED** (2026-03-31) | 4-phase migration order defined: PHASE-1 Appointments, PHASE-2 Online-booking, PHASE-3 Sales, PHASE-4 Client-owned resources. Each phase has migration goal, blocking condition, and out-of-scope definition. `docs/FOUNDATION-A7-MIGRATION-MAP-01.md`. PHASE-1 CLOSED (BIG-04, 2026-03-31). PHASE-2 remains **CLOSED** per prior accepted phase truth. PHASE-3 **CLOSED** (BIG-06, 2026-03-31). PHASE-4 **CLOSED** (BIG-07, 2026-03-31) — 152/152 verifier assertions pass; both guardrails PASS. All A7 phases complete. |
 | 8 | **FOUNDATION-A8** | Long-Horizon Platform Direction | **CLOSED** (2026-03-31) | Policy-centered modular monolith target documented. Future directions (RLS, observability, ReBAC, cell isolation) documented with preconditions. Explicit NOT-doing list. `docs/FOUNDATION-A8-PLATFORM-DIRECTION-01.md`. |
 
 ---
@@ -190,7 +290,7 @@ These items were the prior active roadmap. They are retained as **sealed evidenc
 
 | ID | Item | Notes |
 |----|------|-------|
-| **PLT-Q-01** | Unified async / queue control-plane | **Phase 2** entry — deferred, not superseded. Do not implement while FOUNDATION-A1..A7 is the active spine. Rotate per policy when foundation phases complete. |
+| — | No deferred items yet — promote from TASK-STATE-MATRIX.md when PLT-Q-01 successor is chosen | PLT-Q-01 CLOSED 2026-03-31. Next lane TBD. |
 
 ---
 

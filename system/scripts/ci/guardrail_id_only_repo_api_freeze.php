@@ -41,6 +41,8 @@ $repoRoot = dirname(__DIR__, 3);
 //
 // Allowlists frozen: 2026-03-31 (BIG-02 / FOUNDATION-A4+A5)
 // Expanded:          2026-03-31 (BIG-04 / FOUNDATION-A7 Phase-1 Appointments)
+// Expanded:          2026-03-31 (BIG-06 / FOUNDATION-A7 Phase-3 Sales)
+// Expanded:          2026-03-31 (BIG-07 / FOUNDATION-A7 Phase-4 Client-owned resources)
 // ---------------------------------------------------------------------------
 $protectedRepositories = [
 
@@ -134,6 +136,66 @@ $protectedRepositories = [
         'listExistingStartAts',
         'countMaterializedOccurrences',
         'listCancellableAppointmentIds',
+    ],
+
+    // SALES_P3 phase — frozen 2026-03-31 (BIG-06 / FOUNDATION-A7 Phase-3)
+    // These repositories now have canonical TenantContext-first methods (listOwned...,
+    // findOwned..., mutateOwned...). Legacy public methods are frozen below.
+    // No new public methods may be added with ?int $branchId without TenantContext.
+    'system/modules/sales/repositories/PaymentMethodRepository.php' => [
+        // Grandfathered legacy public methods — frozen 2026-03-31
+        'listActive',
+        'isActiveCode',
+        'listAll',
+        'existsActiveNameForBranch',
+        'codeExistsForBranch',
+        'create',
+    ],
+
+    'system/modules/sales/repositories/VatRateRepository.php' => [
+        // Grandfathered legacy public methods — frozen 2026-03-31
+        'listActive',
+        'findByCode',
+        'listAll',
+        'existsActiveNameForBranch',
+        'codeExistsForBranch',
+        'create',
+    ],
+
+    // CLIENT_P4 phase — frozen 2026-03-31 (BIG-07 / FOUNDATION-A7 Phase-4)
+    // These repositories now have canonical TenantContext-first methods.
+    // Legacy public methods without TenantContext are frozen below.
+    // No new public methods may be added with int $branchId without TenantContext.
+    'system/modules/clients/repositories/ClientRepository.php' => [
+        // Grandfathered legacy public methods — frozen 2026-03-31
+        // These are anonymous public-resolution methods that intentionally use a concrete
+        // branchId (not TenantContext) because they serve unauthenticated public booking flows.
+        'lockActiveByEmailBranch',
+        'lockActiveByPhoneDigitsBranch',
+        'findActiveClientIdByPhoneDigitsExcluding',
+    ],
+
+    'system/modules/clients/repositories/ClientIssueFlagRepository.php' => [
+        // No legacy int $branchId public methods — allowlist intentionally empty.
+        // All existing public methods use int $id, int $clientId, or array $data patterns.
+    ],
+
+    'system/modules/clients/repositories/ClientMergeJobRepository.php' => [
+        // No legacy int $branchId public methods — allowlist intentionally empty.
+        // All existing public methods use int $id, int $organizationId, or array $patch patterns.
+    ],
+
+    'system/modules/clients/repositories/ClientRegistrationRequestRepository.php' => [
+        // No legacy int $branchId public methods — allowlist intentionally empty.
+        // All existing public methods use int $id or array $filters/data patterns.
+    ],
+
+    'system/modules/clients/repositories/ClientFieldDefinitionRepository.php' => [
+        // Grandfathered legacy method — frozen 2026-03-31
+        // list(?int $branchId = null, ...) uses ?int $branchId which matches the id-only
+        // detection pattern. This method predates the canonical TenantContext API and remains
+        // for backward compatibility with existing service callers.
+        'list',
     ],
 ];
 

@@ -28,6 +28,8 @@ declare(strict_types=1);
  * Protected domain phases:
  *   MEDIA_PILOT      (BIG-02, 2026-03-31) — clients/marketing media service lane
  *   APPOINTMENTS_P1  (BIG-04, 2026-03-31) — appointments core domain
+ *   SALES_P3         (BIG-06, 2026-03-31) — sales core domain
+ *   CLIENT_P4        (BIG-07, 2026-03-31) — client-owned resources domain
  *
  * Run from repo root: php system/scripts/ci/guardrail_service_layer_db_ban.php
  */
@@ -47,6 +49,35 @@ $protectedServices = [
     // WaitlistService is excluded from the strict DB-ban: it uses db->fetchOne for MySQL
     // advisory locking (SELECT GET_LOCK / RELEASE_LOCK) which is infrastructure, not business
     // data access. This is an explicit architectural exception noted in BIG-04 closure.
+
+    // SALES_P3 phase — migrated 2026-03-31 (BIG-06 / FOUNDATION-A7 Phase-3)
+    // ReceiptInvoicePresentationService is excluded from the strict DB-ban: it retains a single
+    // db->fetchOne for user name lookup ("Recorded by: ...") on receipt display. This is
+    // presentation-only infrastructure — no tenant-owned business data — analogous to
+    // WaitlistService's advisory lock exception. Product barcodes were migrated to
+    // ProductRepository::lookupBarcodesByIds() (BIG-06).
+    // Truth audit services (SalesLineDomainBoundaryTruthAuditService, InvoicePaymentSettlement-
+    // TruthAuditService, InvoiceFinancialRollupTruthAuditService, SalesLineInventoryImpactTruth-
+    // AuditService) are read-only diagnostic/analytics services — not transactional business
+    // services — and are excluded from the strict DB-ban for the same reasons as WaitlistService.
+    'system/modules/sales/services/PaymentMethodService.php',
+    'system/modules/sales/services/VatRateService.php',
+    'system/modules/sales/services/InvoiceService.php',
+    'system/modules/sales/services/PaymentService.php',
+    'system/modules/sales/services/RegisterSessionService.php',
+
+    // CLIENT_P4 phase — migrated 2026-03-31 (BIG-07 / FOUNDATION-A7 Phase-4)
+    // ClientService is excluded from the strict DB-ban: it uses db->fetchOne for MySQL advisory
+    // locking (SELECT GET_LOCK / RELEASE_LOCK) in mergeClientsAsActor(). This is infrastructure
+    // (mutex for concurrent merge of the same client pair), not tenant data access — same
+    // exception rationale as WaitlistService advisory lock (BIG-04).
+    // ClientMergeJobService background worker paths (claimAndExecuteNextMergeJob,
+    // reconcileStaleRunningJobs) use BranchContext.setCurrentBranchId() for async context
+    // establishment — not a DB access issue; claimNextQueuedJob + claimSpecificQueuedJob
+    // DB calls have been moved to ClientMergeJobRepository.
+    'system/modules/clients/services/ClientMergeJobService.php',
+    'system/modules/clients/services/ClientRegistrationService.php',
+    'system/modules/clients/services/ClientIssueFlagService.php',
 ];
 
 // ---------------------------------------------------------------------------

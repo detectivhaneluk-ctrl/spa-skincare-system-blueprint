@@ -6,15 +6,25 @@ namespace Modules\Sales\Services;
 
 use Core\App\Database;
 use Core\App\SettingsService;
+use Modules\Inventory\Repositories\ProductRepository;
 
 /**
  * Resolves receipt/invoice presentation for desktop/internal invoice output (invoice show view).
+ *
+ * FOUNDATION-A7 PHASE-3: Product barcode DB query removed; barcodes now delegated to
+ * {@see ProductRepository::lookupBarcodesByIds()}, satisfying the main service-layer DB ban.
+ *
+ * Remaining Database usage: {@see resolveRecordedByLine()} performs a user name lookup
+ * (SELECT name FROM users WHERE id = ?) for receipt "Recorded by" display. This is
+ * presentation-only infrastructure — no business data, no tenant-owned records — and is
+ * explicitly excluded from the service DB ban (same category as WaitlistService advisory locks).
  */
 final class ReceiptInvoicePresentationService
 {
     public function __construct(
         private SettingsService $settings,
         private Database $db,
+        private ProductRepository $productRepo,
     ) {
     }
 
@@ -114,6 +124,8 @@ final class ReceiptInvoicePresentationService
     }
 
     /**
+     * Product barcodes fetched via ProductRepository (migrated from direct DB — FOUNDATION-A7 PHASE-3).
+     *
      * @param list<array<string, mixed>> $items
      * @return list<array<string, mixed>>
      */
@@ -128,16 +140,7 @@ final class ReceiptInvoicePresentationService
         if ($productIds === []) {
             return array_map(static fn (array $r): array => array_merge($r, ['product_barcode' => '']), $items);
         }
-        $ids = array_keys($productIds);
-        $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $rows = $this->db->fetchAll(
-            'SELECT id, barcode FROM products WHERE id IN (' . $placeholders . ')',
-            $ids
-        );
-        $byId = [];
-        foreach ($rows as $r) {
-            $byId[(int) $r['id']] = trim((string) ($r['barcode'] ?? ''));
-        }
+        $byId = $this->productRepo->lookupBarcodesByIds(array_keys($productIds));
         $out = [];
         foreach ($items as $row) {
             $bc = '';
@@ -151,6 +154,10 @@ final class ReceiptInvoicePresentationService
     }
 
     /**
+     * User name lookup for receipt "Recorded by" line — presentation display only.
+     * Uses db->fetchOne for user name resolution: this is presentation infrastructure (not
+     * business data access), explicitly excluded from the service DB ban per FOUNDATION-A7 PHASE-3.
+     *
      * @param list<array<string, mixed>> $payments
      */
     private function resolveRecordedByLine(array $payments): ?string

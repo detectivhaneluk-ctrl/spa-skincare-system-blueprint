@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Clients\Repositories;
 
 use Core\App\Database;
+use Core\Kernel\TenantContext;
 use Modules\Clients\Support\ClientMergeJobStatuses;
 
 final class ClientMergeJobRepository
@@ -19,7 +20,7 @@ final class ClientMergeJobRepository
     /**
      * @param array<string, mixed> $row
      */
-    public function insert(array $row): int
+    public function createJob(array $row): int
     {
         return $this->db->insert(self::TABLE, $row);
     }
@@ -161,5 +162,116 @@ final class ClientMergeJobRepository
             'UPDATE ' . self::TABLE . ' SET ' . implode(', ', $sets) . ' WHERE id = ?',
             $vals
         );
+    }
+
+    // -------------------------------------------------------------------------
+    // Canonical TenantContext-first methods (FOUNDATION-A7 PHASE-4, BIG-07)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Canonical: tenant-safe job lookup using resolved TenantContext organization scope.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findOwnedJobById(TenantContext $ctx, int $jobId): ?array
+    {
+        $scope = $ctx->requireResolvedTenant();
+        if ($jobId <= 0) {
+            return null;
+        }
+        $row = $this->db->fetchOne(
+            'SELECT * FROM ' . self::TABLE . ' WHERE id = ? AND organization_id = ? LIMIT 1',
+            [$jobId, $scope['organization_id']]
+        );
+
+        return $row ?: null;
+    }
+
+    /**
+     * Atomic job claim: SELECT FOR UPDATE + status transition to RUNNING.
+     * Handles its own transaction internally so the FOR UPDATE is properly serialized.
+     * Returns the claimed job row (via findByIdForWorker) or null if no queued job exists.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function claimNextQueuedJob(): ?array
+    {
+        $pdo = $this->db->connection();
+        $pdo->beginTransaction();
+        try {
+            $job = $this->db->fetchOne(
+                'SELECT * FROM ' . self::TABLE . ' WHERE status = ? ORDER BY id ASC LIMIT 1 FOR UPDATE',
+                [ClientMergeJobStatuses::QUEUED]
+            );
+            if ($job === null || $job === []) {
+                $pdo->rollBack();
+                return null;
+            }
+            $id = (int) ($job['id'] ?? 0);
+            if ($id <= 0) {
+                $pdo->rollBack();
+                return null;
+            }
+            $stmt = $this->db->query(
+                'UPDATE ' . self::TABLE . ' SET status = ?, started_at = COALESCE(started_at, NOW()), current_step = ? WHERE id = ? AND status = ?',
+                [ClientMergeJobStatuses::RUNNING, 'merge_execute', $id, ClientMergeJobStatuses::QUEUED]
+            );
+            if ($stmt->rowCount() < 1) {
+                $pdo->rollBack();
+                return null;
+            }
+            $pdo->commit();
+            return $this->findByIdForWorker($id);
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Atomic job claim for a specific job id: SELECT FOR UPDATE + status transition to RUNNING.
+     * Returns the claimed job row or null if not queued.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function claimSpecificQueuedJob(int $jobId): ?array
+    {
+        if ($jobId <= 0) {
+            return null;
+        }
+        $pdo = $this->db->connection();
+        $pdo->beginTransaction();
+        try {
+            $job = $this->db->fetchOne(
+                'SELECT * FROM ' . self::TABLE . ' WHERE id = ? AND status = ? FOR UPDATE',
+                [$jobId, ClientMergeJobStatuses::QUEUED]
+            );
+            if ($job === null || $job === []) {
+                $pdo->rollBack();
+                return null;
+            }
+            $id = (int) ($job['id'] ?? 0);
+            if ($id <= 0) {
+                $pdo->rollBack();
+                return null;
+            }
+            $stmt = $this->db->query(
+                'UPDATE ' . self::TABLE . ' SET status = ?, started_at = COALESCE(started_at, NOW()), current_step = ? WHERE id = ? AND status = ?',
+                [ClientMergeJobStatuses::RUNNING, 'merge_execute', $id, ClientMergeJobStatuses::QUEUED]
+            );
+            if ($stmt->rowCount() < 1) {
+                $pdo->rollBack();
+                return null;
+            }
+            $pdo->commit();
+            return $this->findByIdForWorker($id);
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Sales\Repositories;
 
 use Core\App\Database;
+use Core\Kernel\TenantContext;
 use Core\Organization\OrganizationRepositoryScope;
 
 /**
@@ -240,5 +241,109 @@ final class PaymentMethodRepository
             'UPDATE payment_methods pm SET pm.is_active = 0, pm.updated_at = NOW() WHERE pm.id = ?' . $g['sql'],
             array_merge([$id], $g['params'])
         );
+    }
+
+    // -------------------------------------------------------------------------
+    // FOUNDATION-A7 PHASE-3 — canonical TenantContext-first methods
+    // These are the authoritative entry points for all tenant-protected operations.
+    // All methods call $ctx->requireResolvedTenant() before any data access.
+    // -------------------------------------------------------------------------
+
+    /**
+     * Canonical: list active payment methods for branch (global + branch overlay), excluding optional code.
+     * Fail-closed: requires resolved tenant context.
+     *
+     * @return list<array{id:int, branch_id:int|null, code:string, name:string, type_label:string|null, is_active:int, sort_order:int}>
+     */
+    public function listOwnedActiveMethodsForBranch(TenantContext $ctx, ?int $branchId, ?string $excludeCode = null): array
+    {
+        $ctx->requireResolvedTenant();
+        return $this->listActive($branchId, $excludeCode);
+    }
+
+    /**
+     * Canonical: list all payment methods for branch (admin view, including inactive).
+     * Fail-closed: requires resolved tenant context.
+     *
+     * @return list<array{id:int, branch_id:int|null, code:string, name:string, type_label:string|null, is_active:int, sort_order:int}>
+     */
+    public function listOwnedAllMethodsForBranch(TenantContext $ctx, ?int $branchId = null): array
+    {
+        $ctx->requireResolvedTenant();
+        return $this->listAll($branchId);
+    }
+
+    /**
+     * Canonical: check if code is active for branch (global or branch-scoped).
+     * Fail-closed: requires resolved tenant context.
+     */
+    public function isOwnedActiveCode(TenantContext $ctx, string $code, ?int $branchId = null): bool
+    {
+        $ctx->requireResolvedTenant();
+        return $this->isActiveCode($code, $branchId);
+    }
+
+    /**
+     * Canonical: find one payment method by id for the resolved global catalog.
+     * Fail-closed: requires resolved tenant context.
+     *
+     * @return array{id:int, branch_id:int|null, code:string, name:string, type_label:string|null, is_active:int, sort_order:int}|null
+     */
+    public function findOwnedGlobalCatalogMethodById(TenantContext $ctx, int $id): ?array
+    {
+        $ctx->requireResolvedTenant();
+        return $this->findGlobalCatalogMethodInResolvedTenantById($id);
+    }
+
+    /**
+     * Canonical: check if another active row has the same name for this branch.
+     * Fail-closed: requires resolved tenant context.
+     */
+    public function existsOwnedActiveNameForBranch(TenantContext $ctx, ?int $branchId, string $name, ?int $excludeId = null): bool
+    {
+        $ctx->requireResolvedTenant();
+        return $this->existsActiveNameForBranch($branchId, $name, $excludeId);
+    }
+
+    /**
+     * Canonical: check if code exists for branch (uniqueness check).
+     * Fail-closed: requires resolved tenant context.
+     */
+    public function existsOwnedCodeForBranch(TenantContext $ctx, string $code, ?int $branchId, ?int $excludeId = null): bool
+    {
+        $ctx->requireResolvedTenant();
+        return $this->codeExistsForBranch($code, $branchId, $excludeId);
+    }
+
+    /**
+     * Canonical: create payment method.
+     * Fail-closed: requires resolved tenant context.
+     *
+     * @return int new id
+     */
+    public function mutateCreateOwnedMethod(TenantContext $ctx, ?int $branchId, string $code, string $name, ?string $typeLabel, bool $isActive, int $sortOrder): int
+    {
+        $ctx->requireResolvedTenant();
+        return $this->create($branchId, $code, $name, $typeLabel, $isActive, $sortOrder);
+    }
+
+    /**
+     * Canonical: update payment method by id.
+     * Fail-closed: requires resolved tenant context.
+     */
+    public function mutateUpdateOwnedGlobalCatalogMethodById(TenantContext $ctx, int $id, string $name, ?string $typeLabel, bool $isActive, int $sortOrder): void
+    {
+        $ctx->requireResolvedTenant();
+        $this->updateGlobalCatalogMethodInResolvedTenantById($id, $name, $typeLabel, $isActive, $sortOrder);
+    }
+
+    /**
+     * Canonical: archive (soft-deactivate) payment method by id.
+     * Fail-closed: requires resolved tenant context.
+     */
+    public function mutateArchiveOwnedGlobalCatalogMethodById(TenantContext $ctx, int $id): void
+    {
+        $ctx->requireResolvedTenant();
+        $this->archiveGlobalCatalogMethodInResolvedTenantById($id);
     }
 }

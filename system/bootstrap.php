@@ -177,6 +177,8 @@ $container->singleton(\Core\Middleware\TenantProtectedRouteMiddleware::class, fn
 $container->singleton(\Core\Middleware\TenantPrincipalMiddleware::class, fn () => new \Core\Middleware\TenantPrincipalMiddleware());
 $container->singleton(\Core\Middleware\PlatformPrincipalMiddleware::class, fn () => new \Core\Middleware\PlatformPrincipalMiddleware());
 $container->singleton(\Core\Middleware\PlatformManagePostRateLimitMiddleware::class, fn () => new \Core\Middleware\PlatformManagePostRateLimitMiddleware());
+// PLT-AUTH-02: AuthorizationMiddleware is per-route, not a singleton (instantiated via ::forAction() factory).
+// The class is autoloaded; no container singleton registration needed for the middleware class itself.
 $container->singleton(\Core\Router\RootController::class, fn () => new \Core\Router\RootController());
 
 return $container;

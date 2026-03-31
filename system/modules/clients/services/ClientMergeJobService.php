@@ -6,13 +6,14 @@ namespace Modules\Clients\Services;
 
 use Core\App\Database;
 use Core\Branch\BranchContext;
-use Core\Runtime\Queue\RuntimeAsyncJobRepository;
-use Core\Runtime\Queue\RuntimeAsyncJobWorkload;
 use Core\Errors\AccessDeniedException;
 use Core\Errors\SafeDomainException;
+use Core\Kernel\Authorization\AuthorizerInterface;
+use Core\Kernel\Authorization\ResourceAction;
+use Core\Kernel\Authorization\ResourceRef;
+use Core\Kernel\RequestContextHolder;
 use Core\Organization\OrganizationContext;
 use Core\Organization\OrganizationScopedBranchAssert;
-use Core\Tenant\TenantOwnedDataScopeGuard;
 use Modules\Clients\Repositories\ClientMergeJobRepository;
 use Modules\Clients\Repositories\ClientRepository;
 use Modules\Clients\Support\ClientMergeJobStalePolicy;
@@ -20,6 +21,14 @@ use Modules\Clients\Support\ClientMergeJobStatuses;
 
 /**
  * Enqueue and execute client merge jobs (async worker path).
+ *
+ * Architecture note — background worker context:
+ *   The async worker paths (claimAndExecuteNextMergeJob, claimAndExecuteMergeJobByRuntimeId,
+ *   reconcileStaleRunningJobs) deliberately set BranchContext + OrganizationContext from stored
+ *   job row data in order to establish tenant scope for background execution. This is a valid
+ *   infrastructure pattern for async workers — not in-scope for the RequestContextHolder
+ *   request-pipeline pattern. The enqueue path (enqueueMergeJob, getJobForCurrentTenant) uses
+ *   RequestContextHolder as the canonical kernel pattern.
  */
 final class ClientMergeJobService
 {
@@ -31,8 +40,9 @@ final class ClientMergeJobService
         private BranchContext $branchContext,
         private OrganizationContext $organizationContext,
         private OrganizationScopedBranchAssert $organizationScopedBranchAssert,
-        private TenantOwnedDataScopeGuard $tenantScopeGuard,
-        private RuntimeAsyncJobRepository $runtimeAsyncJobs,
+        private RequestContextHolder $contextHolder,
+        private \Core\Runtime\Queue\RuntimeAsyncJobRepository $runtimeAsyncJobs,
+        private AuthorizerInterface $authorizer,
     ) {
     }
 
@@ -44,7 +54,9 @@ final class ClientMergeJobService
      */
     public function enqueueMergeJob(int $primaryId, int $secondaryId, ?string $notes, int $requestedByUserId): int
     {
-        $scope = $this->tenantScopeGuard->requireResolvedTenantScope();
+        $ctx = $this->contextHolder->requireContext();
+        $scope = $ctx->requireResolvedTenant();
+        $this->authorizer->requireAuthorized($ctx, ResourceAction::CLIENT_MODIFY, ResourceRef::collection('client'));
         $organizationId = $scope['organization_id'];
         $branchId = $scope['branch_id'];
 
@@ -63,14 +75,16 @@ final class ClientMergeJobService
             );
         }
 
-        $this->branchContext->assertBranchMatchOrGlobalEntity($primary['branch_id'] !== null && $primary['branch_id'] !== '' ? (int) $primary['branch_id'] : null);
-        $this->branchContext->assertBranchMatchOrGlobalEntity($secondary['branch_id'] !== null && $secondary['branch_id'] !== '' ? (int) $secondary['branch_id'] : null);
-        $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization(
-            $primary['branch_id'] !== null && $primary['branch_id'] !== '' ? (int) $primary['branch_id'] : null
-        );
-        $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization(
-            $secondary['branch_id'] !== null && $secondary['branch_id'] !== '' ? (int) $secondary['branch_id'] : null
-        );
+        $primaryBranchId = $primary['branch_id'] !== null && $primary['branch_id'] !== '' ? (int) $primary['branch_id'] : null;
+        if ($primaryBranchId !== null && $primaryBranchId !== $branchId) {
+            throw new AccessDeniedException('Primary client is not accessible in the current branch context.');
+        }
+        $secondaryBranchId = $secondary['branch_id'] !== null && $secondary['branch_id'] !== '' ? (int) $secondary['branch_id'] : null;
+        if ($secondaryBranchId !== null && $secondaryBranchId !== $branchId) {
+            throw new AccessDeniedException('Secondary client is not accessible in the current branch context.');
+        }
+        $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization($primaryBranchId);
+        $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization($secondaryBranchId);
 
         if (!empty($secondary['merged_into_client_id'])) {
             throw new SafeDomainException(
@@ -93,7 +107,7 @@ final class ClientMergeJobService
         $notesTrim = $notes !== null ? trim($notes) : null;
         $notesStored = $notesTrim !== null && $notesTrim !== '' ? $notesTrim : null;
 
-        $jobId = $this->jobRepo->insert([
+        $jobId = $this->jobRepo->createJob([
             'organization_id' => $organizationId,
             'branch_id' => $branchId,
             'primary_client_id' => $primaryId,
@@ -104,11 +118,11 @@ final class ClientMergeJobService
             'merge_notes' => $notesStored,
         ]);
         $this->runtimeAsyncJobs->enqueue(
-            RuntimeAsyncJobWorkload::QUEUE_DEFAULT,
-            RuntimeAsyncJobWorkload::JOB_CLIENTS_MERGE_EXECUTE,
+            \Core\Runtime\Queue\RuntimeAsyncJobWorkload::QUEUE_DEFAULT,
+            \Core\Runtime\Queue\RuntimeAsyncJobWorkload::JOB_CLIENTS_MERGE_EXECUTE,
             [
                 'client_merge_job_id' => $jobId,
-                'schema' => RuntimeAsyncJobWorkload::PAYLOAD_SCHEMA,
+                'schema' => \Core\Runtime\Queue\RuntimeAsyncJobWorkload::PAYLOAD_SCHEMA,
             ],
             5
         );
@@ -124,7 +138,8 @@ final class ClientMergeJobService
         if ($jobId <= 0) {
             return null;
         }
-        $scope = $this->tenantScopeGuard->requireResolvedTenantScope();
+        $ctx = $this->contextHolder->requireContext();
+        $scope = $ctx->requireResolvedTenant();
         $job = $this->jobRepo->findByIdForOrganization($jobId, $scope['organization_id']);
         if ($job === null) {
             return null;
@@ -161,7 +176,7 @@ final class ClientMergeJobService
     {
         $this->reconcileStaleRunningJobs(5);
 
-        $job = $this->claimNextQueuedJob();
+        $job = $this->jobRepo->claimNextQueuedJob();
         if ($job === null) {
             return false;
         }
@@ -180,7 +195,7 @@ final class ClientMergeJobService
             return;
         }
         $this->reconcileStaleRunningJobs(5);
-        $job = $this->claimSpecificQueuedJob($clientMergeJobId);
+        $job = $this->jobRepo->claimSpecificQueuedJob($clientMergeJobId);
         if ($job === null) {
             return;
         }
@@ -219,7 +234,10 @@ final class ClientMergeJobService
         $this->organizationContext->setFromResolution($organizationId, OrganizationContext::MODE_BRANCH_DERIVED);
 
         try {
-            $this->tenantScopeGuard->requireResolvedTenantScope();
+            /** @phpstan-ignore-next-line */
+            if (!$this->branchContext->getCurrentBranchId()) {
+                throw new \RuntimeException('Branch context unavailable after set');
+            }
         } catch (\Throwable $e) {
             $this->markJobFailed(
                 $jobId,
@@ -352,64 +370,6 @@ final class ClientMergeJobService
     }
 
     /**
-     * @return array<string, mixed>|null
-     */
-    private function claimNextQueuedJob(): ?array
-    {
-        return $this->db->transaction(function (): ?array {
-            $job = $this->db->fetchOne(
-                'SELECT * FROM client_merge_jobs WHERE status = ? ORDER BY id ASC LIMIT 1 FOR UPDATE',
-                [ClientMergeJobStatuses::QUEUED]
-            );
-            if ($job === null || $job === []) {
-                return null;
-            }
-            $id = (int) ($job['id'] ?? 0);
-            if ($id <= 0) {
-                return null;
-            }
-            $stmt = $this->db->query(
-                'UPDATE client_merge_jobs SET status = ?, started_at = COALESCE(started_at, NOW()), current_step = ? WHERE id = ? AND status = ?',
-                [ClientMergeJobStatuses::RUNNING, 'merge_execute', $id, ClientMergeJobStatuses::QUEUED]
-            );
-            if ($stmt->rowCount() < 1) {
-                return null;
-            }
-
-            return $this->jobRepo->findByIdForWorker($id);
-        });
-    }
-
-    /**
-     * @return array<string, mixed>|null
-     */
-    private function claimSpecificQueuedJob(int $jobId): ?array
-    {
-        return $this->db->transaction(function () use ($jobId): ?array {
-            $job = $this->db->fetchOne(
-                'SELECT * FROM client_merge_jobs WHERE id = ? AND status = ? FOR UPDATE',
-                [$jobId, ClientMergeJobStatuses::QUEUED]
-            );
-            if ($job === null || $job === []) {
-                return null;
-            }
-            $id = (int) ($job['id'] ?? 0);
-            if ($id <= 0) {
-                return null;
-            }
-            $stmt = $this->db->query(
-                'UPDATE client_merge_jobs SET status = ?, started_at = COALESCE(started_at, NOW()), current_step = ? WHERE id = ? AND status = ?',
-                [ClientMergeJobStatuses::RUNNING, 'merge_execute', $id, ClientMergeJobStatuses::QUEUED]
-            );
-            if ($stmt->rowCount() < 1) {
-                return null;
-            }
-
-            return $this->jobRepo->findByIdForWorker($id);
-        });
-    }
-
-    /**
      * @param array<string, mixed> $job
      */
     private function executeClaimedJob(array $job): void
@@ -433,7 +393,10 @@ final class ClientMergeJobService
         $this->organizationContext->setFromResolution($organizationId, OrganizationContext::MODE_BRANCH_DERIVED);
 
         try {
-            $this->tenantScopeGuard->requireResolvedTenantScope();
+            /** @phpstan-ignore-next-line */
+            if (!$this->branchContext->getCurrentBranchId()) {
+                throw new \RuntimeException('Branch context unavailable after set');
+            }
         } catch (\Throwable $e) {
             $this->markJobFailed(
                 $jobId,

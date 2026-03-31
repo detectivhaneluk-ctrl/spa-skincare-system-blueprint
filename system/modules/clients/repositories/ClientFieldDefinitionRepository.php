@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Clients\Repositories;
 
 use Core\App\Database;
+use Core\Kernel\TenantContext;
 use Core\Organization\OrganizationRepositoryScope;
 
 final class ClientFieldDefinitionRepository
@@ -105,6 +106,127 @@ final class ClientFieldDefinitionRepository
 
     public function softDelete(int $id, ?int $updatedBy): void
     {
+        $tenant = $this->orgScope->clientFieldDefinitionTenantBranchClause('d');
+        $params = array_merge([$updatedBy, $id], $tenant['params']);
+        $this->db->query(
+            'UPDATE client_field_definitions d SET d.deleted_at = NOW(), d.updated_by = ? WHERE d.id = ? AND d.deleted_at IS NULL' . $tenant['sql'],
+            $params
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Canonical TenantContext-first methods (FOUNDATION-A7 PHASE-4, BIG-07)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Canonical: list field definitions scoped to resolved tenant organization.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function listOwnedDefinitionsForBranch(TenantContext $ctx, ?int $branchId = null, bool $onlyActive = false): array
+    {
+        $ctx->requireResolvedTenant();
+        $tenant = $this->orgScope->clientFieldDefinitionTenantBranchClause('d');
+        $sql = 'SELECT d.* FROM client_field_definitions d WHERE d.deleted_at IS NULL';
+        $params = [];
+        if ($branchId !== null) {
+            $sql .= ' AND d.branch_id = ?';
+            $params[] = $branchId;
+        }
+        if ($onlyActive) {
+            $sql .= ' AND d.is_active = 1';
+        }
+        $sql .= $tenant['sql'];
+        $params = array_merge($params, $tenant['params']);
+        $sql .= ' ORDER BY d.sort_order ASC, d.id ASC';
+
+        return $this->db->fetchAll($sql, $params);
+    }
+
+    /**
+     * Canonical: find a field definition by id, scoped to resolved tenant organization.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findOwnedDefinition(TenantContext $ctx, int $id): ?array
+    {
+        $ctx->requireResolvedTenant();
+        $tenant = $this->orgScope->clientFieldDefinitionTenantBranchClause('d');
+        $params = array_merge([$id], $tenant['params']);
+
+        return $this->db->fetchOne(
+            'SELECT d.* FROM client_field_definitions d WHERE d.id = ? AND d.deleted_at IS NULL' . $tenant['sql'],
+            $params
+        ) ?: null;
+    }
+
+    /**
+     * Canonical: create a field definition, validated against resolved tenant scope.
+     */
+    public function mutateCreateOwnedDefinition(TenantContext $ctx, array $data): int
+    {
+        $ctx->requireResolvedTenant();
+        $allowed = [
+            'branch_id',
+            'field_key',
+            'label',
+            'field_type',
+            'options_json',
+            'is_required',
+            'is_active',
+            'sort_order',
+            'created_by',
+            'updated_by',
+        ];
+        $this->db->insert('client_field_definitions', array_intersect_key($data, array_flip($allowed)));
+
+        return $this->db->lastInsertId();
+    }
+
+    /**
+     * Canonical: update a field definition, scoped to resolved tenant organization.
+     */
+    public function mutateUpdateOwnedDefinition(TenantContext $ctx, int $id, array $data): void
+    {
+        $ctx->requireResolvedTenant();
+        if ($data === []) {
+            return;
+        }
+        $allowed = [
+            'branch_id',
+            'field_key',
+            'label',
+            'field_type',
+            'options_json',
+            'is_required',
+            'is_active',
+            'sort_order',
+            'updated_by',
+        ];
+        $payload = array_intersect_key($data, array_flip($allowed));
+        if ($payload === []) {
+            return;
+        }
+        $cols = [];
+        $vals = [];
+        foreach ($payload as $k => $v) {
+            $cols[] = $k . ' = ?';
+            $vals[] = $v;
+        }
+        $tenant = $this->orgScope->clientFieldDefinitionTenantBranchClause('d');
+        $vals = array_merge($vals, [$id], $tenant['params']);
+        $this->db->query(
+            'UPDATE client_field_definitions d SET ' . implode(', ', $cols) . ' WHERE d.id = ? AND d.deleted_at IS NULL' . $tenant['sql'],
+            $vals
+        );
+    }
+
+    /**
+     * Canonical: soft-delete a field definition, scoped to resolved tenant organization.
+     */
+    public function mutateSoftDeleteOwnedDefinition(TenantContext $ctx, int $id, ?int $updatedBy): void
+    {
+        $ctx->requireResolvedTenant();
         $tenant = $this->orgScope->clientFieldDefinitionTenantBranchClause('d');
         $params = array_merge([$updatedBy, $id], $tenant['params']);
         $this->db->query(

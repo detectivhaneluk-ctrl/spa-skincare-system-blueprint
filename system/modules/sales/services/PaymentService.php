@@ -8,7 +8,10 @@ use Core\App\Application;
 use Core\App\Database;
 use Core\App\SettingsService;
 use Core\Audit\AuditService;
-use Core\Branch\BranchContext;
+use Core\Kernel\Authorization\AuthorizerInterface;
+use Core\Kernel\Authorization\ResourceAction;
+use Core\Kernel\Authorization\ResourceRef;
+use Core\Kernel\RequestContextHolder;
 use Core\Organization\OrganizationScopedBranchAssert;
 use Core\Contracts\InvoiceGiftCardRedemptionProvider;
 use Core\Contracts\MembershipInvoiceSettlementProvider;
@@ -53,14 +56,15 @@ final class PaymentService
         private SettingsService $settingsService,
         private AuditService $audit,
         private Database $db,
-        private BranchContext $branchContext,
+        private RequestContextHolder $contextHolder,
         private OrganizationScopedBranchAssert $organizationScopedBranchAssert,
         private NotificationService $notifications,
         private MembershipInvoiceSettlementProvider $membershipSettlement,
         private ReceiptPrintDispatchProvider $receiptPrintDispatch,
         private PublicCommerceFulfillmentReconcileRecoveryService $publicCommerceFulfillmentReconcileRecovery,
         /** @var callable(): PublicCommerceFulfillmentReconciler */
-        private $publicCommerceFulfillmentReconciler
+        private $publicCommerceFulfillmentReconciler,
+        private AuthorizerInterface $authorizer,
     ) {
     }
 
@@ -83,7 +87,12 @@ final class PaymentService
                 throw new \RuntimeException('Invoice not found');
             }
             $branchId = $inv['branch_id'] !== null && $inv['branch_id'] !== '' ? (int) $inv['branch_id'] : null;
-            $this->branchContext->assertBranchMatchOrGlobalEntity($branchId);
+            $ctx = $this->contextHolder->requireContext();
+            $resolved = $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::INVOICE_PAY, ResourceRef::instance('invoice', $invoiceId));
+            if ($branchId !== null && $branchId !== $resolved['branch_id']) {
+                throw new \DomainException('Invoice branch does not match current branch context.');
+            }
             $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization($branchId);
             $allowedForForm = $this->paymentMethodService->listForPaymentForm($branchId);
             if ($allowedForForm === []) {
@@ -209,7 +218,12 @@ final class PaymentService
                 throw new \RuntimeException('Invoice not found.');
             }
             $branchIdForOrg = $invoice['branch_id'] !== null && $invoice['branch_id'] !== '' ? (int) $invoice['branch_id'] : null;
-            $this->branchContext->assertBranchMatchOrGlobalEntity($branchIdForOrg);
+            $refCtx = $this->contextHolder->requireContext();
+            $refResolved = $refCtx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($refCtx, ResourceAction::INVOICE_PAY, ResourceRef::instance('invoice', $invoiceId));
+            if ($branchIdForOrg !== null && $branchIdForOrg !== $refResolved['branch_id']) {
+                throw new \DomainException('Invoice branch does not match current branch context.');
+            }
             $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization($branchIdForOrg);
             if ((string) ($invoice['status'] ?? '') === 'cancelled') {
                 throw new \DomainException('Cannot refund payment for cancelled invoice.');

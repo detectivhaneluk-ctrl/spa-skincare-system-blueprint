@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Sales\Services;
 
+use Core\Kernel\RequestContextHolder;
 use Modules\Sales\Repositories\PaymentMethodRepository;
 
 /**
@@ -18,8 +19,10 @@ final class PaymentMethodService
     public const NAME_MAX_LENGTH = 100;
     public const TYPE_LABEL_MAX_LENGTH = 50;
 
-    public function __construct(private PaymentMethodRepository $repo)
-    {
+    public function __construct(
+        private PaymentMethodRepository $repo,
+        private RequestContextHolder $contextHolder,
+    ) {
     }
 
     /**

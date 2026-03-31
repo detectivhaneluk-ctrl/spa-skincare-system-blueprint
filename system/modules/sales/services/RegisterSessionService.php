@@ -7,7 +7,10 @@ namespace Modules\Sales\Services;
 use Core\App\Application;
 use Core\App\Database;
 use Core\Audit\AuditService;
-use Core\Branch\BranchContext;
+use Core\Kernel\Authorization\AuthorizerInterface;
+use Core\Kernel\Authorization\ResourceAction;
+use Core\Kernel\Authorization\ResourceRef;
+use Core\Kernel\RequestContextHolder;
 use Modules\Sales\Repositories\CashMovementRepository;
 use Modules\Sales\Repositories\PaymentRepository;
 use Modules\Sales\Repositories\RegisterSessionRepository;
@@ -20,7 +23,8 @@ final class RegisterSessionService
         private PaymentRepository $payments,
         private Database $db,
         private AuditService $audit,
-        private BranchContext $branchContext
+        private RequestContextHolder $contextHolder,
+        private AuthorizerInterface $authorizer,
     ) {
     }
 
@@ -29,7 +33,12 @@ final class RegisterSessionService
         if ($branchId <= 0) {
             throw new \InvalidArgumentException('branch_id is required.');
         }
-        $this->branchContext->assertBranchMatchStrict($branchId);
+        $ctx = $this->contextHolder->requireContext();
+        $resolved = $ctx->requireResolvedTenant();
+        $this->authorizer->requireAuthorized($ctx, ResourceAction::INVOICE_PAY, ResourceRef::collection('register_session'));
+        if ($branchId !== $resolved['branch_id']) {
+            throw new \DomainException('Branch does not match current branch context.');
+        }
         if (!is_finite($openingCashAmount) || $openingCashAmount < 0) {
             throw new \DomainException('Opening cash amount cannot be negative.');
         }
@@ -81,7 +90,12 @@ final class RegisterSessionService
             if ((string) ($session['status'] ?? '') !== 'open') {
                 throw new \DomainException('Register session is already closed.');
             }
-            $this->branchContext->assertBranchMatchStrict((int) $session['branch_id']);
+            $closeCtx = $this->contextHolder->requireContext();
+            $closeResolved = $closeCtx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($closeCtx, ResourceAction::INVOICE_PAY, ResourceRef::instance('register_session', $sessionId));
+            if ((int) $session['branch_id'] !== $closeResolved['branch_id']) {
+                throw new \DomainException('Session branch does not match current branch context.');
+            }
 
             $branchId = (int) $session['branch_id'];
             $userId = $this->currentUserId();
@@ -181,7 +195,12 @@ final class RegisterSessionService
             if ((string) ($session['status'] ?? '') !== 'open') {
                 throw new \DomainException('Cash movements are only allowed on open register sessions.');
             }
-            $this->branchContext->assertBranchMatchStrict((int) $session['branch_id']);
+            $mvCtx = $this->contextHolder->requireContext();
+            $mvResolved = $mvCtx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($mvCtx, ResourceAction::INVOICE_PAY, ResourceRef::instance('register_session', $sessionId));
+            if ((int) $session['branch_id'] !== $mvResolved['branch_id']) {
+                throw new \DomainException('Session branch does not match current branch context.');
+            }
 
             $branchId = (int) $session['branch_id'];
             $userId = $this->currentUserId();

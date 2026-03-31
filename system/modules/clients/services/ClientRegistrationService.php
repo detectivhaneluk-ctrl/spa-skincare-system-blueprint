@@ -8,10 +8,13 @@ use Core\App\Application;
 use Core\App\Database;
 use Core\App\SettingsService;
 use Core\Audit\AuditService;
-use Core\Branch\BranchContext;
-use Core\Organization\OrganizationScopedBranchAssert;
+use Core\Errors\AccessDeniedException;
 use Core\Errors\SafeDomainException;
-use Core\Tenant\TenantOwnedDataScopeGuard;
+use Core\Kernel\Authorization\AuthorizerInterface;
+use Core\Kernel\Authorization\ResourceAction;
+use Core\Kernel\Authorization\ResourceRef;
+use Core\Kernel\RequestContextHolder;
+use Core\Organization\OrganizationScopedBranchAssert;
 use Modules\Clients\Repositories\ClientRegistrationRequestRepository;
 use Modules\Clients\Repositories\ClientRepository;
 use Modules\Clients\Support\ClientRegistrationValidationException;
@@ -25,22 +28,26 @@ final class ClientRegistrationService
         private ClientService $clientService,
         private Database $db,
         private AuditService $audit,
-        private BranchContext $branchContext,
+        private RequestContextHolder $contextHolder,
         private SettingsService $settings,
-        private TenantOwnedDataScopeGuard $tenantScopeGuard,
         private OrganizationScopedBranchAssert $organizationScopedBranchAssert,
+        private AuthorizerInterface $authorizer,
     ) {
     }
 
     public function create(array $data): int
     {
         return $this->transactional(function () use ($data): int {
-            $this->tenantScopeGuard->requireResolvedTenantScope();
+            $ctx = $this->contextHolder->requireContext();
+            $scope = $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::CLIENT_CREATE, ResourceRef::collection('client'));
             $validationErrors = ClientRegistrationValidator::validateCreate($data);
             if ($validationErrors !== []) {
                 throw new ClientRegistrationValidationException($validationErrors);
             }
-            $data = $this->branchContext->enforceBranchOnCreate($data);
+            if (!isset($data['branch_id']) || $data['branch_id'] === '' || $data['branch_id'] === null) {
+                $data['branch_id'] = $scope['branch_id'];
+            }
             $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization(
                 isset($data['branch_id']) && $data['branch_id'] !== '' && $data['branch_id'] !== null
                     ? (int) $data['branch_id']
@@ -78,15 +85,18 @@ final class ClientRegistrationService
     public function updateStatus(int $id, string $status, ?string $notes = null): void
     {
         $this->transactional(function () use ($id, $status, $notes): void {
-            $this->tenantScopeGuard->requireResolvedTenantScope();
+            $ctx = $this->contextHolder->requireContext();
+            $scope = $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::CLIENT_MODIFY, ResourceRef::instance('client_registration', $id));
             $existing = $this->repo->find($id);
             if (!$existing) {
                 throw new \RuntimeException('Registration request not found.');
             }
-            $this->branchContext->assertBranchMatchOrGlobalEntity($existing['branch_id'] !== null && $existing['branch_id'] !== '' ? (int) $existing['branch_id'] : null);
-            $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization(
-                $existing['branch_id'] !== null && $existing['branch_id'] !== '' ? (int) $existing['branch_id'] : null
-            );
+            $entityBranchId = $existing['branch_id'] !== null && $existing['branch_id'] !== '' ? (int) $existing['branch_id'] : null;
+            if ($entityBranchId !== null && $entityBranchId !== $scope['branch_id']) {
+                throw new AccessDeniedException('Registration request is not accessible in the current branch context.');
+            }
+            $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization($entityBranchId);
             $next = trim($status);
             if (!in_array($next, ['new', 'reviewed', 'converted', 'rejected'], true)) {
                 throw new \InvalidArgumentException('Invalid registration status.');
@@ -112,7 +122,9 @@ final class ClientRegistrationService
     public function convert(int $id, ?int $existingClientId = null): int
     {
         return $this->transactional(function () use ($id, $existingClientId): int {
-            $this->tenantScopeGuard->requireResolvedTenantScope();
+            $ctx = $this->contextHolder->requireContext();
+            $scope = $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::CLIENT_CREATE, ResourceRef::instance('client_registration', $id));
             $existing = $this->repo->find($id);
             if (!$existing) {
                 throw new SafeDomainException(
@@ -122,10 +134,11 @@ final class ClientRegistrationService
                     404
                 );
             }
-            $this->branchContext->assertBranchMatchOrGlobalEntity($existing['branch_id'] !== null && $existing['branch_id'] !== '' ? (int) $existing['branch_id'] : null);
-            $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization(
-                $existing['branch_id'] !== null && $existing['branch_id'] !== '' ? (int) $existing['branch_id'] : null
-            );
+            $entityBranchId = $existing['branch_id'] !== null && $existing['branch_id'] !== '' ? (int) $existing['branch_id'] : null;
+            if ($entityBranchId !== null && $entityBranchId !== $scope['branch_id']) {
+                throw new AccessDeniedException('Registration request is not accessible in the current branch context.');
+            }
+            $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization($entityBranchId);
             if ((string) $existing['status'] === 'rejected') {
                 throw new \DomainException('Rejected registration cannot be converted.');
             }

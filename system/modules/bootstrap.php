@@ -39,6 +39,7 @@ $registrars = [
     'register_media.php',
     'register_marketing.php',
     'register_payroll.php',
+    'register_async_queue.php',
 ];
 
 foreach ($registrars as $registrar) {

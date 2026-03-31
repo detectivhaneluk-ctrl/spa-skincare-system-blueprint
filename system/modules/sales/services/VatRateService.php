@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Sales\Services;
 
+use Core\Kernel\RequestContextHolder;
 use Modules\Sales\Repositories\VatRateRepository;
 
 /**
@@ -23,8 +24,10 @@ final class VatRateService
     /** @var list<string> */
     public const ALLOWED_APPLIES_TO = ['services', 'products', 'memberships', 'add_ons'];
 
-    public function __construct(private VatRateRepository $repo)
-    {
+    public function __construct(
+        private VatRateRepository $repo,
+        private RequestContextHolder $contextHolder,
+    ) {
     }
 
     /**

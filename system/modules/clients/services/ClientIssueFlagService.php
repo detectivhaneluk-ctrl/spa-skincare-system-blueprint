@@ -7,9 +7,12 @@ namespace Modules\Clients\Services;
 use Core\App\Application;
 use Core\App\Database;
 use Core\Audit\AuditService;
-use Core\Branch\BranchContext;
+use Core\Errors\AccessDeniedException;
+use Core\Kernel\Authorization\AuthorizerInterface;
+use Core\Kernel\Authorization\ResourceAction;
+use Core\Kernel\Authorization\ResourceRef;
+use Core\Kernel\RequestContextHolder;
 use Core\Organization\OrganizationScopedBranchAssert;
-use Core\Tenant\TenantOwnedDataScopeGuard;
 use Modules\Clients\Repositories\ClientIssueFlagRepository;
 use Modules\Clients\Repositories\ClientRepository;
 
@@ -20,17 +23,21 @@ final class ClientIssueFlagService
         private ClientRepository $clientRepo,
         private Database $db,
         private AuditService $audit,
-        private BranchContext $branchContext,
-        private TenantOwnedDataScopeGuard $tenantScopeGuard,
+        private RequestContextHolder $contextHolder,
         private OrganizationScopedBranchAssert $organizationScopedBranchAssert,
+        private AuthorizerInterface $authorizer,
     ) {
     }
 
     public function create(array $data): int
     {
         return $this->transactional(function () use ($data): int {
-            $this->tenantScopeGuard->requireResolvedTenantScope();
-            $data = $this->branchContext->enforceBranchOnCreate($data);
+            $ctx = $this->contextHolder->requireContext();
+            $scope = $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::CLIENT_MODIFY, ResourceRef::collection('client'));
+            if (!isset($data['branch_id']) || $data['branch_id'] === '' || $data['branch_id'] === null) {
+                $data['branch_id'] = $scope['branch_id'];
+            }
             $clientId = (int) ($data['client_id'] ?? 0);
             if ($clientId <= 0) {
                 throw new \InvalidArgumentException('client_id is required.');
@@ -39,10 +46,11 @@ final class ClientIssueFlagService
             if (!$client) {
                 throw new \RuntimeException('Client not found.');
             }
-            $this->branchContext->assertBranchMatchOrGlobalEntity($client['branch_id'] !== null && $client['branch_id'] !== '' ? (int) $client['branch_id'] : null);
-            $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization(
-                $client['branch_id'] !== null && $client['branch_id'] !== '' ? (int) $client['branch_id'] : null
-            );
+            $entityBranchId = $client['branch_id'] !== null && $client['branch_id'] !== '' ? (int) $client['branch_id'] : null;
+            if ($entityBranchId !== null && $entityBranchId !== $scope['branch_id']) {
+                throw new AccessDeniedException('Client is not accessible in the current branch context.');
+            }
+            $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization($entityBranchId);
             $type = trim((string) ($data['type'] ?? ''));
             if (!in_array($type, ['invalid_payment_card', 'account_follow_up', 'front_desk_warning'], true)) {
                 throw new \InvalidArgumentException('Invalid flag type.');
@@ -72,15 +80,18 @@ final class ClientIssueFlagService
     public function resolve(int $id, ?string $notes = null): void
     {
         $this->transactional(function () use ($id, $notes): void {
-            $this->tenantScopeGuard->requireResolvedTenantScope();
+            $ctx = $this->contextHolder->requireContext();
+            $scope = $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::CLIENT_MODIFY, ResourceRef::instance('client_issue_flag', $id));
             $existing = $this->repo->find($id);
             if (!$existing) {
                 throw new \RuntimeException('Client issue flag not found.');
             }
-            $this->branchContext->assertBranchMatchOrGlobalEntity($existing['branch_id'] !== null && $existing['branch_id'] !== '' ? (int) $existing['branch_id'] : null);
-            $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization(
-                $existing['branch_id'] !== null && $existing['branch_id'] !== '' ? (int) $existing['branch_id'] : null
-            );
+            $entityBranchId = $existing['branch_id'] !== null && $existing['branch_id'] !== '' ? (int) $existing['branch_id'] : null;
+            if ($entityBranchId !== null && $entityBranchId !== $scope['branch_id']) {
+                throw new AccessDeniedException('Client issue flag is not accessible in the current branch context.');
+            }
+            $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization($entityBranchId);
             if ((string) $existing['status'] === 'resolved') {
                 return;
             }

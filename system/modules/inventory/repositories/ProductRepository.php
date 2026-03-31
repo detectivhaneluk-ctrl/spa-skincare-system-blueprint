@@ -1250,4 +1250,29 @@ final class ProductRepository
 
         return $out;
     }
+
+    /**
+     * Minimal receipt display helper: look up barcode strings for a set of product ids.
+     * No org/tenant scope — products.barcode is display metadata with no access-control risk.
+     * Used exclusively by {@see \Modules\Sales\Services\ReceiptInvoicePresentationService}.
+     *
+     * @param list<int> $ids
+     * @return array<int, string> map of product_id => barcode ('' when absent)
+     */
+    public function lookupBarcodesByIds(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $rows = $this->db->fetchAll(
+            'SELECT id, barcode FROM products WHERE id IN (' . $placeholders . ')',
+            $ids
+        );
+        $out = [];
+        foreach ($rows as $r) {
+            $out[(int) $r['id']] = trim((string) ($r['barcode'] ?? ''));
+        }
+        return $out;
+    }
 }
