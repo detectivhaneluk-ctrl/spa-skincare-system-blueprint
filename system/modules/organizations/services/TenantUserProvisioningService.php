@@ -7,6 +7,7 @@ namespace Modules\Organizations\Services;
 use Core\App\Database;
 use Core\Audit\AuditService;
 use Core\Auth\PrincipalAccessService;
+use Core\Permissions\PermissionService;
 use InvalidArgumentException;
 
 /**
@@ -20,6 +21,7 @@ final class TenantUserProvisioningService
         private Database $db,
         private AuditService $audit,
         private PrincipalAccessService $principalAccess,
+        private PermissionService $permissions,
     ) {
     }
 
@@ -231,6 +233,9 @@ final class TenantUserProvisioningService
         if ($platformFounder && $this->membershipTableExists()) {
             $this->db->query('DELETE FROM user_organization_memberships WHERE user_id = ?', [$userId]);
         }
+
+        // WAVE-06: role rows changed — invalidate cross-request permission cache for this user (all plausible branch contexts).
+        $this->permissions->clearSharedCacheForUserAllBranchContexts($userId);
 
         return $userId;
     }

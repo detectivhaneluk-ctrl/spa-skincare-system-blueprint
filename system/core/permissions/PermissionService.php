@@ -49,6 +49,100 @@ final class PermissionService
         unset($this->cache[$localKey]);
     }
 
+    /**
+     * Invalidates every shared-cache key this user may have for the current tenant (null branch + each plausible branch context).
+     * Use after role assignment changes, membership/branch repair, or any event where a single-branch {@see clearCachedForUser} is insufficient.
+     */
+    public function clearSharedCacheForUserAllBranchContexts(int $userId): void
+    {
+        if ($userId <= 0) {
+            return;
+        }
+        $this->clearCachedForUser($userId, null);
+        foreach ($this->resolveBranchIdsForPermissionCacheInvalidation($userId) as $bid) {
+            $this->clearCachedForUser($userId, $bid);
+        }
+    }
+
+    /**
+     * After staff-group permission pivot changes or group membership changes, drop shared permission cache for every login user linked to members.
+     */
+    public function invalidateStaffGroupPermissionCachesForGroupMembers(int $staffGroupId): void
+    {
+        if ($staffGroupId <= 0) {
+            return;
+        }
+        try {
+            $rows = $this->db->fetchAll(
+                'SELECT DISTINCT st.user_id FROM staff_group_members sgm
+                 INNER JOIN staff st ON st.id = sgm.staff_id
+                 WHERE sgm.staff_group_id = ? AND st.user_id IS NOT NULL AND st.deleted_at IS NULL',
+                [$staffGroupId]
+            );
+        } catch (\PDOException $e) {
+            if (($e->errorInfo[0] ?? '') === '42S02') {
+                return;
+            }
+            throw $e;
+        }
+        foreach ($rows as $r) {
+            $uid = (int) ($r['user_id'] ?? 0);
+            if ($uid > 0) {
+                $this->clearSharedCacheForUserAllBranchContexts($uid);
+            }
+        }
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function resolveBranchIdsForPermissionCacheInvalidation(int $userId): array
+    {
+        $ids = [];
+        $u = $this->db->fetchOne('SELECT branch_id FROM users WHERE id = ?', [$userId]);
+        if ($u !== null && isset($u['branch_id']) && $u['branch_id'] !== null && (int) $u['branch_id'] > 0) {
+            $ids[(int) $u['branch_id']] = true;
+        }
+        try {
+            foreach (
+                $this->db->fetchAll(
+                    'SELECT DISTINCT branch_id FROM staff WHERE user_id = ? AND deleted_at IS NULL AND branch_id IS NOT NULL',
+                    [$userId]
+                ) as $r
+            ) {
+                $bid = (int) ($r['branch_id'] ?? 0);
+                if ($bid > 0) {
+                    $ids[$bid] = true;
+                }
+            }
+        } catch (\PDOException $e) {
+            if (($e->errorInfo[0] ?? '') !== '42S02') {
+                throw $e;
+            }
+        }
+        try {
+            foreach (
+                $this->db->fetchAll(
+                    'SELECT DISTINCT b.id AS id FROM branches b
+                     INNER JOIN user_organization_memberships uom ON uom.organization_id = b.organization_id
+                     WHERE uom.user_id = ? AND uom.status = ? AND b.deleted_at IS NULL',
+                    [$userId, 'active']
+                ) as $r
+            ) {
+                $bid = (int) ($r['id'] ?? 0);
+                if ($bid > 0) {
+                    $ids[$bid] = true;
+                }
+            }
+        } catch (\PDOException $e) {
+            if (($e->errorInfo[0] ?? '') !== '42S02') {
+                throw $e;
+            }
+        }
+
+        return array_map(static fn (int $id): int => $id, array_keys($ids));
+    }
+
     public function has(int $userId, string $permission): bool
     {
         $perms = $this->getForUser($userId);

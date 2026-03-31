@@ -9,6 +9,7 @@ use Core\App\Database;
 use Core\Audit\AuditService;
 use Core\Branch\BranchContext;
 use Core\Organization\OrganizationRepositoryScope;
+use Core\Permissions\PermissionService;
 use Modules\Staff\Repositories\StaffGroupRepository;
 use Modules\Staff\Repositories\StaffRepository;
 
@@ -20,7 +21,8 @@ final class StaffGroupService
         private AuditService $audit,
         private BranchContext $branchContext,
         private Database $db,
-        private OrganizationRepositoryScope $orgScope
+        private OrganizationRepositoryScope $orgScope,
+        private PermissionService $permissions,
     ) {
     }
 
@@ -87,6 +89,7 @@ final class StaffGroupService
             $this->audit->log('staff_group_deactivated', 'staff_group', $id, $this->currentUserId(), $group['branch_id'] !== null ? (int) $group['branch_id'] : null, [
                 'group' => $group,
             ]);
+            $this->permissions->invalidateStaffGroupPermissionCachesForGroupMembers($id);
         }, 'staff-group deactivate');
     }
 
@@ -108,6 +111,7 @@ final class StaffGroupService
                 'staff_group_id' => $groupId,
                 'staff_id' => $staffId,
             ]);
+            $this->invalidatePermissionCacheForStaffUserFromStaffRow($staff);
         }, 'staff-group attach');
     }
 
@@ -118,12 +122,14 @@ final class StaffGroupService
             if (!$this->groups->hasMember($groupId, $staffId)) {
                 throw new \DomainException('Staff member is not attached to this group.');
             }
+            $staff = $this->requireStaff($staffId);
             $this->groups->detachStaff($groupId, $staffId);
             $branchId = $group['branch_id'] !== null ? (int) $group['branch_id'] : null;
             $this->audit->log('staff_group_member_detached', 'staff_group', $groupId, $this->currentUserId(), $branchId, [
                 'staff_group_id' => $groupId,
                 'staff_id' => $staffId,
             ]);
+            $this->invalidatePermissionCacheForStaffUserFromStaffRow($staff);
         }, 'staff-group detach');
     }
 
@@ -217,6 +223,17 @@ final class StaffGroupService
     private function currentUserId(): ?int
     {
         return Application::container()->get(\Core\Auth\SessionAuth::class)->id();
+    }
+
+    /**
+     * @param array<string, mixed> $staffRow
+     */
+    private function invalidatePermissionCacheForStaffUserFromStaffRow(array $staffRow): void
+    {
+        $uid = $staffRow['user_id'] ?? null;
+        if ($uid !== null && (int) $uid > 0) {
+            $this->permissions->clearSharedCacheForUserAllBranchContexts((int) $uid);
+        }
     }
 
     private function transactional(callable $callback, string $action): mixed

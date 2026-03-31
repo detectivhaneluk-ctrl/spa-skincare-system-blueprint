@@ -7,6 +7,7 @@ namespace Modules\Organizations\Services;
 use Core\App\Database;
 use Core\Audit\AuditService;
 use Core\Auth\PrincipalAccessService;
+use Core\Permissions\PermissionService;
 use InvalidArgumentException;
 use Throwable;
 
@@ -22,6 +23,7 @@ final class FounderAccessManagementService
         private AuditService $audit,
         private TenantUserProvisioningService $provisioning,
         private PrincipalAccessService $principalAccess,
+        private PermissionService $permissions,
     ) {
     }
 
@@ -202,6 +204,7 @@ final class FounderAccessManagementService
                 'branch_id' => $branchId,
             ], $auditExtra ?? []));
         });
+        $this->permissions->clearSharedCacheForUserAllBranchContexts($userId);
     }
 
     /**
@@ -226,7 +229,7 @@ final class FounderAccessManagementService
         }
         $platformRoleId = (int) $pf['id'];
 
-        return (int) $this->db->transaction(function () use ($actorUserId, $userId, $platformRoleId): int {
+        $removed = (int) $this->db->transaction(function () use ($actorUserId, $userId, $platformRoleId): int {
             $u = $this->db->fetchOne('SELECT id FROM users WHERE id = ? LIMIT 1 FOR UPDATE', [$userId]);
             if ($u === null) {
                 throw new InvalidArgumentException('User not found.');
@@ -238,7 +241,7 @@ final class FounderAccessManagementService
                  WHERE ur.user_id = ? AND r.code <> ?',
                 [$userId, 'platform_founder']
             );
-            $removed = (int) $stmt->rowCount();
+            $removedInner = (int) $stmt->rowCount();
             $this->db->query(
                 'INSERT IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)',
                 [$userId, $platformRoleId]
@@ -248,11 +251,14 @@ final class FounderAccessManagementService
             }
             $this->db->query('UPDATE users SET branch_id = NULL WHERE id = ?', [$userId]);
             $this->audit->log('founder_platform_principal_roles_canonicalized', 'user', $userId, $actorUserId, null, [
-                'non_platform_roles_removed' => $removed,
+                'non_platform_roles_removed' => $removedInner,
             ]);
 
-            return $removed;
+            return $removedInner;
         });
+        $this->permissions->clearSharedCacheForUserAllBranchContexts($userId);
+
+        return $removed;
     }
 
     /**

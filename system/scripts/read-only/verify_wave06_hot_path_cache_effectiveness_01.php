@@ -79,6 +79,18 @@ assert_wave06(
     $results, $pass
 );
 
+assert_wave06(
+    'W6-A.9 PermissionService has clearSharedCacheForUserAllBranchContexts()',
+    str_contains($permContent, 'public function clearSharedCacheForUserAllBranchContexts('),
+    $results, $pass
+);
+
+assert_wave06(
+    'W6-A.10 PermissionService has invalidateStaffGroupPermissionCachesForGroupMembers()',
+    str_contains($permContent, 'public function invalidateStaffGroupPermissionCachesForGroupMembers('),
+    $results, $pass
+);
+
 // ── bootstrap.php injects SharedCacheInterface into PermissionService ────────
 
 $bootstrapFile = $systemPath . '/bootstrap.php';
@@ -89,7 +101,7 @@ if (preg_match('/singleton\(.*?PermissionService.*?\)\s*\)/s', $bootstrapContent
 }
 
 assert_wave06(
-    'W6-A.9 bootstrap.php injects SharedCacheInterface into PermissionService',
+    'W6-A.11 bootstrap.php injects SharedCacheInterface into PermissionService',
     str_contains($permBlock, 'SharedCacheInterface'),
     $results, $pass
 );
@@ -280,6 +292,52 @@ assert_wave06(
 assert_wave06(
     'W6-E.2 AvailabilityService resolves from DI without error',
     $probeOk,
+    $results, $pass
+);
+
+// ── W6-F: Permission invalidation wired on real mutation paths (not only clearCache) ─
+
+$sgpContent = (string) file_get_contents($systemPath . '/modules/staff/services/StaffGroupPermissionService.php');
+assert_wave06(
+    'W6-F.1 StaffGroupPermissionService calls invalidateStaffGroupPermissionCachesForGroupMembers after pivot replace',
+    str_contains($sgpContent, 'invalidateStaffGroupPermissionCachesForGroupMembers'),
+    $results, $pass
+);
+
+$sgSvcContent = (string) file_get_contents($systemPath . '/modules/staff/services/StaffGroupService.php');
+assert_wave06(
+    'W6-F.2 StaffGroupService invalidates permission cache on attach/detach/deactivate',
+    str_contains($sgSvcContent, 'invalidatePermissionCacheForStaffUserFromStaffRow')
+        && str_contains($sgSvcContent, 'invalidateStaffGroupPermissionCachesForGroupMembers'),
+    $results, $pass
+);
+
+$tupContent = (string) file_get_contents($systemPath . '/modules/organizations/services/TenantUserProvisioningService.php');
+assert_wave06(
+    'W6-F.3 TenantUserProvisioningService clears shared permission cache after user_roles mutation',
+    str_contains($tupContent, 'clearSharedCacheForUserAllBranchContexts'),
+    $results, $pass
+);
+
+$famContent = (string) file_get_contents($systemPath . '/modules/organizations/services/FounderAccessManagementService.php');
+assert_wave06(
+    'W6-F.4 FounderAccessManagementService clears shared permission cache after tenant repair / role strip',
+    substr_count($famContent, 'clearSharedCacheForUserAllBranchContexts') >= 2,
+    $results, $pass
+);
+
+$regStaffContent = (string) file_get_contents($systemPath . '/modules/bootstrap/register_staff.php');
+assert_wave06(
+    'W6-F.5 register_staff.php passes PermissionService into StaffGroupService',
+    str_contains($regStaffContent, 'StaffGroupService::class')
+        && str_contains($regStaffContent, 'PermissionService::class'),
+    $results, $pass
+);
+
+assert_wave06(
+    'W6-F.6 register_organizations.php passes PermissionService into TenantUserProvisioningService',
+    str_contains((string) file_get_contents($systemPath . '/modules/bootstrap/register_organizations.php'), 'TenantUserProvisioningService')
+        && str_contains((string) file_get_contents($systemPath . '/modules/bootstrap/register_organizations.php'), 'PermissionService::class'),
     $results, $pass
 );
 

@@ -88,6 +88,8 @@ final class StaffGroupPermissionService
             $before = $this->links->listPermissionIdsForGroup($groupId);
             $this->links->replaceLinksForGroup($groupId, $ids);
             $this->permissions->clearCache();
+            // WAVE-06: staff-group pivot affects every member's effective permissions — clear cross-request shared cache, not only in-process.
+            $this->permissions->invalidateStaffGroupPermissionCachesForGroupMembers($groupId);
 
             $this->audit->log('staff_group_permissions_replaced', 'staff_group', $groupId, $this->currentUserId(), $group['branch_id'] !== null ? (int) $group['branch_id'] : null, [
                 'before_permission_ids' => $before,
