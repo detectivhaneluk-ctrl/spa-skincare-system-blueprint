@@ -296,23 +296,26 @@ final class MarketingGiftCardTemplateRepository
         if (!$this->isStorageReady()) {
             return 0;
         }
+        $this->orgScope->requireBranchDerivedOrganizationIdForDataPlane();
+        $fragI = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('i');
         $row = $this->db->fetchOne(
             "SELECT COUNT(*) AS c
              FROM marketing_gift_card_images i
              WHERE i.media_asset_id = ?
-               AND i.deleted_at IS NULL",
-            [$mediaAssetId]
+               AND i.deleted_at IS NULL" . $fragI['sql'],
+            array_merge([$mediaAssetId], $fragI['params'])
         );
         $c = (int) ($row['c'] ?? 0);
         if (!$this->tableExists('client_profile_images')) {
             return $c;
         }
+        $fragC = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('c');
         $row2 = $this->db->fetchOne(
             "SELECT COUNT(*) AS c
              FROM client_profile_images c
              WHERE c.media_asset_id = ?
-               AND c.deleted_at IS NULL",
-            [$mediaAssetId]
+               AND c.deleted_at IS NULL" . $fragC['sql'],
+            array_merge([$mediaAssetId], $fragC['params'])
         );
 
         return $c + (int) ($row2['c'] ?? 0);
