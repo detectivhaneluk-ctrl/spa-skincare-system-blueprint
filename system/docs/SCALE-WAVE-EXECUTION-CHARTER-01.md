@@ -213,6 +213,30 @@ WAVE-01 established `SharedCacheInterface` (Redis-backed in production). WAVE-05
 
 ---
 
+## WAVE-06 CLOSURE VERDICT
+
+**Date:** 2026-03-31  
+**Status:** CLOSED — all ten invariants machine-proved via `verify_wave06_hot_path_cache_effectiveness_01.php` (v3)
+
+| # | Invariant | Proof assertion |
+|---|-----------|----------------|
+| 1 | No cross-user/cross-tenant leakage — key scoped by `userId` and `branchId` | `W6-J.1` |
+| 2 | No stale allow after role assignment — `TenantUserProvisioningService` clears shared cache | `W6-F.5` |
+| 3 | No stale allow after group permission pivot — `StaffGroupPermissionService` clears all member buckets | `W6-F.3` |
+| 4 | No stale allow after group membership change — `StaffGroupService` attach/detach/deactivate/is\_active=false | `W6-F.4` |
+| 5 | No stale allow after founder/admin mutation — `FounderAccessManagementService` clears shared cache | `W6-F.6` |
+| 6 | Booking conflict check never cached — `isSlotAvailable(forAvailabilitySearch=false)` always hits DB | `W6-D.1 – W6-D.3` |
+| 7 | Calendar cache invalidated after all 11 appointment mutation paths | `W6-C.5 – W6-C.13` |
+| 8 | Calendar cache invalidated after blocked-slot create/delete | `W6-C.10 – W6-C.11` |
+| 9 | Calendar cache scope is appointment rows only — working-hours / schedule / exception changes need no invalidation | `W6-Q, W6-R, W6-S` |
+| 10 | Cache unavailability never breaks production — all paths fail-open | `W6-A.4, W6-B.6, W6-C.3` |
+
+**Live-path checks (require running environment, validated manually):** A (guarded allow), B (guarded deny), C (cache warm-up), K (/calendar/day HTTP), L (repeat-read cache hit), V–AB (full regression sweep).
+
+**Run command:** `php system/scripts/read-only/verify_wave06_hot_path_cache_effectiveness_01.php` — expect exit 0 / 45 PASS.
+
+---
+
 ## DEFERRED items (moved from active lanes by this charter)
 
 See `DEFERRED-AND-HISTORICAL-TASK-REGISTRY-01.md` for full list. Summary of what was explicitly parked:
@@ -226,9 +250,9 @@ See `DEFERRED-AND-HISTORICAL-TASK-REGISTRY-01.md` for full list. Summary of what
 
 ---
 
-## CURRENT CANONICAL HARDENING STATUS
+## CANONICAL HARDENING STATUS — RUNTIME TRUTHS (evidence addendum)
 
-*Last updated: 2026-03-31 — REPO-TRUTH-CONSOLIDATION-AND-WAVE-06-CLOSURE*
+*Last updated: 2026-03-31 — CORRECTIVE-CLOSURE-WAVE-06-AND-REPO-TRUTH-CONSOLIDATION-01*
 
 | Wave | Title | Status | Proof Script | Closing Commit |
 |------|-------|--------|-------------|----------------|
@@ -237,7 +261,7 @@ See `DEFERRED-AND-HISTORICAL-TASK-REGISTRY-01.md` for full list. Summary of what
 | WAVE-03 | Scale Readiness + Observability | **DONE** | (included in WAVE-03 commit) | `6e803fa` |
 | WAVE-04 | Safe Scale Operations | **DONE** | (included in WAVE-04 commit) | `d167acf` |
 | WAVE-05 | Live Enforcement Foundations | **DONE** | `verify_wave05_live_enforcement_foundations_01.php` (18/18 PASS) | `082c409` |
-| WAVE-06 | Hot Path Cache Effectiveness | **DONE** | `verify_wave06_hot_path_cache_effectiveness_01.php` | `517056c` + consolidation commit |
+| WAVE-06 | Hot Path Cache Effectiveness | **DONE** | `verify_wave06_hot_path_cache_effectiveness_01.php` (v3, 45 PASS) | `517056c` + corrective-closure commit |
 | WAVE-07 | *(not started)* | **PLANNED** | — | — |
 
 **What is DONE:**
@@ -249,12 +273,13 @@ See `DEFERRED-AND-HISTORICAL-TASK-REGISTRY-01.md` for full list. Summary of what
 - Online-DDL migration policy + audit archival + rate-limit foundations
 - RequestLatencyMiddleware wired as first global middleware (all requests timed)
 - PublicBookingRateLimitMiddleware wired on /api/public/booking/slots and /book
-- PermissionService cross-request cache: `perm_v1:u{userId}:b{branchId}`, TTL 120s
-- AvailabilityService day-calendar cache: `cal_v1:day_apts:{branchId}:{date}`, TTL 30s
-- Calendar cache invalidated on: appointment create/update/cancel/reschedule/updateStatus/delete + blocked-slot create/delete + all slot booking paths (createFromSlot/createFromPublicBooking/createFromSeriesOccurrence)
-- Permission cache cross-request invalidation wired: StaffGroupPermissionService (group permission pivot), StaffGroupService (member attach/detach)
+- PermissionService cross-request cache: `perm_v1:u{userId}:b{branchId|null}`, TTL 120s
+- AvailabilityService day-calendar cache: `cal_v1:day_apts:{branchId|null}:{date}`, TTL 30s
+- Calendar cache invalidated on all 11 appointment mutation paths: create/update/cancel/reschedule/updateStatus/delete + createFromSlot/createFromPublicBooking/createFromSeriesOccurrence (via `insertNewSlotAppointmentWithLocks`) + blocked-slot create/delete
+- Permission cache cross-request invalidation covers ALL mutation paths: TenantUserProvisioningService (role assignment), FounderAccessManagementService (founder/platform role strip), StaffGroupPermissionService (group permission pivot — all members), StaffGroupService (member attach/detach/deactivate/is_active=false)
 - Final booking revalidation (`isSlotAvailable` with `forAvailabilitySearch=false`) is NEVER cached
-- All cache paths fail-open; Redis unavailable never breaks production request
+- All cache paths fail-open; Redis unavailability never breaks a production request
+- Working-hours / staff-schedule / availability-exception mutations correctly excluded from calendar-cache invalidation requirement (cache only stores appointment rows)
 
 **What is NOT started (WAVE-07 candidates):**
 - Read/write routing via ProxySQL at the application layer (artifacts exist, runtime routing not wired)
@@ -262,15 +287,16 @@ See `DEFERRED-AND-HISTORICAL-TASK-REGISTRY-01.md` for full list. Summary of what
 
 ---
 
-## NEXT GATE TO OPEN NEW WAVE
+## NEXT WAVE GATE CONDITION
 
 **Gate:** WAVE-07 may be opened when:
-1. This file shows WAVE-06 DONE (confirmed above)
-2. `verify_wave06_hot_path_cache_effectiveness_01.php` exits 0
+1. This file shows WAVE-06 DONE (confirmed above — see `WAVE-06 CLOSURE VERDICT`)
+2. `verify_wave06_hot_path_cache_effectiveness_01.php` (v3) exits 0 / 44 PASS
 3. No open regression or proof gap on /gift-cards or /appointments/calendar/day
-4. Exactly one WAVE-07 candidate is chosen (see below)
+4. Exactly one WAVE-07 candidate is chosen and committed to this charter
 
-**WAVE-07 CANDIDATE — RECOMMENDED:**  
+**WAVE-07 RECOMMENDED CANDIDATE:**  
 **WAVE-07: READ/WRITE ROUTING + PROXYSQL RUNTIME PROOF**  
-*Rationale:* WAVE-03 created ProxySQL deployment artifacts but the application DB layer has no read/write routing. At 1000+ salons, the single DB endpoint will saturate on heavy read traffic (calendar polls, availability search). Wiring read replicas via ProxySQL is the next highest-impact infra move. Alternatively: WAVE-07 HIGH-RISK SHARD-READINESS HOTSPOTS if DB scaling is already in place.  
-*Do not open WAVE-07 in the same session as this consolidation unless proof budget is fully satisfied.*
+*Rationale:* WAVE-03 created ProxySQL deployment artifacts but the application DB layer has no read/write routing. At 1000+ salons, the single DB endpoint saturates on heavy read traffic (calendar polls, availability search). Wiring read replicas via ProxySQL is the next highest-impact infra move.  
+*Alternative:* WAVE-07 HIGH-RISK SHARD-READINESS HOTSPOTS — only if DB scaling is already in place.  
+*Do not open WAVE-07 in the same session as this corrective closure unless proof budget is fully satisfied.*

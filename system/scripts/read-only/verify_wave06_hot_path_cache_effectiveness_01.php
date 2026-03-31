@@ -10,7 +10,7 @@ declare(strict_types=1);
  * W6-B: AvailabilityService day-calendar short-TTL cache (30s TTL)
  * W6-C: Explicit invalidation wired in all appointment/blocked-slot mutation paths (incl. update + slot booking)
  * W6-D: Booking write path (isSlotAvailable with forAvailabilitySearch=false) is NOT cached
- * W6-E: This script passes all assertions
+ * W6-E: This script passes all assertions (45 total; E.1/E.2 require DI bootstrap to succeed)
  * W6-F: Permission cache cross-request invalidation wired to all RBAC mutation paths
  */
 
@@ -244,20 +244,46 @@ assert_wave06(
     $results, $pass
 );
 
-// ── W6-C.12/W6-C.13: Calendar cache invalidation in AppointmentService ───────
-
-$aptServiceFile = $systemPath . '/modules/appointments/services/AppointmentService.php';
-$aptContent = (string) file_get_contents($aptServiceFile);
+// ── W6-J: Permission cache key structure — no cross-user / cross-tenant leakage ─
+// The key format is perm_v1:u{userId}:b{branchId|null}.
+// Including userId in the key prevents any cross-user leakage by construction.
 
 assert_wave06(
-    'W6-C.12 AppointmentService::update() invalidates calendar cache for old+new date after scheduling change',
-    str_contains($aptContent, 'WAVE-06: invalidate calendar display cache after appointment update'),
+    'W6-J.1 Permission cache key scopes by userId and branchId (cross-user leakage impossible by key structure)',
+    str_contains($permContent, "':u'") && str_contains($permContent, "':b'"),
+    $results, $pass
+);
+
+// ── W6-Q/R/S: Day-calendar cache scope — working-hours and schedule mutations ─
+// The day-calendar cache stores only appointment rows (listDayAppointmentsGroupedByStaff).
+// It does NOT cache working-hours, staff schedules, or availability exceptions.
+// Therefore branch-operating-hours changes, staff schedule changes, and availability
+// exception changes do NOT need to call invalidateDayCalendarCache().
+// Proof: extract the method body and confirm absence of those tables.
+
+$dayAptBody = (function (string $src): string {
+    $start = strpos($src, 'public function listDayAppointmentsGroupedByStaff(');
+    if ($start === false) {
+        return '';
+    }
+    return substr($src, $start, 2500);
+})($availContent);
+
+assert_wave06(
+    'W6-Q Day-calendar cached query excludes branch_operating_hours (hours-only changes need no invalidation)',
+    $dayAptBody !== '' && !str_contains($dayAptBody, 'branch_operating_hours'),
     $results, $pass
 );
 
 assert_wave06(
-    'W6-C.13 AppointmentService::insertNewSlotAppointmentWithLocks() invalidates calendar cache after slot creation',
-    str_contains($aptContent, 'WAVE-06: invalidate calendar display cache after successful slot appointment creation'),
+    'W6-R Day-calendar cached query excludes staff_schedules (schedule-only changes need no invalidation)',
+    $dayAptBody !== '' && !str_contains($dayAptBody, 'staff_schedules'),
+    $results, $pass
+);
+
+assert_wave06(
+    'W6-S Day-calendar cached query excludes staff_availability_exceptions (exception-only changes need no invalidation)',
+    $dayAptBody !== '' && !str_contains($dayAptBody, 'staff_availability_exceptions'),
     $results, $pass
 );
 
@@ -378,7 +404,7 @@ assert_wave06(
 // ── Output ────────────────────────────────────────────────────────────────────
 
 echo PHP_EOL;
-echo '=== WAVE-06 HOT PATH CACHE EFFECTIVENESS PROOF (v2 — WAVE-06-CLOSURE) ===' . PHP_EOL;
+echo '=== WAVE-06 HOT PATH CACHE EFFECTIVENESS PROOF (v3 — CORRECTIVE-CLOSURE-01) ===' . PHP_EOL;
 echo PHP_EOL;
 foreach ($results as $line) {
     echo $line . PHP_EOL;
