@@ -7,6 +7,7 @@ namespace Modules\Organizations\Services;
 use Core\App\Database;
 use Core\Audit\AuditService;
 use Core\Auth\PrincipalAccessService;
+use Core\Permissions\PermissionService;
 use InvalidArgumentException;
 use Throwable;
 
@@ -22,6 +23,7 @@ final class FounderAccessManagementService
         private AuditService $audit,
         private TenantUserProvisioningService $provisioning,
         private PrincipalAccessService $principalAccess,
+        private PermissionService $permissions,
     ) {
     }
 
@@ -250,6 +252,7 @@ final class FounderAccessManagementService
             $this->audit->log('founder_platform_principal_roles_canonicalized', 'user', $userId, $actorUserId, null, [
                 'non_platform_roles_removed' => $removed,
             ]);
+            $this->permissions->clearSharedPermissionCacheForStaffUser($userId);
 
             return $removed;
         });

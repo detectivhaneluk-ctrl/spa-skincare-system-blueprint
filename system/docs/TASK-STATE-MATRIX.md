@@ -6,6 +6,8 @@ Date: 2026-03-29 (addendum **02** deep findings; backbone closure canonicalizati
 Rule: status is assigned from runtime/code truth, not narrative closure. **`BOOKER-PARITY-MASTER-ROADMAP.md` §3.1** uses the same labels (Booker doc is **deferred** for execution — see banner there). This file is the **strictest status/evidence source** (`CLOSED` / `PARTIAL` / `OPEN` / `REOPENED` / `AUDIT-ONLY` / `PLANNED`).  
 **Active human execution spine (phase order, freeze rules):** `BACKBONE-CLOSURE-MASTER-PLAN-01.md`. **The only LIVE implementation queue:** `FOUNDATION-ACTIVE-BACKLOG-CHARTER-01.md` (**at most one LIVE row, one PARKED row**). **Deferred/historical work:** `DEFERRED-AND-HISTORICAL-TASK-REGISTRY-01.md`. Legacy numbered queue `BACKLOG-CANONICALIZATION-AND-HARDENING-QUEUE-RECONCILIATION-01.md` §B is **historical ID reference only** — do not treat its ordering as competing with the backbone phases. **`FOUNDATION-TRUTH-RECONCILIATION-ADDENDUM-02.md`** records the addendum pass.
 
+**Scale-hardening campaign (WAVE-01–WAVE-06):** runtime wave status, proof scripts, and next gate are **`SCALE-WAVE-EXECUTION-CHARTER-01.md`** — not inferred from unrelated “WAVE-0x” labels in sales/inventory audit docs.
+
 ### Matrix inventory vs LIVE work (anti-drift)
 
 - **`OPEN`**, **`REOPENED`**, and listed **`PARTIAL`** rows describe **evidence state** across the repo — **not** “this is in progress now” and **not** permission to implement in parallel.

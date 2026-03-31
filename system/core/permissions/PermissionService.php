@@ -49,6 +49,36 @@ final class PermissionService
         unset($this->cache[$localKey]);
     }
 
+    /**
+     * Invalidates shared permission cache keys for every branch bucket this login user may hit:
+     * {@code bnull}, {@code users.branch_id}, and each distinct {@code staff.branch_id}.
+     * Use after role assignment, staff-group permission pivot, or staff-group membership changes.
+     */
+    public function clearSharedPermissionCacheForStaffUser(int $userId): void
+    {
+        if ($userId <= 0) {
+            return;
+        }
+        $this->clearCachedForUser($userId, null);
+        $staffBranches = $this->db->fetchAll(
+            'SELECT DISTINCT branch_id FROM staff WHERE user_id = ? AND deleted_at IS NULL',
+            [$userId]
+        );
+        foreach ($staffBranches as $row) {
+            $bid = $row['branch_id'] ?? null;
+            if ($bid !== null && $bid !== '') {
+                $this->clearCachedForUser($userId, (int) $bid);
+            }
+        }
+        $home = $this->db->fetchOne('SELECT branch_id FROM users WHERE id = ? LIMIT 1', [$userId]);
+        if ($home !== null) {
+            $hb = $home['branch_id'] ?? null;
+            if ($hb !== null && $hb !== '') {
+                $this->clearCachedForUser($userId, (int) $hb);
+            }
+        }
+    }
+
     public function has(int $userId, string $permission): bool
     {
         $perms = $this->getForUser($userId);

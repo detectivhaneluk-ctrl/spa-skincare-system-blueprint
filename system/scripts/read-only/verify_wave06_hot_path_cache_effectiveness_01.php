@@ -79,6 +79,19 @@ assert_wave06(
     $results, $pass
 );
 
+assert_wave06(
+    'W6-F.1 PermissionService defines clearSharedPermissionCacheForStaffUser() for multi-branch invalidation',
+    str_contains($permContent, 'function clearSharedPermissionCacheForStaffUser('),
+    $results, $pass
+);
+
+assert_wave06(
+    'W6-F.2 clearSharedPermissionCacheForStaffUser clears users.branch_id and staff.branch_id buckets',
+    str_contains($permContent, 'SELECT DISTINCT branch_id FROM staff WHERE user_id')
+        && str_contains($permContent, 'SELECT branch_id FROM users WHERE id'),
+    $results, $pass
+);
+
 // ── bootstrap.php injects SharedCacheInterface into PermissionService ────────
 
 $bootstrapFile = $systemPath . '/bootstrap.php';
@@ -215,6 +228,55 @@ assert_wave06(
 assert_wave06(
     'W6-C.11 BlockedSlotService delete() calls invalidateDayCalendarCache',
     str_contains($blockedContent, 'WAVE-06: invalidate calendar display cache after blocked slot deletion'),
+    $results, $pass
+);
+
+// ── W6-F: Permission invalidation on RBAC / staff-group mutation paths ───────
+
+$sgPermFile = $systemPath . '/modules/staff/services/StaffGroupPermissionService.php';
+$sgPermContent = (string) file_get_contents($sgPermFile);
+
+assert_wave06(
+    'W6-F.3 StaffGroupPermissionService invalidates shared cache after permission pivot',
+    str_contains($sgPermContent, 'listMemberUserIds')
+        && str_contains($sgPermContent, 'clearSharedPermissionCacheForStaffUser'),
+    $results, $pass
+);
+
+$sgSvcFile = $systemPath . '/modules/staff/services/StaffGroupService.php';
+$sgSvcContent = (string) file_get_contents($sgSvcFile);
+
+assert_wave06(
+    'W6-F.4 StaffGroupService invalidates permission cache on attach/detach/deactivate',
+    str_contains($sgSvcContent, 'invalidatePermissionCacheForStaffUserFromStaffId')
+        && str_contains($sgSvcContent, 'invalidateStaffGroupMemberPermissionCaches'),
+    $results, $pass
+);
+
+$tenantProvFile = $systemPath . '/modules/organizations/services/TenantUserProvisioningService.php';
+$tenantProvContent = (string) file_get_contents($tenantProvFile);
+
+assert_wave06(
+    'W6-F.5 TenantUserProvisioningService clears permission cache after user_roles write',
+    str_contains($tenantProvContent, 'clearSharedPermissionCacheForStaffUser'),
+    $results, $pass
+);
+
+$founderAccessFile = $systemPath . '/modules/organizations/services/FounderAccessManagementService.php';
+$founderAccessContent = (string) file_get_contents($founderAccessFile);
+
+assert_wave06(
+    'W6-F.6 FounderAccessManagementService clears permission cache after platform role strip',
+    str_contains($founderAccessContent, 'clearSharedPermissionCacheForStaffUser'),
+    $results, $pass
+);
+
+$staffGroupRepoFile = $systemPath . '/modules/staff/repositories/StaffGroupRepository.php';
+$staffGroupRepoContent = (string) file_get_contents($staffGroupRepoFile);
+
+assert_wave06(
+    'W6-F.7 StaffGroupRepository exposes listMemberUserIds() for cache invalidation',
+    str_contains($staffGroupRepoContent, 'function listMemberUserIds('),
     $results, $pass
 );
 

@@ -88,6 +88,9 @@ final class StaffGroupPermissionService
             $before = $this->links->listPermissionIdsForGroup($groupId);
             $this->links->replaceLinksForGroup($groupId, $ids);
             $this->permissions->clearCache();
+            foreach ($this->groups->listMemberUserIds($groupId) as $memberUserId) {
+                $this->permissions->clearSharedPermissionCacheForStaffUser($memberUserId);
+            }
 
             $this->audit->log('staff_group_permissions_replaced', 'staff_group', $groupId, $this->currentUserId(), $group['branch_id'] !== null ? (int) $group['branch_id'] : null, [
                 'before_permission_ids' => $before,

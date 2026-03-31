@@ -7,6 +7,7 @@ namespace Modules\Organizations\Services;
 use Core\App\Database;
 use Core\Audit\AuditService;
 use Core\Auth\PrincipalAccessService;
+use Core\Permissions\PermissionService;
 use InvalidArgumentException;
 
 /**
@@ -20,6 +21,7 @@ final class TenantUserProvisioningService
         private Database $db,
         private AuditService $audit,
         private PrincipalAccessService $principalAccess,
+        private PermissionService $permissions,
     ) {
     }
 
@@ -227,6 +229,7 @@ final class TenantUserProvisioningService
 
         $this->db->query('DELETE FROM user_roles WHERE user_id = ?', [$userId]);
         $this->db->query('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)', [$userId, $roleId]);
+        $this->permissions->clearSharedPermissionCacheForStaffUser($userId);
 
         if ($platformFounder && $this->membershipTableExists()) {
             $this->db->query('DELETE FROM user_organization_memberships WHERE user_id = ?', [$userId]);

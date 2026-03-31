@@ -348,6 +348,31 @@ final class StaffGroupRepository
         );
     }
 
+    /**
+     * Distinct login user ids for members (for permission shared-cache invalidation).
+     *
+     * @return list<int>
+     */
+    public function listMemberUserIds(int $groupId): array
+    {
+        $rows = $this->db->fetchAll(
+            'SELECT DISTINCT st.user_id AS uid
+             FROM staff_group_members sgm
+             INNER JOIN staff st ON st.id = sgm.staff_id
+             WHERE sgm.staff_group_id = ? AND st.user_id IS NOT NULL AND st.deleted_at IS NULL',
+            [$groupId]
+        );
+        $out = [];
+        foreach ($rows as $row) {
+            $uid = (int) ($row['uid'] ?? 0);
+            if ($uid > 0) {
+                $out[] = $uid;
+            }
+        }
+
+        return array_values(array_unique($out));
+    }
+
     public function hasMember(int $groupId, int $staffId): bool
     {
         return $this->db->fetchOne(

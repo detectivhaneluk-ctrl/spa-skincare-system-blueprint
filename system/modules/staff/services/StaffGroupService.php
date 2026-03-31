@@ -9,6 +9,7 @@ use Core\App\Database;
 use Core\Audit\AuditService;
 use Core\Branch\BranchContext;
 use Core\Organization\OrganizationRepositoryScope;
+use Core\Permissions\PermissionService;
 use Modules\Staff\Repositories\StaffGroupRepository;
 use Modules\Staff\Repositories\StaffRepository;
 
@@ -20,7 +21,8 @@ final class StaffGroupService
         private AuditService $audit,
         private BranchContext $branchContext,
         private Database $db,
-        private OrganizationRepositoryScope $orgScope
+        private OrganizationRepositoryScope $orgScope,
+        private PermissionService $permissions,
     ) {
     }
 
@@ -66,6 +68,9 @@ final class StaffGroupService
                 $patch['is_active'] = (bool) $data['is_active'];
             }
             $this->groups->update($id, $patch);
+            if (array_key_exists('is_active', $patch) && $patch['is_active'] === false) {
+                $this->invalidateStaffGroupMemberPermissionCaches($id);
+            }
             $this->audit->log('staff_group_updated', 'staff_group', $id, $userId, $group['branch_id'] !== null ? (int) $group['branch_id'] : null, [
                 'before' => $group,
                 'after' => array_merge($group, $patch),
@@ -80,6 +85,7 @@ final class StaffGroupService
             if ((int) ($group['is_active'] ?? 0) === 0) {
                 return;
             }
+            $this->invalidateStaffGroupMemberPermissionCaches($id);
             $this->groups->update($id, [
                 'is_active' => false,
                 'updated_by' => $this->currentUserId(),
@@ -108,6 +114,7 @@ final class StaffGroupService
                 'staff_group_id' => $groupId,
                 'staff_id' => $staffId,
             ]);
+            $this->invalidatePermissionCacheForStaffUserFromStaffId($staffId);
         }, 'staff-group attach');
     }
 
@@ -118,6 +125,7 @@ final class StaffGroupService
             if (!$this->groups->hasMember($groupId, $staffId)) {
                 throw new \DomainException('Staff member is not attached to this group.');
             }
+            $this->invalidatePermissionCacheForStaffUserFromStaffId($staffId);
             $this->groups->detachStaff($groupId, $staffId);
             $branchId = $group['branch_id'] !== null ? (int) $group['branch_id'] : null;
             $this->audit->log('staff_group_member_detached', 'staff_group', $groupId, $this->currentUserId(), $branchId, [
@@ -212,6 +220,26 @@ final class StaffGroupService
         }
         $value = trim((string) $description);
         return $value !== '' ? $value : null;
+    }
+
+    private function invalidateStaffGroupMemberPermissionCaches(int $groupId): void
+    {
+        foreach ($this->groups->listMemberUserIds($groupId) as $uid) {
+            $this->permissions->clearSharedPermissionCacheForStaffUser($uid);
+        }
+    }
+
+    private function invalidatePermissionCacheForStaffUserFromStaffId(int $staffId): void
+    {
+        $row = $this->staff->find($staffId);
+        if ($row === null) {
+            return;
+        }
+        $uid = $row['user_id'] ?? null;
+        if ($uid === null || (int) $uid <= 0) {
+            return;
+        }
+        $this->permissions->clearSharedPermissionCacheForStaffUser((int) $uid);
     }
 
     private function currentUserId(): ?int

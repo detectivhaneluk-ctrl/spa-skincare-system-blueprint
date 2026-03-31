@@ -302,7 +302,8 @@ $container->singleton(
     fn ($c) => new \Modules\Organizations\Services\TenantUserProvisioningService(
         $c->get(\Core\App\Database::class),
         $c->get(\Core\Audit\AuditService::class),
-        $c->get(\Core\Auth\PrincipalAccessService::class)
+        $c->get(\Core\Auth\PrincipalAccessService::class),
+        $c->get(\Core\Permissions\PermissionService::class)
     )
 );
 $container->singleton(
@@ -311,7 +312,8 @@ $container->singleton(
         $c->get(\Core\App\Database::class),
         $c->get(\Core\Audit\AuditService::class),
         $c->get(\Modules\Organizations\Services\TenantUserProvisioningService::class),
-        $c->get(\Core\Auth\PrincipalAccessService::class)
+        $c->get(\Core\Auth\PrincipalAccessService::class),
+        $c->get(\Core\Permissions\PermissionService::class)
     )
 );
 $container->singleton(
