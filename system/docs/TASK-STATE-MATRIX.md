@@ -30,6 +30,17 @@ If implementation exists but automated proof is weak, classify as `OPEN` or `PAR
 
 ## CLOSED (historical — not active work; proof preserved)
 
+> **SCALE-WAVE CAMPAIGN — 2026-03-31:** WAVE-01 through WAVE-06 are all DONE. Full canonical status: `SCALE-WAVE-EXECUTION-CHARTER-01.md` §CURRENT CANONICAL HARDENING STATUS. Key runtime truths now closed:
+> - Redis mandatory in production; `NoopSharedCache` blocked (`PLT-REDIS-01` seam closed by WAVE-01).
+> - Redis session handler active; multi-server scaling unblocked (WAVE-01).
+> - `WaitlistService` MySQL `GET_LOCK()` removed; distributed lock via `DistributedLockInterface` (WAVE-01).
+> - DB queue `SKIP LOCKED` + stale-reclaim cron (WAVE-02).
+> - ProxySQL deployment package + `SlowQueryLogger` + `RequestLatencyMiddleware` wired (WAVE-03/05).
+> - Rate limiting on booking routes wired (WAVE-04/05).
+> - `PermissionService` shared Redis cache + full invalidation coverage (WAVE-06).
+> - `AvailabilityService` day-calendar shared Redis cache + full invalidation coverage (WAVE-06).
+> - Final booking conflict check never cached; double-booking protection preserved (WAVE-06).
+
 - Public commerce anonymous finalize trust-cut to `awaiting_verification` (`PublicCommerceService::finalizePurchase`).
 - Public booking abuse controls and token self-service baseline (`PublicBookingController`, `PublicBookingService`).
 - Platform route shell and dashboard redirect split baseline (`/platform-admin`, `/dashboard` route/controller behavior).

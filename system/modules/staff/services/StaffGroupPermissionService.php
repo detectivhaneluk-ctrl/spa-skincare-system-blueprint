@@ -56,7 +56,9 @@ final class StaffGroupPermissionService
      */
     public function replacePermissions(int $groupId, array $permissionIds): void
     {
-        $this->transactional(function () use ($groupId, $permissionIds): void {
+        $captureGroupBranchId = null;
+        $captureMemberUserIds = [];
+        $this->transactional(function () use ($groupId, $permissionIds, &$captureGroupBranchId, &$captureMemberUserIds): void {
             $group = $this->groups->find($groupId);
             if (!$group) {
                 throw new \RuntimeException('Staff group not found.');
@@ -92,12 +94,34 @@ final class StaffGroupPermissionService
                 $this->permissions->clearSharedPermissionCacheForStaffUser($memberUserId);
             }
 
+            // WAVE-06: collect members for shared-cache invalidation after commit.
+            $captureGroupBranchId = $group['branch_id'] !== null ? (int) $group['branch_id'] : null;
+            $members = $this->db->fetchAll(
+                'SELECT DISTINCT st.user_id FROM staff st INNER JOIN staff_group_members sgm ON sgm.staff_id = st.id WHERE sgm.staff_group_id = ? AND st.deleted_at IS NULL AND st.user_id IS NOT NULL',
+                [$groupId]
+            );
+            foreach ($members as $m) {
+                $uid = isset($m['user_id']) && $m['user_id'] !== null ? (int) $m['user_id'] : 0;
+                if ($uid > 0) {
+                    $captureMemberUserIds[] = $uid;
+                }
+            }
+
             $this->audit->log('staff_group_permissions_replaced', 'staff_group', $groupId, $this->currentUserId(), $group['branch_id'] !== null ? (int) $group['branch_id'] : null, [
                 'before_permission_ids' => $before,
                 'after_permission_ids' => $ids,
                 'assignment_source' => 'staff_group_permission_replace',
             ]);
         }, 'staff-group permissions replace');
+        // WAVE-06: clear shared permission cache for all users who are members of this group.
+        foreach ($captureMemberUserIds as $uid) {
+            try {
+                $this->permissions->clearCachedForUser($uid, $captureGroupBranchId);
+                if ($captureGroupBranchId !== null) {
+                    $this->permissions->clearCachedForUser($uid, null);
+                }
+            } catch (\Throwable) {}
+        }
     }
 
     private function currentUserId(): ?int
