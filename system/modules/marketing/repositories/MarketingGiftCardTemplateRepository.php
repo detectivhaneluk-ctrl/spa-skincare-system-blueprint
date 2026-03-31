@@ -325,26 +325,40 @@ final class MarketingGiftCardTemplateRepository
      * Marks in-flight queue rows as terminal when the corresponding marketing image was deleted
      * and no active marketing image references the asset anymore.
      *
+     * Requires branch-derived tenant org context; all SQL predicates are anchored to the resolved
+     * organization via media_assets.organization_id so no cross-tenant rows are ever touched.
+     *
      * @return array{jobs_failed:int,asset_failed:int}
      */
     public function failQueueRowsForDeletedLibraryAsset(int $mediaAssetId, string $reason): array
     {
+        $orgId = $this->orgScope->requireBranchDerivedOrganizationIdForDataPlane();
         $msg = mb_substr($reason, 0, 1900);
         $jobsTarget = $this->db->fetchOne(
             "SELECT COUNT(*) AS c
              FROM media_jobs
              WHERE media_asset_id = ?
                AND job_type = ?
-               AND status IN ('pending','processing')",
-            [$mediaAssetId, \Modules\Media\Services\MediaAssetUploadService::JOB_TYPE_PROCESS_PHOTO]
+               AND status IN ('pending','processing')
+               AND EXISTS (
+                   SELECT 1 FROM media_assets ma
+                   WHERE ma.id = media_jobs.media_asset_id
+                     AND ma.organization_id = ?
+               )",
+            [$mediaAssetId, \Modules\Media\Services\MediaAssetUploadService::JOB_TYPE_PROCESS_PHOTO, $orgId]
         );
         $this->db->query(
             "UPDATE media_jobs
              SET status='failed', locked_at=NULL, error_message=?, updated_at=NOW()
              WHERE media_asset_id = ?
                AND job_type = ?
-               AND status IN ('pending','processing')",
-            [$msg, $mediaAssetId, \Modules\Media\Services\MediaAssetUploadService::JOB_TYPE_PROCESS_PHOTO]
+               AND status IN ('pending','processing')
+               AND EXISTS (
+                   SELECT 1 FROM media_assets ma
+                   WHERE ma.id = media_jobs.media_asset_id
+                     AND ma.organization_id = ?
+               )",
+            [$msg, $mediaAssetId, \Modules\Media\Services\MediaAssetUploadService::JOB_TYPE_PROCESS_PHOTO, $orgId]
         );
         $jobsFailed = (int) ($jobsTarget['c'] ?? 0);
 
@@ -352,15 +366,17 @@ final class MarketingGiftCardTemplateRepository
             "SELECT COUNT(*) AS c
              FROM media_assets
              WHERE id = ?
+               AND organization_id = ?
                AND status IN ('pending','processing')",
-            [$mediaAssetId]
+            [$mediaAssetId, $orgId]
         );
         $this->db->query(
             "UPDATE media_assets
              SET status='failed', updated_at=NOW()
              WHERE id = ?
+               AND organization_id = ?
                AND status IN ('pending','processing')",
-            [$mediaAssetId]
+            [$mediaAssetId, $orgId]
         );
         $assetFailed = (int) ($assetTarget['c'] ?? 0);
 
@@ -370,6 +386,9 @@ final class MarketingGiftCardTemplateRepository
     /**
      * Deletes orphan media asset row (if no active marketing image references remain) and returns
      * enough metadata for caller-side filesystem cleanup.
+     *
+     * Requires branch-derived tenant org context; SELECT, DELETE, and variant lookup are all
+     * anchored to the resolved organization_id so no cross-tenant rows are ever touched.
      *
      * @return array{
      *   deleted:bool,
@@ -382,6 +401,7 @@ final class MarketingGiftCardTemplateRepository
      */
     public function hardDeleteOrphanMediaAssetForLibrary(int $mediaAssetId): array
     {
+        $orgId = $this->orgScope->requireBranchDerivedOrganizationIdForDataPlane();
         $result = [
             'deleted' => false,
             'asset_id' => $mediaAssetId,
@@ -398,8 +418,12 @@ final class MarketingGiftCardTemplateRepository
         }
 
         $asset = $this->db->fetchOne(
-            'SELECT id, organization_id, branch_id, stored_basename FROM media_assets WHERE id = ? LIMIT 1',
-            [$mediaAssetId]
+            'SELECT id, organization_id, branch_id, stored_basename
+             FROM media_assets
+             WHERE id = ?
+               AND organization_id = ?
+             LIMIT 1',
+            [$mediaAssetId, $orgId]
         );
         if ($asset === null) {
             return $result;
@@ -417,7 +441,10 @@ final class MarketingGiftCardTemplateRepository
             }
         }
 
-        $deleteStmt = $this->db->query('DELETE FROM media_assets WHERE id = ? LIMIT 1', [$mediaAssetId]);
+        $deleteStmt = $this->db->query(
+            'DELETE FROM media_assets WHERE id = ? AND organization_id = ? LIMIT 1',
+            [$mediaAssetId, $orgId]
+        );
         $deleted = $deleteStmt->rowCount() > 0;
 
         return [
