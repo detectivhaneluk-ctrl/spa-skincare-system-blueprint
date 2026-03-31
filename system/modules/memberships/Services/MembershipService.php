@@ -136,7 +136,7 @@ final class MembershipService
                 $payload['public_online_eligible'] = !empty($payload['public_online_eligible']) ? 1 : 0;
             }
             $beforeBilling = $this->billingFieldsSnapshot($current);
-            $this->definitions->update($id, $payload);
+            $this->definitions->updateInTenantScope($id, $tenantBranch, $payload);
             $updated = $this->definitions->findInTenantScope($id, $tenantBranch);
             $this->audit->log('membership_definition_updated', 'membership_definition', $id, $userId, $current['branch_id'] ?? null, ['before' => $current, 'after' => $updated]);
             $afterBilling = $this->billingFieldsSnapshot($updated);

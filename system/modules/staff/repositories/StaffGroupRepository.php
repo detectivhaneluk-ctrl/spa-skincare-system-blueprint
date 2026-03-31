@@ -42,17 +42,21 @@ final class StaffGroupRepository
     }
 
     /**
-     * Id-only read — **no** tenant WHERE; caller must enforce scope.
+     * Tenant-safe id read: row must belong to the resolved tenant org (branch-owned or org-global-null).
+     * Replaces the former id-only class-4 read; post-load PHP caller scope checks remain harmless for
+     * within-tenant branch enforcement but cross-tenant isolation is now intrinsic.
      *
      * @return array<string, mixed>|null
      */
     public function find(int $id, bool $withTrashed = false): ?array
     {
-        $sql = 'SELECT * FROM staff_groups WHERE id = ?';
+        $tenant = $this->orgScope->taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause('sg');
+        $sql = 'SELECT sg.* FROM staff_groups sg WHERE sg.id = ? AND (' . $tenant['sql'] . ')';
         if (!$withTrashed) {
-            $sql .= ' AND deleted_at IS NULL';
+            $sql .= ' AND sg.deleted_at IS NULL';
         }
-        return $this->db->fetchOne($sql, [$id]);
+
+        return $this->db->fetchOne($sql, array_merge([$id], $tenant['params']));
     }
 
     /**
@@ -125,15 +129,24 @@ final class StaffGroupRepository
         if ($norm === []) {
             return;
         }
-        $cols = array_map(fn (string $k): string => $k . ' = ?', array_keys($norm));
+        $tenant = $this->orgScope->taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause('sg');
+        $cols = array_map(fn (string $k): string => "sg.{$k} = ?", array_keys($norm));
         $vals = array_values($norm);
         $vals[] = $id;
-        $this->db->query('UPDATE staff_groups SET ' . implode(', ', $cols) . ' WHERE id = ?', $vals);
+        $vals = array_merge($vals, $tenant['params']);
+        $this->db->query(
+            'UPDATE staff_groups sg SET ' . implode(', ', $cols) . ' WHERE sg.id = ? AND (' . $tenant['sql'] . ')',
+            $vals
+        );
     }
 
     public function softDelete(int $id): void
     {
-        $this->db->query('UPDATE staff_groups SET deleted_at = NOW(), is_active = 0 WHERE id = ?', [$id]);
+        $tenant = $this->orgScope->taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause('sg');
+        $this->db->query(
+            'UPDATE staff_groups sg SET sg.deleted_at = NOW(), sg.is_active = 0 WHERE sg.id = ? AND (' . $tenant['sql'] . ')',
+            array_merge([$id], $tenant['params'])
+        );
     }
 
     /**

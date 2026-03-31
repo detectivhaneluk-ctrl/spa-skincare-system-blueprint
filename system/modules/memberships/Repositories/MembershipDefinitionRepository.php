@@ -264,7 +264,25 @@ final class MembershipDefinitionRepository
         return $this->db->lastInsertId();
     }
 
-    public function update(int $id, array $data): void
+    public function updateInTenantScope(int $id, int $branchId, array $data): void
+    {
+        $norm = $this->normalize($data);
+        if (empty($norm)) {
+            return;
+        }
+        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('md');
+        $cols = array_map(fn ($k) => "{$k} = ?", array_keys($norm));
+        $vals = array_values($norm);
+        $vals[] = $id;
+        $vals[] = $branchId;
+        $vals = array_merge($vals, $frag['params']);
+        $this->db->query(
+            'UPDATE membership_definitions md SET ' . implode(', ', $cols) . ' WHERE md.id = ? AND md.branch_id = ?' . $frag['sql'],
+            $vals
+        );
+    }
+
+    public function updateForControlPlaneById(int $id, array $data): void
     {
         $norm = $this->normalize($data);
         if (empty($norm)) {
@@ -276,7 +294,7 @@ final class MembershipDefinitionRepository
         $this->db->query('UPDATE membership_definitions SET ' . implode(', ', $cols) . ' WHERE id = ?', $vals);
     }
 
-    public function softDelete(int $id): void
+    public function softDeleteForControlPlaneById(int $id): void
     {
         $this->db->query('UPDATE membership_definitions SET deleted_at = NOW() WHERE id = ?', [$id]);
     }

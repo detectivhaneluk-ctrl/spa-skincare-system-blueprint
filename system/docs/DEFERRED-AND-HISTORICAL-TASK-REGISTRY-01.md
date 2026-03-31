@@ -6,6 +6,8 @@
 
 Entries are **not** deleted from the repository; source docs remain for evidence. This registry is the **routing table** for “later / not now.”
 
+> **ARCHITECTURE RESET - 2026-03-31:** The previous LIVE task (`PLT-TNT-01`) has been **ARCHIVED / SUPERSEDED**. The active roadmap is now **FOUNDATION-A1..A8**. The Phase 1 promotion gate below previously read "promote when PLT-TNT-01 is done" - that gate is now replaced by "promote the next FOUNDATION-A* task per charter policy when the current LIVE task closes." See `docs/ARCHITECTURE-RESET-2026-CANONICAL-ROADMAP.md`.
+
 ---
 
 ## Backbone Phase 1 — matrix inventory (not LIVE until charter promotion)
@@ -50,6 +52,7 @@ The following are **not** rows in `FOUNDATION-ACTIVE-BACKLOG-CHARTER-01.md` afte
 | Load/stress strategy, backup/restore/DR runbooks, DB scaling narrative | Matrix default **OPEN** | **Phase 4** unless blocking Phase 1 proof (document exception in matrix). |
 | **OUT-OF-SCOPE-MODULE-SCOPE-MATRIX** follow-on **implementation** (reports, documents, notifications, intake, payroll, etc.) | `OUT-OF-SCOPE-MODULE-SCOPE-MATRIX-AND-HARDENING-PLAN-01*` | Matrix treats execution as **AUDIT-ONLY**; domain expansion **DEFERRED** behind backbone. |
 | **PLT-INFRA-01** umbrella (custom stack hardening narrative) | `BACKLOG-CANONICALIZATION-AND-HARDENING-QUEUE-RECONCILIATION-01.md` | Consolidate into **Phase 4** concrete IDs when active; not parallel spine. |
+| **APPOINTMENTS-P2 — `AppointmentService` `findForUpdate` migration (BIG-04 residual)**: `AppointmentRepository::findForUpdate()` exists and is tenant-scoped; `AppointmentService` mutation paths (`cancel`, `reschedule`, `updateStatus`, `markCheckedIn`, `consumePackageSessions`, `delete`, `update`) still call `repo->find($id)` (non-locking read). Surfaced by BIG-05 guardrail check `[BIG-04 residual]` in `verify_root_01_id_only_closure_wave_plt_tnt_01.php`. | `TASK-STATE-MATRIX.md` BIG-05 row; `system/scripts/read-only/verify_root_01_id_only_closure_wave_plt_tnt_01.php` | Low urgency but real: mutations skip the org-scoped row lock. Defer until next APPOINTMENTS phase closes `AppointmentService` write paths. |
 
 ---
 

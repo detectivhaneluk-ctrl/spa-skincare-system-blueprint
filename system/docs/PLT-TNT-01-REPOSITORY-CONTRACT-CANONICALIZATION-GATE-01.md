@@ -1,5 +1,11 @@
 # PLT-TNT-01 Repository Contract Canonicalization Gate
 
+> **SUPERSEDED — ARCHITECTURE RESET 2026-03-31**  
+> This document defined the contract model for the PLT-TNT-01 wave era (`*InTenantScope`, `*ForRepair`, `*ForControlPlane` naming conventions).  
+> The naming model is superseded by **FOUNDATION-A4 — Canonical Scoped Repository API** which replaces it with an explicit `TenantContext`-passing method family.  
+> The high-level intent (explicit runtime-safe vs repair/control-plane naming) is partially preserved in FOUNDATION-A4; the specific naming convention and enforcement slice defined here are no longer the canonical model.  
+> Retain as **sealed evidence** of the PLT-TNT-01 contract epoch. Active canonical: `docs/ARCHITECTURE-RESET-2026-CANONICAL-ROADMAP.md`.
+
 Date: 2026-03-30  
 Status: `PARTIAL` until remaining mixed-semantics repository families are migrated
 

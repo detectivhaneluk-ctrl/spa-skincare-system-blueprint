@@ -460,6 +460,9 @@ final class ProductCategoryRepository
         return $this->db->lastInsertId();
     }
 
+    /**
+     * @deprecated Id-only WHERE — tooling only. Prefer {@see updateInResolvedTenantCatalogScope} for tenant HTTP paths.
+     */
     public function update(int $id, array $data): void
     {
         $norm = $this->normalize($data);
@@ -470,6 +473,27 @@ final class ProductCategoryRepository
         $vals = array_values($norm);
         $vals[] = $id;
         $this->db->query('UPDATE product_categories SET ' . implode(', ', $cols) . ' WHERE id = ?', $vals);
+    }
+
+    /**
+     * Tenant-safe UPDATE: row must be visible in resolved-tenant catalog scope (branch-owned in org or org-global with live-branch anchor).
+     */
+    public function updateInResolvedTenantCatalogScope(int $id, array $data): int
+    {
+        $norm = $this->normalize($data);
+        if ($norm === []) {
+            return 0;
+        }
+        $union = $this->orgScope->taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause('pc');
+        $cols = array_map(fn ($k) => "pc.{$k} = ?", array_keys($norm));
+        $vals = array_values($norm);
+        $vals[] = $id;
+        $stmt = $this->db->query(
+            'UPDATE product_categories pc SET ' . implode(', ', $cols) . ' WHERE pc.id = ? AND pc.deleted_at IS NULL AND (' . $union['sql'] . ')',
+            array_merge($vals, $union['params'])
+        );
+
+        return $stmt->rowCount();
     }
 
     /**

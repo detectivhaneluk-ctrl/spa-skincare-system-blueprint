@@ -13,7 +13,7 @@ use Core\Organization\OrganizationRepositoryScope;
  * | Class | Methods |
  * | --- | --- |
  * | **1–2. Strict branch ∪ org-global-null (tenant)** | {@see listActive}, {@see listAll}, {@see findByCode}, {@see isActiveIdInServiceBranchCatalog}, {@see existsActiveNameForBranch}, {@see codeExistsForBranch} (positive branch) — {@see OrganizationRepositoryScope::settingsBackedCatalogUnionBranchRowOrGlobalNullFromOperationBranchClause()} / {@see OrganizationRepositoryScope::settingsBackedCatalogGlobalNullBranchOrgAnchoredSql()} / {@see OrganizationRepositoryScope::branchColumnOwnedByResolvedOrganizationExistsClause()}; {@see bulkUpdateGlobalActiveApplicability} adds {@see OrganizationRepositoryScope::resolvedTenantOrganizationHasLiveBranchExistsClause()} on global rows only |
- * | **3. Primary-key / id-only (no org predicate)** | {@see find}, {@see update}, {@see archive} — migration and caller-authorized id paths only |
+ * | **2. Explicit control-plane global catalog** | {@see findGlobalCatalogRateInResolvedTenantById}, {@see updateGlobalCatalogRateInResolvedTenantById}, {@see archiveGlobalCatalogRateInResolvedTenantById} |
  * | **4. Control-plane unscoped** | *(none here)* |
  *
  * **File location:** `system/modules/sales/repositories/` (settings HTTP consumes via {@see \Modules\Sales\Services\VatRateService}); there is no separate `modules/settings/repositories` copy.
@@ -33,9 +33,30 @@ final class VatRateRepository
     /**
      * Row by id regardless of `branch_id` (catalog reference by primary key). **No org scope** — see class contract class 3.
      */
-    public function find(int $id): ?array
+    public function findGlobalCatalogRateInResolvedTenantById(int $id): ?array
     {
-        $row = $this->db->fetchOne('SELECT * FROM vat_rates WHERE id = ?', [$id]);
+        $g = $this->orgScope->settingsBackedCatalogGlobalNullBranchOrgAnchoredSql('vr');
+        $row = $this->db->fetchOne(
+            'SELECT vr.* FROM vat_rates vr WHERE vr.id = ?' . $g['sql'],
+            array_merge([$id], $g['params'])
+        );
+        if (!$row) {
+            return null;
+        }
+
+        return $this->normalizeRow($row);
+    }
+
+    /**
+     * Tenant runtime read: branch-owned row in the resolved org or org-global-null overlay row.
+     */
+    public function findTenantVisibleRateById(int $id): ?array
+    {
+        $tenant = $this->orgScope->taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause('vr');
+        $row = $this->db->fetchOne(
+            'SELECT vr.* FROM vat_rates vr WHERE vr.id = ? AND (' . $tenant['sql'] . ')',
+            array_merge([$id], $tenant['params'])
+        );
         if (!$row) {
             return null;
         }
@@ -208,22 +229,26 @@ final class VatRateRepository
     /**
      * Update editable fields. Code is not changed. **Id-only WHERE** — class 3; service must validate ownership.
      */
-    public function update(int $id, string $name, float $ratePercent, bool $isFlexible, bool $priceIncludesTax, ?string $appliesToJson, bool $isActive, int $sortOrder): void
+    public function updateGlobalCatalogRateInResolvedTenantById(int $id, string $name, float $ratePercent, bool $isFlexible, bool $priceIncludesTax, ?string $appliesToJson, bool $isActive, int $sortOrder): void
     {
+        $g = $this->orgScope->settingsBackedCatalogGlobalNullBranchOrgAnchoredSql('vr');
         $this->db->query(
-            'UPDATE vat_rates SET name = ?, rate_percent = ?, is_flexible = ?, price_includes_tax = ?, applies_to_json = ?, is_active = ?, sort_order = ?, updated_at = NOW() WHERE id = ?',
-            [$name, $ratePercent, $isFlexible ? 1 : 0, $priceIncludesTax ? 1 : 0, $appliesToJson, $isActive ? 1 : 0, $sortOrder, $id]
+            'UPDATE vat_rates vr
+             SET vr.name = ?, vr.rate_percent = ?, vr.is_flexible = ?, vr.price_includes_tax = ?, vr.applies_to_json = ?, vr.is_active = ?, vr.sort_order = ?, vr.updated_at = NOW()
+             WHERE vr.id = ?' . $g['sql'],
+            array_merge([$name, $ratePercent, $isFlexible ? 1 : 0, $priceIncludesTax ? 1 : 0, $appliesToJson, $isActive ? 1 : 0, $sortOrder, $id], $g['params'])
         );
     }
 
     /**
      * Archive VAT rate (soft deactivation). **Id-only WHERE** — class 3.
      */
-    public function archive(int $id): void
+    public function archiveGlobalCatalogRateInResolvedTenantById(int $id): void
     {
+        $g = $this->orgScope->settingsBackedCatalogGlobalNullBranchOrgAnchoredSql('vr');
         $this->db->query(
-            'UPDATE vat_rates SET is_active = 0, updated_at = NOW() WHERE id = ?',
-            [$id]
+            'UPDATE vat_rates vr SET vr.is_active = 0, vr.updated_at = NOW() WHERE vr.id = ?' . $g['sql'],
+            array_merge([$id], $g['params'])
         );
     }
 

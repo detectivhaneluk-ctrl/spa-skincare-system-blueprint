@@ -5,22 +5,36 @@ declare(strict_types=1);
 namespace Modules\Packages\Repositories;
 
 use Core\App\Database;
+use Core\Organization\OrganizationRepositoryScope;
 
 final class PackageUsageRepository
 {
-    public function __construct(private Database $db)
-    {
+    public function __construct(
+        private Database $db,
+        private OrganizationRepositoryScope $orgScope,
+    ) {
     }
 
     public function create(array $data): int
     {
         $this->db->insert('package_usages', $this->normalize($data));
+
         return $this->db->lastInsertId();
     }
 
+    /**
+     * Tenant-safe id read: usage must belong to a client package whose branch is in the resolved tenant org.
+     */
     public function find(int $id): ?array
     {
-        return $this->db->fetchOne('SELECT * FROM package_usages WHERE id = ?', [$id]);
+        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('cp');
+
+        return $this->db->fetchOne(
+            'SELECT pu.* FROM package_usages pu
+             INNER JOIN client_packages cp ON cp.id = pu.client_package_id
+             WHERE pu.id = ?' . $frag['sql'],
+            array_merge([$id], $frag['params'])
+        ) ?: null;
     }
 
     public function listByClientPackage(int $clientPackageId): array

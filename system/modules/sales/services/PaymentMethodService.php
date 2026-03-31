@@ -91,9 +91,9 @@ final class PaymentMethodService
      *
      * @return array{id:int, code:string, name:string, type_label:string|null, is_active:int, sort_order:int}|null
      */
-    public function getById(int $id): ?array
+    public function getGlobalCatalogMethodForSettingsAdmin(int $id): ?array
     {
-        return $this->repo->getById($id);
+        return $this->repo->findGlobalCatalogMethodInResolvedTenantById($id);
     }
 
     /**
@@ -133,9 +133,9 @@ final class PaymentMethodService
      * @param array{name: string, type_label?: string|null, is_active?: bool, sort_order?: int} $data
      * @throws \InvalidArgumentException on validation failure
      */
-    public function update(int $id, array $data): void
+    public function updateGlobalCatalogMethodForSettingsAdmin(int $id, array $data): void
     {
-        $existing = $this->repo->getById($id);
+        $existing = $this->repo->findGlobalCatalogMethodInResolvedTenantById($id);
         if ($existing === null) {
             throw new \InvalidArgumentException('Payment method not found.');
         }
@@ -154,7 +154,7 @@ final class PaymentMethodService
             throw new \InvalidArgumentException('Another active payment method already has this name.');
         }
 
-        $this->repo->update($id, $name, $typeLabel, $isActive, $sortOrder);
+        $this->repo->updateGlobalCatalogMethodInResolvedTenantById($id, $name, $typeLabel, $isActive, $sortOrder);
     }
 
     /**
@@ -162,13 +162,13 @@ final class PaymentMethodService
      *
      * @throws \InvalidArgumentException when method does not exist
      */
-    public function archive(int $id): void
+    public function archiveGlobalCatalogMethodForSettingsAdmin(int $id): void
     {
-        $existing = $this->repo->getById($id);
+        $existing = $this->repo->findGlobalCatalogMethodInResolvedTenantById($id);
         if ($existing === null) {
             throw new \InvalidArgumentException('Payment method not found.');
         }
-        $this->repo->archive($id);
+        $this->repo->archiveGlobalCatalogMethodInResolvedTenantById($id);
     }
 
     /**

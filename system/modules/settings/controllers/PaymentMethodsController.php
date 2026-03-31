@@ -54,7 +54,7 @@ final class PaymentMethodsController
                 'is_active' => $isActive,
                 'sort_order' => $sortOrder,
             ]);
-            $created = $this->paymentMethodService->getById($id);
+            $created = $this->paymentMethodService->getGlobalCatalogMethodForSettingsAdmin($id);
             $audit->log('payment_method_created', 'payment_method', $id, null, null, [
                 'after' => $created,
             ]);
@@ -76,7 +76,7 @@ final class PaymentMethodsController
     public function edit(int $id): void
     {
         $id = (int) $id;
-        $method = $this->paymentMethodService->getById($id);
+        $method = $this->paymentMethodService->getGlobalCatalogMethodForSettingsAdmin($id);
         if ($method === null) {
             flash('error', 'Payment method not found.');
             header('Location: /settings/payment-methods');
@@ -94,7 +94,7 @@ final class PaymentMethodsController
     {
         $id = (int) $id;
         $audit = Application::container()->get(AuditService::class);
-        $method = $this->paymentMethodService->getById($id);
+        $method = $this->paymentMethodService->getGlobalCatalogMethodForSettingsAdmin($id);
         if ($method === null) {
             flash('error', 'Payment method not found.');
             header('Location: /settings/payment-methods');
@@ -107,13 +107,13 @@ final class PaymentMethodsController
 
         try {
             $before = $method;
-            $this->paymentMethodService->update($id, [
+            $this->paymentMethodService->updateGlobalCatalogMethodForSettingsAdmin($id, [
                 'type_label' => $typeLabel,
                 'name' => $name,
                 'is_active' => $isActive,
                 'sort_order' => $sortOrder,
             ]);
-            $after = $this->paymentMethodService->getById($id);
+            $after = $this->paymentMethodService->getGlobalCatalogMethodForSettingsAdmin($id);
             $action = ((int) ($before['is_active'] ?? 1) === 1 && (int) ($after['is_active'] ?? 1) === 0)
                 ? 'payment_method_deactivated'
                 : 'payment_method_updated';
@@ -141,7 +141,7 @@ final class PaymentMethodsController
     {
         $id = (int) $id;
         $audit = Application::container()->get(AuditService::class);
-        $method = $this->paymentMethodService->getById($id);
+        $method = $this->paymentMethodService->getGlobalCatalogMethodForSettingsAdmin($id);
         if ($method === null) {
             flash('error', 'Payment method not found.');
             header('Location: /settings/payment-methods');
@@ -150,8 +150,8 @@ final class PaymentMethodsController
 
         try {
             $before = $method;
-            $this->paymentMethodService->archive($id);
-            $after = $this->paymentMethodService->getById($id);
+            $this->paymentMethodService->archiveGlobalCatalogMethodForSettingsAdmin($id);
+            $after = $this->paymentMethodService->getGlobalCatalogMethodForSettingsAdmin($id);
             $audit->log('payment_method_archived', 'payment_method', $id, null, null, [
                 'before' => $before,
                 'after' => $after,

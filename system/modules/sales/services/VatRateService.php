@@ -30,9 +30,9 @@ final class VatRateService
     /**
      * Full row by id (any `branch_id`). Callers that mean “Settings global admin” must filter `branch_id === null` (see `VatRatesController`).
      */
-    public function getById(int $id): ?array
+    public function getGlobalCatalogRateForSettingsAdmin(int $id): ?array
     {
-        return $this->repo->find($id);
+        return $this->repo->findGlobalCatalogRateInResolvedTenantById($id);
     }
 
     /**
@@ -64,7 +64,7 @@ final class VatRateService
         if ($vatRateId <= 0) {
             return null;
         }
-        $rate = $this->repo->find($vatRateId);
+        $rate = $this->repo->findTenantVisibleRateById($vatRateId);
         return $rate !== null ? $rate['rate_percent'] : null;
     }
 
@@ -133,9 +133,9 @@ final class VatRateService
      * @param array{name: string, rate_percent: float|string, is_flexible?: bool, price_includes_tax?: bool, applies_to_json?: mixed, is_active?: bool, sort_order?: int} $data
      * @throws \InvalidArgumentException on validation failure
      */
-    public function update(int $id, array $data): void
+    public function updateGlobalCatalogRateForSettingsAdmin(int $id, array $data): void
     {
-        $existing = $this->repo->find($id);
+        $existing = $this->repo->findGlobalCatalogRateInResolvedTenantById($id);
         if ($existing === null) {
             throw new \InvalidArgumentException('VAT rate not found.');
         }
@@ -158,7 +158,7 @@ final class VatRateService
             throw new \InvalidArgumentException('Another active VAT rate already has this name.');
         }
 
-        $this->repo->update($id, $name, $ratePercent, $isFlexible, $priceIncludesTax, $appliesToJson, $isActive, $sortOrder);
+        $this->repo->updateGlobalCatalogRateInResolvedTenantById($id, $name, $ratePercent, $isFlexible, $priceIncludesTax, $appliesToJson, $isActive, $sortOrder);
     }
 
     /**
@@ -166,13 +166,13 @@ final class VatRateService
      *
      * @throws \InvalidArgumentException when rate does not exist
      */
-    public function archive(int $id): void
+    public function archiveGlobalCatalogRateForSettingsAdmin(int $id): void
     {
-        $existing = $this->repo->find($id);
+        $existing = $this->repo->findGlobalCatalogRateInResolvedTenantById($id);
         if ($existing === null) {
             throw new \InvalidArgumentException('VAT rate not found.');
         }
-        $this->repo->archive($id);
+        $this->repo->archiveGlobalCatalogRateInResolvedTenantById($id);
     }
 
     /**

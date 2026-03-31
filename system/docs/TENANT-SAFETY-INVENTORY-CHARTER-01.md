@@ -1,5 +1,11 @@
 # Tenant safety inventory — CHARTER-01 (read-only)
 
+> **SEALED EVIDENCE — ARCHITECTURE RESET 2026-03-31**  
+> This file records hotspot inventory and closed wave slices from the PLT-TNT-01 ROOT-01 id-only closure wave era.  
+> It is **not** an active roadmap or a steering document for future work.  
+> The active roadmap is **FOUNDATION-A1..A8** — see `docs/ARCHITECTURE-RESET-2026-CANONICAL-ROADMAP.md` and `system/docs/FOUNDATION-ACTIVE-BACKLOG-CHARTER-01.md`.  
+> Do not use residual open rows in this inventory to authorize new wave patching. Those domains will be migrated via FOUNDATION-A7 Migration Map after the kernel pilot is accepted.
+
 **Method:** Persistence methods that load or mutate by **primary id** (or global keys) without an **intrinsic organization/tenant predicate** in SQL are **caller-scoped**: correctness depends on services/controllers always supplying the right branch/org context. This inventory classifies representative hotspots; it is **not** exhaustive line-by-line proof.
 
 **Root-cause families:** Canonical definitions — **`ROOT-CAUSE-REGISTER-01.md`** (**ROOT-01** id-only patterns, **ROOT-02** null-branch semantics, **ROOT-03** public/guest bootstrap, **ROOT-04** repair/global fallback, **ROOT-05** service scope drift). Rows below tag **ROOT-xx** where the slice primarily reduces that family.

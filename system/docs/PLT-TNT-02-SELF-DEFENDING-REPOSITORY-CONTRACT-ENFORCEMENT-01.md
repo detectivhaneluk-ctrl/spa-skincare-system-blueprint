@@ -1,5 +1,11 @@
 # PLT-TNT-02 Self-Defending Repository Contract Enforcement
 
+> **SUPERSEDED — ARCHITECTURE RESET 2026-03-31**  
+> This document defined the PLT-TNT-02 self-defending enforcement model for the wave era (central policy lib, `RepositoryContractGuard`, `*InTenantScope` locking).  
+> The mechanical enforcement concept is superseded by **FOUNDATION-A6 — Mechanical Guardrails** which targets CI-level enforcement of the new kernel architecture patterns.  
+> The specific guard primitives (`RepositoryContractGuard::denyMixedSemanticsApi`) and locked families (`ClientMembershipRepository`, `MembershipBillingCycleRepository`) documented here are retained as **sealed evidence** of closed PLT-TNT-02 slices.  
+> Active canonical: `docs/ARCHITECTURE-RESET-2026-CANONICAL-ROADMAP.md`.
+
 Date: 2026-03-30  
 Status: `PARTIAL`
 

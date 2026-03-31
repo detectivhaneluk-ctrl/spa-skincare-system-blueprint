@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace Modules\ServicesResources\Repositories;
 
 use Core\App\Database;
+use Core\Organization\OrganizationRepositoryScope;
 
 /**
  * Pivot: which staff groups may perform a service (when at least one active linked group exists, enforcement applies).
  */
 final class ServiceStaffGroupRepository
 {
-    public function __construct(private Database $db)
+    public function __construct(private Database $db, private OrganizationRepositoryScope $orgScope)
     {
     }
 
@@ -103,7 +104,8 @@ final class ServiceStaffGroupRepository
     }
 
     /**
-     * Replace all links for a service. Validates each group id exists and is not soft-deleted.
+     * Replace all links for a service. Validates each group id exists, is not soft-deleted, and belongs
+     * to the resolved tenant organization (intrinsic SQL scope via {@see OrganizationRepositoryScope}).
      *
      * @param list<int> $staffGroupIds
      */
@@ -117,9 +119,10 @@ final class ServiceStaffGroupRepository
                 continue;
             }
             $seen[$gid] = true;
+            $tenant = $this->orgScope->taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause('sg');
             $g = $this->db->fetchOne(
-                'SELECT id FROM staff_groups WHERE id = ? AND deleted_at IS NULL AND is_active = 1',
-                [$gid]
+                'SELECT sg.id FROM staff_groups sg WHERE sg.id = ? AND sg.deleted_at IS NULL AND sg.is_active = 1 AND (' . $tenant['sql'] . ')',
+                array_merge([$gid], $tenant['params'])
             );
             if (!$g) {
                 throw new \DomainException('Invalid staff group reference.');

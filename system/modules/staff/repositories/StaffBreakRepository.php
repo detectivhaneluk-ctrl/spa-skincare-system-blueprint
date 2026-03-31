@@ -5,15 +5,20 @@ declare(strict_types=1);
 namespace Modules\Staff\Repositories;
 
 use Core\App\Database;
+use Core\Organization\OrganizationRepositoryScope;
 
 /**
  * Recurring weekly breaks per staff (e.g. lunch). day_of_week: 0=Sunday .. 6=Saturday.
  * Branch is implied by staff.branch_id; no branch_id on rows.
+ * Tenant scope is enforced via INNER JOIN on {@code staff} with
+ * {@see OrganizationRepositoryScope::branchColumnOwnedByResolvedOrganizationExistsClause()}.
  */
 final class StaffBreakRepository
 {
-    public function __construct(private Database $db)
-    {
+    public function __construct(
+        private Database $db,
+        private OrganizationRepositoryScope $orgScope,
+    ) {
     }
 
     /**
@@ -68,10 +73,19 @@ final class StaffBreakRepository
         return $out;
     }
 
+    /**
+     * Tenant-safe id read: row must belong to the resolved tenant org via the parent {@code staff} record.
+     */
     public function find(int $id): ?array
     {
-        $row = $this->db->fetchOne('SELECT * FROM staff_breaks WHERE id = ?', [$id]);
-        return $row ?: null;
+        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('s');
+
+        return $this->db->fetchOne(
+            'SELECT sb.* FROM staff_breaks sb
+             INNER JOIN staff s ON s.id = sb.staff_id AND s.deleted_at IS NULL
+             WHERE sb.id = ?' . $frag['sql'],
+            array_merge([$id], $frag['params'])
+        ) ?: null;
     }
 
     public function create(array $data): int
@@ -79,9 +93,13 @@ final class StaffBreakRepository
         $allowed = ['staff_id', 'day_of_week', 'start_time', 'end_time', 'title'];
         $payload = array_intersect_key($data, array_flip($allowed));
         $this->db->insert('staff_breaks', $payload);
+
         return (int) $this->db->lastInsertId();
     }
 
+    /**
+     * Tenant-safe update: only mutates rows whose parent staff record belongs to the resolved tenant org.
+     */
     public function update(int $id, array $data): void
     {
         $allowed = ['day_of_week', 'start_time', 'end_time', 'title'];
@@ -89,18 +107,35 @@ final class StaffBreakRepository
         if (empty($payload)) {
             return;
         }
+        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('s');
         $sets = [];
         $params = [];
         foreach ($payload as $k => $v) {
-            $sets[] = "{$k} = ?";
+            $sets[] = "sb.{$k} = ?";
             $params[] = $v;
         }
         $params[] = $id;
-        $this->db->query('UPDATE staff_breaks SET ' . implode(', ', $sets) . ' WHERE id = ?', $params);
+        $params = array_merge($params, $frag['params']);
+        $this->db->query(
+            'UPDATE staff_breaks sb
+             INNER JOIN staff s ON s.id = sb.staff_id AND s.deleted_at IS NULL
+             SET ' . implode(', ', $sets) . '
+             WHERE sb.id = ?' . $frag['sql'],
+            $params
+        );
     }
 
+    /**
+     * Tenant-safe delete: only deletes rows whose parent staff record belongs to the resolved tenant org.
+     */
     public function delete(int $id): void
     {
-        $this->db->query('DELETE FROM staff_breaks WHERE id = ?', [$id]);
+        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('s');
+        $this->db->query(
+            'DELETE sb FROM staff_breaks sb
+             INNER JOIN staff s ON s.id = sb.staff_id AND s.deleted_at IS NULL
+             WHERE sb.id = ?' . $frag['sql'],
+            array_merge([$id], $frag['params'])
+        );
     }
 }

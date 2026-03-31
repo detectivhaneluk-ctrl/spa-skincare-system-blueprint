@@ -13,7 +13,7 @@ use Core\Organization\OrganizationRepositoryScope;
  * | Class | Methods |
  * | --- | --- |
  * | **1–2. Strict branch ∪ org-global-null (tenant)** | {@see listActive}, {@see listAll}, {@see isActiveCode}, {@see existsActiveNameForBranch}, {@see codeExistsForBranch} (positive branch) — same scope helpers as {@see VatRateRepository} |
- * | **3. Primary-key / id-only** | {@see getById}, {@see update}, {@see archive} — **no** org predicate |
+ * | **2. Explicit control-plane global catalog** | {@see findGlobalCatalogMethodInResolvedTenantById}, {@see updateGlobalCatalogMethodInResolvedTenantById}, {@see archiveGlobalCatalogMethodInResolvedTenantById} |
  * | **4. Control-plane unscoped** | *(none here)* |
  *
  * **File location:** `system/modules/sales/repositories/` (settings HTTP and sales payment UI consume via {@see \Modules\Sales\Services\PaymentMethodService}).
@@ -125,9 +125,15 @@ final class PaymentMethodRepository
      *
      * @return array{id:int, branch_id:int|null, code:string, name:string, type_label:string|null, is_active:int, sort_order:int}|null
      */
-    public function getById(int $id): ?array
+    public function findGlobalCatalogMethodInResolvedTenantById(int $id): ?array
     {
-        $row = $this->db->fetchOne('SELECT id, branch_id, code, name, type_label, is_active, sort_order FROM payment_methods WHERE id = ?', [$id]);
+        $g = $this->orgScope->settingsBackedCatalogGlobalNullBranchOrgAnchoredSql('pm');
+        $row = $this->db->fetchOne(
+            'SELECT pm.id, pm.branch_id, pm.code, pm.name, pm.type_label, pm.is_active, pm.sort_order
+             FROM payment_methods pm
+             WHERE pm.id = ?' . $g['sql'],
+            array_merge([$id], $g['params'])
+        );
         if ($row === null) {
             return null;
         }
@@ -213,22 +219,26 @@ final class PaymentMethodRepository
     /**
      * Update display fields and status. Code is not changed (payments reference it). **Id-only WHERE** — class 3.
      */
-    public function update(int $id, string $name, ?string $typeLabel, bool $isActive, int $sortOrder): void
+    public function updateGlobalCatalogMethodInResolvedTenantById(int $id, string $name, ?string $typeLabel, bool $isActive, int $sortOrder): void
     {
+        $g = $this->orgScope->settingsBackedCatalogGlobalNullBranchOrgAnchoredSql('pm');
         $this->db->query(
-            'UPDATE payment_methods SET name = ?, type_label = ?, is_active = ?, sort_order = ?, updated_at = NOW() WHERE id = ?',
-            [$name, $typeLabel, $isActive ? 1 : 0, $sortOrder, $id]
+            'UPDATE payment_methods pm
+             SET pm.name = ?, pm.type_label = ?, pm.is_active = ?, pm.sort_order = ?, pm.updated_at = NOW()
+             WHERE pm.id = ?' . $g['sql'],
+            array_merge([$name, $typeLabel, $isActive ? 1 : 0, $sortOrder, $id], $g['params'])
         );
     }
 
     /**
      * Archive payment method (soft deactivation). **Id-only WHERE** — class 3.
      */
-    public function archive(int $id): void
+    public function archiveGlobalCatalogMethodInResolvedTenantById(int $id): void
     {
+        $g = $this->orgScope->settingsBackedCatalogGlobalNullBranchOrgAnchoredSql('pm');
         $this->db->query(
-            'UPDATE payment_methods SET is_active = 0, updated_at = NOW() WHERE id = ?',
-            [$id]
+            'UPDATE payment_methods pm SET pm.is_active = 0, pm.updated_at = NOW() WHERE pm.id = ?' . $g['sql'],
+            array_merge([$id], $g['params'])
         );
     }
 }

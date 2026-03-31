@@ -94,11 +94,11 @@ final class BlockedSlotRepository
      */
     public function listForStaffAndDate(int $staffId, string $date, ?int $branchId = null): array
     {
-        $sql = 'SELECT id, staff_id, title, block_date, start_time, end_time, notes
-                FROM appointment_blocked_slots
-                WHERE deleted_at IS NULL
-                  AND block_date = ?
-                  AND (staff_id = ? OR staff_id IS NULL)';
+        $sql = 'SELECT bs.id, bs.staff_id, bs.title, bs.block_date, bs.start_time, bs.end_time, bs.notes
+                FROM appointment_blocked_slots bs
+                WHERE bs.deleted_at IS NULL
+                  AND bs.block_date = ?
+                  AND (bs.staff_id = ? OR bs.staff_id IS NULL)';
         $params = [$date, $staffId];
         [$sql, $params] = $this->appendBlockedSlotBranchTenantClause($sql, $params, $branchId);
         $sql .= ' ORDER BY start_time ASC';
@@ -111,10 +111,10 @@ final class BlockedSlotRepository
      */
     public function listGroupedByStaffForDate(string $date, ?int $branchId = null): array
     {
-        $sql = 'SELECT id, staff_id, title, notes, block_date, start_time, end_time
-                FROM appointment_blocked_slots
-                WHERE deleted_at IS NULL
-                  AND block_date = ?';
+        $sql = 'SELECT bs.id, bs.staff_id, bs.title, bs.notes, bs.block_date, bs.start_time, bs.end_time
+                FROM appointment_blocked_slots bs
+                WHERE bs.deleted_at IS NULL
+                  AND bs.block_date = ?';
         $params = [$date];
         [$sql, $params] = $this->appendBlockedSlotBranchTenantClause($sql, $params, $branchId);
         $sql .= ' ORDER BY staff_id, start_time';

@@ -5,16 +5,27 @@ declare(strict_types=1);
 namespace Modules\ServicesResources\Repositories;
 
 use Core\App\Database;
+use Core\Organization\OrganizationRepositoryScope;
 
 final class ServiceCategoryRepository
 {
-    public function __construct(private Database $db)
-    {
+    public function __construct(
+        private Database $db,
+        private OrganizationRepositoryScope $orgScope,
+    ) {
     }
 
+    /**
+     * Tenant-safe id read: row must belong to the resolved tenant org (branch-owned or org-global-null).
+     */
     public function find(int $id): ?array
     {
-        return $this->db->fetchOne('SELECT * FROM service_categories WHERE id = ? AND deleted_at IS NULL', [$id]);
+        $tenant = $this->orgScope->taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause('sc');
+
+        return $this->db->fetchOne(
+            'SELECT sc.* FROM service_categories sc WHERE sc.id = ? AND sc.deleted_at IS NULL AND (' . $tenant['sql'] . ')',
+            array_merge([$id], $tenant['params'])
+        );
     }
 
     public function list(?int $branchId = null): array
@@ -37,17 +48,36 @@ final class ServiceCategoryRepository
         return $this->db->lastInsertId();
     }
 
+    /**
+     * Tenant-safe update: only mutates rows that belong to the resolved tenant org.
+     */
     public function update(int $id, array $data): void
     {
-        $cols = array_map(fn ($k) => "{$k} = ?", array_keys($this->normalize($data)));
-        $vals = array_values($this->normalize($data));
+        $norm = $this->normalize($data);
+        if ($norm === []) {
+            return;
+        }
+        $tenant = $this->orgScope->taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause('sc');
+        $cols = array_map(fn (string $k): string => "sc.{$k} = ?", array_keys($norm));
+        $vals = array_values($norm);
         $vals[] = $id;
-        $this->db->query('UPDATE service_categories SET ' . implode(', ', $cols) . ' WHERE id = ?', $vals);
+        $vals = array_merge($vals, $tenant['params']);
+        $this->db->query(
+            'UPDATE service_categories sc SET ' . implode(', ', $cols) . ' WHERE sc.id = ? AND (' . $tenant['sql'] . ')',
+            $vals
+        );
     }
 
+    /**
+     * Tenant-safe soft delete: only soft-deletes rows that belong to the resolved tenant org.
+     */
     public function softDelete(int $id): void
     {
-        $this->db->query('UPDATE service_categories SET deleted_at = NOW() WHERE id = ?', [$id]);
+        $tenant = $this->orgScope->taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause('sc');
+        $this->db->query(
+            'UPDATE service_categories sc SET sc.deleted_at = NOW() WHERE sc.id = ? AND (' . $tenant['sql'] . ')',
+            array_merge([$id], $tenant['params'])
+        );
     }
 
     /**

@@ -53,7 +53,7 @@ final class ProductBrandService
                     : (($current['branch_id'] ?? null) !== null && ($current['branch_id'] ?? '') !== '' ? (int) $current['branch_id'] : null);
                 $this->assertNameValidAndUnique($data['name'], $branch, $id);
             }
-            $this->repo->update($id, $data);
+            $this->repo->updateInResolvedTenantCatalogScope($id, $data);
             $this->audit->log('product_brand_updated', 'product_brand', $id, $this->userId(), $current['branch_id'] ?? null, [
                 'before' => $current,
                 'after' => array_merge($current, $data),

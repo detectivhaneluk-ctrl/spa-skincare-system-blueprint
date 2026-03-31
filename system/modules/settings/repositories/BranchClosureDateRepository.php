@@ -53,18 +53,22 @@ final class BranchClosureDateRepository
         return $out;
     }
 
-    public function findLiveById(int $id): ?array
+    /**
+     * Branch-scoped read: {@code branch_id} predicate ensures the row belongs to the caller's branch
+     * before update/delete mutations are attempted. Callers must pass the session-resolved branch id.
+     */
+    public function findLiveByIdForBranch(int $id, int $branchId): ?array
     {
-        if (!$this->isTableAvailable()) {
+        if (!$this->isTableAvailable() || $id <= 0 || $branchId <= 0) {
             return null;
         }
 
         $row = $this->db->fetchOne(
             'SELECT id, branch_id, closure_date, title, notes, created_by, created_at, updated_at
              FROM branch_closure_dates
-             WHERE id = ? AND deleted_at IS NULL
+             WHERE id = ? AND branch_id = ? AND deleted_at IS NULL
              LIMIT 1',
-            [$id]
+            [$id, $branchId]
         );
         if (!is_array($row)) {
             return null;
@@ -115,9 +119,11 @@ final class BranchClosureDateRepository
     }
 
     /**
+     * Branch-scoped mutation: {@code branch_id} predicate prevents cross-branch writes.
+     *
      * @param array{closure_date:string,title:string,notes:?string} $data
      */
-    public function updateLive(int $id, array $data): void
+    public function updateLive(int $id, int $branchId, array $data): void
     {
         if (!$this->isTableAvailable()) {
             throw new \RuntimeException('Closure Dates storage is unavailable. Apply migration 093_create_branch_closure_dates_table.sql.');
@@ -126,12 +132,12 @@ final class BranchClosureDateRepository
         $this->db->query(
             'UPDATE branch_closure_dates
              SET closure_date = ?, title = ?, notes = ?, updated_at = NOW()
-             WHERE id = ? AND deleted_at IS NULL',
-            [$data['closure_date'], $data['title'], $data['notes'], $id]
+             WHERE id = ? AND branch_id = ? AND deleted_at IS NULL',
+            [$data['closure_date'], $data['title'], $data['notes'], $id, $branchId]
         );
     }
 
-    public function softDeleteLive(int $id): void
+    public function softDeleteLive(int $id, int $branchId): void
     {
         if (!$this->isTableAvailable()) {
             throw new \RuntimeException('Closure Dates storage is unavailable. Apply migration 093_create_branch_closure_dates_table.sql.');
@@ -140,8 +146,8 @@ final class BranchClosureDateRepository
         $this->db->query(
             'UPDATE branch_closure_dates
              SET deleted_at = NOW(), updated_at = NOW()
-             WHERE id = ? AND deleted_at IS NULL',
-            [$id]
+             WHERE id = ? AND branch_id = ? AND deleted_at IS NULL',
+            [$id, $branchId]
         );
     }
 

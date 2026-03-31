@@ -52,7 +52,7 @@ final class ProductCategoryService
                 $this->assertNoDuplicateTrimmedCategoryNameUpdate($id, $data, $current);
             }
             $this->validateParentHierarchy($id, $data, $current);
-            $this->repo->update($id, $data);
+            $this->repo->updateInResolvedTenantCatalogScope($id, $data);
             $this->audit->log('product_category_updated', 'product_category', $id, $this->userId(), $current['branch_id'] ?? null, [
                 'before' => $current,
                 'after' => array_merge($current, $data),

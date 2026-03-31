@@ -13,8 +13,8 @@ use Core\Organization\OrganizationRepositoryScope;
  * | Class | Methods |
  * | --- | --- |
  * | **1–2. Branch ∪ org-global-null (tenant)** | List/count paths apply {@see OrganizationRepositoryScope::notificationBranchOverlayOrGlobalNullFromOperationBranchClause()} when a **positive** branch context is known; **global-null-only** slice uses {@see OrganizationRepositoryScope::notificationGlobalNullBranchOrgAnchoredSql()}; **no branch filter** uses {@see OrganizationRepositoryScope::notificationTenantWideBranchOrGlobalNullClause()} (fail-closed: no silent full-table scan) |
- * | **3. Primary-key / id-only / insert** | {@see find}, {@see create}, {@see markReadByUser} — no org predicate on row (caller/FK discipline); {@see existsByTypeEntityAndTitle} is org-bounded via tenant-wide branch clause |
- * | **4. Control-plane unscoped** | *(none)* — {@see find} remains **cross-tenant id leak risk** if ids are guessed; HTTP layer should re-check visibility |
+ * | **3. Primary-key / id-only / insert** | {@see find} now uses {@see OrganizationRepositoryScope::notificationTenantWideBranchOrGlobalNullClause()} for tenant-safe id reads; {@see create}, {@see markReadByUser} — no org predicate on row (caller/FK discipline); {@see existsByTypeEntityAndTitle} is org-bounded via tenant-wide branch clause |
+ * | **4. Control-plane unscoped** | *(none)* |
  *
  * **User targeting** (independent of branch org proof): `(user_id = ? OR user_id IS NULL)` means **direct** or **broadcast** within the already branch-bounded set.
  */
@@ -27,11 +27,17 @@ final class NotificationRepository
     }
 
     /**
-     * **Class 3:** Row by primary key only — **no** org/branch predicate.
+     * Tenant-safe id read: row must be visible in the resolved tenant org
+     * ({@see OrganizationRepositoryScope::notificationTenantWideBranchOrGlobalNullClause()}).
      */
     public function find(int $id): ?array
     {
-        return $this->db->fetchOne('SELECT * FROM notifications WHERE id = ?', [$id]);
+        $tw = $this->orgScope->notificationTenantWideBranchOrGlobalNullClause('n');
+
+        return $this->db->fetchOne(
+            'SELECT n.* FROM notifications n WHERE n.id = ? AND (' . $tw['sql'] . ')',
+            array_merge([$id], $tw['params'])
+        );
     }
 
     /**

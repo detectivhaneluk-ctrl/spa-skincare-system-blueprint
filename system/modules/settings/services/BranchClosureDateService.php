@@ -62,13 +62,13 @@ final class BranchClosureDateService
             if ($id <= 0) {
                 throw new \InvalidArgumentException('Invalid closure date record.');
             }
-            $existing = $this->repo->findLiveById($id);
-            if ($existing === null || (int) $existing['branch_id'] !== $branchId) {
+            $existing = $this->repo->findLiveByIdForBranch($id, $branchId);
+            if ($existing === null) {
                 throw new \RuntimeException('Closure date record not found for active branch context.');
             }
 
             $payload = $this->validateAndNormalizePayload($branchId, $input, $id);
-            $this->repo->updateLive($id, [
+            $this->repo->updateLive($id, $branchId, [
                 'closure_date' => $payload['closure_date'],
                 'title' => $payload['title'],
                 'notes' => $payload['notes'],
@@ -86,12 +86,12 @@ final class BranchClosureDateService
             if ($id <= 0) {
                 throw new \InvalidArgumentException('Invalid closure date record.');
             }
-            $existing = $this->repo->findLiveById($id);
-            if ($existing === null || (int) $existing['branch_id'] !== $branchId) {
+            $existing = $this->repo->findLiveByIdForBranch($id, $branchId);
+            if ($existing === null) {
                 throw new \RuntimeException('Closure date record not found for active branch context.');
             }
 
-            $this->repo->softDeleteLive($id);
+            $this->repo->softDeleteLive($id, $branchId);
             $this->audit->log('branch_closure_date_deleted', 'branch_closure_date', $id, $this->currentUserId(), $branchId, [
                 'closure_date' => (string) ($existing['closure_date'] ?? ''),
                 'title' => (string) ($existing['title'] ?? ''),

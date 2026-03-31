@@ -75,15 +75,16 @@ final class PublicBookingService
     public function validateBranch(int $branchId): ?array
     {
         $row = $this->db->fetchOne(
-            'SELECT id, name, code FROM branches WHERE id = ? AND deleted_at IS NULL',
+            'SELECT b.id, b.name, b.code
+             FROM branches b
+             INNER JOIN organizations o ON o.id = b.organization_id
+             WHERE b.id = ?
+               AND b.deleted_at IS NULL
+               AND o.deleted_at IS NULL
+               AND o.suspended_at IS NULL',
             [$branchId]
         );
-        if (!$row) {
-            return null;
-        }
-        if ($this->lifecycleGate->isBranchLinkedToSuspendedOrganization($branchId)) {
-            return null;
-        }
+
         return $row ?: null;
     }
 

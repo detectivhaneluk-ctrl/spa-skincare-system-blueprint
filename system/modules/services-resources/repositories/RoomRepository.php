@@ -5,16 +5,27 @@ declare(strict_types=1);
 namespace Modules\ServicesResources\Repositories;
 
 use Core\App\Database;
+use Core\Organization\OrganizationRepositoryScope;
 
 final class RoomRepository
 {
-    public function __construct(private Database $db)
-    {
+    public function __construct(
+        private Database $db,
+        private OrganizationRepositoryScope $orgScope,
+    ) {
     }
 
+    /**
+     * Tenant-safe id read: row must belong to the resolved tenant org (branch-owned or org-global-null).
+     */
     public function find(int $id): ?array
     {
-        return $this->db->fetchOne('SELECT * FROM rooms WHERE id = ? AND deleted_at IS NULL', [$id]);
+        $tenant = $this->orgScope->taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause('r');
+
+        return $this->db->fetchOne(
+            'SELECT r.* FROM rooms r WHERE r.id = ? AND r.deleted_at IS NULL AND (' . $tenant['sql'] . ')',
+            array_merge([$id], $tenant['params'])
+        );
     }
 
     public function list(?int $branchId = null): array
@@ -26,28 +37,47 @@ final class RoomRepository
             $params[] = $branchId;
         }
         $sql .= ' ORDER BY name';
+
         return $this->db->fetchAll($sql, $params);
     }
 
     public function create(array $data): int
     {
         $this->db->insert('rooms', $this->normalize($data));
+
         return $this->db->lastInsertId();
     }
 
+    /**
+     * Tenant-safe update: only mutates rows that belong to the resolved tenant org.
+     */
     public function update(int $id, array $data): void
     {
         $norm = $this->normalize($data);
-        if (empty($norm)) return;
-        $cols = array_map(fn ($k) => "{$k} = ?", array_keys($norm));
+        if ($norm === []) {
+            return;
+        }
+        $tenant = $this->orgScope->taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause('r');
+        $cols = array_map(fn (string $k): string => "r.{$k} = ?", array_keys($norm));
         $vals = array_values($norm);
         $vals[] = $id;
-        $this->db->query('UPDATE rooms SET ' . implode(', ', $cols) . ' WHERE id = ?', $vals);
+        $vals = array_merge($vals, $tenant['params']);
+        $this->db->query(
+            'UPDATE rooms r SET ' . implode(', ', $cols) . ' WHERE r.id = ? AND (' . $tenant['sql'] . ')',
+            $vals
+        );
     }
 
+    /**
+     * Tenant-safe soft delete: only soft-deletes rows that belong to the resolved tenant org.
+     */
     public function softDelete(int $id): void
     {
-        $this->db->query('UPDATE rooms SET deleted_at = NOW() WHERE id = ?', [$id]);
+        $tenant = $this->orgScope->taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause('r');
+        $this->db->query(
+            'UPDATE rooms r SET r.deleted_at = NOW() WHERE r.id = ? AND (' . $tenant['sql'] . ')',
+            array_merge([$id], $tenant['params'])
+        );
     }
 
     private function normalize(array $data): array

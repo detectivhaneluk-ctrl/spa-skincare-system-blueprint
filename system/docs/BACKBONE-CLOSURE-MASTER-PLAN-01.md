@@ -7,6 +7,13 @@
 **The only LIVE implementation queue:** `FOUNDATION-ACTIVE-BACKLOG-CHARTER-01.md` — **exactly one LIVE task** and **exactly one PARKED next task** at a time.  
 **Non-current work:** `DEFERRED-AND-HISTORICAL-TASK-REGISTRY-01.md`.
 
+> **ARCHITECTURE RESET — 2026-03-31:**  
+> The old Phase 1 LIVE task (`PLT-TNT-01` — ROOT-01 id-only closure wave, incremental module-by-module repository patching) has been **ARCHIVED / SUPERSEDED**.  
+> The active roadmap is now **FOUNDATION-A1..A7** (2026 Foundation Plan) installed in `FOUNDATION-ACTIVE-BACKLOG-CHARTER-01.md`.  
+> Phase 1 history (PLT-TNT-01 wave closures CLOSURE-01..24) is preserved as sealed evidence in `docs/PLT-TNT-01-root-01-id-only-closure-wave.md` and the `FOUNDATION-TENANT-REPOSITORY-CLOSURE-*` audit docs.  
+> The active LIVE task is **FOUNDATION-A1** (TenantContext Kernel).  
+> All other phase ordering below remains valid for non-superseded phases (Phase 2–5 are not affected).
+
 ### Matrix `OPEN` vs LIVE execution
 
 - Rows in `TASK-STATE-MATRIX.md` that are **`OPEN`**, **`REOPENED`**, or **`PARTIAL`** are **full truth inventory** — they do **not** mean “currently being implemented.”
@@ -63,7 +70,7 @@ Eliminate competing execution sources, freeze feature/parity/polish queues, and 
 
 ## Phase 1 — Tenant boundary closure
 
-**LIVE charter rule:** Only **`PLT-TNT-01`** may be **LIVE** until rotated by explicit charter update. **`PLT-LC-01`**, **`FND-TNT-05`**, **`FND-TNT-06`**, inventory/MGP tenant matrices, and **`PLT-DB-01`** slices stay **`OPEN`** / **`REOPENED`** / **`PARTIAL`** in `TASK-STATE-MATRIX.md` (and Phase 1 inventory in `DEFERRED-AND-HISTORICAL-TASK-REGISTRY-01.md`) until **promoted** into the **LIVE** row — they are **not** concurrent implementation permission.
+**LIVE charter rule (SUPERSEDED — see Architecture Reset note above):** `PLT-TNT-01` was the LIVE Phase 1 task. It has been **ARCHIVED** by the 2026-03-31 Architecture Reset. The active roadmap is now **FOUNDATION-A1..A7**. The Phase 1 plumbing below is preserved as historical record. Wave evidence (CLOSURE-01..24) sealed in `docs/PLT-TNT-01-root-01-id-only-closure-wave.md`.
 
 ### Why it exists
 

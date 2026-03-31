@@ -70,7 +70,7 @@ final class VatRatesController
                 'is_active' => $isActive,
                 'sort_order' => $sortOrder,
             ]);
-            $created = $this->vatRateService->getById($id);
+            $created = $this->vatRateService->getGlobalCatalogRateForSettingsAdmin($id);
             $audit->log('vat_rate_created', 'vat_rate', $id, null, null, [
                 'after' => $created,
             ]);
@@ -101,7 +101,7 @@ final class VatRatesController
     public function edit(int $id): void
     {
         $id = (int) $id;
-        $rate = $this->vatRateService->getById($id);
+        $rate = $this->vatRateService->getGlobalCatalogRateForSettingsAdmin($id);
         if ($rate === null || !$this->isGlobalVatCatalogRow($rate)) {
             flash('error', 'VAT rate not found.');
             header('Location: /settings/vat-rates');
@@ -119,7 +119,7 @@ final class VatRatesController
     {
         $id = (int) $id;
         $audit = Application::container()->get(AuditService::class);
-        $rate = $this->vatRateService->getById($id);
+        $rate = $this->vatRateService->getGlobalCatalogRateForSettingsAdmin($id);
         if ($rate === null || !$this->isGlobalVatCatalogRow($rate)) {
             flash('error', 'VAT rate not found.');
             header('Location: /settings/vat-rates');
@@ -136,7 +136,7 @@ final class VatRatesController
 
         try {
             $before = $rate;
-            $this->vatRateService->update($id, [
+            $this->vatRateService->updateGlobalCatalogRateForSettingsAdmin($id, [
                 'name' => $name,
                 'rate_percent' => $ratePercent,
                 'is_flexible' => $isFlexible,
@@ -145,7 +145,7 @@ final class VatRatesController
                 'is_active' => $isActive,
                 'sort_order' => $sortOrder,
             ]);
-            $after = $this->vatRateService->getById($id);
+            $after = $this->vatRateService->getGlobalCatalogRateForSettingsAdmin($id);
             $action = ((int) ($before['is_active'] ?? 1) === 1 && (int) ($after['is_active'] ?? 1) === 0)
                 ? 'vat_rate_deactivated'
                 : 'vat_rate_updated';
@@ -181,7 +181,7 @@ final class VatRatesController
     {
         $id = (int) $id;
         $audit = Application::container()->get(AuditService::class);
-        $rate = $this->vatRateService->getById($id);
+        $rate = $this->vatRateService->getGlobalCatalogRateForSettingsAdmin($id);
         if ($rate === null || !$this->isGlobalVatCatalogRow($rate)) {
             flash('error', 'VAT rate not found.');
             header('Location: /settings/vat-rates');
@@ -190,8 +190,8 @@ final class VatRatesController
 
         try {
             $before = $rate;
-            $this->vatRateService->archive($id);
-            $after = $this->vatRateService->getById($id);
+            $this->vatRateService->archiveGlobalCatalogRateForSettingsAdmin($id);
+            $after = $this->vatRateService->getGlobalCatalogRateForSettingsAdmin($id);
             $audit->log('vat_rate_archived', 'vat_rate', $id, null, null, [
                 'before' => $before,
                 'after' => $after,
