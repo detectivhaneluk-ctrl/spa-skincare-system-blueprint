@@ -1,7 +1,7 @@
 # Scale Wave Execution Charter — 01
 
 **Date:** 2026-03-31  
-**Status:** WAVE-01 LIVE · WAVE-02 PARKED/NEXT · WAVE-03/04 PLANNED  
+**Status:** WAVE-01 DONE · WAVE-02 DONE · WAVE-03 DONE · WAVE-04 LIVE  
 **Authority:** Architect verdict (2026-03-31 scalability & load assessment).  
 **Relationship to FOUNDATION-A series:** Foundation A1–A7 established the tenant/auth/service kernel. This charter launches on top of that kernel to address the **runtime, infrastructure, and scale** layer. These waves do **not** reopen or contradict Foundation work — they build on it.  
 **Active queue:** This file. Exactly one LIVE wave at a time.  
