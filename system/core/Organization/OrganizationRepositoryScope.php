@@ -606,8 +606,7 @@ final class OrganizationRepositoryScope
         $cid = $clientIdColumn;
         $frag = $this->branchColumnOwnedByResolvedOrganizationExistsClause($g, $c);
         $orgSub = '(SELECT bctx.organization_id FROM branches bctx WHERE bctx.id = ? AND bctx.deleted_at IS NULL LIMIT 1)';
-        $sql = '('
-            . '(' . "{$g}.{$c} IS NOT NULL AND {$g}.{$c} = ?" . $frag['sql'] . ')'
+        $sql = '(' . "{$g}.{$c} IS NOT NULL AND {$g}.{$c} = ?" . $frag['sql'] . ')'
             . ' OR ('
             . "{$g}.{$c} IS NULL AND {$g}.{$cid} IS NOT NULL AND EXISTS ("
             . 'SELECT 1 FROM clients cl '
