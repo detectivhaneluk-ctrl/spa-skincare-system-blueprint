@@ -14,8 +14,9 @@ use Core\Runtime\Cache\SharedCacheMetrics;
  * If Redis is unavailable in production, responds with HTTP 503 and terminates the process.
  *
  * Fail-closed contract:
- *  - NoopSharedCache is NOT a valid production runtime path.
- *  - Any backend other than 'redis' in production causes a hard stop.
+ *  - NoopSharedCache is NOT a valid production runtime path for HTTP requests.
+ *  - Any backend other than 'redis' in production causes a hard stop for HTTP requests.
+ *  - CLI invocations (workers, crons, probes, migrations) are never terminated by this guard.
  *  - In non-production environments (local, staging, test), the guard is a no-op.
  *
  * Must be called AFTER SharedCacheInterface has been resolved from the container
@@ -30,11 +31,20 @@ final class ProductionRuntimeGuard
     /**
      * Assert that Redis is available in production, or terminate with 503.
      *
+     * This guard is HTTP-only: CLI invocations (workers, crons, probes, migrations)
+     * are never terminated here. CLI scripts that need Redis must handle
+     * connectivity failures on their own.
+     *
      * @param Config              $config  Application config (reads app.env)
      * @param SharedCacheMetrics  $metrics Cache metrics with resolved backend name
      */
     public static function assertRedisOrDie(Config $config, SharedCacheMetrics $metrics): void
     {
+        // Never kill CLI processes — workers, crons, and release-law probes must not be terminated.
+        if (PHP_SAPI === 'cli' || PHP_SAPI === 'cli-server') {
+            return;
+        }
+
         $env = strtolower(trim((string) $config->get('app.env', 'production')));
         if ($env !== 'production' && $env !== 'prod') {
             return;

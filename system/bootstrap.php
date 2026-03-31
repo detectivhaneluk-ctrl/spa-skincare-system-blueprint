@@ -218,4 +218,23 @@ $container->get(\Core\Contracts\SharedCacheInterface::class); // populates Share
     \Core\Runtime\Redis\RedisSessionHandler::registerIfAvailable($redisProvider, $prefix, $lifetime);
 }
 
+// WAVE-03: Slow query logger — tenant-aware query latency observability.
+// Threshold configurable via SLOW_QUERY_THRESHOLD_MS (default 500 ms).
+// RequestContextHolder is injected so each slow query entry includes org_id/branch_id/actor_id.
+$container->singleton(\Core\Observability\SlowQueryLogger::class, fn ($c) => new \Core\Observability\SlowQueryLogger(
+    (float) ($c->get(\Core\App\Config::class)->get('observability.slow_query_threshold_ms', 500)),
+    $c->get(\Core\Kernel\RequestContextHolder::class)
+));
+// Wire slow query logger to Database singleton.
+$container->get(\Core\App\Database::class)->setSlowQueryLogger(
+    $container->get(\Core\Observability\SlowQueryLogger::class)
+);
+
+// WAVE-03: Request latency middleware — logs slow HTTP requests with tenant context.
+// Threshold configurable via SLOW_REQUEST_THRESHOLD_MS (default 1000 ms).
+$container->singleton(\Core\Middleware\RequestLatencyMiddleware::class, fn ($c) => new \Core\Middleware\RequestLatencyMiddleware(
+    $c->get(\Core\Kernel\RequestContextHolder::class),
+    (float) ($c->get(\Core\App\Config::class)->get('observability.slow_request_threshold_ms', 1000))
+));
+
 return $container;

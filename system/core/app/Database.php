@@ -10,8 +10,21 @@ final class Database
 {
     private ?PDO $pdo = null;
 
+    /** @var \Core\Observability\SlowQueryLogger|null */
+    private mixed $slowQueryLogger = null;
+
     public function __construct(private Config $config)
     {
+    }
+
+    /**
+     * Attach a slow query logger for tenant-aware query latency observability (WAVE-03).
+     * Called from bootstrap after the TenantContext kernel is wired.
+     * Passing null removes the logger.
+     */
+    public function setSlowQueryLogger(?\Core\Observability\SlowQueryLogger $logger): void
+    {
+        $this->slowQueryLogger = $logger;
     }
 
     public function connection(): PDO
@@ -46,7 +59,13 @@ final class Database
             };
             $stmt->bindValue($param, $value, $type);
         }
-        $stmt->execute();
+        if ($this->slowQueryLogger !== null) {
+            $start = microtime(true);
+            $stmt->execute();
+            $this->slowQueryLogger->observe($sql, $params, (microtime(true) - $start) * 1000.0);
+        } else {
+            $stmt->execute();
+        }
         return $stmt;
     }
 
