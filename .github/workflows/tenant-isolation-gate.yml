@@ -74,7 +74,9 @@ jobs:
       - name: Composer authoritative autoload
         run: composer dump-autoload -o -a --no-interaction
       - name: Exact case/path auditor
-        run: php system/scripts/release/run_case_path_auditor.php --json | tee distribution/release-law/ci-case-path-audit.json
+        run: |
+          set -euo pipefail
+          php system/scripts/release/run_case_path_auditor.php --json | tee distribution/release-law/ci-case-path-audit.json
       - name: Canonical release law
         run: php system/scripts/release/run_canonical_release_law.php
       - name: Release-law report to job summary
