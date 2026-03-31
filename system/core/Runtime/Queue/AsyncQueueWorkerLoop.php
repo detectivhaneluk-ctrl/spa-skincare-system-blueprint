@@ -11,9 +11,12 @@ namespace Core\Runtime\Queue;
  * registered handlers in {@see AsyncJobHandlerRegistry}.
  *
  * Lifecycle per job:
- *   1. reserveNext() — atomic claim (FOR UPDATE + stale-reclaim built in)
+ *   1. reserveNext() — atomic claim (FOR UPDATE SKIP LOCKED)
  *   2. Handler::handle() — domain execution
  *   3. markSucceeded() on success  |  markFailedRetryOrDead() on exception
+ *
+ * Stale reclaim (stuck processing rows) is NOT run per-poll. Use the dedicated
+ * cron script {@see run_queue_stale_reclaim_cron.php} / {@see RuntimeAsyncJobRepository::reclaimStaleJobs}.
  *
  * No-op smoke types (noop, media.ping, etc.) are silently succeeded.
  * Unknown job_types fail the job so the operator can inspect via dead-letter.

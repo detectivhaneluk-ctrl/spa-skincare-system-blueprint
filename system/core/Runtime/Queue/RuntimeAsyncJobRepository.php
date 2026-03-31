@@ -96,17 +96,22 @@ final class RuntimeAsyncJobRepository
     }
 
     /**
-     * Reclaims stuck processing rows, then reserves the next pending job (increments attempts).
+     * Reserves the next pending job for a given queue.
+     *
+     * Uses `FOR UPDATE SKIP LOCKED` so that multiple concurrent workers each claim
+     * a different job row without blocking each other. Workers that find the row
+     * already locked simply skip it — no serialisation bottleneck.
+     *
+     * Stale reclaim is NOT run here. Run {@see reclaimStaleJobs} on a scheduled basis
+     * (separate cron / dedicate command) — not on every poll cycle.
      *
      * @return array<string, mixed>|null
      */
     public function reserveNext(string $queue): ?array
     {
         return $this->db->transaction(function () use ($queue): ?array {
-            $this->reclaimStaleProcessingLocked();
-
             $row = $this->db->fetchOne(
-                'SELECT id FROM runtime_async_jobs WHERE queue = ? AND status = ? AND available_at <= NOW(3) ORDER BY id ASC LIMIT 1 FOR UPDATE',
+                'SELECT id FROM runtime_async_jobs WHERE queue = ? AND status = ? AND available_at <= NOW(3) ORDER BY id ASC LIMIT 1 FOR UPDATE SKIP LOCKED',
                 [$queue, self::STATUS_PENDING]
             );
             if ($row === null) {
@@ -167,12 +172,75 @@ final class RuntimeAsyncJobRepository
         );
     }
 
-    private function reclaimStaleProcessingLocked(): void
+    /**
+     * Reclaims stale `processing` rows whose `reserved_at` has exceeded the stale threshold.
+     * Moves them back to `pending` so they can be re-claimed on the next poll cycle.
+     *
+     * Call from a dedicated cron job / scheduled command — NOT from the hot polling path.
+     * Run once per minute per queue, or once per minute across all queues.
+     *
+     * @param string $queue Optional queue name to restrict reclaim. Empty = all queues.
+     * @return int          Number of rows reclaimed.
+     */
+    public function reclaimStaleJobs(string $queue = ''): int
     {
         $sec = (int) self::STALE_PROCESSING_SECONDS;
-        $this->db->query(
-            "UPDATE runtime_async_jobs SET status = ?, reserved_at = NULL, last_error = CONCAT(COALESCE(last_error, ''), ' | stale_reclaim'), updated_at = NOW(3) WHERE status = ? AND reserved_at IS NOT NULL AND reserved_at < DATE_SUB(NOW(3), INTERVAL {$sec} SECOND)",
-            [self::STATUS_PENDING, self::STATUS_PROCESSING]
+        if ($queue !== '') {
+            $countRow = $this->db->fetchOne(
+                'SELECT COUNT(*) AS cnt FROM runtime_async_jobs WHERE queue = ? AND status = ? AND reserved_at IS NOT NULL AND reserved_at < DATE_SUB(NOW(3), INTERVAL ? SECOND)',
+                [$queue, self::STATUS_PROCESSING, $sec]
+            );
+            $n = (int) ($countRow['cnt'] ?? 0);
+            if ($n > 0) {
+                $this->db->query(
+                    "UPDATE runtime_async_jobs SET status = ?, reserved_at = NULL, last_error = CONCAT(COALESCE(last_error, ''), ' | stale_reclaim'), updated_at = NOW(3) WHERE queue = ? AND status = ? AND reserved_at IS NOT NULL AND reserved_at < DATE_SUB(NOW(3), INTERVAL {$sec} SECOND)",
+                    [self::STATUS_PENDING, $queue, self::STATUS_PROCESSING]
+                );
+            }
+        } else {
+            $countRow = $this->db->fetchOne(
+                'SELECT COUNT(*) AS cnt FROM runtime_async_jobs WHERE status = ? AND reserved_at IS NOT NULL AND reserved_at < DATE_SUB(NOW(3), INTERVAL ? SECOND)',
+                [self::STATUS_PROCESSING, $sec]
+            );
+            $n = (int) ($countRow['cnt'] ?? 0);
+            if ($n > 0) {
+                $this->db->query(
+                    "UPDATE runtime_async_jobs SET status = ?, reserved_at = NULL, last_error = CONCAT(COALESCE(last_error, ''), ' | stale_reclaim'), updated_at = NOW(3) WHERE status = ? AND reserved_at IS NOT NULL AND reserved_at < DATE_SUB(NOW(3), INTERVAL {$sec} SECOND)",
+                    [self::STATUS_PENDING, self::STATUS_PROCESSING]
+                );
+            }
+        }
+
+        return $n ?? 0;
+    }
+
+    /**
+     * Returns row counts per status for a given queue.
+     * Used for queue health monitoring, alerting, and operational dashboards.
+     *
+     * @return array{pending: int, processing: int, succeeded: int, failed: int, dead: int, total: int, stale_processing: int}
+     */
+    public function getQueueDepthMetrics(string $queue): array
+    {
+        $rows = $this->db->fetchAll(
+            'SELECT status, COUNT(*) AS cnt FROM runtime_async_jobs WHERE queue = ? GROUP BY status',
+            [$queue]
         );
+        $counts = ['pending' => 0, 'processing' => 0, 'succeeded' => 0, 'failed' => 0, 'dead' => 0];
+        foreach ($rows as $row) {
+            $status = (string) ($row['status'] ?? '');
+            if (array_key_exists($status, $counts)) {
+                $counts[$status] = (int) $row['cnt'];
+            }
+        }
+        $sec = (int) self::STALE_PROCESSING_SECONDS;
+        $staleRow = $this->db->fetchOne(
+            'SELECT COUNT(*) AS cnt FROM runtime_async_jobs WHERE queue = ? AND status = ? AND reserved_at IS NOT NULL AND reserved_at < DATE_SUB(NOW(3), INTERVAL ? SECOND)',
+            [$queue, self::STATUS_PROCESSING, $sec]
+        );
+        $counts['stale_processing'] = (int) ($staleRow['cnt'] ?? 0);
+        $counts['total'] = array_sum(array_diff_key($counts, ['stale_processing' => true]));
+
+        return $counts;
     }
 }
