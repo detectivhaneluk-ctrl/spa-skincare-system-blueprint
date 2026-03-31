@@ -8,6 +8,7 @@ use Core\App\Application;
 use Core\App\Database;
 use Core\App\SettingsService;
 use Core\Audit\AuditService;
+use Core\Branch\BranchContext;
 use Core\Kernel\Authorization\AuthorizerInterface;
 use Core\Kernel\Authorization\ResourceAction;
 use Core\Kernel\Authorization\ResourceRef;
@@ -65,6 +66,7 @@ final class PaymentService
         /** @var callable(): PublicCommerceFulfillmentReconciler */
         private $publicCommerceFulfillmentReconciler,
         private AuthorizerInterface $authorizer,
+        private BranchContext $branchContext,
     ) {
     }
 
@@ -90,9 +92,7 @@ final class PaymentService
             $ctx = $this->contextHolder->requireContext();
             $resolved = $ctx->requireResolvedTenant();
             $this->authorizer->requireAuthorized($ctx, ResourceAction::INVOICE_PAY, ResourceRef::instance('invoice', $invoiceId));
-            if ($branchId !== null && $branchId !== $resolved['branch_id']) {
-                throw new \DomainException('Invoice branch does not match current branch context.');
-            }
+            $this->branchContext->assertBranchMatchOrGlobalEntity($branchId);
             $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization($branchId);
             $allowedForForm = $this->paymentMethodService->listForPaymentForm($branchId);
             if ($allowedForForm === []) {
@@ -219,11 +219,8 @@ final class PaymentService
             }
             $branchIdForOrg = $invoice['branch_id'] !== null && $invoice['branch_id'] !== '' ? (int) $invoice['branch_id'] : null;
             $refCtx = $this->contextHolder->requireContext();
-            $refResolved = $refCtx->requireResolvedTenant();
             $this->authorizer->requireAuthorized($refCtx, ResourceAction::INVOICE_PAY, ResourceRef::instance('invoice', $invoiceId));
-            if ($branchIdForOrg !== null && $branchIdForOrg !== $refResolved['branch_id']) {
-                throw new \DomainException('Invoice branch does not match current branch context.');
-            }
+            $this->branchContext->assertBranchMatchOrGlobalEntity($branchIdForOrg);
             $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization($branchIdForOrg);
             if ((string) ($invoice['status'] ?? '') === 'cancelled') {
                 throw new \DomainException('Cannot refund payment for cancelled invoice.');

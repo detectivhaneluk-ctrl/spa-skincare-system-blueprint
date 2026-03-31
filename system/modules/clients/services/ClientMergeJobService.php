@@ -375,6 +375,7 @@ final class ClientMergeJobService
     private function executeClaimedJob(array $job): void
     {
         $jobId = (int) ($job['id'] ?? 0);
+        $job = $this->jobRepo->findByIdForWorker($jobId) ?? $job;
         $branchId = (int) ($job['branch_id'] ?? 0);
         $organizationId = (int) ($job['organization_id'] ?? 0);
         if ($jobId <= 0 || $branchId <= 0 || $organizationId <= 0) {

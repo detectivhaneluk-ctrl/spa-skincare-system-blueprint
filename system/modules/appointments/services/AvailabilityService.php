@@ -381,10 +381,14 @@ final class AvailabilityService
         if (!$service) {
             return null;
         }
+        $serviceBranch = $service['branch_id'] !== null ? (int) $service['branch_id'] : null;
+        if (!$this->serviceIsBranchOwnedOrOrgGlobalForOperationBranch($serviceBranch, $branchId)) {
+            return null;
+        }
         return [
             'id' => (int) $service['id'],
             'duration_minutes' => (int) $service['duration_minutes'],
-            'branch_id' => $service['branch_id'] !== null ? (int) $service['branch_id'] : null,
+            'branch_id' => $serviceBranch,
         ];
     }
 
@@ -811,6 +815,20 @@ final class AvailabilityService
     private function branchOwnedOrOrgGlobalServiceStaffGroupBranchScopeSql(int $branchId): array
     {
         return [' AND (sg.branch_id IS NULL OR sg.branch_id = ?)', [$branchId]];
+    }
+
+    /**
+     * BRANCH_OWNED services require a concrete branch match.
+     * ORG_GLOBAL services (`branch_id IS NULL`) remain explicitly visible from any operation branch.
+     * REPAIR_ONLY / CONTROL_PLANE null-branch runtime can only see ORG_GLOBAL rows.
+     */
+    private function serviceIsBranchOwnedOrOrgGlobalForOperationBranch(?int $serviceBranchId, ?int $operationBranchId): bool
+    {
+        if ($operationBranchId === null) {
+            return $serviceBranchId === null;
+        }
+
+        return $serviceBranchId === null || $serviceBranchId === $operationBranchId;
     }
 
     /**

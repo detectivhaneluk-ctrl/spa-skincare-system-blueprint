@@ -41,6 +41,7 @@ spl_autoload_register(function (string $class): void {
         'Core\\Router\\' => $base . '/core/router/',
         'Core\\Middleware\\' => $base . '/core/middleware/',
         'Core\\Auth\\' => $base . '/core/auth/',
+        'Core\\Kernel\\' => $base . '/core/Kernel/',
         'Core\\Permissions\\' => $base . '/core/permissions/',
         'Core\\Audit\\' => $base . '/core/audit/',
         'Core\\Branch\\' => $base . '/core/Branch/',
