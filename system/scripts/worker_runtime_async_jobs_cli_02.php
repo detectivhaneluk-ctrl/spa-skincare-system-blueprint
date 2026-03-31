@@ -52,6 +52,10 @@ if ($queue === '') {
 /** @var AsyncQueueWorkerLoop $workerLoop */
 $workerLoop = Application::container()->get(AsyncQueueWorkerLoop::class);
 
+if (function_exists('slog')) {
+    \slog('info', 'critical_path.queue', 'worker_started', ['queue' => $queue, 'once' => $once]);
+}
+
 if ($once) {
     try {
         $workerLoop->runOnce($queue);

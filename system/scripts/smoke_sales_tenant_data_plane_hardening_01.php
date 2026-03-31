@@ -19,6 +19,7 @@ use Modules\Sales\Services\SalesTenantScope;
 $db = app(\Core\App\Database::class);
 $branchContext = app(BranchContext::class);
 $orgContext = app(OrganizationContext::class);
+$contextHolder = app(\Core\Kernel\RequestContextHolder::class);
 $tenantScope = app(SalesTenantScope::class);
 $invoiceRepo = app(InvoiceRepository::class);
 $paymentRepo = app(PaymentRepository::class);
@@ -54,9 +55,19 @@ $resolveScope = static function (string $branchCode) use ($db): array {
     return ['branch_id' => (int) $row['branch_id'], 'organization_id' => (int) $row['organization_id']];
 };
 
-$setScope = static function (int $branchId, int $orgId) use ($branchContext, $orgContext): void {
+$setScope = static function (int $branchId, int $orgId) use ($branchContext, $orgContext, $contextHolder): void {
     $branchContext->setCurrentBranchId($branchId);
     $orgContext->setFromResolution($orgId, OrganizationContext::MODE_BRANCH_DERIVED);
+    $contextHolder->set(\Core\Kernel\TenantContext::resolvedTenant(
+        actorId: 1,
+        organizationId: $orgId,
+        branchId: $branchId,
+        isSupportEntry: false,
+        supportActorId: null,
+        assuranceLevel: \Core\Kernel\AssuranceLevel::SESSION,
+        executionSurface: \Core\Kernel\ExecutionSurface::CLI,
+        organizationResolutionMode: OrganizationContext::MODE_BRANCH_DERIVED,
+    ));
 };
 
 $scopeA = $resolveScope('SMOKE_A');
