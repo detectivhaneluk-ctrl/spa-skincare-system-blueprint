@@ -148,6 +148,9 @@ final class BranchDirectory
         if ($code !== null && $this->isCodeTaken($code, null)) {
             throw new \InvalidArgumentException('That branch code is already in use.');
         }
+        if ($this->isNameTaken($name, null)) {
+            throw new \InvalidArgumentException('That branch name is already in use within this organisation.');
+        }
 
         $organizationId = (int) $this->organizationContext->getCurrentOrganizationId();
 
@@ -230,6 +233,9 @@ final class BranchDirectory
         if ($code !== null && $this->isCodeTaken($code, $id)) {
             throw new \InvalidArgumentException('That branch code is already in use.');
         }
+        if ($this->isNameTaken($name, $id)) {
+            throw new \InvalidArgumentException('That branch name is already in use within this organisation.');
+        }
         $orgId = (int) $this->organizationContext->getCurrentOrganizationId();
         $this->db->query(
             'UPDATE branches SET name = ?, code = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND organization_id = ?',
@@ -292,6 +298,30 @@ final class BranchDirectory
             $row = $this->db->fetchOne(
                 'SELECT id FROM branches WHERE code = ? AND organization_id = ? LIMIT 1',
                 [$code, $orgId]
+            );
+        }
+
+        return $row !== null;
+    }
+
+    /**
+     * Name must be unique among non-deleted branches within the same organisation.
+     * Called by {@see createBranch()} and {@see updateBranch()} to prevent selector duplication.
+     * Canonical identity is branch id; duplicate names cause visually identical options in UI selectors.
+     */
+    private function isNameTaken(string $name, ?int $excludeId): bool
+    {
+        $this->assertTenantInternalBranchCatalogContext();
+        $orgId = (int) $this->organizationContext->getCurrentOrganizationId();
+        if ($excludeId !== null) {
+            $row = $this->db->fetchOne(
+                'SELECT id FROM branches WHERE name = ? AND organization_id = ? AND deleted_at IS NULL AND id <> ? LIMIT 1',
+                [$name, $orgId, $excludeId]
+            );
+        } else {
+            $row = $this->db->fetchOne(
+                'SELECT id FROM branches WHERE name = ? AND organization_id = ? AND deleted_at IS NULL LIMIT 1',
+                [$name, $orgId]
             );
         }
 
