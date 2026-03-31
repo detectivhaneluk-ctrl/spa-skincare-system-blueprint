@@ -142,6 +142,16 @@ final class AppointmentService
             slog('error', 'appointments.outbound.confirmation', $e->getMessage(), ['appointment_id' => $id]);
         }
 
+        // WAVE-06: invalidate calendar display cache for the affected date/branch after successful creation.
+        try {
+            $aptDateRaw = (string) ($data['start_at'] ?? '');
+            $aptDate = $aptDateRaw !== '' ? date('Y-m-d', strtotime($aptDateRaw)) : null;
+            $aptBranchId = isset($data['branch_id']) && $data['branch_id'] !== null && $data['branch_id'] !== '' ? (int) $data['branch_id'] : null;
+            if ($aptDate !== null && preg_match('/^\d{4}-\d{2}-\d{2}$/', $aptDate) === 1) {
+                $this->availability->invalidateDayCalendarCache($aptDate, $aptBranchId);
+            }
+        } catch (\Throwable) {}
+
         return $id;
     }
 
@@ -408,6 +418,15 @@ final class AppointmentService
         if ($beforeSnapshot !== null) {
             $this->invokeWaitlistAutoOfferAfterSlotFreed($beforeSnapshot, $id);
         }
+        // WAVE-06: invalidate calendar display cache after successful cancellation.
+        try {
+            $lockedStartAt = (string) ($locked['start_at'] ?? '');
+            $cancelDate = $lockedStartAt !== '' ? date('Y-m-d', strtotime($lockedStartAt)) : null;
+            $cancelBranchId = isset($locked['branch_id']) && $locked['branch_id'] !== null && $locked['branch_id'] !== '' ? (int) $locked['branch_id'] : null;
+            if ($cancelDate !== null && preg_match('/^\d{4}-\d{2}-\d{2}$/', $cancelDate) === 1) {
+                $this->availability->invalidateDayCalendarCache($cancelDate, $cancelBranchId);
+            }
+        } catch (\Throwable) {}
     }
 
     public function reschedule(
@@ -529,6 +548,20 @@ final class AppointmentService
         } catch (\Throwable $e) {
             slog('error', 'appointments.outbound.rescheduled', $e->getMessage(), ['appointment_id' => $id]);
         }
+        // WAVE-06: invalidate calendar display cache for both old and new date/branch after reschedule.
+        if ($current !== null) {
+            try {
+                $oldDate = date('Y-m-d', strtotime((string) ($current['start_at'] ?? '')));
+                $newDate = date('Y-m-d', strtotime($startAt));
+                $reschBranchId = isset($current['branch_id']) && $current['branch_id'] !== null && $current['branch_id'] !== '' ? (int) $current['branch_id'] : null;
+                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $oldDate) === 1) {
+                    $this->availability->invalidateDayCalendarCache($oldDate, $reschBranchId);
+                }
+                if ($newDate !== $oldDate && preg_match('/^\d{4}-\d{2}-\d{2}$/', $newDate) === 1) {
+                    $this->availability->invalidateDayCalendarCache($newDate, $reschBranchId);
+                }
+            } catch (\Throwable) {}
+        }
     }
 
     public function updateStatus(int $id, string $newStatus, ?string $notes = null, ?int $cancellationReasonId = null, ?int $noShowReasonId = null): void
@@ -620,6 +653,14 @@ final class AppointmentService
                 slog('error', 'appointments.outbound.confirmation_status', $e->getMessage(), ['appointment_id' => $id]);
             }
         }
+        // WAVE-06: invalidate calendar display cache after any status change.
+        try {
+            $statusAptStartAt = (string) ($current['start_at'] ?? '');
+            $statusDate = $statusAptStartAt !== '' ? date('Y-m-d', strtotime($statusAptStartAt)) : null;
+            if ($statusDate !== null && preg_match('/^\d{4}-\d{2}-\d{2}$/', $statusDate) === 1) {
+                $this->availability->invalidateDayCalendarCache($statusDate, $currentBranchId);
+            }
+        } catch (\Throwable) {}
     }
 
     public function delete(int $id): void
@@ -641,6 +682,17 @@ final class AppointmentService
         }, 'appointment delete');
         if ($aptBefore !== null) {
             $this->invokeWaitlistAutoOfferAfterSlotFreed($aptBefore, $id);
+        }
+        // WAVE-06: invalidate calendar display cache after deletion.
+        if ($aptBefore !== null) {
+            try {
+                $delStartAt = (string) ($aptBefore['start_at'] ?? '');
+                $delDate = $delStartAt !== '' ? date('Y-m-d', strtotime($delStartAt)) : null;
+                $delBranchId = isset($aptBefore['branch_id']) && $aptBefore['branch_id'] !== null && $aptBefore['branch_id'] !== '' ? (int) $aptBefore['branch_id'] : null;
+                if ($delDate !== null && preg_match('/^\d{4}-\d{2}-\d{2}$/', $delDate) === 1) {
+                    $this->availability->invalidateDayCalendarCache($delDate, $delBranchId);
+                }
+            } catch (\Throwable) {}
         }
     }
 

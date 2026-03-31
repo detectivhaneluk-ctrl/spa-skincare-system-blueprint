@@ -23,7 +23,9 @@ final class BlockedSlotService
 
     public function create(array $data): int
     {
-        return $this->transactional(function () use ($data): int {
+        $captureDate = null;
+        $captureBranchId = null;
+        $id = $this->transactional(function () use ($data, &$captureDate, &$captureBranchId): int {
             $ctx = $this->contextHolder->requireContext();
             ['branch_id' => $branchId] = $ctx->requireResolvedTenant();
             $data['branch_id'] = $branchId;
@@ -66,28 +68,49 @@ final class BlockedSlotService
                 'notes' => trim((string) ($data['notes'] ?? '')) ?: null,
                 'created_by' => $this->currentUserId(),
             ];
-            $id = $this->repo->create($payload);
-            $this->audit->log('appointment_blocked_slot_created', 'appointment_blocked_slot', $id, $this->currentUserId(), $payload['branch_id'], [
+            $newId = $this->repo->create($payload);
+            $this->audit->log('appointment_blocked_slot_created', 'appointment_blocked_slot', $newId, $this->currentUserId(), $payload['branch_id'], [
                 'blocked_slot' => $payload,
             ]);
-            return $id;
+            $captureDate = $date;
+            $captureBranchId = $branchId;
+            return $newId;
         }, 'blocked slot create');
+        // WAVE-06: invalidate calendar display cache after blocked slot creation.
+        if ($captureDate !== null) {
+            try {
+                $this->availability->invalidateDayCalendarCache($captureDate, $captureBranchId);
+            } catch (\Throwable) {}
+        }
+        return $id;
     }
 
     public function delete(int $id): void
     {
-        $this->transactional(function () use ($id): void {
+        $captureRow = null;
+        $this->transactional(function () use ($id, &$captureRow): void {
             $ctx = $this->contextHolder->requireContext();
             $ctx->requireResolvedTenant();
             $row = $this->repo->loadOwned($ctx, $id);
             if (!$row) {
                 throw new \RuntimeException('Blocked slot not found.');
             }
+            $captureRow = $row;
             $this->repo->softDelete($id);
             $this->audit->log('appointment_blocked_slot_deleted', 'appointment_blocked_slot', $id, $this->currentUserId(), $row['branch_id'] !== null ? (int) $row['branch_id'] : null, [
                 'blocked_slot' => $row,
             ]);
         }, 'blocked slot delete');
+        // WAVE-06: invalidate calendar display cache after blocked slot deletion.
+        if ($captureRow !== null) {
+            try {
+                $blkDate = (string) ($captureRow['block_date'] ?? '');
+                $blkBranchId = isset($captureRow['branch_id']) && $captureRow['branch_id'] !== null ? (int) $captureRow['branch_id'] : null;
+                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $blkDate) === 1) {
+                    $this->availability->invalidateDayCalendarCache($blkDate, $blkBranchId);
+                }
+            } catch (\Throwable) {}
+        }
     }
 
     private function currentUserId(): ?int

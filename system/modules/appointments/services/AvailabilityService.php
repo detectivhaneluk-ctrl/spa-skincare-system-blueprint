@@ -6,6 +6,7 @@ namespace Modules\Appointments\Services;
 
 use Core\App\Database;
 use Core\App\SettingsService;
+use Core\Contracts\SharedCacheInterface;
 use Core\Organization\OrganizationRepositoryScope;
 use Modules\Appointments\Repositories\AppointmentRepository;
 use Modules\Appointments\Repositories\BlockedSlotRepository;
@@ -20,6 +21,8 @@ final class AvailabilityService
 {
     private const SLOT_MINUTES = 30;
     private const BLOCKING_STATUSES = ['scheduled', 'confirmed', 'in_progress', 'completed'];
+    private const DAY_APT_CACHE_TTL = 30;
+    private const DAY_APT_CACHE_KEY_PREFIX = 'cal_v1:day_apts';
 
     public function __construct(
         private Database $db,
@@ -33,6 +36,7 @@ final class AvailabilityService
         private SettingsService $settings,
         private AppointmentRepository $appointments,
         private OrganizationRepositoryScope $orgScope,
+        private SharedCacheInterface $sharedCache,
     ) {
     }
 
@@ -488,6 +492,24 @@ final class AvailabilityService
         if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) !== 1) {
             return [];
         }
+
+        // Short-TTL read cache for the calendar display layer (WAVE-06).
+        // This caches the *visual* read model only. The booking write path uses isSlotAvailable()
+        // with forAvailabilitySearch=false which always hits the DB and is never cached.
+        $cacheKey = $this->dayAptCacheKey($date, $branchId);
+        try {
+            $raw = $this->sharedCache->get($cacheKey);
+            if ($raw !== null) {
+                $decoded = json_decode($raw, true);
+                if (is_array($decoded)) {
+                    /** @var array<int, array<string, mixed>> $decoded */
+                    return $decoded;
+                }
+            }
+        } catch (\Throwable) {
+            // Fail-open: cache unavailable — fall through to DB.
+        }
+
         $start = $date . ' 00:00:00';
         $end = $date . ' 23:59:59';
         $sql = "SELECT a.id, a.client_id, a.service_id, a.staff_id, a.series_id, a.start_at, a.end_at, a.status, a.created_at,
@@ -532,7 +554,32 @@ final class AvailabilityService
                 'created_at' => $createdRaw !== null && (string) $createdRaw !== '' ? (string) $createdRaw : null,
             ];
         }
+
+        try {
+            $this->sharedCache->set($cacheKey, (string) json_encode($grouped, JSON_UNESCAPED_SLASHES), self::DAY_APT_CACHE_TTL);
+        } catch (\Throwable) {
+            // Fail-open: if SharedCache throws, the un-cached result is returned correctly.
+        }
+
         return $grouped;
+    }
+
+    /**
+     * Invalidate the day-calendar display cache for a given date and branch after any appointment mutation.
+     * This is a best-effort call — cache errors are swallowed; the 30s TTL acts as a safety net.
+     * IMPORTANT: this invalidates the DISPLAY cache only. The booking write-path conflict check
+     * (isSlotAvailable with $forAvailabilitySearch=false) is never cached and is unaffected.
+     */
+    public function invalidateDayCalendarCache(string $date, ?int $branchId): void
+    {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) !== 1) {
+            return;
+        }
+        try {
+            $this->sharedCache->delete($this->dayAptCacheKey($date, $branchId));
+        } catch (\Throwable) {
+            // Fail-open: TTL ensures eventual consistency even if delete fails.
+        }
     }
 
     public function listDayBlockedSlotsGroupedByStaff(string $date, ?int $branchId = null): array
@@ -637,6 +684,12 @@ final class AvailabilityService
             ];
         }
         return $out;
+    }
+
+    private function dayAptCacheKey(string $date, ?int $branchId): string
+    {
+        $b = $branchId === null ? 'null' : (string) $branchId;
+        return self::DAY_APT_CACHE_KEY_PREFIX . ':' . $b . ':' . $date;
     }
 
     private function getActiveService(int $serviceId, ?int $operationBranchId = null): ?array

@@ -1,7 +1,7 @@
 # Scale Wave Execution Charter — 01
 
 **Date:** 2026-03-31  
-**Status:** WAVE-01 DONE · WAVE-02 DONE · WAVE-03 DONE · WAVE-04 DONE · WAVE-05 LIVE  
+**Status:** WAVE-01 DONE · WAVE-02 DONE · WAVE-03 DONE · WAVE-04 DONE · WAVE-05 DONE · WAVE-06 LIVE  
 **Authority:** Architect verdict (2026-03-31 scalability & load assessment).  
 **Relationship to FOUNDATION-A series:** Foundation A1–A7 established the tenant/auth/service kernel. This charter launches on top of that kernel to address the **runtime, infrastructure, and scale** layer. These waves do **not** reopen or contradict Foundation work — they build on it.  
 **Active queue:** This file. Exactly one LIVE wave at a time.  
@@ -117,7 +117,7 @@ These are in order of production urgency. The waves execute exactly in this orde
 
 ## WAVE-05 — LIVE ENFORCEMENT FOUNDATIONS
 
-**Status:** LIVE (2026-03-31)
+**Status:** DONE (2026-03-31)
 
 **Why this wave exists:**  
 WAVE-01 through WAVE-04 built the foundations. WAVE-05 wires two foundations that were created but left dead (not connected to the runtime pipeline):
@@ -144,6 +144,42 @@ WAVE-01 through WAVE-04 built the foundations. WAVE-05 wires two foundations tha
 **Exit condition:** `verify_wave05_live_enforcement_foundations_01.php` passes; HTTP regression sweep clean.
 
 ---
+
+---
+
+## WAVE-06 — HOT PATH CACHE EFFECTIVENESS
+
+**Status:** LIVE (2026-03-31)
+
+**Why this wave exists:**  
+WAVE-01 established `SharedCacheInterface` (Redis-backed in production). WAVE-05 wired the observability and rate-limiting layers. WAVE-06 activates the first real runtime efficiency wins by injecting `SharedCacheInterface` into the two highest-impact hot paths that still hit the DB on every request:
+
+| Hot path | Current state | Scale impact |
+|---|---|---|
+| `PermissionService::getForUser()` | Per-request in-memory array only — fresh DB queries on every HTTP request for every auth-guarded route | At 1000+ salons with concurrent requests, every request fires 2 DB queries for permissions |
+| `AvailabilityService::listDayAppointmentsGroupedByStaff()` | Fresh DB query on every calendar day view | Calendar page hits DB on every staff member's browser poll |
+
+**Scope:**
+
+| ID | Deliverable | Proof |
+|----|-------------|-------|
+| W6-A | `PermissionService` cross-request cache — `SharedCacheInterface`-backed, TTL 120s, cache key `perm_v1:u{userId}:b{branchId\|null}`, fail-open on cache error, `clearCachedForUser()` for explicit invalidation | Cache hit skips DB queries; fallback works when cache unavailable |
+| W6-B | `AvailabilityService::listDayAppointmentsGroupedByStaff()` short-TTL cache — TTL 30s, cache key `cal_v1:day_apts:{branchId\|null}:{date}`, fail-open on cache error | Calendar page served from cache on repeat requests |
+| W6-C | Explicit invalidation — `AvailabilityService::invalidateDayCalendarCache()` called from all appointment mutation paths (`AppointmentService::create`, `cancel`, `reschedule`, `updateStatus`, `delete`) and `BlockedSlotService::create`, `delete` | Calendar cache never shows data older than 30s; appointment writes always invalidate |
+| W6-D | Final booking revalidation preserved — `isSlotAvailable()` in booking write path (`forAvailabilitySearch=false`) is **never cached**; always hits DB | Booking conflicts still caught; no double-booking risk introduced |
+| W6-E | Proof script `verify_wave06_hot_path_cache_effectiveness_01.php` passes all assertions | Machine-verifiable proof of all W6-A through W6-D |
+
+**Cache key / TTL / invalidation contract:**
+- `perm_v1:u{userId}:b{branchId|null}` — 120s TTL — invalidated by `clearCachedForUser(userId, branchId)`
+- `cal_v1:day_apts:{branchId|null}:{date}` — 30s TTL — invalidated by `invalidateDayCalendarCache(date, branchId)`
+
+**Must not touch:**
+- Booking conflict check path (`isSlotAvailable` with `$forAvailabilitySearch=false`)
+- Auth middleware enforcement logic
+- Session / tenant isolation kernel
+
+**Entry condition:** WAVE-05 proof passes.  
+**Exit condition:** `verify_wave06_hot_path_cache_effectiveness_01.php` passes; HTTP regression sweep clean.
 
 ---
 

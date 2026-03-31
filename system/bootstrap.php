@@ -88,7 +88,8 @@ $container->singleton(\Core\Auth\PrincipalPlaneResolver::class, fn ($c) => new \
 $container->singleton(\Core\Permissions\PermissionService::class, fn ($c) => new \Core\Permissions\PermissionService(
     $c->get(\Core\App\Database::class),
     $c->get(\Core\Branch\BranchContext::class),
-    $c->get(\Core\Permissions\StaffGroupPermissionRepository::class)
+    $c->get(\Core\Permissions\StaffGroupPermissionRepository::class),
+    $c->get(\Core\Contracts\SharedCacheInterface::class),
 ));
 $container->singleton(\Core\Auth\AuthenticatedHomePathResolver::class, fn ($c) => new \Core\Auth\AuthenticatedHomePathResolver(
     $c->get(\Core\Auth\PostLoginHomePathResolver::class)
