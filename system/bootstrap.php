@@ -148,6 +148,17 @@ $container->singleton(\Core\Tenant\TenantOwnedDataScopeGuard::class, fn ($c) => 
     $c->get(\Core\Organization\OrganizationContext::class)
 ));
 
+// FOUNDATION-A1: TenantContext kernel — resolved-once immutable context per request.
+$container->singleton(\Core\Kernel\RequestContextHolder::class, fn () => new \Core\Kernel\RequestContextHolder());
+$container->singleton(\Core\Kernel\TenantContextResolver::class, fn ($c) => new \Core\Kernel\TenantContextResolver(
+    $c->get(\Core\Auth\SessionAuth::class),
+    $c->get(\Core\Branch\BranchContext::class),
+    $c->get(\Core\Organization\OrganizationContext::class),
+    $c->get(\Core\Auth\PrincipalAccessService::class),
+));
+// FOUNDATION-A2: Authorization kernel — deny-by-default until full policy layer is installed.
+$container->singleton(\Core\Kernel\Authorization\AuthorizerInterface::class, fn () => new \Core\Kernel\Authorization\DenyAllAuthorizer());
+
 // Global + common route middleware and root controller: {@see \Core\Router\Dispatcher} resolves string middleware/controllers
 // only via the container (A-002). PermissionMiddleware::for() remains per-route object instances.
 $container->singleton(\Core\Middleware\CsrfMiddleware::class, fn () => new \Core\Middleware\CsrfMiddleware());
@@ -155,6 +166,7 @@ $container->singleton(\Core\Middleware\SessionEarlyReleaseMiddleware::class, fn 
 $container->singleton(\Core\Middleware\ErrorHandlerMiddleware::class, fn () => new \Core\Middleware\ErrorHandlerMiddleware());
 $container->singleton(\Core\Middleware\BranchContextMiddleware::class, fn () => new \Core\Middleware\BranchContextMiddleware());
 $container->singleton(\Core\Middleware\OrganizationContextMiddleware::class, fn () => new \Core\Middleware\OrganizationContextMiddleware());
+$container->singleton(\Core\Middleware\TenantContextMiddleware::class, fn () => new \Core\Middleware\TenantContextMiddleware());
 $container->singleton(\Core\Middleware\AuthMiddleware::class, fn () => new \Core\Middleware\AuthMiddleware());
 $container->singleton(\Core\Middleware\GuestMiddleware::class, fn () => new \Core\Middleware\GuestMiddleware());
 $container->singleton(\Core\Middleware\TenantProtectedRouteMiddleware::class, fn () => new \Core\Middleware\TenantProtectedRouteMiddleware());

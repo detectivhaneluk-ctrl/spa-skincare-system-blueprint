@@ -5,15 +5,22 @@ declare(strict_types=1);
 namespace Modules\Clients\Services;
 
 use Core\App\Database;
+use Core\Errors\AccessDeniedException;
 use Core\Errors\SafeDomainException;
-use Core\Branch\BranchContext;
+use Core\Kernel\RequestContextHolder;
+use Core\Kernel\TenantContext;
 use Modules\Clients\Repositories\ClientProfileImageRepository;
 use Modules\Marketing\Services\MarketingGiftCardTemplateService;
 use Modules\Media\Services\MediaAssetUploadService;
 use Modules\Media\Services\MediaImageLibraryStatusPayloadBuilder;
 
 /**
- * Staff client photo library: same canonical media upload + pipeline as gift card image library.
+ * FOUNDATION-A5: Pilot-lane rewrite.
+ * - No direct db->fetchOne / fetchAll / query for protected operations (FOUNDATION-A3).
+ * - All protected data access through canonical TenantContext-scoped repository methods (FOUNDATION-A4).
+ * - BranchContext replaced by TenantContext from RequestContextHolder.
+ * - Database retained for transaction management ONLY (not for data queries).
+ * - Business behavior preserved; architecture replaced.
  *
  * Primary sidebar photo rule: newest active client_profile_images row (by created_at, id) whose linked
  * media_assets.status is ready and a primary media_asset_variants.relative_path exists; otherwise no URL (placeholder).
@@ -24,7 +31,7 @@ final class ClientProfileImageService
         private Database $db,
         private ClientProfileImageRepository $repo,
         private MediaAssetUploadService $mediaUpload,
-        private BranchContext $branchContext,
+        private RequestContextHolder $contextHolder,
         private MarketingGiftCardTemplateService $marketingGiftTemplateService,
         private MediaImageLibraryStatusPayloadBuilder $statusPayloadBuilder,
     ) {
@@ -131,7 +138,8 @@ final class ClientProfileImageService
      */
     public function presentImageRowById(int $imageId, int $clientId, int $branchId): ?array
     {
-        $row = $this->repo->findActiveEnrichedForClientImageInBranch($imageId, $clientId, $branchId);
+        $ctx = $this->requireTenantContext($branchId);
+        $row = $this->repo->loadVisibleEnrichedImage($ctx, $imageId, $clientId);
         if ($row === null) {
             return null;
         }
@@ -151,7 +159,7 @@ final class ClientProfileImageService
 
     public function uploadImage(int $branchId, int $clientId, array $file, ?string $title, ?int $userId): int
     {
-        $this->assertCurrentBranchMatches($branchId);
+        $ctx = $this->requireTenantContext($branchId);
         if (!$this->repo->isMediaLibraryReady()) {
             throw new SafeDomainException(
                 'PHOTO_LIBRARY_NOT_READY',
@@ -172,12 +180,9 @@ final class ClientProfileImageService
             );
         }
 
-        $asset = $this->db->fetchOne(
-            'SELECT id, branch_id, original_filename, stored_basename, mime_detected, bytes_original
-             FROM media_assets WHERE id = ? LIMIT 1',
-            [$assetId]
-        );
-        if ($asset === null || (int) ($asset['branch_id'] ?? 0) !== $branchId) {
+        // Canonical scoped load: repository validates branch ownership via TenantContext.
+        $asset = $this->repo->loadUploadedMediaAssetInScope($ctx, $assetId);
+        if ($asset === null) {
             throw new SafeDomainException(
                 'PHOTO_UPLOAD_FAILED',
                 'Uploaded file could not be associated with this branch.',
@@ -210,7 +215,8 @@ final class ClientProfileImageService
      */
     public function softDeleteImage(int $branchId, int $clientId, int $imageId, ?int $userId): array
     {
-        $image = $this->repo->findActiveForClientInBranch($imageId, $clientId, $branchId);
+        $ctx = $this->requireTenantContext($branchId);
+        $image = $this->repo->loadVisibleImage($ctx, $imageId, $clientId);
         if ($image === null) {
             throw new SafeDomainException(
                 'PHOTO_NOT_FOUND',
@@ -223,8 +229,8 @@ final class ClientProfileImageService
             ? (int) $image['media_asset_id']
             : 0;
 
-        $this->transactional(function () use ($imageId, $clientId, $branchId, $userId): void {
-            $affected = $this->repo->softDeleteInBranch($imageId, $clientId, $branchId, $userId);
+        $this->transactional(function () use ($ctx, $imageId, $clientId, $userId): void {
+            $affected = $this->repo->deleteOwned($ctx, $imageId, $clientId, $userId);
             if ($affected < 1) {
                 throw new SafeDomainException(
                     'PHOTO_NOT_FOUND',
@@ -322,17 +328,19 @@ final class ClientProfileImageService
         return mb_substr($trim, 0, 160);
     }
 
-    private function assertCurrentBranchMatches(int $branchId): void
+    /**
+     * Obtain TenantContext and assert that the caller-supplied branchId matches the resolved scope.
+     * Defense-in-depth: the canonical repo methods use context-derived branch, not the parameter.
+     */
+    private function requireTenantContext(int $branchId): TenantContext
     {
-        $ctx = $this->branchContext->getCurrentBranchId();
-        if ($ctx === null || (int) $ctx !== $branchId) {
-            throw new SafeDomainException(
-                'BRANCH_MISMATCH',
-                'Your workspace branch does not match this client record.',
-                'Branch context does not match the requested branch.',
-                403
-            );
+        $ctx = $this->contextHolder->requireContext();
+        $scope = $ctx->requireResolvedTenant();
+        if ($scope['branch_id'] !== $branchId) {
+            throw new AccessDeniedException('Branch context does not match the requested branch.');
         }
+
+        return $ctx;
     }
 
     private function transactional(callable $fn): mixed

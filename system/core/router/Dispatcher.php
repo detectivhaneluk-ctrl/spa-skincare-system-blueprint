@@ -31,6 +31,8 @@ final class Dispatcher
         \Core\Middleware\ErrorHandlerMiddleware::class,
         \Core\Middleware\BranchContextMiddleware::class,
         \Core\Middleware\OrganizationContextMiddleware::class,
+        // FOUNDATION-A1: materializes immutable TenantContext after branch+org are resolved.
+        \Core\Middleware\TenantContextMiddleware::class,
     ];
 
     public function __construct(

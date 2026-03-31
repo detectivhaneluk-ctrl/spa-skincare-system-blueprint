@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Marketing\Repositories;
 
 use Core\App\Database;
+use Core\Kernel\TenantContext;
 use Core\Organization\OrganizationRepositoryScope;
 
 final class MarketingGiftCardTemplateRepository
@@ -473,6 +474,273 @@ final class MarketingGiftCardTemplateRepository
         );
 
         return (int) ($row['c'] ?? 0);
+    }
+
+    // -------------------------------------------------------------------------
+    // FOUNDATION-A4: Canonical TenantContext-scoped API
+    // Methods below derive branch_id and organization_id exclusively from
+    // TenantContext::requireResolvedTenant(). No caller-supplied raw IDs for scope.
+    // -------------------------------------------------------------------------
+
+    /**
+     * Load a single active gift card template owned by the resolved tenant.
+     * Fails closed: throws UnresolvedTenantContextException when context is unresolved.
+     */
+    public function loadVisibleTemplate(TenantContext $ctx, int $templateId): ?array
+    {
+        if (!$this->isStorageReady()) {
+            return null;
+        }
+        $scope = $ctx->requireResolvedTenant();
+
+        return $this->db->fetchOne(
+            "SELECT t.*
+             FROM marketing_gift_card_templates t
+             WHERE t.id = ?
+               AND t.branch_id = ?
+               AND t.deleted_at IS NULL
+               AND EXISTS (
+                   SELECT 1 FROM branches b
+                   WHERE b.id = t.branch_id AND b.organization_id = ? AND b.deleted_at IS NULL
+               )
+             LIMIT 1",
+            [$templateId, $scope['branch_id'], $scope['organization_id']]
+        );
+    }
+
+    /**
+     * Load a single active gift card library image owned by the resolved tenant.
+     */
+    public function loadVisibleImage(TenantContext $ctx, int $imageId): ?array
+    {
+        if (!$this->isStorageReady()) {
+            return null;
+        }
+        $scope = $ctx->requireResolvedTenant();
+
+        return $this->db->fetchOne(
+            "SELECT i.*
+             FROM marketing_gift_card_images i
+             WHERE i.id = ?
+               AND i.branch_id = ?
+               AND i.deleted_at IS NULL
+               AND EXISTS (
+                   SELECT 1 FROM branches b
+                   WHERE b.id = i.branch_id AND b.organization_id = ? AND b.deleted_at IS NULL
+               )
+             LIMIT 1",
+            [$imageId, $scope['branch_id'], $scope['organization_id']]
+        );
+    }
+
+    /**
+     * Load a selectable (ready or legacy) gift card image for template assignment.
+     * Returns null when image is not ready, not found, or outside tenant scope.
+     */
+    public function loadSelectableImageForTemplate(TenantContext $ctx, int $imageId): ?array
+    {
+        if (!$this->isStorageReady()) {
+            return null;
+        }
+        $scope = $ctx->requireResolvedTenant();
+        $existsClause = "AND EXISTS (
+               SELECT 1 FROM branches b
+               WHERE b.id = i.branch_id AND b.organization_id = ? AND b.deleted_at IS NULL
+           )";
+        if ($this->isMediaBridgeReady()) {
+            return $this->db->fetchOne(
+                "SELECT i.*
+                 FROM marketing_gift_card_images i
+                 LEFT JOIN media_assets ma ON ma.id = i.media_asset_id
+                 WHERE i.id = ?
+                   AND i.branch_id = ?
+                   AND i.deleted_at IS NULL
+                   AND (i.media_asset_id IS NULL OR ma.status = 'ready')
+                   {$existsClause}
+                 LIMIT 1",
+                [$imageId, $scope['branch_id'], $scope['organization_id']]
+            );
+        }
+
+        return $this->db->fetchOne(
+            "SELECT i.*
+             FROM marketing_gift_card_images i
+             WHERE i.id = ?
+               AND i.branch_id = ?
+               AND i.deleted_at IS NULL
+               {$existsClause}
+             LIMIT 1",
+            [$imageId, $scope['branch_id'], $scope['organization_id']]
+        );
+    }
+
+    /**
+     * Load a just-uploaded media asset and validate it belongs to the tenant's branch.
+     * Replaces the direct DB fetchOne in the service upload flow (FOUNDATION-A3).
+     * Returns null when asset is not found or branch does not match.
+     */
+    public function loadUploadedMediaAssetInScope(TenantContext $ctx, int $mediaAssetId): ?array
+    {
+        $scope = $ctx->requireResolvedTenant();
+
+        return $this->db->fetchOne(
+            "SELECT id, branch_id, original_filename, stored_basename, mime_detected, bytes_original
+             FROM media_assets
+             WHERE id = ? AND branch_id = ?
+             LIMIT 1",
+            [$mediaAssetId, $scope['branch_id']]
+        );
+    }
+
+    /**
+     * Update a template owned by the resolved tenant.
+     * Scope is derived from TenantContext — caller-supplied branch is not trusted for WHERE.
+     */
+    public function mutateUpdateTemplate(TenantContext $ctx, int $templateId, array $data): void
+    {
+        $this->assertStorageReady();
+        $scope = $ctx->requireResolvedTenant();
+        $normalized = $this->normalizeTemplate($data);
+        if ($normalized === []) {
+            return;
+        }
+        $assign = [];
+        $params = [];
+        foreach ($normalized as $k => $v) {
+            $assign[] = 't.' . $k . ' = ?';
+            $params[] = $v;
+        }
+        $params[] = $templateId;
+        $params[] = $scope['branch_id'];
+        $params[] = $scope['organization_id'];
+        $this->db->query(
+            'UPDATE marketing_gift_card_templates t
+             SET ' . implode(', ', $assign) . '
+             WHERE t.id = ?
+               AND t.branch_id = ?
+               AND t.deleted_at IS NULL
+               AND EXISTS (
+                   SELECT 1 FROM branches b
+                   WHERE b.id = t.branch_id AND b.organization_id = ? AND b.deleted_at IS NULL
+               )',
+            $params
+        );
+    }
+
+    /**
+     * Archive (soft-delete) a template owned by the resolved tenant.
+     */
+    public function mutateArchiveTemplate(TenantContext $ctx, int $templateId, ?int $userId): void
+    {
+        $this->assertStorageReady();
+        $scope = $ctx->requireResolvedTenant();
+        $this->db->query(
+            "UPDATE marketing_gift_card_templates t
+             SET t.deleted_at = NOW(),
+                 t.is_active = 0,
+                 t.updated_by = ?
+             WHERE t.id = ?
+               AND t.branch_id = ?
+               AND t.deleted_at IS NULL
+               AND EXISTS (
+                   SELECT 1 FROM branches b
+                   WHERE b.id = t.branch_id AND b.organization_id = ? AND b.deleted_at IS NULL
+               )",
+            [$userId, $templateId, $scope['branch_id'], $scope['organization_id']]
+        );
+    }
+
+    /**
+     * Soft-delete a library image owned by the resolved tenant.
+     * Returns rows affected (0 on already-deleted or race condition).
+     */
+    public function deleteOwnedImage(TenantContext $ctx, int $imageId, ?int $userId): int
+    {
+        $this->assertStorageReady();
+        $scope = $ctx->requireResolvedTenant();
+        $stmt = $this->db->query(
+            "UPDATE marketing_gift_card_images i
+             SET i.deleted_at = NOW(),
+                 i.is_active = 0,
+                 i.updated_by = ?
+             WHERE i.id = ?
+               AND i.branch_id = ?
+               AND i.deleted_at IS NULL
+               AND EXISTS (
+                   SELECT 1 FROM branches b
+                   WHERE b.id = i.branch_id AND b.organization_id = ? AND b.deleted_at IS NULL
+               )",
+            [$userId, $imageId, $scope['branch_id'], $scope['organization_id']]
+        );
+
+        return $stmt->rowCount();
+    }
+
+    /**
+     * Clear archived template image_id references before the image is soft-deleted.
+     * Returns rows updated.
+     */
+    public function clearArchivedTemplateImageRef(TenantContext $ctx, int $imageId, ?int $userId): int
+    {
+        $this->assertStorageReady();
+        $scope = $ctx->requireResolvedTenant();
+        $stmt = $this->db->query(
+            "UPDATE marketing_gift_card_templates t
+             SET t.image_id = NULL,
+                 t.updated_by = ?
+             WHERE t.branch_id = ?
+               AND t.image_id = ?
+               AND t.deleted_at IS NOT NULL
+               AND EXISTS (
+                   SELECT 1 FROM branches b
+                   WHERE b.id = t.branch_id AND b.organization_id = ? AND b.deleted_at IS NULL
+               )",
+            [$userId, $scope['branch_id'], $imageId, $scope['organization_id']]
+        );
+
+        return $stmt->rowCount();
+    }
+
+    /**
+     * Count active library references to a media asset across all library tables in this tenant.
+     * Crosses marketing_gift_card_images and client_profile_images (when table exists).
+     * Replaces countActiveImagesByMediaAssetId for the canonical TenantContext-aware path.
+     */
+    public function countOwnedMediaAssetReferences(TenantContext $ctx, int $mediaAssetId): int
+    {
+        if (!$this->isStorageReady()) {
+            return 0;
+        }
+        $scope = $ctx->requireResolvedTenant();
+        $orgId = $scope['organization_id'];
+        $row = $this->db->fetchOne(
+            "SELECT COUNT(*) AS c
+             FROM marketing_gift_card_images i
+             WHERE i.media_asset_id = ?
+               AND i.deleted_at IS NULL
+               AND EXISTS (
+                   SELECT 1 FROM branches b
+                   WHERE b.id = i.branch_id AND b.organization_id = ? AND b.deleted_at IS NULL
+               )",
+            [$mediaAssetId, $orgId]
+        );
+        $c = (int) ($row['c'] ?? 0);
+        if (!$this->tableExists('client_profile_images')) {
+            return $c;
+        }
+        $row2 = $this->db->fetchOne(
+            "SELECT COUNT(*) AS c
+             FROM client_profile_images i
+             WHERE i.media_asset_id = ?
+               AND i.deleted_at IS NULL
+               AND EXISTS (
+                   SELECT 1 FROM branches b
+                   WHERE b.id = i.branch_id AND b.organization_id = ? AND b.deleted_at IS NULL
+               )",
+            [$mediaAssetId, $orgId]
+        );
+
+        return $c + (int) ($row2['c'] ?? 0);
     }
 
     private function assertStorageReady(): void

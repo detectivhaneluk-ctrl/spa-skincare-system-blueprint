@@ -22,6 +22,7 @@
       "Core\\Contracts\\": "system/core/contracts/",
       "Core\\Errors\\": "system/core/errors/",
       "Core\\Http\\": "system/core/http/",
+      "Core\\Kernel\\": "system/core/Kernel/",
       "Core\\Middleware\\": "system/core/middleware/",
       "Core\\Observability\\": "system/core/Observability/",
       "Core\\Organization\\": "system/core/Organization/",

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Clients\Repositories;
 
 use Core\App\Database;
+use Core\Kernel\TenantContext;
 use Core\Organization\OrganizationRepositoryScope;
 
 final class ClientProfileImageRepository
@@ -268,6 +269,135 @@ final class ClientProfileImageRepository
                AND i.branch_id = ?
                AND i.deleted_at IS NULL" . $frag['sql'],
             array_merge([$userId, $imageId, $clientId, $branchId], $frag['params'])
+        );
+
+        return $stmt->rowCount();
+    }
+
+    // -------------------------------------------------------------------------
+    // FOUNDATION-A4: Canonical TenantContext-scoped API
+    // Methods below derive branch_id and organization_id exclusively from
+    // TenantContext::requireResolvedTenant(). No caller-supplied raw IDs for scope.
+    // -------------------------------------------------------------------------
+
+    /**
+     * Load a single active client profile image owned by the resolved tenant.
+     * Minimal row — use loadVisibleEnrichedImage when media join data is needed.
+     */
+    public function loadVisibleImage(TenantContext $ctx, int $imageId, int $clientId): ?array
+    {
+        if (!$this->isTableReady()) {
+            return null;
+        }
+        $scope = $ctx->requireResolvedTenant();
+
+        return $this->db->fetchOne(
+            "SELECT i.*
+             FROM client_profile_images i
+             WHERE i.id = ?
+               AND i.client_id = ?
+               AND i.branch_id = ?
+               AND i.deleted_at IS NULL
+               AND EXISTS (
+                   SELECT 1 FROM branches b
+                   WHERE b.id = i.branch_id AND b.organization_id = ? AND b.deleted_at IS NULL
+               )
+             LIMIT 1",
+            [$imageId, $clientId, $scope['branch_id'], $scope['organization_id']]
+        );
+    }
+
+    /**
+     * Load a single active client profile image with full media joins (for post-upload response).
+     */
+    public function loadVisibleEnrichedImage(TenantContext $ctx, int $imageId, int $clientId): ?array
+    {
+        if (!$this->isTableReady()) {
+            return null;
+        }
+        $scope = $ctx->requireResolvedTenant();
+        $existsClause = "AND EXISTS (
+               SELECT 1 FROM branches b
+               WHERE b.id = i.branch_id AND b.organization_id = ? AND b.deleted_at IS NULL
+           )";
+        if ($this->isMediaLibraryReady()) {
+            $row = $this->db->fetchOne(
+                "SELECT i.*,
+                        ma.status AS media_asset_status,
+                        ma.organization_id AS media_organization_id,
+                        ma.original_filename AS media_original_filename,
+                        ma.mime_detected AS media_mime_detected,
+                        ma.bytes_original AS media_bytes_original,
+                        vp.relative_path AS media_primary_relative_path
+                 FROM client_profile_images i
+                 LEFT JOIN media_assets ma ON ma.id = i.media_asset_id
+                 LEFT JOIN media_asset_variants vp
+                   ON vp.media_asset_id = ma.id AND vp.is_primary = 1
+                 WHERE i.id = ?
+                   AND i.client_id = ?
+                   AND i.branch_id = ?
+                   AND i.deleted_at IS NULL
+                   {$existsClause}
+                 LIMIT 1",
+                [$imageId, $clientId, $scope['branch_id'], $scope['organization_id']]
+            );
+
+            return $row ?: null;
+        }
+
+        return $this->db->fetchOne(
+            "SELECT i.*
+             FROM client_profile_images i
+             WHERE i.id = ?
+               AND i.client_id = ?
+               AND i.branch_id = ?
+               AND i.deleted_at IS NULL
+               {$existsClause}
+             LIMIT 1",
+            [$imageId, $clientId, $scope['branch_id'], $scope['organization_id']]
+        ) ?: null;
+    }
+
+    /**
+     * Load a just-uploaded media asset and validate it belongs to the tenant's branch.
+     * Replaces the direct DB fetchOne in the service upload flow (FOUNDATION-A3).
+     * Returns null when asset is not found or branch does not match.
+     */
+    public function loadUploadedMediaAssetInScope(TenantContext $ctx, int $mediaAssetId): ?array
+    {
+        $scope = $ctx->requireResolvedTenant();
+
+        return $this->db->fetchOne(
+            "SELECT id, branch_id, original_filename, stored_basename, mime_detected, bytes_original
+             FROM media_assets
+             WHERE id = ? AND branch_id = ?
+             LIMIT 1",
+            [$mediaAssetId, $scope['branch_id']]
+        );
+    }
+
+    /**
+     * Soft-delete a client profile image owned by the resolved tenant.
+     * Returns rows affected (0 on already-deleted or race condition).
+     */
+    public function deleteOwned(TenantContext $ctx, int $imageId, int $clientId, ?int $userId): int
+    {
+        $this->assertTableReady();
+        $scope = $ctx->requireResolvedTenant();
+        $stmt = $this->db->query(
+            "UPDATE client_profile_images i
+             SET i.deleted_at = NOW(),
+                 i.is_active = 0,
+                 i.updated_by = ?
+             WHERE i.id = ?
+               AND i.client_id = ?
+               AND i.branch_id = ?
+               AND i.deleted_at IS NULL
+               AND EXISTS (
+                   SELECT 1 FROM branches b
+                   WHERE b.id = i.branch_id AND b.organization_id = ? AND b.deleted_at IS NULL
+               )",
+            [$userId, $imageId, $clientId, $scope['branch_id'], $scope['organization_id']]
         );
 
         return $stmt->rowCount();

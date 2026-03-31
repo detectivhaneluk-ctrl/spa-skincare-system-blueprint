@@ -26,7 +26,7 @@ $container->singleton(\Modules\Marketing\Services\MarketingGiftCardTemplateServi
     $c->get(\Core\App\Database::class),
     $c->get(\Modules\Marketing\Repositories\MarketingGiftCardTemplateRepository::class),
     $c->get(\Modules\Media\Services\MediaAssetUploadService::class),
-    $c->get(\Core\Branch\BranchContext::class),
+    $c->get(\Core\Kernel\RequestContextHolder::class),
     $c->get(\Modules\Media\Services\MediaImageLibraryStatusPayloadBuilder::class),
     $c->get(\Core\Storage\Contracts\StorageProviderInterface::class)
 ));
@@ -38,7 +38,7 @@ $container->singleton(\Modules\Clients\Services\ClientProfileImageService::class
     $c->get(\Core\App\Database::class),
     $c->get(\Modules\Clients\Repositories\ClientProfileImageRepository::class),
     $c->get(\Modules\Media\Services\MediaAssetUploadService::class),
-    $c->get(\Core\Branch\BranchContext::class),
+    $c->get(\Core\Kernel\RequestContextHolder::class),
     $c->get(\Modules\Marketing\Services\MarketingGiftCardTemplateService::class),
     $c->get(\Modules\Media\Services\MediaImageLibraryStatusPayloadBuilder::class)
 ));

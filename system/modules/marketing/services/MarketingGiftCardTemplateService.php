@@ -5,13 +5,23 @@ declare(strict_types=1);
 namespace Modules\Marketing\Services;
 
 use Core\App\Database;
-use Core\Branch\BranchContext;
+use Core\Errors\AccessDeniedException;
+use Core\Kernel\RequestContextHolder;
+use Core\Kernel\TenantContext;
 use Core\Storage\Contracts\StorageProviderInterface;
 use Core\Storage\StorageKey;
 use Modules\Marketing\Repositories\MarketingGiftCardTemplateRepository;
 use Modules\Media\Services\MediaAssetUploadService;
 use Modules\Media\Services\MediaImageLibraryStatusPayloadBuilder;
 
+/**
+ * FOUNDATION-A5: Pilot-lane rewrite.
+ * - No direct db->fetchOne / fetchAll / query for protected operations (FOUNDATION-A3).
+ * - All protected data access through canonical TenantContext-scoped repository methods (FOUNDATION-A4).
+ * - BranchContext replaced by TenantContext from RequestContextHolder.
+ * - Database retained for transaction management ONLY (not for data queries).
+ * - Business behavior preserved; architecture replaced.
+ */
 final class MarketingGiftCardTemplateService
 {
     private const GC_IMAGE_DELETE_LOG_PREFIX = '[gc-image-delete]';
@@ -20,7 +30,7 @@ final class MarketingGiftCardTemplateService
         private Database $db,
         private MarketingGiftCardTemplateRepository $repo,
         private MediaAssetUploadService $mediaUpload,
-        private BranchContext $branchContext,
+        private RequestContextHolder $contextHolder,
         private MediaImageLibraryStatusPayloadBuilder $statusPayloadBuilder,
         private StorageProviderInterface $storage,
     ) {
@@ -83,6 +93,7 @@ final class MarketingGiftCardTemplateService
         ?int $userId
     ): int {
         $this->assertName($name);
+        $ctx = $this->requireTenantContext($branchId);
         if ($cloneSourceTemplateId !== null && $cloneSourceTemplateId <= 0) {
             $cloneSourceTemplateId = null;
         }
@@ -100,7 +111,7 @@ final class MarketingGiftCardTemplateService
         ];
 
         if ($cloneSourceTemplateId !== null) {
-            $source = $this->repo->findActiveTemplateForBranch($cloneSourceTemplateId, $branchId);
+            $source = $this->repo->loadVisibleTemplate($ctx, $cloneSourceTemplateId);
             if ($source === null) {
                 throw new \DomainException('Clone source template not found in this branch.');
             }
@@ -115,7 +126,9 @@ final class MarketingGiftCardTemplateService
 
     public function findTemplateForEdit(int $branchId, int $templateId): ?array
     {
-        return $this->repo->findActiveTemplateForBranch($templateId, $branchId);
+        $ctx = $this->requireTenantContext($branchId);
+
+        return $this->repo->loadVisibleTemplate($ctx, $templateId);
     }
 
     public function updateTemplateMetadata(
@@ -128,14 +141,15 @@ final class MarketingGiftCardTemplateService
         ?int $userId
     ): void {
         $this->assertName($name);
-        $template = $this->repo->findActiveTemplateForBranch($templateId, $branchId);
+        $ctx = $this->requireTenantContext($branchId);
+        $template = $this->repo->loadVisibleTemplate($ctx, $templateId);
         if ($template === null) {
             throw new \DomainException('Gift card template not found.');
         }
         $currentImageId = isset($template['image_id']) && $template['image_id'] !== null ? (int) $template['image_id'] : null;
         if ($imageId !== null && $imageId > 0) {
             if ($currentImageId !== $imageId) {
-                $image = $this->repo->findActiveSelectableImageForBranch($imageId, $branchId);
+                $image = $this->repo->loadSelectableImageForTemplate($ctx, $imageId);
                 if ($image === null) {
                     throw new \DomainException('Selected image is not available for templates (still processing, failed, or not found in this branch).');
                 }
@@ -143,7 +157,7 @@ final class MarketingGiftCardTemplateService
         } else {
             $imageId = null;
         }
-        $this->repo->updateTemplateInBranch($templateId, $branchId, [
+        $this->repo->mutateUpdateTemplate($ctx, $templateId, [
             'name' => trim($name),
             'sell_in_store_enabled' => $sellInStore ? 1 : 0,
             'sell_online_enabled' => $sellOnline ? 1 : 0,
@@ -154,11 +168,12 @@ final class MarketingGiftCardTemplateService
 
     public function archiveTemplate(int $branchId, int $templateId, ?int $userId): void
     {
-        $template = $this->repo->findActiveTemplateForBranch($templateId, $branchId);
+        $ctx = $this->requireTenantContext($branchId);
+        $template = $this->repo->loadVisibleTemplate($ctx, $templateId);
         if ($template === null) {
             throw new \DomainException('Gift card template is already archived or missing.');
         }
-        $this->repo->archiveTemplateInBranch($templateId, $branchId, $userId);
+        $this->repo->mutateArchiveTemplate($ctx, $templateId, $userId);
     }
 
     /**
@@ -232,7 +247,7 @@ final class MarketingGiftCardTemplateService
 
     public function uploadImage(int $branchId, array $file, ?string $title, ?int $userId): int
     {
-        $this->assertCurrentBranchMatches($branchId);
+        $ctx = $this->requireTenantContext($branchId);
         if (!$this->repo->isMediaBridgeReady()) {
             throw new \DomainException('Gift card image uploads require migration 105 (media bridge) and migration 103 (media pipeline).');
         }
@@ -243,12 +258,9 @@ final class MarketingGiftCardTemplateService
             throw new \DomainException('Media upload did not return an asset id.');
         }
 
-        $asset = $this->db->fetchOne(
-            'SELECT id, branch_id, original_filename, stored_basename, mime_detected, bytes_original
-             FROM media_assets WHERE id = ? LIMIT 1',
-            [$assetId]
-        );
-        if ($asset === null || (int) ($asset['branch_id'] ?? 0) !== $branchId) {
+        // Canonical scoped load: repository validates branch ownership via TenantContext.
+        $asset = $this->repo->loadUploadedMediaAssetInScope($ctx, $assetId);
+        if ($asset === null) {
             throw new \DomainException('Uploaded media asset is not in this branch.');
         }
 
@@ -282,7 +294,8 @@ final class MarketingGiftCardTemplateService
      */
     public function softDeleteImage(int $branchId, int $imageId, ?int $userId): array
     {
-        $image = $this->repo->findActiveImageForBranch($imageId, $branchId);
+        $ctx = $this->requireTenantContext($branchId);
+        $image = $this->repo->loadVisibleImage($ctx, $imageId);
         if ($image === null) {
             throw new \DomainException('Image is already deleted or missing.');
         }
@@ -299,23 +312,20 @@ final class MarketingGiftCardTemplateService
         ];
         $purgeMeta = null;
         $archivedCleared = 0;
-        $this->transactional(function () use ($imageId, $branchId, $userId, $mediaAssetId, &$purgeMeta, &$archivedCleared): void {
-            $archivedCleared = $this->repo->clearArchivedTemplateImageIdForLibraryImage($imageId, $branchId, $userId);
-            $affected = $this->repo->softDeleteImageInBranch($imageId, $branchId, $userId);
+        $this->transactional(function () use ($ctx, $imageId, $branchId, $userId, $mediaAssetId, &$purgeMeta, &$archivedCleared): void {
+            $archivedCleared = $this->repo->clearArchivedTemplateImageRef($ctx, $imageId, $userId);
+            $affected = $this->repo->deleteOwnedImage($ctx, $imageId, $userId);
             if ($affected < 1) {
                 throw new \DomainException('Image is already deleted or missing.');
             }
             if ($mediaAssetId <= 0) {
                 return;
             }
-            $activeRefs = $this->repo->countActiveImagesByMediaAssetId($mediaAssetId);
+            $activeRefs = $this->repo->countOwnedMediaAssetReferences($ctx, $mediaAssetId);
             if ($activeRefs > 0) {
                 return;
             }
-            $this->repo->failQueueRowsForDeletedLibraryAsset(
-                $mediaAssetId,
-                'deleted_from_marketing_library'
-            );
+            $this->repo->failQueueRowsForDeletedLibraryAsset($mediaAssetId, 'deleted_from_marketing_library');
             $purgeMeta = $this->repo->hardDeleteOrphanMediaAssetForLibrary($mediaAssetId);
         });
 
@@ -362,7 +372,8 @@ final class MarketingGiftCardTemplateService
         if ($mediaAssetId <= 0) {
             return [];
         }
-        if ($this->repo->countActiveImagesByMediaAssetId($mediaAssetId) > 0) {
+        $ctx = $this->contextHolder->requireContext();
+        if ($this->repo->countOwnedMediaAssetReferences($ctx, $mediaAssetId) > 0) {
             return [];
         }
         $this->repo->failQueueRowsForDeletedLibraryAsset($mediaAssetId, $queueFailReason);
@@ -552,11 +563,41 @@ final class MarketingGiftCardTemplateService
         return mb_substr($trim, 0, 160);
     }
 
-    private function assertCurrentBranchMatches(int $branchId): void
+    /**
+     * Obtain TenantContext and assert that the caller-supplied branchId matches the resolved scope.
+     * Defense-in-depth: the canonical repo methods use context-derived branch, not the parameter.
+     */
+    private function requireTenantContext(int $branchId): TenantContext
     {
-        $ctx = $this->branchContext->getCurrentBranchId();
-        if ($ctx === null || (int) $ctx !== $branchId) {
-            throw new \DomainException('Branch context does not match the requested branch.');
+        $ctx = $this->contextHolder->requireContext();
+        $scope = $ctx->requireResolvedTenant();
+        if ($scope['branch_id'] !== $branchId) {
+            throw new AccessDeniedException('Branch context does not match the requested branch.');
+        }
+
+        return $ctx;
+    }
+
+    private function transactional(callable $fn): mixed
+    {
+        $pdo = $this->db->connection();
+        $started = false;
+        try {
+            if (!$pdo->inTransaction()) {
+                $pdo->beginTransaction();
+                $started = true;
+            }
+            $result = $fn();
+            if ($started) {
+                $pdo->commit();
+            }
+
+            return $result;
+        } catch (\Throwable $e) {
+            if ($started && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
         }
     }
 
@@ -599,28 +640,5 @@ final class MarketingGiftCardTemplateService
             'public_variant_url' => $publicUrl,
             'selectable_for_template' => $st === 'ready',
         ]);
-    }
-
-    private function transactional(callable $fn): mixed
-    {
-        $pdo = $this->db->connection();
-        $started = false;
-        try {
-            if (!$pdo->inTransaction()) {
-                $pdo->beginTransaction();
-                $started = true;
-            }
-            $result = $fn();
-            if ($started) {
-                $pdo->commit();
-            }
-
-            return $result;
-        } catch (\Throwable $e) {
-            if ($started && $pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
-            throw $e;
-        }
     }
 }
