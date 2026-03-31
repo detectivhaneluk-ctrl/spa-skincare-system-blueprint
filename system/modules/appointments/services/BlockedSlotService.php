@@ -7,7 +7,7 @@ namespace Modules\Appointments\Services;
 use Core\App\Application;
 use Core\App\Database;
 use Core\Audit\AuditService;
-use Core\Branch\BranchContext;
+use Core\Kernel\RequestContextHolder;
 use Modules\Appointments\Repositories\BlockedSlotRepository;
 
 final class BlockedSlotService
@@ -16,14 +16,17 @@ final class BlockedSlotService
         private BlockedSlotRepository $repo,
         private Database $db,
         private AuditService $audit,
-        private BranchContext $branchContext
+        private RequestContextHolder $contextHolder,
+        private AvailabilityService $availability
     ) {
     }
 
     public function create(array $data): int
     {
         return $this->transactional(function () use ($data): int {
-            $data = $this->branchContext->enforceBranchOnCreate($data);
+            $ctx = $this->contextHolder->requireContext();
+            ['branch_id' => $branchId] = $ctx->requireResolvedTenant();
+            $data['branch_id'] = $branchId;
             $date = trim((string) ($data['block_date'] ?? ''));
             if ($date === '' || preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) !== 1) {
                 throw new \InvalidArgumentException('block_date must be YYYY-MM-DD.');
@@ -45,10 +48,10 @@ final class BlockedSlotService
             if ($staffId === null || $staffId <= 0) {
                 throw new \InvalidArgumentException('staff_id is required.');
             }
-            $staff = $this->db->fetchOne(
-                'SELECT id FROM staff WHERE id = ? AND deleted_at IS NULL AND is_active = 1',
-                [$staffId]
-            );
+            $branchId = isset($data['branch_id']) && $data['branch_id'] !== '' && $data['branch_id'] !== null
+                ? (int) $data['branch_id']
+                : null;
+            $staff = $this->availability->getActiveStaffForScope($staffId, $branchId);
             if (!$staff) {
                 throw new \DomainException('Selected staff is not active.');
             }
@@ -74,11 +77,12 @@ final class BlockedSlotService
     public function delete(int $id): void
     {
         $this->transactional(function () use ($id): void {
-            $row = $this->repo->find($id);
+            $ctx = $this->contextHolder->requireContext();
+            $ctx->requireResolvedTenant();
+            $row = $this->repo->loadOwned($ctx, $id);
             if (!$row) {
                 throw new \RuntimeException('Blocked slot not found.');
             }
-            $this->branchContext->assertBranchMatchOrGlobalEntity($row['branch_id'] !== null && $row['branch_id'] !== '' ? (int) $row['branch_id'] : null);
             $this->repo->softDelete($id);
             $this->audit->log('appointment_blocked_slot_deleted', 'appointment_blocked_slot', $id, $this->currentUserId(), $row['branch_id'] !== null ? (int) $row['branch_id'] : null, [
                 'blocked_slot' => $row,

@@ -64,7 +64,7 @@ final class AvailabilityService
         if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) !== 1) {
             return [];
         }
-        $service = $this->getActiveService($serviceId);
+        $service = $this->getActiveService($serviceId, $branchId);
         if (!$service) {
             return [];
         }
@@ -216,7 +216,7 @@ final class AvailabilityService
         bool $forPublicBookingChannel = false,
         ?int $roomIdForOccupancyInSearch = null,
     ): bool {
-        $timing = $this->getServiceTiming($serviceId);
+        $timing = $this->getServiceTiming($serviceId, $branchId);
         if ($timing === null) {
             return false;
         }
@@ -273,23 +273,18 @@ final class AvailabilityService
         return true;
     }
 
-    public function getServiceDurationMinutes(int $serviceId): int
+    public function getServiceDurationMinutes(int $serviceId, ?int $branchId = null): int
     {
-        $timing = $this->getServiceTiming($serviceId);
+        $timing = $this->getServiceTiming($serviceId, $branchId);
         return $timing ? max(1, $timing['duration_minutes']) : 0;
     }
 
     /**
      * @return array{duration_minutes:int,buffer_before_minutes:int,buffer_after_minutes:int,branch_id:int|null}|null
      */
-    public function getServiceTiming(int $serviceId): ?array
+    public function getServiceTiming(int $serviceId, ?int $branchId = null): ?array
     {
-        $service = $this->db->fetchOne(
-            'SELECT id, duration_minutes, buffer_before_minutes, buffer_after_minutes, branch_id
-             FROM services
-             WHERE id = ? AND deleted_at IS NULL AND is_active = 1',
-            [$serviceId]
-        );
+        $service = $this->getActiveService($serviceId, $branchId);
         if (!$service) {
             return null;
         }
@@ -324,11 +319,8 @@ final class AvailabilityService
             return false;
         }
 
-        $staff = $this->getActiveStaff($staffId);
+        $staff = $this->getActiveStaff($staffId, $branchId);
         if (!$staff) {
-            return false;
-        }
-        if ($branchId !== null && $staff['branch_id'] !== null && (int) $staff['branch_id'] !== $branchId) {
             return false;
         }
 
@@ -385,40 +377,28 @@ final class AvailabilityService
      */
     public function getActiveServiceForScope(int $serviceId, ?int $branchId = null): ?array
     {
-        $service = $this->getActiveService($serviceId);
+        $service = $this->getActiveService($serviceId, $branchId);
         if (!$service) {
-            return null;
-        }
-        $serviceBranch = $service['branch_id'] !== null ? (int) $service['branch_id'] : null;
-        if (!$this->serviceIsBranchOwnedOrOrgGlobalForOperationBranch($serviceBranch, $branchId)) {
             return null;
         }
         return [
             'id' => (int) $service['id'],
             'duration_minutes' => (int) $service['duration_minutes'],
-            'branch_id' => $serviceBranch,
+            'branch_id' => $service['branch_id'] !== null ? (int) $service['branch_id'] : null,
         ];
     }
 
     public function getActiveStaffForScope(int $staffId, ?int $branchId = null, ?int $serviceId = null): ?array
     {
-        $staff = $this->getActiveStaff($staffId);
-        if (!$staff) {
+        $rows = $this->getEligibleStaff($serviceId ?? 0, $branchId, $staffId, $serviceId !== null && $serviceId > 0);
+        if ($rows === []) {
             return null;
         }
-        if (!$this->staffGroupService->isStaffInScopeForBranch($staffId, $branchId)) {
-            return null;
-        }
-        $staffBranch = $staff['branch_id'] !== null ? (int) $staff['branch_id'] : null;
-        if ($branchId !== null && $staffBranch !== null && $staffBranch !== $branchId) {
-            return null;
-        }
-        if ($serviceId !== null && $serviceId > 0 && !$this->serviceStaffGroupEligibility->isStaffAllowedForService($serviceId, $staffId, $branchId)) {
-            return null;
-        }
+        $staff = $rows[0];
+
         return [
             'id' => (int) $staff['id'],
-            'branch_id' => $staffBranch,
+            'branch_id' => $staff['branch_id'] !== null ? (int) $staff['branch_id'] : null,
         ];
     }
 
@@ -572,18 +552,12 @@ final class AvailabilityService
         if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) !== 1) {
             return null;
         }
-        $staff = $this->getActiveStaff($staffId);
+        $staff = $this->getActiveStaffForScope($staffId, $branchId);
         if (!$staff) {
             return null;
         }
         $staffBranchId = $staff['branch_id'] !== null ? (int) $staff['branch_id'] : null;
-        if ($branchId !== null && $staffBranchId !== null && $staffBranchId !== $branchId) {
-            return null;
-        }
         $scopeBranchId = $branchId ?? $staffBranchId;
-        if (!$this->staffGroupService->isStaffInScopeForBranch($staffId, $scopeBranchId)) {
-            return null;
-        }
         $working = $this->getWorkingIntervals($staffId, $date, $branchId);
         $breaks = $this->getBreakIntervals($staffId, $date);
         $blocked = $this->getBlockedIntervals($staffId, $date, $branchId);
@@ -661,18 +635,51 @@ final class AvailabilityService
         return $out;
     }
 
-    private function getActiveService(int $serviceId): ?array
+    private function getActiveService(int $serviceId, ?int $operationBranchId = null): ?array
     {
+        if ($serviceId <= 0) {
+            return null;
+        }
+        if ($operationBranchId !== null && $operationBranchId > 0) {
+            $scope = $this->orgScope->productCatalogUnionBranchRowOrNullGlobalFromOperationBranchClause('s', $operationBranchId);
+
+            return $this->db->fetchOne(
+                'SELECT s.id, s.duration_minutes, s.buffer_before_minutes, s.buffer_after_minutes, s.branch_id
+                 FROM services s
+                 WHERE s.id = ? AND s.deleted_at IS NULL AND s.is_active = 1 AND (' . $scope['sql'] . ')',
+                array_merge([$serviceId], $scope['params'])
+            );
+        }
+        $orgHas = $this->orgScope->resolvedTenantOrganizationHasLiveBranchExistsClause();
+
         return $this->db->fetchOne(
-            'SELECT id, duration_minutes, branch_id FROM services WHERE id = ? AND deleted_at IS NULL AND is_active = 1',
-            [$serviceId]
+            'SELECT s.id, s.duration_minutes, s.buffer_before_minutes, s.buffer_after_minutes, s.branch_id
+             FROM services s
+             WHERE s.id = ? AND s.deleted_at IS NULL AND s.is_active = 1 AND s.branch_id IS NULL' . $orgHas['sql'],
+            array_merge([$serviceId], $orgHas['params'])
         );
     }
 
-    private function getActiveStaff(int $staffId): ?array
+    private function getActiveStaff(int $staffId, ?int $operationBranchId = null): ?array
     {
+        if ($staffId <= 0) {
+            return null;
+        }
+        if ($operationBranchId !== null && $operationBranchId > 0) {
+            $scope = $this->orgScope->staffSelectableAtOperationBranchTenantClause('st', $operationBranchId);
+
+            return $this->db->fetchOne(
+                'SELECT st.id, st.branch_id
+                 FROM staff st
+                 WHERE st.id = ? AND st.deleted_at IS NULL AND st.is_active = 1 AND (' . $scope['sql'] . ')',
+                array_merge([$staffId], $scope['params'])
+            );
+        }
+
         return $this->db->fetchOne(
-            'SELECT id, branch_id FROM staff WHERE id = ? AND deleted_at IS NULL AND is_active = 1',
+            'SELECT st.id, st.branch_id
+             FROM staff st
+             WHERE st.id = ? AND st.deleted_at IS NULL AND st.is_active = 1 AND st.branch_id IS NULL',
             [$staffId]
         );
     }
@@ -712,6 +719,9 @@ final class AvailabilityService
                 $stSel = $this->orgScope->staffSelectableAtOperationBranchTenantClause($alias, $branchId);
                 $sql .= ' AND (' . $stSel['sql'] . ')';
                 $params = array_merge($params, $stSel['params']);
+            } else {
+                $alias = $hasMapping ? 'st' : 'staff';
+                $sql .= ' AND ' . $alias . '.branch_id IS NULL';
             }
             $row = $this->db->fetchOne($sql, $params);
             if (!$row) {
@@ -747,6 +757,9 @@ final class AvailabilityService
             $stSel = $this->orgScope->staffSelectableAtOperationBranchTenantClause($alias, $branchId);
             $sql .= ' AND (' . $stSel['sql'] . ')';
             $params = array_merge($params, $stSel['params']);
+        } else {
+            $alias = $hasMapping ? 'st' : 'staff';
+            $sql .= ' AND ' . $alias . '.branch_id IS NULL';
         }
         $sql .= ' ORDER BY last_name, first_name';
         $rows = $this->db->fetchAll($sql, $params);
@@ -780,20 +793,6 @@ final class AvailabilityService
         $sql .= ')';
 
         return [$sql, $params];
-    }
-
-    /**
-     * BRANCH_OWNED services require a concrete branch match.
-     * ORG_GLOBAL services (`branch_id IS NULL`) remain explicitly visible from any operation branch.
-     * REPAIR_ONLY / CONTROL_PLANE null-branch runtime can only see ORG_GLOBAL rows.
-     */
-    private function serviceIsBranchOwnedOrOrgGlobalForOperationBranch(?int $serviceBranchId, ?int $operationBranchId): bool
-    {
-        if ($operationBranchId === null) {
-            return $serviceBranchId === null;
-        }
-
-        return $serviceBranchId === null || $serviceBranchId === $operationBranchId;
     }
 
     /**

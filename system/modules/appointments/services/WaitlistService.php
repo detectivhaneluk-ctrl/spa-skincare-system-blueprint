@@ -8,7 +8,7 @@ use Core\App\Application;
 use Core\App\Database;
 use Core\App\SettingsService;
 use Core\Audit\AuditService;
-use Core\Branch\BranchContext;
+use Core\Kernel\RequestContextHolder;
 use Modules\Appointments\Repositories\AppointmentRepository;
 use Modules\Appointments\Repositories\WaitlistRepository;
 use Modules\Notifications\Services\NotificationService;
@@ -42,7 +42,7 @@ final class WaitlistService
         private AppointmentService $appointments,
         private Database $db,
         private AuditService $audit,
-        private BranchContext $branchContext,
+        private RequestContextHolder $contextHolder,
         private SettingsService $settings,
         private NotificationService $notifications,
         private OutboundTransactionalNotificationService $outboundTransactional,
@@ -53,7 +53,9 @@ final class WaitlistService
     public function create(array $data): int
     {
         return $this->transactional(function () use ($data): int {
-            $data = $this->branchContext->enforceBranchOnCreate($data);
+            $ctx = $this->contextHolder->requireContext();
+            ['branch_id' => $branchId] = $ctx->requireResolvedTenant();
+            $data['branch_id'] = $data['branch_id'] ?? $branchId;
             $branchId = isset($data['branch_id']) && $data['branch_id'] !== '' ? (int) $data['branch_id'] : null;
             $waitlistSettings = $this->settings->getWaitlistSettings($branchId);
             if (!$waitlistSettings['enabled']) {
@@ -117,11 +119,12 @@ final class WaitlistService
     {
         $offeredAfterUpdate = false;
         $this->transactional(function () use ($id, $nextStatus, $notes, &$offeredAfterUpdate): void {
-            $row = $this->repo->find($id);
+            $ctx = $this->contextHolder->requireContext();
+            $ctx->requireResolvedTenant();
+            $row = $this->repo->loadOwned($ctx, $id);
             if (!$row) {
                 throw new \RuntimeException('Waitlist entry not found.');
             }
-            $this->branchContext->assertBranchMatchOrGlobalEntity($row['branch_id'] !== null && $row['branch_id'] !== '' ? (int) $row['branch_id'] : null);
             $entryBranchId = $row['branch_id'] !== null && $row['branch_id'] !== '' ? (int) $row['branch_id'] : null;
             $from = (string) ($row['status'] ?? 'waiting');
             $to = trim($nextStatus);
@@ -185,11 +188,12 @@ final class WaitlistService
     public function linkToAppointment(int $id, int $appointmentId): void
     {
         $this->transactional(function () use ($id, $appointmentId): void {
-            $row = $this->repo->find($id);
+            $ctx = $this->contextHolder->requireContext();
+            $ctx->requireResolvedTenant();
+            $row = $this->repo->loadOwned($ctx, $id);
             if (!$row) {
                 throw new \RuntimeException('Waitlist entry not found.');
             }
-            $this->branchContext->assertBranchMatchOrGlobalEntity($row['branch_id'] !== null && $row['branch_id'] !== '' ? (int) $row['branch_id'] : null);
             $entryBranchId = $row['branch_id'] !== null && $row['branch_id'] !== '' ? (int) $row['branch_id'] : null;
             if (!$this->settings->getWaitlistSettings($entryBranchId)['enabled']) {
                 throw new \DomainException('Waitlist is disabled for this branch.');
@@ -228,11 +232,12 @@ final class WaitlistService
     public function convertToAppointment(int $id, array $data): int
     {
         return $this->transactional(function () use ($id, $data): int {
-            $row = $this->repo->find($id);
+            $ctx = $this->contextHolder->requireContext();
+            $ctx->requireResolvedTenant();
+            $row = $this->repo->loadOwned($ctx, $id);
             if (!$row) {
                 throw new \RuntimeException('Waitlist entry not found.');
             }
-            $this->branchContext->assertBranchMatchOrGlobalEntity($row['branch_id'] !== null && $row['branch_id'] !== '' ? (int) $row['branch_id'] : null);
             $status = (string) ($row['status'] ?? 'waiting');
             if (!in_array($status, ['waiting', 'offered', 'matched'], true)) {
                 throw new \DomainException('Only waiting, offered, or matched waitlist entries can be converted.');
@@ -632,7 +637,7 @@ final class WaitlistService
             return true;
         }
         $startAt = $dateYmd . ' ' . $tf;
-        $timing = $this->availability->getServiceTiming($serviceId);
+        $timing = $this->availability->getServiceTiming($serviceId, $branchId);
         if ($timing === null) {
             return false;
         }

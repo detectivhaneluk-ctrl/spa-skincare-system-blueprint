@@ -1310,10 +1310,7 @@ final class AppointmentController
         $ids = array_map(static fn (array $r): int => (int) $r['id'], $rows);
         $cur = isset($appointment['staff_id']) ? (int) $appointment['staff_id'] : 0;
         if ($cur > 0 && !in_array($cur, $ids, true)) {
-            $extra = Application::container()->get(\Core\App\Database::class)->fetchOne(
-                'SELECT id, first_name, last_name, branch_id FROM staff WHERE id = ? AND deleted_at IS NULL LIMIT 1',
-                [$cur]
-            );
+            $extra = Application::container()->get(\Modules\Staff\Repositories\StaffRepository::class)->find($cur);
             if (is_array($extra)) {
                 $rows[] = $extra;
             }

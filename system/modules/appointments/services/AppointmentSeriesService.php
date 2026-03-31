@@ -8,7 +8,8 @@ use Core\App\Application;
 use Core\App\Database;
 use Core\Audit\AuditService;
 use Core\Auth\SessionAuth;
-use Core\Branch\BranchContext;
+use Core\Kernel\RequestContextHolder;
+use Core\Organization\OrganizationRepositoryScope;
 use Modules\Appointments\Repositories\AppointmentSeriesRepository;
 use Modules\ServicesResources\Services\ServiceStaffGroupEligibilityService;
 use Modules\Staff\Services\StaffGroupService;
@@ -19,12 +20,13 @@ final class AppointmentSeriesService
     public function __construct(
         private AppointmentSeriesRepository $seriesRepo,
         private AppointmentService $appointmentService,
-        private BranchContext $branchContext,
+        private RequestContextHolder $contextHolder,
         private Database $db,
         private AuditService $audit,
         private StaffGroupService $staffGroupService,
         private ServiceStaffGroupEligibilityService $serviceStaffGroupEligibility,
-        private AvailabilityService $availability
+        private AvailabilityService $availability,
+        private OrganizationRepositoryScope $orgScope
     ) {
     }
 
@@ -69,7 +71,11 @@ final class AppointmentSeriesService
     public function createSeriesWithOccurrences(array $payload): array
     {
         $normalized = $this->normalizePayload($payload);
-        $this->branchContext->assertBranchMatchOrGlobalEntity($normalized['branch_id']);
+        $ctx = $this->contextHolder->requireContext();
+        ['branch_id' => $resolvedBranch] = $ctx->requireResolvedTenant();
+        if ((int) $normalized['branch_id'] !== $resolvedBranch) {
+            throw new \Core\Errors\AccessDeniedException('Series branch is outside tenant scope.');
+        }
         $this->assertSeriesEntityState($normalized);
 
         $occurrences = $this->generateOccurrences($normalized);
@@ -199,7 +205,11 @@ final class AppointmentSeriesService
                 throw new \DomainException('Series not found.');
             }
             $branchId = (int) ($row['branch_id'] ?? 0);
-            $this->branchContext->assertBranchMatchOrGlobalEntity($branchId);
+            $ctx = $this->contextHolder->requireContext();
+            ['branch_id' => $resolvedBranch] = $ctx->requireResolvedTenant();
+            if ($branchId <= 0 || $branchId !== $resolvedBranch) {
+                throw new \Core\Errors\AccessDeniedException('Series is outside branch scope.');
+            }
 
             $existing = $this->seriesRepo->listExistingStartAts($seriesId);
             $lifecycle = $this->resolveSeriesLifecycleState($row, $existing);
@@ -323,9 +333,12 @@ final class AppointmentSeriesService
         if ($appointmentId <= 0) {
             throw new \InvalidArgumentException('appointment_id is required.');
         }
+        $appointmentFrag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('a');
         $app = $this->db->fetchOne(
-            'SELECT id, series_id, branch_id, status, start_at FROM appointments WHERE id = ? AND deleted_at IS NULL',
-            [$appointmentId]
+            'SELECT a.id, a.series_id, a.branch_id, a.status, a.start_at
+             FROM appointments a
+             WHERE a.id = ? AND a.deleted_at IS NULL' . $appointmentFrag['sql'],
+            array_merge([$appointmentId], $appointmentFrag['params'])
         );
         if (!$app) {
             throw new \DomainException('Appointment not found.');
@@ -335,7 +348,11 @@ final class AppointmentSeriesService
             throw new \DomainException('Appointment is not part of a series.');
         }
         $branchId = $app['branch_id'] !== null && $app['branch_id'] !== '' ? (int) $app['branch_id'] : null;
-        $this->branchContext->assertBranchMatchOrGlobalEntity($branchId);
+        $ctx = $this->contextHolder->requireContext();
+        ['branch_id' => $resolvedBranch] = $ctx->requireResolvedTenant();
+        if ($branchId === null || $branchId !== $resolvedBranch) {
+            throw new \Core\Errors\AccessDeniedException('Appointment is outside branch scope.');
+        }
 
         $st = strtolower(trim((string) ($app['status'] ?? '')));
         if (!in_array($st, ['scheduled', 'confirmed', 'in_progress'], true)) {
@@ -372,7 +389,11 @@ final class AppointmentSeriesService
                 throw new \DomainException('Series not found.');
             }
             $branchId = (int) ($row['branch_id'] ?? 0);
-            $this->branchContext->assertBranchMatchOrGlobalEntity($branchId);
+            $ctxCancelBulk = $this->contextHolder->requireContext();
+            ['branch_id' => $resolvedBranchCancelBulk] = $ctxCancelBulk->requireResolvedTenant();
+            if ($branchId <= 0 || $branchId !== $resolvedBranchCancelBulk) {
+                throw new \Core\Errors\AccessDeniedException('Series is outside branch scope.');
+            }
 
             if ($scope === 'forward' && strtolower(trim((string) ($row['status'] ?? ''))) === 'cancelled') {
                 throw new \DomainException('Series is cancelled; cannot apply forward cancellation.');
@@ -657,25 +678,30 @@ final class AppointmentSeriesService
             throw new \InvalidArgumentException('branch_id, client_id, service_id, and staff_id must be positive integers.');
         }
 
+        $branchAnchor = $this->orgScope->branchIdBelongsToResolvedOrganizationExistsClause((int) $data['branch_id']);
         $branch = $this->db->fetchOne(
-            'SELECT id FROM branches WHERE id = ? AND deleted_at IS NULL',
-            [(int) $data['branch_id']]
+            'SELECT 1 AS ok WHERE 1 = 1' . $branchAnchor['sql'],
+            $branchAnchor['params']
         );
         if (!$branch) {
             throw new \DomainException('Branch not found or inactive.');
         }
 
+        $clientFrag = $this->orgScope->clientProfileOrgMembershipExistsClause('c');
         $client = $this->db->fetchOne(
-            'SELECT id FROM clients WHERE id = ? AND deleted_at IS NULL',
-            [(int) $data['client_id']]
+            'SELECT c.id FROM clients c WHERE c.id = ? AND c.deleted_at IS NULL' . $clientFrag['sql'],
+            array_merge([(int) $data['client_id']], $clientFrag['params'])
         );
         if (!$client) {
             throw new \DomainException('Client not found or inactive.');
         }
 
+        $serviceFrag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('s');
         $service = $this->db->fetchOne(
-            'SELECT id, branch_id, is_active, deleted_at FROM services WHERE id = ?',
-            [(int) $data['service_id']]
+            'SELECT s.id, s.branch_id, s.is_active, s.deleted_at
+             FROM services s
+             WHERE s.id = ?' . $serviceFrag['sql'],
+            array_merge([(int) $data['service_id']], $serviceFrag['params'])
         );
         if (!$service || !empty($service['deleted_at']) || (int) ($service['is_active'] ?? 0) !== 1) {
             throw new \DomainException('Selected service is not active.');
@@ -684,9 +710,12 @@ final class AppointmentSeriesService
             throw new \DomainException('Service is not available for the selected branch.');
         }
 
+        $staffFrag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('st');
         $staff = $this->db->fetchOne(
-            'SELECT id, branch_id, is_active, deleted_at FROM staff WHERE id = ?',
-            [(int) $data['staff_id']]
+            'SELECT st.id, st.branch_id, st.is_active, st.deleted_at
+             FROM staff st
+             WHERE st.id = ?' . $staffFrag['sql'],
+            array_merge([(int) $data['staff_id']], $staffFrag['params'])
         );
         if (!$staff || !empty($staff['deleted_at']) || (int) ($staff['is_active'] ?? 0) !== 1) {
             throw new \DomainException('Selected staff is not active.');
@@ -700,16 +729,16 @@ final class AppointmentSeriesService
             throw new \DomainException('Selected staff is not in scope for this branch.');
         }
         $this->serviceStaffGroupEligibility->assertStaffAllowedForService((int) $data['staff_id'], (int) $data['service_id'], $b);
-        $this->assertSeriesTimeWindowMatchesServiceDuration((int) $data['service_id'], (string) $data['start_time'], (string) $data['end_time']);
+        $this->assertSeriesTimeWindowMatchesServiceDuration((int) $data['service_id'], (int) $data['branch_id'], (string) $data['start_time'], (string) $data['end_time']);
     }
 
     /**
      * Stored series `end_time` does not drive appointment rows; occurrences use service duration from Availability.
      * Reject payloads where the declared window length does not match that duration so UI and DB are not misleading.
      */
-    private function assertSeriesTimeWindowMatchesServiceDuration(int $serviceId, string $startTime, string $endTime): void
+    private function assertSeriesTimeWindowMatchesServiceDuration(int $serviceId, int $branchId, string $startTime, string $endTime): void
     {
-        $duration = $this->availability->getServiceDurationMinutes($serviceId);
+        $duration = $this->availability->getServiceDurationMinutes($serviceId, $branchId > 0 ? $branchId : null);
         if ($duration <= 0) {
             throw new \DomainException('Service is not active or has invalid duration.');
         }

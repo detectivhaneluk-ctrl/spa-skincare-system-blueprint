@@ -61,7 +61,7 @@ The following active work is **no longer the active strategy**. It is archived a
 
 ## New canonical roadmap: FOUNDATION-A1..A8
 
-**Execution rule:** Only FOUNDATION-A7 PHASE-1 is LIVE. Only FOUNDATION-A7 PHASE-2 is PARKED/NEXT. All A1..A8 Foundation tasks are CLOSED. See `system/docs/FOUNDATION-ACTIVE-BACKLOG-CHARTER-01.md` for current live slot.
+**Execution rule:** Only FOUNDATION-A7 PHASE-2 is LIVE. Only FOUNDATION-A7 PHASE-3 is PARKED/NEXT. All A1..A8 Foundation tasks are CLOSED (including PHASE-1). PHASE-2 is the current active migration. See `system/docs/FOUNDATION-ACTIVE-BACKLOG-CHARTER-01.md` for current live slot.
 
 ---
 
@@ -89,17 +89,19 @@ The following active work is **no longer the active strategy**. It is archived a
 
 ### FOUNDATION-A2 — Authorization Kernel
 
-**Status:** CLOSED (2026-03-31 — skeleton installed as part of BIG-01)  
+**Status:** CLOSED (2026-03-31 skeleton; full PolicyAuthorizer BIG-04 2026-03-31)  
 **What it is:** A central policy enforcement layer for tenant-owned resource actions.
 
-**Specification scope:**
-- Single source of truth for "can actor X perform action Y on resource Z within tenant context T?"
-- Actions defined at business level (e.g. `appointment:modify`, `profile-image:upload`) — not raw HTTP verbs
-- Replaces scattered service-level ownership checks as the *source of truth*
-- Must compose with `TenantContext` from FOUNDATION-A1
-- Must be the single enforcement point that services call — not a duplicated check in every service
+**Skeleton (BIG-01):** `DenyAllAuthorizer` registered as `AuthorizerInterface` binding. Denied all actions.
 
-**Why it is second:** Authorization enforcement without a stable TenantContext is incoherent. A1 first, then A2.
+**Full implementation (BIG-04):** `PolicyAuthorizer` installed:
+- FOUNDER principal: full-allow for all tenant-scoped actions, plus platform-only actions
+- SUPPORT_ACTOR: read-only allow for view actions only; writes blocked
+- TENANT principal: permission-map based (integrates with `PermissionService`)
+- All unresolved contexts: deny with reason
+- Unmapped actions: deny-by-default (not an allow-all fallback)
+- Explainable: every `AccessDecision` carries a reason string
+- 79/79 BIG-04 verification assertions pass including PolicyAuthorizer coverage
 
 ---
 
@@ -182,16 +184,14 @@ system/modules/marketing/repositories/MarketingGiftCardTemplateRepository.php
 
 ### FOUNDATION-A7 — Migration Map
 
-**Status:** CLOSED as document (2026-03-31) — PHASE-1 Appointments is now LIVE  
+**Status:** CLOSED as document (2026-03-31) — PHASE-1 Appointments CLOSED (BIG-04, 2026-03-31) — PHASE-2 Online-booking is now LIVE  
 **What it is:** After media pilot is accepted, define the next migration order.
 
-**Migration order (do not open implementation waves until A5 is accepted):**
-1. appointments
-2. online-booking
-3. sales
-4. client-owned resources
-
-**Deliverable:** A documented migration map only — scoped interface contracts for each domain. No implementation opens until FOUNDATION-A5 pilot is accepted and FOUNDATION-A6 guardrails are in place.
+**Migration order:**
+1. appointments — **CLOSED** (BIG-04, 2026-03-31): services + repos migrated, guardrails expanded, 79/79 assertions pass
+2. online-booking — **LIVE**
+3. sales — PARKED/NEXT
+4. client-owned resources — PLANNED
 
 ---
 
@@ -217,15 +217,15 @@ system/modules/marketing/repositories/MarketingGiftCardTemplateRepository.php
 | Order | ID | Name | Status |
 |-------|----|------|--------|
 | 1 | FOUNDATION-A1 | TenantContext Kernel | **CLOSED** (2026-03-31) |
-| 2 | FOUNDATION-A2 | Authorization Kernel | **CLOSED** (2026-03-31, skeleton) |
+| 2 | FOUNDATION-A2 | Authorization Kernel | **CLOSED** (2026-03-31, full PolicyAuthorizer BIG-04) |
 | 3 | FOUNDATION-A3 | Service Layer DB Ban | **CLOSED** (2026-03-31) |
 | 4 | FOUNDATION-A4 | Canonical Scoped Repository API | **CLOSED** (2026-03-31) |
 | 5 | FOUNDATION-A5 | Media Pilot Rewrite | **CLOSED** (2026-03-31) |
 | 6 | FOUNDATION-A6 | Mechanical Guardrails | **CLOSED** (2026-03-31) |
 | 7 | FOUNDATION-A7 | Migration Map (document) | **CLOSED** (2026-03-31) |
-| 7a | FOUNDATION-A7 PHASE-1 | Appointments migration | **LIVE** |
-| 7b | FOUNDATION-A7 PHASE-2 | Online-booking migration | PARKED/NEXT |
-| 7c | FOUNDATION-A7 PHASE-3 | Sales migration | PLANNED |
+| 7a | FOUNDATION-A7 PHASE-1 | Appointments migration | **CLOSED** (BIG-04, 2026-03-31) |
+| 7b | FOUNDATION-A7 PHASE-2 | Online-booking migration | **LIVE** |
+| 7c | FOUNDATION-A7 PHASE-3 | Sales migration | PARKED/NEXT |
 | 7d | FOUNDATION-A7 PHASE-4 | Client-owned resources migration | PLANNED |
 | 8 | FOUNDATION-A8 | Long-Horizon Platform Direction | **CLOSED** (2026-03-31) |
 

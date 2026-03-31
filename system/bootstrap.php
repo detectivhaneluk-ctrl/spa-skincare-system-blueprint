@@ -156,8 +156,12 @@ $container->singleton(\Core\Kernel\TenantContextResolver::class, fn ($c) => new 
     $c->get(\Core\Organization\OrganizationContext::class),
     $c->get(\Core\Auth\PrincipalAccessService::class),
 ));
-// FOUNDATION-A2: Authorization kernel — deny-by-default until full policy layer is installed.
-$container->singleton(\Core\Kernel\Authorization\AuthorizerInterface::class, fn () => new \Core\Kernel\Authorization\DenyAllAuthorizer());
+// FOUNDATION-A2: Authorization kernel — real PolicyAuthorizer now installed (BIG-04).
+// DenyAllAuthorizer replaced with PolicyAuthorizer that integrates with PermissionService.
+// Founder full allow, support-actor read-only, tenant permission-based, all else deny-by-default.
+$container->singleton(\Core\Kernel\Authorization\AuthorizerInterface::class, fn ($c) => new \Core\Kernel\Authorization\PolicyAuthorizer(
+    $c->get(\Core\Permissions\PermissionService::class)
+));
 
 // Global + common route middleware and root controller: {@see \Core\Router\Dispatcher} resolves string middleware/controllers
 // only via the container (A-002). PermissionMiddleware::for() remains per-route object instances.

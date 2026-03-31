@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Appointments\Repositories;
 
 use Core\App\Database;
+use Core\Kernel\TenantContext;
 use Core\Organization\OrganizationRepositoryScope;
 
 final class BlockedSlotRepository
@@ -17,12 +18,34 @@ final class BlockedSlotRepository
 
     public function find(int $id): ?array
     {
+        $tenant = $this->orgScope->taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause('bs');
+
         return $this->db->fetchOne(
             'SELECT bs.*, st.first_name AS staff_first_name, st.last_name AS staff_last_name
              FROM appointment_blocked_slots bs
              LEFT JOIN staff st ON st.id = bs.staff_id
-             WHERE bs.id = ? AND bs.deleted_at IS NULL',
-            [$id]
+             WHERE bs.id = ? AND bs.deleted_at IS NULL AND (' . $tenant['sql'] . ')',
+            array_merge([$id], $tenant['params'])
+        );
+    }
+
+    /**
+     * Canonical scoped retrieval — requires resolved TenantContext (fail-closed).
+     * Scopes to the resolved branch_id AND org. Eliminates "find then assertBranchMatch" anti-pattern.
+     *
+     * @throws \Core\Kernel\UnresolvedTenantContextException when context not resolved
+     */
+    public function loadOwned(TenantContext $ctx, int $id): ?array
+    {
+        ['branch_id' => $branchId] = $ctx->requireResolvedTenant();
+        $tenant = $this->orgScope->taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause('bs');
+
+        return $this->db->fetchOne(
+            'SELECT bs.*, st.first_name AS staff_first_name, st.last_name AS staff_last_name
+             FROM appointment_blocked_slots bs
+             LEFT JOIN staff st ON st.id = bs.staff_id
+             WHERE bs.id = ? AND bs.branch_id = ? AND bs.deleted_at IS NULL AND (' . $tenant['sql'] . ')',
+            array_merge([$id, $branchId], $tenant['params'])
         );
     }
 
@@ -45,7 +68,11 @@ final class BlockedSlotRepository
 
     public function softDelete(int $id): void
     {
-        $this->db->query('UPDATE appointment_blocked_slots SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL', [$id]);
+        $tenant = $this->orgScope->taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause('bs');
+        $this->db->query(
+            'UPDATE appointment_blocked_slots bs SET deleted_at = NOW() WHERE bs.id = ? AND bs.deleted_at IS NULL AND (' . $tenant['sql'] . ')',
+            array_merge([$id], $tenant['params'])
+        );
     }
 
     public function listForDate(string $date, ?int $branchId = null): array

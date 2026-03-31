@@ -40,6 +40,7 @@ $repoRoot = dirname(__DIR__, 3);
 // Any NEW method matching the old pattern that is NOT in this list → FAIL.
 //
 // Allowlists frozen: 2026-03-31 (BIG-02 / FOUNDATION-A4+A5)
+// Expanded:          2026-03-31 (BIG-04 / FOUNDATION-A7 Phase-1 Appointments)
 // ---------------------------------------------------------------------------
 $protectedRepositories = [
 
@@ -80,6 +81,59 @@ $protectedRepositories = [
         // Infrastructure / readiness
         'isTableReady',
         'isMediaLibraryReady',
+    ],
+
+    // APPOINTMENTS_P1 phase — frozen 2026-03-31 (BIG-04 / FOUNDATION-A7 Phase-1)
+    // These repositories now have canonical TenantContext-scoped methods (loadVisible,
+    // loadForUpdate, loadOwned). Legacy public methods without TenantContext are frozen
+    // below. No new public methods may be added with int $branchId without TenantContext.
+    'system/modules/appointments/repositories/AppointmentRepository.php' => [
+        // Grandfathered legacy public methods — frozen 2026-03-31
+        'find',
+        'findForUpdate',
+        'list',
+        'count',
+        'create',
+        'update',
+        'softDelete',
+        'markCheckedIn',
+        'hasStaffConflict',
+        'lockRoomRowForConflictCheck',
+        'hasRoomConflict',
+    ],
+
+    'system/modules/appointments/repositories/BlockedSlotRepository.php' => [
+        // Grandfathered legacy public methods — frozen 2026-03-31
+        'find',
+        'create',
+        'softDelete',
+        'listForDate',
+        'listForStaffAndDate',
+        'listGroupedByStaffForDate',
+    ],
+
+    'system/modules/appointments/repositories/WaitlistRepository.php' => [
+        // Grandfathered legacy public methods — frozen 2026-03-31
+        'find',
+        'list',
+        'count',
+        'countActiveByClient',
+        'create',
+        'update',
+        'findFirstWaitingForAutoOffer',
+        'existsOpenOfferForSlot',
+        'findExpiredOfferRows',
+    ],
+
+    'system/modules/appointments/repositories/AppointmentSeriesRepository.php' => [
+        // Grandfathered legacy public methods — frozen 2026-03-31
+        'create',
+        'find',
+        'findForUpdate',
+        'update',
+        'listExistingStartAts',
+        'countMaterializedOccurrences',
+        'listCancellableAppointmentIds',
     ],
 ];
 

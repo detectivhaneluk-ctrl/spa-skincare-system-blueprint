@@ -5,15 +5,21 @@ declare(strict_types=1);
 namespace Modules\Appointments\Repositories;
 
 use Core\App\Database;
+use Core\Kernel\TenantContext;
+use Core\Organization\OrganizationRepositoryScope;
 
 final class WaitlistRepository
 {
-    public function __construct(private Database $db)
-    {
+    public function __construct(
+        private Database $db,
+        private OrganizationRepositoryScope $orgScope
+    ) {
     }
 
     public function find(int $id): ?array
     {
+        $tenant = $this->orgScope->taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause('w');
+
         return $this->db->fetchOne(
             'SELECT w.*, c.first_name AS client_first_name, c.last_name AS client_last_name,
                     s.name AS service_name, st.first_name AS staff_first_name, st.last_name AS staff_last_name
@@ -21,8 +27,31 @@ final class WaitlistRepository
              LEFT JOIN clients c ON c.id = w.client_id
              LEFT JOIN services s ON s.id = w.service_id
              LEFT JOIN staff st ON st.id = w.preferred_staff_id
-             WHERE w.id = ?',
-            [$id]
+             WHERE w.id = ? AND (' . $tenant['sql'] . ')',
+            array_merge([$id], $tenant['params'])
+        );
+    }
+
+    /**
+     * Canonical scoped retrieval — requires resolved TenantContext (fail-closed).
+     * Scopes to the resolved branch_id AND org. Eliminates "find then assertBranchMatch" anti-pattern.
+     *
+     * @throws \Core\Kernel\UnresolvedTenantContextException when context not resolved
+     */
+    public function loadOwned(TenantContext $ctx, int $id): ?array
+    {
+        ['branch_id' => $branchId] = $ctx->requireResolvedTenant();
+        $tenant = $this->orgScope->taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause('w');
+
+        return $this->db->fetchOne(
+            'SELECT w.*, c.first_name AS client_first_name, c.last_name AS client_last_name,
+                    s.name AS service_name, st.first_name AS staff_first_name, st.last_name AS staff_last_name
+             FROM appointment_waitlist w
+             LEFT JOIN clients c ON c.id = w.client_id
+             LEFT JOIN services s ON s.id = w.service_id
+             LEFT JOIN staff st ON st.id = w.preferred_staff_id
+             WHERE w.id = ? AND w.branch_id = ? AND (' . $tenant['sql'] . ')',
+            array_merge([$id, $branchId], $tenant['params'])
         );
     }
 
@@ -155,6 +184,7 @@ final class WaitlistRepository
 
     public function update(int $id, array $data): void
     {
+        $tenant = $this->orgScope->taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause('w');
         if ($data === []) {
             return;
         }
@@ -170,7 +200,11 @@ final class WaitlistRepository
             $vals[] = $v;
         }
         $vals[] = $id;
-        $this->db->query('UPDATE appointment_waitlist SET ' . implode(', ', $sets) . ' WHERE id = ?', $vals);
+        $vals = array_merge($vals, $tenant['params']);
+        $this->db->query(
+            'UPDATE appointment_waitlist w SET ' . implode(', ', $sets) . ' WHERE w.id = ? AND (' . $tenant['sql'] . ')',
+            $vals
+        );
     }
 
     /**

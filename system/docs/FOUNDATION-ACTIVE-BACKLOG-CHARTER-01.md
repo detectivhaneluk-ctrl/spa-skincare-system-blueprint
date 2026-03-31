@@ -68,15 +68,18 @@ Planning cleanup, backlog freeze, legacy banners, and **BACKBONE-CLOSURE-ACTIVE-
 
 ---
 
-## FOUNDATION-A2 — **CLOSED** (2026-03-31)
+## FOUNDATION-A2 — **CLOSED** (2026-03-31 skeleton → 2026-03-31 full PolicyAuthorizer, BIG-04)
 
-**FOUNDATION-A2: Authorization Kernel (skeleton)** — delivered as part of BIG-01. Full `PolicyAuthorizer` deferred; deny-by-default baseline established.
+**FOUNDATION-A2: Authorization Kernel** — skeleton installed in BIG-01; real `PolicyAuthorizer` installed in BIG-04.
 
 | Item | Evidence |
 |------|----------|
 | `AuthorizerInterface`, `ResourceAction` (22 actions), `ResourceRef`, `AccessDecision`, `AuthorizationException` | `system/core/Kernel/Authorization/` |
-| `DenyAllAuthorizer` registered as `AuthorizerInterface` binding | `system/bootstrap.php` |
-| Authorization kernel denies all actions until real policy is installed | `system/scripts/read-only/verify_kernel_tenant_context_01.php` |
+| `PolicyAuthorizer` replaces `DenyAllAuthorizer` as `AuthorizerInterface` binding | `system/bootstrap.php`, `system/core/Kernel/Authorization/PolicyAuthorizer.php` |
+| PolicyAuthorizer: FOUNDER full-allow, SUPPORT_ACTOR read-only, TENANT permission-based, all else deny | `system/core/Kernel/Authorization/PolicyAuthorizer.php` |
+| Deny-by-default preserved — unmapped actions and unresolved contexts return DENY | `PolicyAuthorizer::ACTION_PERMISSION_MAP`, `decideForTenantPrincipal` |
+| Explainable decisions — every `AccessDecision` carries a reason string | `PolicyAuthorizer` all decision paths |
+| 79/79 BIG-04 verification assertions include PolicyAuthorizer coverage | `system/scripts/read-only/verify_big_04_appointments_migration_01.php` |
 
 ---
 
@@ -114,11 +117,34 @@ Planning cleanup, backlog freeze, legacy banners, and **BACKBONE-CLOSURE-ACTIVE-
 
 ---
 
+## FOUNDATION-A7 PHASE-1 — **CLOSED** (2026-03-31)
+
+**BIG-04: Authorization Core Completion + Appointments Phase-1 Migration + Drift Reconciliation**
+
+| Item | Evidence |
+|------|----------|
+| `PolicyAuthorizer` installed as real `AuthorizerInterface` binding (replaces `DenyAllAuthorizer`) | `system/core/Kernel/Authorization/PolicyAuthorizer.php`, `system/bootstrap.php` |
+| PolicyAuthorizer: FOUNDER full-allow, SUPPORT_ACTOR read-only, TENANT permission-map, deny-by-default | `PolicyAuthorizer::ACTION_PERMISSION_MAP`, all decision branches |
+| `AppointmentRepository`: canonical `loadVisible(TenantContext, int)` + `loadForUpdate(TenantContext, int)` | `system/modules/appointments/repositories/AppointmentRepository.php` |
+| `BlockedSlotRepository`: canonical `loadOwned(TenantContext, int)` | `system/modules/appointments/repositories/BlockedSlotRepository.php` |
+| `WaitlistRepository`: canonical `loadOwned(TenantContext, int)` | `system/modules/appointments/repositories/WaitlistRepository.php` |
+| `AppointmentService`: `BranchContext` removed; `RequestContextHolder` + canonical repo methods used | `system/modules/appointments/services/AppointmentService.php` |
+| `BlockedSlotService`: `BranchContext` removed; `RequestContextHolder` + canonical repo methods used | `system/modules/appointments/services/BlockedSlotService.php` |
+| `WaitlistService`: `BranchContext` removed; `RequestContextHolder` + canonical repo methods used | `system/modules/appointments/services/WaitlistService.php` |
+| `AppointmentSeriesService`: `BranchContext` removed; explicit `TenantContext` branch comparison + `AccessDeniedException` | `system/modules/appointments/services/AppointmentSeriesService.php` |
+| Bootstrap DI updated — all migrated services inject `RequestContextHolder` | `system/modules/bootstrap/register_appointments_online_contracts.php` |
+| Guardrail 1 (service DB ban) expanded to Appointments domain; `WaitlistService` explicitly excepted for advisory locks | `system/scripts/ci/guardrail_service_layer_db_ban.php` |
+| Guardrail 2 (id-only repo API freeze) expanded to all four Appointments repositories | `system/scripts/ci/guardrail_id_only_repo_api_freeze.php` |
+| Drift from prior PLT-TNT-01 wave classified, absorbed, and integrated (not discarded blindly) | Audit performed; OrganizationRepositoryScope usage kept and extended |
+| 79/79 verification assertions pass | `system/scripts/read-only/verify_big_04_appointments_migration_01.php` |
+
+---
+
 ## LIVE (exactly one)
 
 | ID | Item | Notes |
 |----|------|-------|
-| **FOUNDATION-A7 PHASE-1** | Appointments domain migration | **Successor to FOUNDATION-A6 (CLOSED 2026-03-31).** Migrate appointments services and repositories to TenantContext + canonical scoped API. Follow BIG-02 pattern. Expand guardrails to appointments scope. See `docs/FOUNDATION-A7-MIGRATION-MAP-01.md`. |
+| **FOUNDATION-A7 PHASE-2** | Online-booking domain migration | **Successor to PHASE-1 (CLOSED 2026-03-31).** Migrate online-booking services and repositories to TenantContext + canonical scoped API. Follow BIG-04 pattern. Expand guardrails to online-booking scope. See `docs/FOUNDATION-A7-MIGRATION-MAP-01.md`. |
 
 ---
 
@@ -126,23 +152,23 @@ Planning cleanup, backlog freeze, legacy banners, and **BACKBONE-CLOSURE-ACTIVE-
 
 | ID | Item | Notes |
 |----|------|-------|
-| **FOUNDATION-A7 PHASE-2** | Online-booking domain migration | **Successor to PHASE-1.** Migrate online-booking services and repositories. Blocked on PHASE-1 complete. |
+| **FOUNDATION-A7 PHASE-3** | Sales domain migration | **Successor to PHASE-2.** Migrate sales services and repositories. Blocked on PHASE-2 complete. |
 
 ---
 
 ## FOUNDATION ROADMAP (A1–A8) — 2026 Foundation Plan
 
-Full ordered roadmap. **FOUNDATION-A1..A5** are CLOSED. **FOUNDATION-A6** is LIVE. **FOUNDATION-A7** is PARKED/NEXT. Remaining tasks are **PLANNED** inventory — not in-progress, not concurrent.
+Full ordered roadmap. **FOUNDATION-A1..A7 PHASE-1** are CLOSED. **FOUNDATION-A7 PHASE-2** is LIVE. Remaining tasks are **PLANNED** inventory — not in-progress, not concurrent.
 
 | Order | ID | Name | Status | Notes |
 |-------|----|------|--------|-------|
 | 1 | **FOUNDATION-A1** | TenantContext Kernel | **CLOSED** (2026-03-31) | Immutable TenantContext / RequestContext: actor_id, organization_id, branch_id, role/principal class, support/impersonation mode, assurance level. Resolved once at entry, stored in RequestContextHolder. Fail closed. Authorization kernel skeleton (DenyAllAuthorizer, AuthorizerInterface, ResourceAction). 74/74 verification assertions pass. |
-| 2 | **FOUNDATION-A2** | Authorization Kernel (skeleton) | **CLOSED** (2026-03-31) | Delivered as part of BIG-01 FOUNDATION-A1 kernel install. DenyAllAuthorizer registered. Full PolicyAuthorizer deferred to after pilot migration proves model. |
+| 2 | **FOUNDATION-A2** | Authorization Kernel | **CLOSED** (2026-03-31, full PolicyAuthorizer BIG-04) | Skeleton installed in BIG-01 (DenyAllAuthorizer). Full `PolicyAuthorizer` installed in BIG-04: FOUNDER full-allow, SUPPORT_ACTOR read-only, TENANT permission-map, deny-by-default preserved. 79/79 verification assertions pass. |
 | 3 | **FOUNDATION-A3** | Service Layer DB Ban | **CLOSED** (2026-03-31) | Direct `db->fetchOne / fetchAll / query` removed from `MarketingGiftCardTemplateService` and `ClientProfileImageService` for protected operations. DB retained in services for transaction management only. |
 | 4 | **FOUNDATION-A4** | Canonical Scoped Repository API | **CLOSED** (2026-03-31) | 9 canonical methods on `MarketingGiftCardTemplateRepository` (`loadVisibleTemplate`, `loadVisibleImage`, `loadSelectableImageForTemplate`, `loadUploadedMediaAssetInScope`, `mutateUpdateTemplate`, `mutateArchiveTemplate`, `deleteOwnedImage`, `clearArchivedTemplateImageRef`, `countOwnedMediaAssetReferences`) + 4 canonical methods on `ClientProfileImageRepository` (`loadVisibleImage`, `loadVisibleEnrichedImage`, `loadUploadedMediaAssetInScope`, `deleteOwned`). All take TenantContext as first param. All call requireResolvedTenant() — fail-closed. |
 | 5 | **FOUNDATION-A5** | Media Pilot Rewrite | **CLOSED** (2026-03-31) | `ClientProfileImageService` and `MarketingGiftCardTemplateService` fully migrated to TenantContext + canonical scoped repository API. BranchContext replaced. Id-only acquisition patterns eliminated. Purge/ref-count behavior preserved. 77/77 verification assertions pass. |
 | 6 | **FOUNDATION-A6** | Mechanical Guardrails | **CLOSED** (2026-03-31) | `guardrail_service_layer_db_ban.php`: fails on direct DB data access in protected services. `guardrail_id_only_repo_api_freeze.php`: fails on new non-allowlisted id-only repo methods in protected repos. Both PASS on media pilot lane. Policy documented in `FOUNDATION-A6-GUARDRAILS-POLICY-01.md`. |
-| 7 | **FOUNDATION-A7** | Migration Map | **CLOSED** (2026-03-31) | 4-phase migration order defined: PHASE-1 Appointments, PHASE-2 Online-booking, PHASE-3 Sales, PHASE-4 Client-owned resources. Each phase has migration goal, blocking condition, and out-of-scope definition. `docs/FOUNDATION-A7-MIGRATION-MAP-01.md`. PHASE-1 is now LIVE. |
+| 7 | **FOUNDATION-A7** | Migration Map | **CLOSED** (2026-03-31) | 4-phase migration order defined: PHASE-1 Appointments, PHASE-2 Online-booking, PHASE-3 Sales, PHASE-4 Client-owned resources. Each phase has migration goal, blocking condition, and out-of-scope definition. `docs/FOUNDATION-A7-MIGRATION-MAP-01.md`. PHASE-1 CLOSED (BIG-04, 2026-03-31). PHASE-2 is now LIVE. |
 | 8 | **FOUNDATION-A8** | Long-Horizon Platform Direction | **CLOSED** (2026-03-31) | Policy-centered modular monolith target documented. Future directions (RLS, observability, ReBAC, cell isolation) documented with preconditions. Explicit NOT-doing list. `docs/FOUNDATION-A8-PLATFORM-DIRECTION-01.md`. |
 
 ---

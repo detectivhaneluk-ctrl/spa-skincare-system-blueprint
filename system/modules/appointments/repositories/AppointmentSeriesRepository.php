@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace Modules\Appointments\Repositories;
 
 use Core\App\Database;
+use Core\Organization\OrganizationRepositoryScope;
 
 final class AppointmentSeriesRepository
 {
-    public function __construct(private Database $db)
-    {
+    public function __construct(
+        private Database $db,
+        private OrganizationRepositoryScope $orgScope
+    ) {
     }
 
     public function create(array $data): int
@@ -20,9 +23,11 @@ final class AppointmentSeriesRepository
 
     public function find(int $id): ?array
     {
+        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('asr');
+
         return $this->db->fetchOne(
-            'SELECT * FROM appointment_series WHERE id = ?',
-            [$id]
+            'SELECT asr.* FROM appointment_series asr WHERE asr.id = ?' . $frag['sql'],
+            array_merge([$id], $frag['params'])
         );
     }
 
@@ -31,14 +36,17 @@ final class AppointmentSeriesRepository
      */
     public function findForUpdate(int $id): ?array
     {
+        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('asr');
+
         return $this->db->fetchOne(
-            'SELECT * FROM appointment_series WHERE id = ? FOR UPDATE',
-            [$id]
+            'SELECT asr.* FROM appointment_series asr WHERE asr.id = ?' . $frag['sql'] . ' FOR UPDATE',
+            array_merge([$id], $frag['params'])
         );
     }
 
     public function update(int $id, array $data): void
     {
+        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('asr');
         $norm = $this->normalize($data);
         if ($norm === []) {
             return;
@@ -46,7 +54,8 @@ final class AppointmentSeriesRepository
         $cols = array_map(fn (string $k): string => $k . ' = ?', array_keys($norm));
         $vals = array_values($norm);
         $vals[] = $id;
-        $this->db->query('UPDATE appointment_series SET ' . implode(', ', $cols) . ' WHERE id = ?', $vals);
+        $vals = array_merge($vals, $frag['params']);
+        $this->db->query('UPDATE appointment_series asr SET ' . implode(', ', $cols) . ' WHERE asr.id = ?' . $frag['sql'], $vals);
     }
 
     /**
@@ -54,9 +63,14 @@ final class AppointmentSeriesRepository
      */
     public function listExistingStartAts(int $seriesId): array
     {
+        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('asr');
         $rows = $this->db->fetchAll(
-            'SELECT start_at FROM appointments WHERE series_id = ? AND deleted_at IS NULL ORDER BY start_at ASC',
-            [$seriesId]
+            'SELECT a.start_at
+             FROM appointments a
+             INNER JOIN appointment_series asr ON asr.id = a.series_id
+             WHERE a.series_id = ? AND a.deleted_at IS NULL' . $frag['sql'] . '
+             ORDER BY a.start_at ASC',
+            array_merge([$seriesId], $frag['params'])
         );
         $out = [];
         foreach ($rows as $r) {
@@ -76,9 +90,13 @@ final class AppointmentSeriesRepository
 
     public function countMaterializedOccurrences(int $seriesId): int
     {
+        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('asr');
         $row = $this->db->fetchOne(
-            'SELECT COUNT(*) AS c FROM appointments WHERE series_id = ? AND deleted_at IS NULL',
-            [$seriesId]
+            'SELECT COUNT(*) AS c
+             FROM appointments a
+             INNER JOIN appointment_series asr ON asr.id = a.series_id
+             WHERE a.series_id = ? AND a.deleted_at IS NULL' . $frag['sql'],
+            array_merge([$seriesId], $frag['params'])
         );
 
         return (int) ($row['c'] ?? 0);
@@ -89,15 +107,19 @@ final class AppointmentSeriesRepository
      */
     public function listCancellableAppointmentIds(int $seriesId, ?string $fromStartAtInclusive = null): array
     {
-        $sql = 'SELECT id FROM appointments
-                WHERE series_id = ? AND deleted_at IS NULL
-                AND status IN (\'scheduled\',\'confirmed\',\'in_progress\')';
+        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('asr');
+        $sql = 'SELECT a.id
+                FROM appointments a
+                INNER JOIN appointment_series asr ON asr.id = a.series_id
+                WHERE a.series_id = ? AND a.deleted_at IS NULL
+                AND a.status IN (\'scheduled\',\'confirmed\',\'in_progress\')' . $frag['sql'];
         $params = [$seriesId];
+        $params = array_merge($params, $frag['params']);
         if ($fromStartAtInclusive !== null && $fromStartAtInclusive !== '') {
-            $sql .= ' AND start_at >= ?';
+            $sql .= ' AND a.start_at >= ?';
             $params[] = $fromStartAtInclusive;
         }
-        $sql .= ' ORDER BY start_at ASC';
+        $sql .= ' ORDER BY a.start_at ASC';
         $rows = $this->db->fetchAll($sql, $params);
         $ids = [];
         foreach ($rows as $r) {

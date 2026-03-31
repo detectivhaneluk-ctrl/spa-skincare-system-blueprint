@@ -8,10 +8,11 @@ use Core\App\Application;
 use Core\App\Database;
 use Core\App\SettingsService;
 use Core\Audit\AuditService;
-use Core\Branch\BranchContext;
 use Core\Branch\TenantBranchAccessService;
 use Core\Contracts\AppointmentPackageConsumptionProvider;
 use Core\Errors\AccessDeniedException;
+use Core\Kernel\RequestContextHolder;
+use Core\Organization\OrganizationRepositoryScope;
 use Core\Organization\OrganizationScopedBranchAssert;
 use Core\Permissions\PermissionService;
 use Core\Tenant\TenantOwnedDataScopeGuard;
@@ -29,7 +30,13 @@ use Modules\Staff\Services\StaffGroupService;
 /**
  * Appointments service with conflict detection.
  *
- * Branch: BranchContext enforces branch on create/update/cancel/destroy when user is branch-scoped.
+ * Scope: TenantContext (RequestContextHolder) enforces branch scope on all protected mutations.
+ * All appointment retrieval for mutation paths uses canonical loadForUpdate(TenantContext, id)
+ * which eliminates the old "load by id then assertBranchMatch" anti-pattern (BIG-04 migration).
+ *
+ * TenantOwnedDataScopeGuard is retained as a compatibility bridge for assertClientInScope,
+ * assertServiceInScope, assertStaffInScope, assertRoomInScope — these delegate to org-scoped
+ * repository lookups and will be migrated to canonical repository methods in a future phase.
  *
  * Document consents required for a service are asserted whenever client_id + service_id apply on slot create and on
  * scheduling moves (update + reschedule). Intake `required_before_appointment` blocks **new** slot/create appointments when
@@ -54,7 +61,7 @@ final class AppointmentService
         private AppointmentPackageConsumptionProvider $packageConsumption,
         private Database $db,
         private AvailabilityService $availability,
-        private BranchContext $branchContext,
+        private RequestContextHolder $contextHolder,
         private ConsentService $consentService,
         private SettingsService $settings,
         private PermissionService $permissions,
@@ -68,14 +75,15 @@ final class AppointmentService
         private TenantOwnedDataScopeGuard $tenantScopeGuard,
         private AppointmentCancellationReasonService $cancellationReasons,
         private TenantBranchAccessService $tenantBranchAccess,
-        private OrganizationScopedBranchAssert $organizationScopedBranchAssert
+        private OrganizationScopedBranchAssert $organizationScopedBranchAssert,
+        private OrganizationRepositoryScope $orgScope
     ) {
     }
 
     public function create(array $data): int
     {
         $id = $this->transactional(function () use ($data): int {
-            $this->tenantScopeGuard->requireResolvedTenantScope();
+            $this->contextHolder->requireContext()->requireResolvedTenant();
             $data = $this->applyTenantCreateBranchResolution($data);
             $this->validateStatus($data['status'] ?? 'scheduled');
             $this->lockActiveStaffAndServiceRows($this->nullablePositiveId($data, 'staff_id'), $this->nullablePositiveId($data, 'service_id'));
@@ -142,19 +150,13 @@ final class AppointmentService
         $waitlistSlotFreedSnapshot = null;
         $clearedSeriesIdFromMove = null;
         $this->transactional(function () use ($id, $data, &$waitlistSlotFreedSnapshot, &$clearedSeriesIdFromMove): void {
-            $scope = $this->tenantScopeGuard->requireResolvedTenantScope();
-            $current = $this->db->fetchOne(
-                'SELECT * FROM appointments WHERE id = ? AND deleted_at IS NULL FOR UPDATE',
-                [$id]
-            );
+            $ctx = $this->contextHolder->requireContext();
+            $scope = $ctx->requireResolvedTenant();
+            $current = $this->repo->loadForUpdate($ctx, $id);
             if (!$current) {
                 throw new \RuntimeException('Appointment not found');
             }
             $currentBranchId = $current['branch_id'] !== null && $current['branch_id'] !== '' ? (int) $current['branch_id'] : null;
-            $this->branchContext->assertBranchMatchOrGlobalEntity($currentBranchId);
-            if ($currentBranchId === null || $currentBranchId <= 0 || $currentBranchId !== $scope['branch_id']) {
-                throw new AccessDeniedException('Appointment is outside branch scope.');
-            }
 
             $schedulingMutated = $this->schedulingPatchDiffersFromCurrent($current, $data);
             $merged = array_merge($current, $data);
@@ -274,7 +276,8 @@ final class AppointmentService
      */
     public function cancel(int $id, ?string $notes = null, ?int $cancellationReasonId = null, array $options = []): void
     {
-        $this->tenantScopeGuard->requireResolvedTenantScope();
+        $ctx = $this->contextHolder->requireContext();
+        $ctx->requireResolvedTenant();
 
         $pdo = $this->db->connection();
         $started = false;
@@ -286,17 +289,10 @@ final class AppointmentService
                 $started = true;
             }
 
-            $locked = $this->db->fetchOne(
-                'SELECT * FROM appointments WHERE id = ? AND deleted_at IS NULL FOR UPDATE',
-                [$id]
-            );
+            $locked = $this->repo->loadForUpdate($ctx, $id);
             if (!$locked) {
                 throw new \RuntimeException('Appointment not found');
             }
-
-            $this->branchContext->assertBranchMatchOrGlobalEntity(
-                $locked['branch_id'] !== null && $locked['branch_id'] !== '' ? (int) $locked['branch_id'] : null
-            );
 
             if ((string) ($locked['status'] ?? '') === 'cancelled') {
                 if ($started) {
@@ -422,7 +418,8 @@ final class AppointmentService
         ?string $expectedCurrentStartAt = null,
         bool $forPublicBookingAvailabilityChannel = false
     ): void {
-        $scope = $this->tenantScopeGuard->requireResolvedTenantScope();
+        $ctx = $this->contextHolder->requireContext();
+        $scope = $ctx->requireResolvedTenant();
         $startAt = $this->normalizeDateTime($startTime);
         $expectedStartAt = null;
         if ($expectedCurrentStartAt !== null && trim($expectedCurrentStartAt) !== '') {
@@ -439,15 +436,11 @@ final class AppointmentService
                 $started = true;
             }
 
-            $current = $this->db->fetchOne('SELECT * FROM appointments WHERE id = ? AND deleted_at IS NULL FOR UPDATE', [$id]);
+            $current = $this->repo->loadForUpdate($ctx, $id);
             if (!$current) {
                 throw new \RuntimeException('Appointment not found');
             }
             $currentBranchId = $current['branch_id'] !== null && $current['branch_id'] !== '' ? (int) $current['branch_id'] : null;
-            $this->branchContext->assertBranchMatchOrGlobalEntity($currentBranchId);
-            if ($currentBranchId === null || $currentBranchId <= 0 || $currentBranchId !== $scope['branch_id']) {
-                throw new AccessDeniedException('Appointment is outside branch scope.');
-            }
             $currentStatus = (string) ($current['status'] ?? 'scheduled');
             if (in_array($currentStatus, self::TERMINAL_STATUSES, true)) {
                 throw new \DomainException('Cannot reschedule appointment in status: ' . $currentStatus);
@@ -540,7 +533,8 @@ final class AppointmentService
 
     public function updateStatus(int $id, string $newStatus, ?string $notes = null, ?int $cancellationReasonId = null, ?int $noShowReasonId = null): void
     {
-        $scope = $this->tenantScopeGuard->requireResolvedTenantScope();
+        $ctx = $this->contextHolder->requireContext();
+        $scope = $ctx->requireResolvedTenant();
         $newStatus = trim($newStatus);
         $this->validateStatus($newStatus);
 
@@ -552,15 +546,11 @@ final class AppointmentService
                 $pdo->beginTransaction();
                 $started = true;
             }
-            $current = $this->db->fetchOne('SELECT * FROM appointments WHERE id = ? AND deleted_at IS NULL FOR UPDATE', [$id]);
+            $current = $this->repo->loadForUpdate($ctx, $id);
             if (!$current) {
                 throw new \RuntimeException('Appointment not found');
             }
             $currentBranchId = $current['branch_id'] !== null && $current['branch_id'] !== '' ? (int) $current['branch_id'] : null;
-            $this->branchContext->assertBranchMatchOrGlobalEntity($currentBranchId);
-            if ($currentBranchId === null || $currentBranchId <= 0 || $currentBranchId !== $scope['branch_id']) {
-                throw new AccessDeniedException('Appointment is outside branch scope.');
-            }
             $currentStatus = (string) ($current['status'] ?? 'scheduled');
             if ($currentStatus === $newStatus) {
                 if ($started) {
@@ -636,17 +626,14 @@ final class AppointmentService
     {
         $aptBefore = null;
         $this->transactional(function () use ($id, &$aptBefore): void {
-            $scope = $this->tenantScopeGuard->requireResolvedTenantScope();
-            $apt = $this->repo->find($id);
+            $ctx = $this->contextHolder->requireContext();
+            $scope = $ctx->requireResolvedTenant();
+            $apt = $this->repo->loadVisible($ctx, $id);
             if (!$apt) {
                 throw new \RuntimeException('Appointment not found');
             }
             $aptBefore = $apt;
             $aptBranchId = $apt['branch_id'] !== null && $apt['branch_id'] !== '' ? (int) $apt['branch_id'] : null;
-            $this->branchContext->assertBranchMatchOrGlobalEntity($aptBranchId);
-            if ($aptBranchId === null || $aptBranchId <= 0 || $aptBranchId !== $scope['branch_id']) {
-                throw new AccessDeniedException('Appointment is outside branch scope.');
-            }
             $this->repo->softDelete($id);
             $this->audit->log('appointment_deleted', 'appointment', $id, $this->currentUserId(), $apt['branch_id'] ?? null, [
                 'appointment' => $apt,
@@ -702,19 +689,13 @@ final class AppointmentService
     public function markCheckedIn(int $id): void
     {
         $this->transactional(function () use ($id): void {
-            $scope = $this->tenantScopeGuard->requireResolvedTenantScope();
-            $current = $this->db->fetchOne(
-                'SELECT * FROM appointments WHERE id = ? AND deleted_at IS NULL FOR UPDATE',
-                [$id]
-            );
+            $ctx = $this->contextHolder->requireContext();
+            $scope = $ctx->requireResolvedTenant();
+            $current = $this->repo->loadForUpdate($ctx, $id);
             if (!$current) {
                 throw new \RuntimeException('Appointment not found');
             }
             $currentBranchId = $current['branch_id'] !== null && $current['branch_id'] !== '' ? (int) $current['branch_id'] : null;
-            $this->branchContext->assertBranchMatchOrGlobalEntity($currentBranchId);
-            if ($currentBranchId === null || $currentBranchId <= 0 || $currentBranchId !== $scope['branch_id']) {
-                throw new AccessDeniedException('Appointment is outside branch scope.');
-            }
             if (!empty($current['checked_in_at'])) {
                 return;
             }
@@ -859,7 +840,7 @@ final class AppointmentService
 
     public function createFromSlot(array $data): int
     {
-        $this->tenantScopeGuard->requireResolvedTenantScope();
+        $this->contextHolder->requireContext()->requireResolvedTenant();
         $data = $this->applyTenantCreateBranchResolution($data);
         $clientId = (int) ($data['client_id'] ?? 0);
         $serviceId = (int) ($data['service_id'] ?? 0);
@@ -984,7 +965,7 @@ final class AppointmentService
             return false;
         }
 
-        $duration = $this->availability->getServiceDurationMinutes($serviceId);
+        $duration = $this->availability->getServiceDurationMinutes($serviceId, $branchId);
         if ($duration <= 0) {
             return false;
         }
@@ -1025,18 +1006,25 @@ final class AppointmentService
     private function lockActiveStaffAndServiceRows(?int $staffId, ?int $serviceId): void
     {
         if ($staffId !== null && $staffId > 0) {
+            $staffFrag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('st');
             $staffLock = $this->db->fetchOne(
-                'SELECT id FROM staff WHERE id = ? AND deleted_at IS NULL AND is_active = 1 FOR UPDATE',
-                [$staffId]
+                'SELECT st.id FROM staff st
+                 WHERE st.id = ? AND st.deleted_at IS NULL AND st.is_active = 1' . $staffFrag['sql'] . '
+                 FOR UPDATE',
+                array_merge([$staffId], $staffFrag['params'])
             );
             if (!$staffLock) {
                 throw new \DomainException('Selected staff is not active.');
             }
         }
         if ($serviceId !== null && $serviceId > 0) {
+            $serviceFrag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('svc');
             $serviceRow = $this->db->fetchOne(
-                'SELECT id, branch_id, is_active, deleted_at FROM services WHERE id = ? FOR UPDATE',
-                [$serviceId]
+                'SELECT svc.id, svc.branch_id, svc.is_active, svc.deleted_at
+                 FROM services svc
+                 WHERE svc.id = ?' . $serviceFrag['sql'] . '
+                 FOR UPDATE',
+                array_merge([$serviceId], $serviceFrag['params'])
             );
             if (!$serviceRow || !empty($serviceRow['deleted_at']) || (int) ($serviceRow['is_active'] ?? 0) !== 1) {
                 throw new \DomainException('Selected service is not active.');
@@ -1103,11 +1091,12 @@ final class AppointmentService
             throw new \DomainException('Cannot reschedule or move appointment in status: ' . $currentStatus);
         }
 
-        $duration = $this->availability->getServiceDurationMinutes($serviceId);
+        $duration = $this->availability->getServiceDurationMinutes($serviceId, $branchId);
         if ($duration <= 0) {
             throw new \DomainException('Service is not active or has invalid duration.');
         }
-        $scope = $this->tenantScopeGuard->requireResolvedTenantScope();
+        $ctx = $this->contextHolder->requireContext();
+        $scope = $ctx->requireResolvedTenant();
         if ($branchId === null || $branchId <= 0 || $branchId !== $scope['branch_id']) {
             throw new AccessDeniedException('Branch is outside tenant scope.');
         }
@@ -1216,7 +1205,19 @@ final class AppointmentService
         bool $forPublicBookingAvailabilityChannel = false,
         ?int $internalSlotOptionalRoomId = null,
     ): int {
-        $duration = $this->availability->getServiceDurationMinutes($serviceId);
+        $durationScope = $explicitBranchId;
+        if (($durationScope === null || $durationScope <= 0) && $branchResolutionData !== null && array_key_exists('branch_id', $branchResolutionData)) {
+            $candidate = $branchResolutionData['branch_id'];
+            if ($candidate !== null && $candidate !== '' && (int) $candidate > 0) {
+                $durationScope = (int) $candidate;
+            }
+        }
+        if ($durationScope === null || $durationScope <= 0) {
+            $ctx0 = $this->contextHolder->requireContext();
+            $s0 = $ctx0->requireResolvedTenant();
+            $durationScope = (int) ($s0['branch_id'] ?? 0);
+        }
+        $duration = $this->availability->getServiceDurationMinutes($serviceId, $durationScope);
         if ($duration <= 0) {
             throw new \DomainException('Service is not active or has invalid duration.');
         }
@@ -1233,9 +1234,12 @@ final class AppointmentService
 
             $this->lockActiveStaffAndServiceRows($staffId, $serviceId);
 
+            $serviceFrag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('svc');
             $serviceRow = $this->db->fetchOne(
-                'SELECT id, branch_id, is_active, deleted_at FROM services WHERE id = ?',
-                [$serviceId]
+                'SELECT svc.id, svc.branch_id, svc.is_active, svc.deleted_at
+                 FROM services svc
+                 WHERE svc.id = ?' . $serviceFrag['sql'],
+                array_merge([$serviceId], $serviceFrag['params'])
             );
 
             if ($explicitBranchId !== null) {
@@ -1250,7 +1254,7 @@ final class AppointmentService
                 $branchId = $serviceRow['branch_id'] !== null ? (int) $serviceRow['branch_id'] : null;
             }
 
-            $scope = $this->tenantScopeGuard->requireResolvedTenantScope();
+            $scope = $this->contextHolder->requireContext()->requireResolvedTenant();
             if ($branchId === null || $branchId <= 0) {
                 throw new AccessDeniedException('Branch is outside tenant scope.');
             }
@@ -1413,7 +1417,7 @@ final class AppointmentService
             $bufferBefore = 0;
             $bufferAfter = 0;
             if ($serviceId !== null && $serviceId > 0) {
-                $timing = $this->availability->getServiceTiming($serviceId);
+                $timing = $this->availability->getServiceTiming($serviceId, $branchId);
                 if ($timing !== null) {
                     $bufferBefore = $timing['buffer_before_minutes'];
                     $bufferAfter = $timing['buffer_after_minutes'];
@@ -1585,7 +1589,8 @@ final class AppointmentService
 
     private function assertActiveEntities(array $data): void
     {
-        $scope = $this->tenantScopeGuard->requireResolvedTenantScope();
+        $ctx = $this->contextHolder->requireContext();
+        $scope = $ctx->requireResolvedTenant();
         $branchId = isset($data['branch_id']) && $data['branch_id'] !== '' && $data['branch_id'] !== null ? (int) $data['branch_id'] : $scope['branch_id'];
         if ($branchId <= 0 || $branchId !== $scope['branch_id']) {
             throw new AccessDeniedException('Branch is outside tenant scope.');
@@ -1595,9 +1600,11 @@ final class AppointmentService
         }
         if (!empty($data['service_id'])) {
             $this->tenantScopeGuard->assertServiceInScope((int) $data['service_id'], $branchId);
+            $serviceFrag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('svc');
             $service = $this->db->fetchOne(
-                'SELECT id FROM services WHERE id = ? AND deleted_at IS NULL AND is_active = 1',
-                [(int) $data['service_id']]
+                'SELECT svc.id FROM services svc
+                 WHERE svc.id = ? AND svc.deleted_at IS NULL AND svc.is_active = 1' . $serviceFrag['sql'],
+                array_merge([(int) $data['service_id']], $serviceFrag['params'])
             );
             if (!$service) {
                 throw new \DomainException('Selected service is not active.');
@@ -1605,9 +1612,11 @@ final class AppointmentService
         }
         if (!empty($data['staff_id'])) {
             $this->tenantScopeGuard->assertStaffInScope((int) $data['staff_id'], $branchId);
+            $staffFrag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('st');
             $staff = $this->db->fetchOne(
-                'SELECT id FROM staff WHERE id = ? AND deleted_at IS NULL AND is_active = 1',
-                [(int) $data['staff_id']]
+                'SELECT st.id FROM staff st
+                 WHERE st.id = ? AND st.deleted_at IS NULL AND st.is_active = 1' . $staffFrag['sql'],
+                array_merge([(int) $data['staff_id']], $staffFrag['params'])
             );
             if (!$staff) {
                 throw new \DomainException('Selected staff is not active.');
@@ -1695,6 +1704,9 @@ final class AppointmentService
      */
     private function applyTenantCreateBranchResolution(array $data): array
     {
+        $ctx = $this->contextHolder->requireContext();
+        ['branch_id' => $contextBranch] = $ctx->requireResolvedTenant();
+
         $explicit = isset($data['branch_id']) && $data['branch_id'] !== '' && $data['branch_id'] !== null
             ? (int) $data['branch_id']
             : null;
@@ -1705,11 +1717,10 @@ final class AppointmentService
             return $data;
         }
 
-        $contextBranch = $this->branchContext->getCurrentBranchId();
         if ($contextBranch === null || $contextBranch <= 0) {
             throw new \DomainException('branch_id is required when no active session branch is selected.');
         }
-        $this->assertInternalSlotBookingBranchAllowedForPrincipal((int) $contextBranch);
+        $this->assertInternalSlotBookingBranchAllowedForPrincipal($contextBranch);
         $data['branch_id'] = $contextBranch;
 
         return $data;

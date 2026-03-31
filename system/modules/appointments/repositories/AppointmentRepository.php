@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modules\Appointments\Repositories;
 
 use Core\App\Database;
+use Core\Kernel\TenantContext;
 use Core\Organization\OrganizationRepositoryScope;
 
 final class AppointmentRepository
@@ -37,6 +38,58 @@ final class AppointmentRepository
         $sql .= $frag['sql'];
 
         return $this->db->fetchOne($sql, array_merge([$id], $frag['params']));
+    }
+
+    /**
+     * Canonical scoped retrieval — requires resolved TenantContext (fail-closed).
+     * Scopes to both branch_id AND org via OrganizationRepositoryScope.
+     * Use at all new protected read entry points (FOUNDATION-A4 / BIG-04).
+     *
+     * @throws \Core\Kernel\UnresolvedTenantContextException when context not resolved
+     */
+    public function loadVisible(TenantContext $ctx, int $id): ?array
+    {
+        ['branch_id' => $branchId] = $ctx->requireResolvedTenant();
+        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('a');
+        $sql = 'SELECT a.*, c.first_name as client_first_name, c.last_name as client_last_name,
+                s.name as service_name, st.first_name as staff_first_name, st.last_name as staff_last_name,
+                r.name as room_name
+                FROM appointments a
+                LEFT JOIN clients c ON a.client_id = c.id
+                LEFT JOIN services s ON a.service_id = s.id
+                LEFT JOIN staff st ON a.staff_id = st.id
+                LEFT JOIN rooms r ON a.room_id = r.id
+                WHERE a.id = ? AND a.branch_id = ? AND a.deleted_at IS NULL' . $frag['sql'];
+
+        return $this->db->fetchOne($sql, array_merge([$id, $branchId], $frag['params']));
+    }
+
+    /**
+     * Canonical scoped locking retrieval — requires resolved TenantContext (fail-closed).
+     * Scopes to branch_id AND org. Returns null when row does not exist OR is out of scope.
+     * Eliminates the old "load by id then assertBranchMatch" anti-pattern (BIG-04 migration).
+     *
+     * @throws \Core\Kernel\UnresolvedTenantContextException when context not resolved
+     */
+    public function loadForUpdate(TenantContext $ctx, int $id): ?array
+    {
+        ['branch_id' => $branchId] = $ctx->requireResolvedTenant();
+        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('a');
+
+        return $this->db->fetchOne(
+            'SELECT a.* FROM appointments a WHERE a.id = ? AND a.branch_id = ? AND a.deleted_at IS NULL' . $frag['sql'] . ' FOR UPDATE',
+            array_merge([$id, $branchId], $frag['params'])
+        );
+    }
+
+    public function findForUpdate(int $id): ?array
+    {
+        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('a');
+
+        return $this->db->fetchOne(
+            'SELECT a.* FROM appointments a WHERE a.id = ? AND a.deleted_at IS NULL' . $frag['sql'] . ' FOR UPDATE',
+            array_merge([$id], $frag['params'])
+        );
     }
 
     public function list(array $filters = [], int $limit = 50, int $offset = 0): array

@@ -2,7 +2,7 @@
 
 **Date installed:** 2026-03-31  
 **Status:** LIVE — kernel installed and verified  
-**Root tasks addressed:** FOUNDATION-A1 (TenantContext Kernel), FOUNDATION-A2 (Authorization Kernel skeleton)  
+**Root tasks addressed:** FOUNDATION-A1 (TenantContext Kernel), FOUNDATION-A2 (Authorization Kernel — skeleton BIG-01; full PolicyAuthorizer BIG-04)  
 **Root causes addressed:** ROOT-01 (id-only scoping), ROOT-03 (public/tenant bootstrap inconsistency), ROOT-04 (repair/global fallback ambiguity), ROOT-05 (service-layer scope drift)  
 **Canonical execution queue:** `system/docs/FOUNDATION-ACTIVE-BACKLOG-CHARTER-01.md`
 
@@ -205,10 +205,29 @@ $decision->isDenied(): bool
 $decision->orThrow(): void  // throws AuthorizationException when denied
 ```
 
-### `Core\Kernel\Authorization\DenyAllAuthorizer`
+### `Core\Kernel\Authorization\PolicyAuthorizer` (BIG-04 — real implementation)
 
-The registered initial implementation of `AuthorizerInterface`. Denies all actions.  
-Will be replaced by a real `PolicyAuthorizer` in FOUNDATION-A2.
+The registered implementation of `AuthorizerInterface` since BIG-04 (2026-03-31). Replaces `DenyAllAuthorizer`.
+
+**Decision matrix:**
+
+| Principal | Tenant-scoped actions | Platform-only actions (`platform:*`) |
+|-----------|----------------------|--------------------------------------|
+| `FOUNDER` | Allow (full access) | Allow |
+| `SUPPORT_ACTOR` | Allow view actions only; write actions denied | Denied |
+| `TENANT` | Permission-map based via `PermissionService` | Denied |
+| `GUEST` / other | Denied | Denied |
+
+**Deny-by-default preserved:**
+- Actions not in `ACTION_PERMISSION_MAP` → `action_not_in_policy_map` deny
+- Unresolved `TenantContext` → `tenant_context_unresolved` deny
+- Unauthenticated tenant actor (`actorId <= 0`) → `unauthenticated_tenant_actor` deny
+
+**Source:** `system/core/Kernel/Authorization/PolicyAuthorizer.php`
+
+### `Core\Kernel\Authorization\DenyAllAuthorizer` (historical — replaced by BIG-04)
+
+The initial placeholder implementation of `AuthorizerInterface`. Denied all actions unconditionally. Replaced by `PolicyAuthorizer` in BIG-04. Retained in codebase for reference but no longer registered.
 
 ### `Core\Kernel\Authorization\AuthorizationException`
 
@@ -220,12 +239,12 @@ Thrown by `AuthorizerInterface::requireAuthorized()` on denial. Controllers tran
 
 The authorization kernel fails closed by architecture, not by convention:
 
-- `DenyAllAuthorizer` is the registered implementation of `AuthorizerInterface`.
+- `PolicyAuthorizer` is the registered implementation of `AuthorizerInterface` (since BIG-04).
 - Every call to `authorize()` returns `AccessDecision::deny()` unless an explicit policy path exists.
-- No service may add `ALLOW` logic to `DenyAllAuthorizer`. That is FOUNDATION-A2 work.
-- Services that call `requireAuthorized()` will receive `AuthorizationException` until FOUNDATION-A2 installs real policies.
+- Unmapped actions, unresolved tenant context, and unauthenticated actors all return DENY with a reason string.
+- `DenyAllAuthorizer` is retained as historical reference but is no longer registered.
 
-**What this means for services today:** Services that are NOT yet migrated to the authorization kernel are unaffected — they continue using their existing ownership checks. Services that adopt the kernel early will require FOUNDATION-A2 to add their policy rules before calls succeed.
+**What this means for services:** Services consuming `AuthorizerInterface` receive real policy decisions. The effective deny-by-default guarantee is preserved through the unmapped-action and unresolved-context deny paths in `PolicyAuthorizer`.
 
 ---
 
@@ -282,7 +301,7 @@ $audit->record($ctx->auditActorId(), 'appointment.created', $appointmentId);
 | Adding per-service ownership checks that don't call `AuthorizerInterface` | Scattered authorization; ROOT-04/05 | Call `AuthorizerInterface::requireAuthorized()` |
 | Constructing `TenantContext` with `new TenantContext(...)` | Constructor is private | Use named constructors only |
 | Calling `RequestContextHolder::set()` outside `TenantContextMiddleware` | Breaks the resolved-once contract | Only the middleware sets context |
-| Adding ALLOW cases to `DenyAllAuthorizer` | FOUNDATION-A2 is the correct place for policies | Write a policy in `PolicyAuthorizer` (FOUNDATION-A2) |
+| Adding ALLOW cases to `DenyAllAuthorizer` | FOUNDATION-A2 is complete — `DenyAllAuthorizer` is no longer registered | Write a policy method in `PolicyAuthorizer` |
 | New raw `findById`/`updateById`/`deleteById` repository paths for tenant-owned rows | ROOT-01 | Use FOUNDATION-A4 canonical scoped API |
 | Direct `$this->db->fetchOne/fetchAll/query` in service layer for protected domains | ROOT-05 | Use repositories only (FOUNDATION-A3 rule) |
 
@@ -349,7 +368,8 @@ Contracts verified:
 | `system/core/Kernel/Authorization/ResourceAction.php` | Business-level action vocabulary |
 | `system/core/Kernel/Authorization/ResourceRef.php` | Resource reference value object |
 | `system/core/Kernel/Authorization/AccessDecision.php` | Authorization decision value object |
-| `system/core/Kernel/Authorization/DenyAllAuthorizer.php` | Deny-by-default initial implementation |
+| `system/core/Kernel/Authorization/DenyAllAuthorizer.php` | Deny-by-default initial placeholder (historical — replaced by PolicyAuthorizer in BIG-04) |
+| `system/core/Kernel/Authorization/PolicyAuthorizer.php` | Real authorization implementation (BIG-04) — FOUNDER/SUPPORT_ACTOR/TENANT policy, deny-by-default preserved |
 | `system/core/Kernel/Authorization/AuthorizationException.php` | Authorization denial exception |
 | `system/core/middleware/TenantContextMiddleware.php` | Pipeline middleware; resolves once at edge |
 
@@ -361,10 +381,12 @@ Contracts verified:
 
 ---
 
-## Next: FOUNDATION-A2
+## FOUNDATION-A2 is complete
 
-FOUNDATION-A2 replaces `DenyAllAuthorizer` with a real `PolicyAuthorizer` that implements:
-- Tenant plane: role/permission-based allow rules for the canonical action vocabulary
-- Founder plane: explicit allow rules for platform operations
-- Support entry: inherits tenant-plane rules scoped to the impersonated user's permissions
-- Deny-by-default: unchanged — any action without a registered policy rule remains DENY
+`PolicyAuthorizer` is installed and registered as of BIG-04 (2026-03-31). The authorization kernel is fully operational:
+- FOUNDER full-allow
+- SUPPORT_ACTOR read-only
+- TENANT permission-map based (integrates `PermissionService`)
+- Deny-by-default for unresolved context, unmapped actions, unauthenticated actors
+
+**Next:** FOUNDATION-A7 PHASE-2 (Online-booking domain migration).

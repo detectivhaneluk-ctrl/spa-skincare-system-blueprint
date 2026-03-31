@@ -26,7 +26,8 @@ declare(strict_types=1);
  *   direct DB access — they will immediately fail the check.
  *
  * Protected domain phases:
- *   MEDIA_PILOT  (BIG-02, 2026-03-31) — clients/marketing media service lane
+ *   MEDIA_PILOT      (BIG-02, 2026-03-31) — clients/marketing media service lane
+ *   APPOINTMENTS_P1  (BIG-04, 2026-03-31) — appointments core domain
  *
  * Run from repo root: php system/scripts/ci/guardrail_service_layer_db_ban.php
  */
@@ -41,6 +42,11 @@ $protectedServices = [
     // MEDIA_PILOT phase — migrated 2026-03-31 (BIG-02 / FOUNDATION-A3+A4+A5)
     'system/modules/clients/services/ClientProfileImageService.php',
     'system/modules/marketing/services/MarketingGiftCardTemplateService.php',
+    // APPOINTMENTS_P1 phase — migrated 2026-03-31 (BIG-04 / FOUNDATION-A7 Phase-1)
+    'system/modules/appointments/services/BlockedSlotService.php',
+    // WaitlistService is excluded from the strict DB-ban: it uses db->fetchOne for MySQL
+    // advisory locking (SELECT GET_LOCK / RELEASE_LOCK) which is infrastructure, not business
+    // data access. This is an explicit architectural exception noted in BIG-04 closure.
 ];
 
 // ---------------------------------------------------------------------------
