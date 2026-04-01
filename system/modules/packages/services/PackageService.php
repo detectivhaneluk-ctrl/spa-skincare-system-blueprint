@@ -468,12 +468,17 @@ final class PackageService
 
     public function getRemainingSessions(int $clientPackageId, ?int $branchContext = null): int
     {
-        $latest = $this->usages->latestForClientPackage($clientPackageId);
+        $resolvedBranchId = $this->requirePositiveBranchId($branchContext ?? $this->branchContext->getCurrentBranchId());
+        // Always prove tenant ownership via scoped parent load before trusting any FK-only usage query.
+        // FK-only latestForClientPackage() is not self-defending; tenant proof cannot be deferred to a fallback path.
+        $cp = $this->clientPackages->findInTenantScope($clientPackageId, $resolvedBranchId);
+        if (!$cp) {
+            return 0;
+        }
+        $latest = $this->usages->latestForClientPackage((int) $cp['id']);
         if ($latest) {
             return (int) ($latest['remaining_after'] ?? 0);
         }
-        $resolvedBranchId = $this->requirePositiveBranchId($branchContext ?? $this->branchContext->getCurrentBranchId());
-        $cp = $this->clientPackages->findInTenantScope($clientPackageId, $resolvedBranchId);
         return (int) ($cp['remaining_sessions'] ?? 0);
     }
 

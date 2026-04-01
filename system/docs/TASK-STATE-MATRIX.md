@@ -1,4 +1,4 @@
-﻿# Task State Matrix
+# Task State Matrix
 
 > **ARCHITECTURE RESET - 2026-03-31:** The previous LIVE task (`PLT-TNT-01`) has been **ARCHIVED / SUPERSEDED** by the 2026 Architecture Reset. The active roadmap is now **FOUNDATION-A1..A8**. The LIVE execution queue is `FOUNDATION-ACTIVE-BACKLOG-CHARTER-01.md`. Strategy document: `docs/ARCHITECTURE-RESET-2026-CANONICAL-ROADMAP.md`. This matrix remains the **full status inventory** - its `OPEN`/`PARTIAL`/`REOPENED` rows are evidence records, not active sprint items.
 
@@ -93,15 +93,15 @@ If implementation exists but automated proof is weak, classify as `OPEN` or `PAR
 
 ## REOPENED (critical integrity path)
 
-- Multi-tenant boundary fail-closed guarantee across all repositories and services.
-- Tenant lifecycle gating (suspended organization / inactive user-staff / public exposure consistency).
+- Multi-tenant boundary fail-closed guarantee across all repositories and services. **`PARTIAL` (2026-04-01):** Core in-scope modules (clients/staff/services/appointments/sales/marketing) are `CLOSED`. GiftCardService/PackageService FK-only read path structural gap closed by `CRITICAL-INTEGRITY-FAIL-CLOSED-BOUNDARY-AND-LIFECYCLE-CLOSURE-01`. Verifier 29/29 + guardrail 9/9. Out-of-scope modules (reports/documents/notifications/payroll) proven lifecycle-gated at route level. Remaining: full universal cross-module repository coverage.
+- Tenant lifecycle gating (suspended organization / inactive user-staff / public exposure consistency). **`PARTIAL` (2026-04-01):** TenantRuntimeContextEnforcer + OrganizationLifecycleGate + TenantBranchAccessService SQL form a multi-layered enforcement chain for all authenticated routes. PublicBookingService + PublicCommerceService also check suspension. Out-of-scope module routes proven lifecycle-gated. Verifier assertions A1–A7 pass. Remaining: full end-to-end proof across all entry paths (CLI workers, cron).
 
 ## OPEN (large bodies of work)
 
-- Tenant-owned data-plane hardening (cross-module repository consistency).
-- Lifecycle and suspension enforcement end-to-end for internal and public surfaces.
+- Tenant-owned data-plane hardening (cross-module repository consistency). Remaining out-of-scope module residuals (intake public token paths, payroll create/insert service discipline, full universal repo coverage).
+- Lifecycle and suspension enforcement end-to-end for internal and public surfaces. Remaining: CLI/worker entry points lack `AuthMiddleware` — currently out of scope.
 - `INVENTORY-TENANT-DATA-PLANE-HARDENING-01` (`PARTIAL`, waves 1–5) — Tier A includes `verify_inventory_tenant_scope_followon_wave_05_readonly_01.php` (product scoped writes, invoice-joined settlement aggregates, scoped backfill/orphan/retire/post-tree); matrix lists remaining deprecated tooling + empty-invoice-clause aggregate fallback + detach/cross-module surfaces — `INVENTORY-TENANT-DATA-PLANE-HARDENING-01-MATRIX.md`.
-- `MEMBERSHIPS-GIFTCARDS-PACKAGES-TENANT-DATA-PLANE-HARDENING-01` (`OPEN`) — see `MEMBERSHIPS-GIFTCARDS-PACKAGES-HARDENING-01-MATRIX.md`.
+- `MEMBERSHIPS-GIFTCARDS-PACKAGES-TENANT-DATA-PLANE-HARDENING-01` (`PARTIAL` — corrected from `OPEN`) — protected HTTP runtime surfaces for memberships/giftcards/packages are `CLOSED` per `MEMBERSHIPS-GIFTCARDS-PACKAGES-HARDENING-01-MATRIX.md`. Remaining: FK-only child repos (MembershipBenefitUsageRepository, GiftCardTransactionRepository, PackageUsageRepository) are documented trust-upstream by design; structural fix for getCurrentBalance/getRemainingSessions fast-path landed in `CRITICAL-INTEGRITY-FAIL-CLOSED-BOUNDARY-AND-LIFECYCLE-CLOSURE-01` (2026-04-01). See verifier 29/29.
 - New platform-scale/hardening tasks (**PLT-***) — see `BACKLOG-CANONICALIZATION-AND-HARDENING-QUEUE-RECONCILIATION-01.md` §A.
 
 ## AUDIT-ONLY / proof gaps (must not be treated as product-closed)

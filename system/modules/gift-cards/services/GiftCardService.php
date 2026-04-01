@@ -354,12 +354,17 @@ final class GiftCardService
 
     public function getCurrentBalance(int $giftCardId, ?int $branchContext = null): float
     {
-        $latest = $this->transactions->latestForCard($giftCardId);
+        $resolvedBranchId = $this->requirePositiveBranchContext($branchContext ?? $this->branchContext->getCurrentBranchId());
+        // Always prove tenant ownership via scoped parent load before trusting any FK-only transaction query.
+        // FK-only latestForCard() is not self-defending; tenant proof cannot be deferred to a fallback path.
+        $card = $this->cards->findInTenantScope($giftCardId, $resolvedBranchId);
+        if (!$card) {
+            return 0.0;
+        }
+        $latest = $this->transactions->latestForCard((int) $card['id']);
         if ($latest) {
             return (float) ($latest['balance_after'] ?? 0);
         }
-        $resolvedBranchId = $this->requirePositiveBranchContext($branchContext ?? $this->branchContext->getCurrentBranchId());
-        $card = $this->cards->findInTenantScope($giftCardId, $resolvedBranchId);
         return (float) ($card['original_amount'] ?? 0);
     }
 
