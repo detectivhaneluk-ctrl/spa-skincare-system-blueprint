@@ -11,7 +11,8 @@
 > The scale-wave campaign ran in `SCALE-WAVE-EXECUTION-CHARTER-01.md` — WAVE-01 through WAVE-06 all DONE.  
 > **WAVE-07 (READ/WRITE ROUTING + PROXYSQL RUNTIME PROOF) is CLOSED (2026-04-01).** Candidate chosen: READ/WRITE ROUTING. Alternative candidate (shard-readiness hotspots) not selected this wave.  
 > See `system/docs/SCALE-WAVE-EXECUTION-CHARTER-01.md` §WAVE-07 for full spec and proof contract.  
-> PLT-AUTH-02 remaining surfaces were **fully closed** by `PRIVILEGED-PLANE-CLOSURE-AND-STEP-UP-AUTH-01` (2026-04-01): 15 services wired, 137/137 verifier assertions pass. See PRIVILEGED-PLANE-CLOSURE-AND-STEP-UP-AUTH-01 section below.
+> PLT-AUTH-02 remaining surfaces were **fully closed** by `PRIVILEGED-PLANE-CLOSURE-AND-STEP-UP-AUTH-01` (2026-04-01): 15 services wired, 137/137 verifier assertions pass. See PRIVILEGED-PLANE-CLOSURE-AND-STEP-UP-AUTH-01 section below.  
+> **BACKGROUND-FLOW-FAIL-CLOSED-CLOSURE-01 is CLOSED (2026-04-01).** Background/non-HTTP fail-closed family closed: membership expiry/billing/reminders, waitlist expiry sweep, and notifications drain all lifecycle-gated via canonical `OutOfBandLifecycleGuard`. Verifier 42/42, smoke 10/10, guardrail 15/15, release law ACCEPTED. SHA `2f080a9`.
 
 > **ARCHITECTURE RESET — 2026-03-31:**  
 > The old ROOT-01 id-only closure wave (PLT-TNT-01 incremental module-by-module repository patching) has been **ARCHIVED / SUPERSEDED** by this reset.  
@@ -281,11 +282,35 @@ See PLT-AUTH-02 CLOSED section above. Final proof: **137/137** assertions pass.
 
 ---
 
+## BACKGROUND-FLOW-FAIL-CLOSED-CLOSURE-01 — **CLOSED** (2026-04-01)
+
+**Background/non-HTTP fail-closed family — all global sweep entrypoints now lifecycle-gated.**
+
+| Item | Evidence |
+|------|----------|
+| `OutOfBandLifecycleGuard::isExecutionAllowedForBranch` — non-throwing per-row variant | `system/core/Organization/OutOfBandLifecycleGuard.php` |
+| `MembershipLifecycleService::runExpiryPass` — per-row `isExecutionAllowedForBranch` with branch-keyed local cache; suspended-org memberships skipped before expiry mutation | `system/modules/memberships/Services/MembershipLifecycleService.php` |
+| `MembershipBillingService::processDueRenewalInvoices` — per-row `isExecutionAllowedForBranch` with local cache; suspended-org memberships skip renewal invoice creation | `system/modules/memberships/Services/MembershipBillingService.php` |
+| `MembershipService::dispatchRenewalReminders` — per-row `isExecutionAllowedForBranch` with local cache; `skipped_lifecycle_suspended` stats key added | `system/modules/memberships/Services/MembershipService.php` |
+| `WaitlistService::doExecuteExpirySweepBody` — per-row `isExecutionAllowedForBranch` with local cache; `lifecycle_skipped` added to sweep stats | `system/modules/appointments/services/WaitlistService.php` |
+| `OutboundNotificationDispatchService::runBatch` — per-row `isExecutionAllowedForBranch` with local cache; suspended-org messages get terminal `finishClaimedSkipped('org_lifecycle_suspended')` — not retried, not silently succeeded | `system/modules/notifications/services/OutboundNotificationDispatchService.php` |
+| Bootstrap DI updated — all 5 services wired with `OutOfBandLifecycleGuard` | `register_sales_public_commerce_memberships_settings.php`, `register_appointments_online_contracts.php`, `register_appointments_documents_notifications.php` |
+| New verifier: **42/42** PASS | `system/scripts/read-only/verify_background_flow_fail_closed_closure_01.php` |
+| New smoke: **10/10** PASS | `system/scripts/read-only/smoke_background_flow_fail_closed_closure_01.php` |
+| Guardrail expanded: **15/15** PASS (9 prior + 6 new invariants N1–N5 + G3_new) | `system/scripts/ci/guardrail_out_of_band_integrity_and_worker_lifecycle_closure_01.php` |
+| Release law (PLT-REL-01 Tier A): **OK** | `system/scripts/run_mandatory_tenant_isolation_proof_release_gate_01.php` |
+| All prior guardrails PASS | `guardrail_service_layer_db_ban`, `guardrail_id_only_repo_api_freeze`, `guardrail_async_state_machine_ban` |
+| Prior verifier `verify_out_of_band_integrity_and_worker_lifecycle_closure_01.php`: **25/25 PASS** | No regression |
+| WAVE-06 verifier: **44/44 PASS** | No regression |
+| Commit SHA | `2f080a9` |
+
+---
+
 ## LIVE (exactly one)
 
 | ID | Item | Notes |
 |----|------|-------|
-| BACKGROUND-FLOW-FAIL-CLOSED-CLOSURE-01 | Background/non-HTTP fail-closed family closure | **LIVE** (2026-04-01). Closes the remaining multi-branch global sweep paths: `memberships_cron.php` (expiry + billing + reminders), `waitlist_expire_offers.php`, `NotificationsOutboundDrainHandler`. All audited background surfaces must be fail-closed on lifecycle/context mismatch via canonical `OutOfBandLifecycleGuard` before any mutation or dispatch. |
+| — | No current LIVE task | `BACKGROUND-FLOW-FAIL-CLOSED-CLOSURE-01` is `CLOSED` (2026-04-01). Evidence: `verify_background_flow_fail_closed_closure_01.php` 42/42 PASS, `smoke_background_flow_fail_closed_closure_01.php` 10/10 PASS, `guardrail_out_of_band_integrity_and_worker_lifecycle_closure_01.php` 15/15 PASS, release law `ACCEPTED`. Promote the next task explicitly before implementation. |
 
 ---
 
@@ -293,7 +318,7 @@ See PLT-AUTH-02 CLOSED section above. Final proof: **137/137** assertions pass.
 
 | ID | Item | Notes |
 |----|------|-------|
-| — | No PARKED/NEXT task | To be promoted after `BACKGROUND-FLOW-FAIL-CLOSED-CLOSURE-01` closes. |
+| — | No PARKED/NEXT task | `BACKGROUND-FLOW-FAIL-CLOSED-CLOSURE-01` is closed. No successor is promoted in this task. |
 
 ---
 
