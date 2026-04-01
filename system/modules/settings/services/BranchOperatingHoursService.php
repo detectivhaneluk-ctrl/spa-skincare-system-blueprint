@@ -5,6 +5,10 @@ declare(strict_types=1);
 namespace Modules\Settings\Services;
 
 use Core\App\Database;
+use Core\Kernel\Authorization\AuthorizerInterface;
+use Core\Kernel\Authorization\ResourceAction;
+use Core\Kernel\Authorization\ResourceRef;
+use Core\Kernel\RequestContextHolder;
 use Modules\Settings\Repositories\BranchOperatingHoursRepository;
 
 final class BranchOperatingHoursService
@@ -21,7 +25,9 @@ final class BranchOperatingHoursService
 
     public function __construct(
         private Database $db,
-        private BranchOperatingHoursRepository $repo
+        private BranchOperatingHoursRepository $repo,
+        private RequestContextHolder $contextHolder,
+        private AuthorizerInterface $authorizer,
     ) {
     }
 
@@ -85,6 +91,9 @@ final class BranchOperatingHoursService
         if (!$this->isStorageReady()) {
             throw new \RuntimeException('Opening Hours is not available yet because the required database migration has not been applied.');
         }
+        $ctx = $this->contextHolder->requireContext();
+        $ctx->requireResolvedTenant();
+        $this->authorizer->requireAuthorized($ctx, ResourceAction::BRANCH_SETTINGS_MANAGE, ResourceRef::collection('branch-settings'));
         $normalized = $this->validateAndNormalize($rawInput);
         $this->db->transaction(function () use ($branchId, $normalized): void {
             $this->repo->replaceWeeklyMap($branchId, $normalized);

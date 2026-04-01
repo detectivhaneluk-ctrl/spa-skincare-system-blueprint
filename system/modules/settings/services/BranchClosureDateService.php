@@ -7,6 +7,10 @@ namespace Modules\Settings\Services;
 use Core\App\Database;
 use Core\Audit\AuditService;
 use Core\Auth\SessionAuth;
+use Core\Kernel\Authorization\AuthorizerInterface;
+use Core\Kernel\Authorization\ResourceAction;
+use Core\Kernel\Authorization\ResourceRef;
+use Core\Kernel\RequestContextHolder;
 use Modules\Settings\Repositories\BranchClosureDateRepository;
 
 final class BranchClosureDateService
@@ -15,7 +19,9 @@ final class BranchClosureDateService
         private Database $db,
         private BranchClosureDateRepository $repo,
         private AuditService $audit,
-        private SessionAuth $auth
+        private SessionAuth $auth,
+        private RequestContextHolder $contextHolder,
+        private AuthorizerInterface $authorizer,
     ) {
     }
 
@@ -42,6 +48,9 @@ final class BranchClosureDateService
     public function createForBranch(int $branchId, array $input): int
     {
         return $this->db->transaction(function () use ($branchId, $input): int {
+            $ctx = $this->contextHolder->requireContext();
+            $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::BRANCH_SETTINGS_MANAGE, ResourceRef::collection('branch-settings'));
             $payload = $this->validateAndNormalizePayload($branchId, $input, null);
             $id = $this->repo->create($payload);
             $this->audit->log('branch_closure_date_created', 'branch_closure_date', $id, $this->currentUserId(), $branchId, [
@@ -59,6 +68,9 @@ final class BranchClosureDateService
     public function updateForBranch(int $branchId, int $id, array $input): void
     {
         $this->db->transaction(function () use ($branchId, $id, $input): void {
+            $ctx = $this->contextHolder->requireContext();
+            $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::BRANCH_SETTINGS_MANAGE, ResourceRef::instance('branch-settings', $id));
             if ($id <= 0) {
                 throw new \InvalidArgumentException('Invalid closure date record.');
             }
@@ -83,6 +95,9 @@ final class BranchClosureDateService
     public function deleteForBranch(int $branchId, int $id): void
     {
         $this->db->transaction(function () use ($branchId, $id): void {
+            $ctx = $this->contextHolder->requireContext();
+            $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::BRANCH_SETTINGS_MANAGE, ResourceRef::instance('branch-settings', $id));
             if ($id <= 0) {
                 throw new \InvalidArgumentException('Invalid closure date record.');
             }

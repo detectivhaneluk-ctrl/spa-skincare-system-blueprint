@@ -1,4 +1,4 @@
-# Scale Wave Execution Charter — 01
+﻿# Scale Wave Execution Charter — 01
 
 **Date:** 2026-03-31  
 **Status:** WAVE-01 DONE · WAVE-02 DONE · WAVE-03 DONE · WAVE-04 DONE · WAVE-05 DONE · WAVE-06 DONE  
@@ -28,7 +28,7 @@
 ## NEXT GATE TO OPEN NEW WAVE
 
 - **WAVE-06 is CLOSED** — do not reopen without a new charter amendment.
-- **WAVE-07 is NOT OPEN.** Next session must **choose one** candidate below and promote it explicitly (proof script + charter row) before implementation.
+- **WAVE-07 is PARKED / NEXT** — promoted to PARKED/NEXT in `FOUNDATION-ACTIVE-BACKLOG-CHARTER-01.md` (2026-04-01) after PRIVILEGED-PLANE-CLOSURE-AND-STEP-UP-AUTH-01 closed. Do not start implementation until explicitly promoted to LIVE in that charter.
 - **Recommended next candidate:** **WAVE-07 — READ/WRITE ROUTING + PROXYSQL RUNTIME PROOF** — WAVE-03 delivered artifacts; proving **safe** read/write split in runtime (no correctness regression) is the natural scale step before sharding hotspots. Alternative: **WAVE-07 — HIGH-RISK SHARD-READINESS HOTSPOTS** — only if read/write routing is deferred; addresses `organization_id` hotspots under load. **Pick one** to avoid parallel “wave 7” drift.
 
 ---

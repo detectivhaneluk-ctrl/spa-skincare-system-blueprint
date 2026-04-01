@@ -44,6 +44,18 @@ $enforcedServices = [
     'system/modules/sales/services/InvoiceService.php',
     'system/modules/sales/services/PaymentService.php',
     'system/modules/sales/services/RegisterSessionService.php',
+    // Appointments domain (PLT-AUTH-02 / PRIVILEGED-PLANE-CLOSURE-AND-STEP-UP-AUTH-01, 2026-04-01)
+    'system/modules/appointments/services/AppointmentService.php',
+    // Staff domain (PLT-AUTH-02 / PRIVILEGED-PLANE-CLOSURE-AND-STEP-UP-AUTH-01, 2026-04-01)
+    'system/modules/staff/services/StaffGroupService.php',
+    'system/modules/staff/services/StaffGroupPermissionService.php',
+    // Services-resources domain (PLT-AUTH-02 / PRIVILEGED-PLANE-CLOSURE-AND-STEP-UP-AUTH-01, 2026-04-01)
+    'system/modules/services-resources/services/ServiceService.php',
+    // Settings domain (PLT-AUTH-02 / PRIVILEGED-PLANE-CLOSURE-AND-STEP-UP-AUTH-01, 2026-04-01)
+    'system/modules/settings/services/BranchOperatingHoursService.php',
+    'system/modules/settings/services/PriceModificationReasonService.php',
+    'system/modules/settings/services/BranchClosureDateService.php',
+    'system/modules/settings/services/AppointmentCancellationReasonService.php',
 ];
 
 // Pattern that must appear at least once in each protected file.

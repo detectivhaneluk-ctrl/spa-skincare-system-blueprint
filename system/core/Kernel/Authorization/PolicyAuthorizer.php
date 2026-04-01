@@ -55,6 +55,7 @@ final class PolicyAuthorizer implements AuthorizerInterface
         'appointment:create'      => 'appointments.create',
         'appointment:modify'      => 'appointments.edit',
         'appointment:cancel'      => 'appointments.edit',
+        'appointment:delete'      => 'appointments.edit',
         // Clients
         'client:view'             => 'clients.view',
         'client:create'           => 'clients.create',

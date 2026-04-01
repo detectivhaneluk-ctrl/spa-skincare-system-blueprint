@@ -6,6 +6,10 @@ namespace Modules\Settings\Services;
 
 use Core\Audit\AuditService;
 use Core\Auth\SessionAuth;
+use Core\Kernel\Authorization\AuthorizerInterface;
+use Core\Kernel\Authorization\ResourceAction;
+use Core\Kernel\Authorization\ResourceRef;
+use Core\Kernel\RequestContextHolder;
 use Modules\Settings\Repositories\PriceModificationReasonRepository;
 
 final class PriceModificationReasonService
@@ -13,7 +17,9 @@ final class PriceModificationReasonService
     public function __construct(
         private PriceModificationReasonRepository $repo,
         private AuditService $audit,
-        private SessionAuth $auth
+        private SessionAuth $auth,
+        private RequestContextHolder $contextHolder,
+        private AuthorizerInterface $authorizer,
     ) {
     }
 
@@ -64,6 +70,9 @@ final class PriceModificationReasonService
      */
     public function create(array $input): array
     {
+        $ctx = $this->contextHolder->requireContext();
+        $ctx->requireResolvedTenant();
+        $this->authorizer->requireAuthorized($ctx, ResourceAction::BRANCH_SETTINGS_MANAGE, ResourceRef::collection('branch-settings'));
         $orgId = $this->repo->organizationId();
         $row = $this->validateAndNormalize($input, null);
         $id = $this->repo->insert([
@@ -84,6 +93,9 @@ final class PriceModificationReasonService
 
     public function update(int $id, array $input): void
     {
+        $ctx = $this->contextHolder->requireContext();
+        $ctx->requireResolvedTenant();
+        $this->authorizer->requireAuthorized($ctx, ResourceAction::BRANCH_SETTINGS_MANAGE, ResourceRef::instance('branch-settings', $id));
         $orgId = $this->repo->organizationId();
         $existing = $this->repo->findById($orgId, $id);
         if ($existing === null) {

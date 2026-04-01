@@ -198,29 +198,29 @@ Planning cleanup, backlog freeze, legacy banners, and **BACKBONE-CLOSURE-ACTIVE-
 
 ---
 
-## PLT-AUTH-02 — **PARTIAL** (2026-03-31, first vertical slice)
+## PLT-AUTH-02 — **CLOSED** (2026-03-31 first slice → 2026-04-01 full closure)
 
-**PLT-AUTH-02: Authorization Enforcement Wiring** — Client + Sales domain service-layer wiring landed.
+**PLT-AUTH-02: Authorization Enforcement Wiring** — All high-risk service domains fully wired. `PRIVILEGED-PLANE-CLOSURE-AND-STEP-UP-AUTH-01` carried this to full closure.
 
 | Item | Evidence |
 |------|----------|
-| `ResourceAction` enum: 3 new cases added (`INVOICE_EDIT`, `INVOICE_DELETE`, `INVOICE_PAY`) | `system/core/Kernel/Authorization/ResourceAction.php` |
-| `PolicyAuthorizer::ACTION_PERMISSION_MAP`: 10 permission code mismatches corrected (clients.edit, appointments.edit, sales.*, services-resources.*, staff.edit, settings.edit) | `system/core/Kernel/Authorization/PolicyAuthorizer.php` |
-| `AuthorizerInterface::requireAuthorized()` wired into **ClientService** at `create`, `updateProfileNotes`, `update`, `delete` | `system/modules/clients/services/ClientService.php` |
-| `AuthorizerInterface::requireAuthorized()` wired into **ClientIssueFlagService** at `create`, `resolve` | `system/modules/clients/services/ClientIssueFlagService.php` |
-| `AuthorizerInterface::requireAuthorized()` wired into **ClientMergeJobService** at `enqueueMergeJob` (HTTP path only; background worker paths explicitly excluded) | `system/modules/clients/services/ClientMergeJobService.php` |
-| `AuthorizerInterface::requireAuthorized()` wired into **ClientRegistrationService** at `create`, `updateStatus`, `convert` | `system/modules/clients/services/ClientRegistrationService.php` |
-| `AuthorizerInterface::requireAuthorized()` wired into **InvoiceService** at `create`, `update`, `cancel`, `delete` | `system/modules/sales/services/InvoiceService.php` |
-| `AuthorizerInterface::requireAuthorized()` wired into **PaymentService** at `create`, `refund` | `system/modules/sales/services/PaymentService.php` |
-| `AuthorizerInterface::requireAuthorized()` wired into **RegisterSessionService** at `openSession`, `closeSession`, `addCashMovement` | `system/modules/sales/services/RegisterSessionService.php` |
-| Bootstrap DI updated — all 7 migrated services receive `AuthorizerInterface::class` from container | `register_clients.php`, `register_sales_public_commerce_memberships_settings.php` |
-| `AuthorizationMiddleware` — new HTTP-level resource action enforcement middleware (`::forAction()` factory, MiddlewareInterface, 403 deny semantics, reason not exposed to client) | `system/core/middleware/AuthorizationMiddleware.php` |
-| Bootstrap comment updated — `AuthorizationMiddleware` documented as per-route factory pattern | `system/bootstrap.php` |
-| Guardrail 4 — PLT-AUTH-02 service authorizer enforcement: CI script fails if any migrated service drops `requireAuthorized()` call | `system/scripts/ci/guardrail_plt_auth_02_service_authorizer_enforcement.php` |
-| All prior guardrails PASS: service DB ban (11 services), id-only repo freeze (13 repos), async state machine ban (777 files) | No regression |
-| All prior verifiers PASS: BIG-06 126/126, BIG-07 152/152, PLT-Q-01 100/100 | No regression |
-| PLT-AUTH-02 verifier: **104/104** assertions pass | `system/scripts/read-only/verify_plt_auth_02_authorization_enforcement_wiring_01.php` |
-| **STATUS: PARTIAL** — Remaining surfaces: appointments domain service wiring, staff/services-resources/settings services, full platform control-plane action enforcement | Scope for PLT-AUTH-02 continuation |
+| `ResourceAction` enum: 3 new cases added (2026-03-31) + `APPOINTMENT_DELETE` added (2026-04-01) | `system/core/Kernel/Authorization/ResourceAction.php` |
+| `PolicyAuthorizer::ACTION_PERMISSION_MAP`: corrected + `appointment:delete → appointments.edit` mapped | `system/core/Kernel/Authorization/PolicyAuthorizer.php` |
+| `AuthorizerInterface::requireAuthorized()` wired into **ClientService**, **ClientIssueFlagService**, **ClientMergeJobService**, **ClientRegistrationService** (2026-03-31) | `system/modules/clients/services/` |
+| `AuthorizerInterface::requireAuthorized()` wired into **InvoiceService**, **PaymentService**, **RegisterSessionService** (2026-03-31) | `system/modules/sales/services/` |
+| `AuthorizerInterface::requireAuthorized()` wired into **AppointmentService** — `create`, `update`, `cancel`, `reschedule`, `updateStatus`, `delete`, `consumePackageSessions`, `markCheckedIn`, `createFromSlot`, `createFromSeriesOccurrence` (public booking path explicitly ungated) | `system/modules/appointments/services/AppointmentService.php` |
+| `AuthorizerInterface::requireAuthorized()` wired into **StaffGroupService** — `create`, `update`, `deactivate`, `attachStaff`, `detachStaff` | `system/modules/staff/services/StaffGroupService.php` |
+| `AuthorizerInterface::requireAuthorized()` wired into **StaffGroupPermissionService** — `replacePermissions` | `system/modules/staff/services/StaffGroupPermissionService.php` |
+| `AuthorizerInterface::requireAuthorized()` wired into **ServiceService** — `create`, `update`, `delete` | `system/modules/services-resources/services/ServiceService.php` |
+| `AuthorizerInterface::requireAuthorized()` wired into **BranchOperatingHoursService** — `saveWeeklyMapForBranch` | `system/modules/settings/services/BranchOperatingHoursService.php` |
+| `AuthorizerInterface::requireAuthorized()` wired into **PriceModificationReasonService** — `create`, `update` | `system/modules/settings/services/PriceModificationReasonService.php` |
+| `AuthorizerInterface::requireAuthorized()` wired into **BranchClosureDateService** — `createForBranch`, `updateForBranch`, `deleteForBranch` | `system/modules/settings/services/BranchClosureDateService.php` |
+| `AuthorizerInterface::requireAuthorized()` wired into **AppointmentCancellationReasonService** — `create`, `update`, `delete` | `system/modules/settings/services/AppointmentCancellationReasonService.php` |
+| Bootstrap DI updated — all 15 migrated services receive `AuthorizerInterface::class` from container | `register_clients.php`, `register_appointments_online_contracts.php`, `register_staff.php`, `register_services_resources.php`, `register_sales_public_commerce_memberships_settings.php` |
+| `AuthorizationMiddleware` — HTTP-level resource action enforcement middleware | `system/core/middleware/AuthorizationMiddleware.php` |
+| Guardrail 4 — PLT-AUTH-02 service authorizer enforcement: 15 services enforced | `system/scripts/ci/guardrail_plt_auth_02_service_authorizer_enforcement.php` |
+| PLT-AUTH-02 verifier: **137/137** assertions pass | `system/scripts/read-only/verify_plt_auth_02_authorization_enforcement_wiring_01.php` |
+| All prior guardrails PASS (no regression) | `guardrail_service_layer_db_ban`, `guardrail_id_only_repo_api_freeze`, `guardrail_async_state_machine_ban` |
 
 ---
 
@@ -248,11 +248,45 @@ Planning cleanup, backlog freeze, legacy banners, and **BACKBONE-CLOSURE-ACTIVE-
 
 ---
 
+## PRIVILEGED-PLANE-CLOSURE-AND-STEP-UP-AUTH-01 — **CLOSED** (2026-04-01)
+
+**PLT-MFA-01 + PLT-AUTH-02 full closure** — privileged founder/support-entry strong-auth, remaining service-layer authorization enforcement, audit trails, and machine-runnable proofs.
+
+### PLT-MFA-01: Privileged strong-auth / step-up closure
+
+| Item | Evidence |
+|------|----------|
+| `PlatformFounderSupportEntryController` — calls `requireValidatedReason`, `requireHighImpactConfirmation`, `requireSupportEntryPasswordStepUp`, `requireSupportEntryControlPlaneMfa` before any support-entry action | `system/modules/organizations/controllers/PlatformFounderSupportEntryController.php` |
+| `FounderSafeActionGuardrailService` — password step-up via `AuthService::verifyPasswordForUserStepUp`; TOTP via `requireControlPlaneTotpVerifiedForActor` | `system/modules/organizations/services/FounderSafeActionGuardrailService.php` |
+| `ControlPlaneTotpService` — TOTP enrollment, code verification, session freshness check, secure secret encryption/decryption | `system/modules/organizations/services/ControlPlaneTotpService.php` |
+| `SessionAuth::beginSupportEntry` — `session_regenerate_id(true)` session hardening on privileged transition | `system/core/auth/SessionAuth.php` |
+| `FounderImpersonationAuditService` — explicit audit trail: `founder_support_session_start` / `founder_support_session_end` with correlation IDs | `system/modules/organizations/services/FounderImpersonationAuditService.php` |
+| `PolicyAuthorizer` — `SUPPORT_ACTOR_ALLOWED_ACTIONS` read-only enforcement; all write actions denied for support actors | `system/core/Kernel/Authorization/PolicyAuthorizer.php` |
+| CI Guardrail 5 — PLT-MFA-01 strong-auth presence verification | `system/scripts/ci/guardrail_plt_mfa_01_privileged_plane_step_up.php` |
+| Read-only verifier: **58/58** assertions pass — controller wiring, service implementations, session hardening, audit trail, PolicyAuthorizer rules | `system/scripts/read-only/verify_plt_mfa_01_privileged_plane_step_up_auth_01.php` |
+
+### PLT-AUTH-02: Full service-layer authorization enforcement closure
+
+See PLT-AUTH-02 CLOSED section above. Final proof: **137/137** assertions pass.
+
+### Regression sweep (all prior proof scripts)
+
+| Script | Result |
+|--------|--------|
+| `verify_big_04_appointments_migration_01.php` | **79/79 PASS** |
+| `verify_wave06_hot_path_cache_effectiveness_01.php` | **44/44 PASS** |
+| `verify_big_07_client_owned_resources_migration_01.php` | **152/152 PASS** |
+| `guardrail_service_layer_db_ban.php` | **PASS** |
+| `guardrail_id_only_repo_api_freeze.php` | **PASS** |
+| `guardrail_async_state_machine_ban.php` | **PASS** |
+
+---
+
 ## LIVE (exactly one)
 
 | ID | Item | Notes |
 |----|------|-------|
-| **PLT-AUTH-02** | Authorization enforcement wiring | **PARTIAL — first vertical slice landed 2026-03-31.** Client domain (4 services) + Sales domain (3 services) migrated to `AuthorizerInterface::requireAuthorized()` at write mutation boundaries. PolicyAuthorizer permission map corrected. AuthorizationMiddleware added. 104/104 verifier assertions pass. All prior guardrails PASS. Remaining: appointment service wiring, staff/services-resources/settings service wiring, full platform control-plane action checks. |
+| — | No LIVE task | **PRIVILEGED-PLANE-CLOSURE-AND-STEP-UP-AUTH-01** closed 2026-04-01 (PLT-MFA-01 + PLT-AUTH-02 full closure). Promote WAVE-07 explicitly when ready. |
 
 ---
 
@@ -260,13 +294,13 @@ Planning cleanup, backlog freeze, legacy banners, and **BACKBONE-CLOSURE-ACTIVE-
 
 | ID | Item | Notes |
 |----|------|-------|
-| — | No parked successor promoted yet | PLT-AUTH-02 is now LIVE. Do not add a successor until this charter is explicitly updated again. |
+| **WAVE-07** | READ/WRITE ROUTING + PROXYSQL RUNTIME PROOF | WAVE-03 delivered ProxySQL artifacts. WAVE-07 proves safe read/write split at runtime with no correctness regression. Alternative candidate: HIGH-RISK SHARD-READINESS HOTSPOTS. Pick one and promote with a proof script + charter row before implementation. See `SCALE-WAVE-EXECUTION-CHARTER-01.md` §NEXT GATE. |
 
 ---
 
 ## FOUNDATION ROADMAP (A1–A8) — 2026 Foundation Plan
 
-Full ordered roadmap. **FOUNDATION-A1..A7 PHASE-4** are all CLOSED. All FOUNDATION-A7 phases complete. **PLT-Q-01** is CLOSED. **PLT-AUTH-02** is now the single **LIVE** lane. Remaining items are **PLANNED** inventory — not in-progress, not concurrent.
+Full ordered roadmap. **FOUNDATION-A1..A7 PHASE-4** are all CLOSED. All FOUNDATION-A7 phases complete. **PLT-Q-01** is CLOSED. **PLT-AUTH-02** is CLOSED (2026-04-01, full closure). **PLT-MFA-01** is CLOSED (2026-04-01). **No task is currently LIVE.** WAVE-07 is PARKED/NEXT. Remaining items are **PLANNED** inventory — not in-progress, not concurrent.
 
 | Order | ID | Name | Status | Notes |
 |-------|----|------|--------|-------|
@@ -298,7 +332,6 @@ These items were the prior active roadmap. They are retained as **sealed evidenc
 
 | ID | Item | Notes |
 |----|------|-------|
-| **PLT-AUTH-02** | Authorization enforcement wiring — remaining surfaces (appointments service, staff/settings/services-resources services, full platform control-plane action enforcement) | **PARKED** during Scale Wave execution. First vertical slice (client + sales mutation services) is PARTIAL in repo truth. Resume after WAVE-04 closes or promote individually if a scale wave deliverable needs it. |
 | — | Synchronous complex reporting features | **DEFERRED** — see Scale Wave charter deferred list |
 | — | Extra marketing automation complexity before queue hardening | **DEFERRED** — see Scale Wave charter deferred list |
 | — | UI/UX polish not tied to runtime truth | **DEFERRED** — see Scale Wave charter deferred list |

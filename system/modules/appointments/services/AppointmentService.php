@@ -11,6 +11,9 @@ use Core\Audit\AuditService;
 use Core\Branch\TenantBranchAccessService;
 use Core\Contracts\AppointmentPackageConsumptionProvider;
 use Core\Errors\AccessDeniedException;
+use Core\Kernel\Authorization\AuthorizerInterface;
+use Core\Kernel\Authorization\ResourceAction;
+use Core\Kernel\Authorization\ResourceRef;
 use Core\Kernel\RequestContextHolder;
 use Core\Organization\OrganizationRepositoryScope;
 use Core\Organization\OrganizationScopedBranchAssert;
@@ -76,14 +79,17 @@ final class AppointmentService
         private AppointmentCancellationReasonService $cancellationReasons,
         private TenantBranchAccessService $tenantBranchAccess,
         private OrganizationScopedBranchAssert $organizationScopedBranchAssert,
-        private OrganizationRepositoryScope $orgScope
+        private OrganizationRepositoryScope $orgScope,
+        private AuthorizerInterface $authorizer,
     ) {
     }
 
     public function create(array $data): int
     {
         $id = $this->transactional(function () use ($data): int {
-            $this->contextHolder->requireContext()->requireResolvedTenant();
+            $ctx = $this->contextHolder->requireContext();
+            $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::APPOINTMENT_CREATE, ResourceRef::collection('appointment'));
             $data = $this->applyTenantCreateBranchResolution($data);
             $this->validateStatus($data['status'] ?? 'scheduled');
             $this->lockActiveStaffAndServiceRows($this->nullablePositiveId($data, 'staff_id'), $this->nullablePositiveId($data, 'service_id'));
@@ -163,6 +169,7 @@ final class AppointmentService
         $this->transactional(function () use ($id, $data, &$waitlistSlotFreedSnapshot, &$clearedSeriesIdFromMove, &$captureUpdateInvalidation): void {
             $ctx = $this->contextHolder->requireContext();
             $scope = $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::APPOINTMENT_MODIFY, ResourceRef::instance('appointment', $id));
             $current = $this->repo->loadForUpdate($ctx, $id);
             if (!$current) {
                 throw new \RuntimeException('Appointment not found');
@@ -311,6 +318,7 @@ final class AppointmentService
     {
         $ctx = $this->contextHolder->requireContext();
         $ctx->requireResolvedTenant();
+        $this->authorizer->requireAuthorized($ctx, ResourceAction::APPOINTMENT_CANCEL, ResourceRef::instance('appointment', $id));
 
         $pdo = $this->db->connection();
         $started = false;
@@ -462,6 +470,7 @@ final class AppointmentService
     ): void {
         $ctx = $this->contextHolder->requireContext();
         $scope = $ctx->requireResolvedTenant();
+        $this->authorizer->requireAuthorized($ctx, ResourceAction::APPOINTMENT_MODIFY, ResourceRef::instance('appointment', $id));
         $startAt = $this->normalizeDateTime($startTime);
         $expectedStartAt = null;
         if ($expectedCurrentStartAt !== null && trim($expectedCurrentStartAt) !== '') {
@@ -591,6 +600,7 @@ final class AppointmentService
     {
         $ctx = $this->contextHolder->requireContext();
         $scope = $ctx->requireResolvedTenant();
+        $this->authorizer->requireAuthorized($ctx, ResourceAction::APPOINTMENT_MODIFY, ResourceRef::instance('appointment', $id));
         $newStatus = trim($newStatus);
         $this->validateStatus($newStatus);
 
@@ -692,6 +702,7 @@ final class AppointmentService
         $this->transactional(function () use ($id, &$aptBefore): void {
             $ctx = $this->contextHolder->requireContext();
             $scope = $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::APPOINTMENT_DELETE, ResourceRef::instance('appointment', $id));
             $apt = $this->repo->loadVisible($ctx, $id);
             if (!$apt) {
                 throw new \RuntimeException('Appointment not found');
@@ -725,6 +736,9 @@ final class AppointmentService
         int $quantity,
         ?string $notes = null
     ): void {
+        $ctx = $this->contextHolder->requireContext();
+        $ctx->requireResolvedTenant();
+        $this->authorizer->requireAuthorized($ctx, ResourceAction::APPOINTMENT_MODIFY, ResourceRef::instance('appointment', $appointmentId));
         $appointment = $this->repo->find($appointmentId);
         if (!$appointment) {
             throw new \RuntimeException('Appointment not found.');
@@ -766,6 +780,7 @@ final class AppointmentService
         $this->transactional(function () use ($id): void {
             $ctx = $this->contextHolder->requireContext();
             $scope = $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::APPOINTMENT_MODIFY, ResourceRef::instance('appointment', $id));
             $current = $this->repo->loadForUpdate($ctx, $id);
             if (!$current) {
                 throw new \RuntimeException('Appointment not found');
@@ -915,7 +930,9 @@ final class AppointmentService
 
     public function createFromSlot(array $data): int
     {
-        $this->contextHolder->requireContext()->requireResolvedTenant();
+        $ctx = $this->contextHolder->requireContext();
+        $ctx->requireResolvedTenant();
+        $this->authorizer->requireAuthorized($ctx, ResourceAction::APPOINTMENT_CREATE, ResourceRef::collection('appointment'));
         $data = $this->applyTenantCreateBranchResolution($data);
         $clientId = (int) ($data['client_id'] ?? 0);
         $serviceId = (int) ($data['service_id'] ?? 0);
@@ -1004,6 +1021,9 @@ final class AppointmentService
         string $startAtNormalized,
         ?string $notes
     ): int {
+        $ctx = $this->contextHolder->requireContext();
+        $ctx->requireResolvedTenant();
+        $this->authorizer->requireAuthorized($ctx, ResourceAction::APPOINTMENT_CREATE, ResourceRef::collection('appointment'));
         if ($seriesId <= 0) {
             throw new \InvalidArgumentException('series_id is required.');
         }

@@ -8,6 +8,10 @@ use Core\App\Application;
 use Core\App\Database;
 use Core\Audit\AuditService;
 use Core\Branch\BranchContext;
+use Core\Kernel\Authorization\AuthorizerInterface;
+use Core\Kernel\Authorization\ResourceAction;
+use Core\Kernel\Authorization\ResourceRef;
+use Core\Kernel\RequestContextHolder;
 use Core\Permissions\PermissionService;
 use Core\Permissions\StaffGroupPermissionRepository;
 use Modules\Staff\Repositories\StaffGroupRepository;
@@ -24,7 +28,9 @@ final class StaffGroupPermissionService
         private Database $db,
         private AuditService $audit,
         private BranchContext $branchContext,
-        private PermissionService $permissions
+        private PermissionService $permissions,
+        private RequestContextHolder $contextHolder,
+        private AuthorizerInterface $authorizer,
     ) {
     }
 
@@ -57,6 +63,9 @@ final class StaffGroupPermissionService
     public function replacePermissions(int $groupId, array $permissionIds): void
     {
         $this->transactional(function () use ($groupId, $permissionIds): void {
+            $ctx = $this->contextHolder->requireContext();
+            $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::STAFF_MANAGE, ResourceRef::instance('staff', $groupId));
             $group = $this->groups->find($groupId);
             if (!$group) {
                 throw new \RuntimeException('Staff group not found.');

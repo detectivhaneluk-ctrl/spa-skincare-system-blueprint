@@ -110,7 +110,9 @@ $container->singleton(\Modules\Sales\Controllers\PaymentController::class, fn ($
 $container->singleton(\Modules\Settings\Repositories\BranchOperatingHoursRepository::class, fn ($c) => new \Modules\Settings\Repositories\BranchOperatingHoursRepository($c->get(\Core\App\Database::class)));
 $container->singleton(\Modules\Settings\Services\BranchOperatingHoursService::class, fn ($c) => new \Modules\Settings\Services\BranchOperatingHoursService(
     $c->get(\Core\App\Database::class),
-    $c->get(\Modules\Settings\Repositories\BranchOperatingHoursRepository::class)
+    $c->get(\Modules\Settings\Repositories\BranchOperatingHoursRepository::class),
+    $c->get(\Core\Kernel\RequestContextHolder::class),
+    $c->get(\Core\Kernel\Authorization\AuthorizerInterface::class)
 ));
 $container->singleton(\Modules\Settings\Repositories\BranchClosureDateRepository::class, fn ($c) => new \Modules\Settings\Repositories\BranchClosureDateRepository($c->get(\Core\App\Database::class)));
 $container->singleton(\Modules\Settings\Repositories\AppointmentCancellationReasonRepository::class, fn ($c) => new \Modules\Settings\Repositories\AppointmentCancellationReasonRepository(
@@ -125,17 +127,23 @@ $container->singleton(\Modules\Settings\Services\BranchClosureDateService::class
     $c->get(\Core\App\Database::class),
     $c->get(\Modules\Settings\Repositories\BranchClosureDateRepository::class),
     $c->get(\Core\Audit\AuditService::class),
-    $c->get(\Core\Auth\SessionAuth::class)
+    $c->get(\Core\Auth\SessionAuth::class),
+    $c->get(\Core\Kernel\RequestContextHolder::class),
+    $c->get(\Core\Kernel\Authorization\AuthorizerInterface::class)
 ));
 $container->singleton(\Modules\Settings\Services\AppointmentCancellationReasonService::class, fn ($c) => new \Modules\Settings\Services\AppointmentCancellationReasonService(
     $c->get(\Modules\Settings\Repositories\AppointmentCancellationReasonRepository::class),
     $c->get(\Core\Audit\AuditService::class),
-    $c->get(\Core\Auth\SessionAuth::class)
+    $c->get(\Core\Auth\SessionAuth::class),
+    $c->get(\Core\Kernel\RequestContextHolder::class),
+    $c->get(\Core\Kernel\Authorization\AuthorizerInterface::class)
 ));
 $container->singleton(\Modules\Settings\Services\PriceModificationReasonService::class, fn ($c) => new \Modules\Settings\Services\PriceModificationReasonService(
     $c->get(\Modules\Settings\Repositories\PriceModificationReasonRepository::class),
     $c->get(\Core\Audit\AuditService::class),
-    $c->get(\Core\Auth\SessionAuth::class)
+    $c->get(\Core\Auth\SessionAuth::class),
+    $c->get(\Core\Kernel\RequestContextHolder::class),
+    $c->get(\Core\Kernel\Authorization\AuthorizerInterface::class)
 ));
 // Main settings workspace ({@see system/routes/web/register_settings.php}); container-only Dispatcher (A-002).
 $container->singleton(\Modules\Settings\Controllers\SettingsController::class, static fn () => new \Modules\Settings\Controllers\SettingsController());

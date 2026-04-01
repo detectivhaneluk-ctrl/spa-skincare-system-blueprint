@@ -7,6 +7,10 @@ namespace Modules\ServicesResources\Services;
 use Core\App\Application;
 use Core\Audit\AuditService;
 use Core\Branch\BranchContext;
+use Core\Kernel\Authorization\AuthorizerInterface;
+use Core\Kernel\Authorization\ResourceAction;
+use Core\Kernel\Authorization\ResourceRef;
+use Core\Kernel\RequestContextHolder;
 use Core\Tenant\TenantOwnedDataScopeGuard;
 use Modules\Sales\Services\VatRateService;
 use Modules\ServicesResources\Repositories\ServiceRepository;
@@ -20,7 +24,9 @@ final class ServiceService
         private BranchContext $branchContext,
         private TenantOwnedDataScopeGuard $tenantScopeGuard,
         private StaffGroupRepository $staffGroups,
-        private VatRateService $vatRates
+        private VatRateService $vatRates,
+        private RequestContextHolder $contextHolder,
+        private AuthorizerInterface $authorizer,
     ) {
     }
 
@@ -42,6 +48,9 @@ final class ServiceService
     public function create(array $data): int
     {
         return $this->transactional(function () use ($data): int {
+            $ctx = $this->contextHolder->requireContext();
+            $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::SERVICE_MANAGE, ResourceRef::collection('service'));
             $this->tenantScopeGuard->requireResolvedTenantScope();
             $rawGroups = $data['staff_group_ids'] ?? [];
             if (!is_array($rawGroups)) {
@@ -77,6 +86,9 @@ final class ServiceService
     public function update(int $id, array $data): void
     {
         $this->transactional(function () use ($id, $data): void {
+            $ctx = $this->contextHolder->requireContext();
+            $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::SERVICE_MANAGE, ResourceRef::instance('service', $id));
             $this->tenantScopeGuard->requireResolvedTenantScope();
             $current = $this->repo->find($id);
             if (!$current) throw new \RuntimeException('Not found');
@@ -138,6 +150,9 @@ final class ServiceService
     public function delete(int $id): void
     {
         $this->transactional(function () use ($id): void {
+            $ctx = $this->contextHolder->requireContext();
+            $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::SERVICE_MANAGE, ResourceRef::instance('service', $id));
             $this->tenantScopeGuard->requireResolvedTenantScope();
             $svc = $this->repo->find($id);
             if (!$svc) throw new \RuntimeException('Not found');

@@ -587,6 +587,184 @@ assertPass(
 );
 
 // ---------------------------------------------------------------------------
+// GROUP 13: Appointments domain wiring (PRIVILEGED-PLANE-CLOSURE-AND-STEP-UP-AUTH-01)
+// ---------------------------------------------------------------------------
+echo "\n--- GROUP 13: Appointments Domain Authorization Wiring ---\n";
+
+assertPass(
+    'AppointmentService: declares AuthorizerInterface injection',
+    fileContains('system/modules/appointments/services/AppointmentService.php', 'AuthorizerInterface')
+    && fileContains('system/modules/appointments/services/AppointmentService.php', 'use Core\Kernel\Authorization\AuthorizerInterface')
+);
+assertPass(
+    'AppointmentService: requireAuthorized called for APPOINTMENT_CREATE',
+    fileContains('system/modules/appointments/services/AppointmentService.php', 'ResourceAction::APPOINTMENT_CREATE')
+);
+assertPass(
+    'AppointmentService: requireAuthorized called for APPOINTMENT_MODIFY',
+    fileContains('system/modules/appointments/services/AppointmentService.php', 'ResourceAction::APPOINTMENT_MODIFY')
+);
+assertPass(
+    'AppointmentService: requireAuthorized called for APPOINTMENT_CANCEL',
+    fileContains('system/modules/appointments/services/AppointmentService.php', 'ResourceAction::APPOINTMENT_CANCEL')
+);
+assertPass(
+    'AppointmentService: requireAuthorized called for APPOINTMENT_DELETE',
+    fileContains('system/modules/appointments/services/AppointmentService.php', 'ResourceAction::APPOINTMENT_DELETE')
+);
+assertPass(
+    'AppointmentService: createFromPublicBooking NOT gated (public path preserved)',
+    !fileContainsPattern(
+        'system/modules/appointments/services/AppointmentService.php',
+        '/createFromPublicBooking[^{]+\{[^}]*requireAuthorized/'
+    )
+);
+assertPass(
+    'ResourceAction: APPOINTMENT_DELETE case present',
+    fileContains('system/core/Kernel/Authorization/ResourceAction.php', 'APPOINTMENT_DELETE')
+);
+assertPass(
+    'PolicyAuthorizer: appointment:delete maps to appointments.edit',
+    fileContains('system/core/Kernel/Authorization/PolicyAuthorizer.php', "'appointment:delete'")
+);
+assertPass(
+    'register_appointments: AppointmentService receives AuthorizerInterface',
+    fileContains('system/modules/bootstrap/register_appointments_online_contracts.php', 'AuthorizerInterface::class')
+);
+
+// ---------------------------------------------------------------------------
+// GROUP 14: Staff domain wiring (PRIVILEGED-PLANE-CLOSURE-AND-STEP-UP-AUTH-01)
+// ---------------------------------------------------------------------------
+echo "\n--- GROUP 14: Staff Domain Authorization Wiring ---\n";
+
+assertPass(
+    'StaffGroupService: declares AuthorizerInterface injection',
+    fileContains('system/modules/staff/services/StaffGroupService.php', 'AuthorizerInterface')
+);
+assertPass(
+    'StaffGroupService: requireAuthorized called for STAFF_MANAGE',
+    fileContains('system/modules/staff/services/StaffGroupService.php', 'ResourceAction::STAFF_MANAGE')
+);
+assertPass(
+    'StaffGroupPermissionService: declares AuthorizerInterface injection',
+    fileContains('system/modules/staff/services/StaffGroupPermissionService.php', 'AuthorizerInterface')
+);
+assertPass(
+    'StaffGroupPermissionService: requireAuthorized called for STAFF_MANAGE',
+    fileContains('system/modules/staff/services/StaffGroupPermissionService.php', 'ResourceAction::STAFF_MANAGE')
+);
+assertPass(
+    'register_staff: StaffGroupService receives AuthorizerInterface',
+    fileContains('system/modules/bootstrap/register_staff.php', 'AuthorizerInterface::class')
+    && fileContainsPattern(
+        'system/modules/bootstrap/register_staff.php',
+        '/StaffGroupService::class.*AuthorizerInterface::class/'
+    )
+);
+assertPass(
+    'register_staff: StaffGroupPermissionService receives AuthorizerInterface',
+    fileContainsPattern(
+        'system/modules/bootstrap/register_staff.php',
+        '/StaffGroupPermissionService::class.*AuthorizerInterface::class/'
+    )
+);
+
+// ---------------------------------------------------------------------------
+// GROUP 15: Services-resources domain wiring (PRIVILEGED-PLANE-CLOSURE-AND-STEP-UP-AUTH-01)
+// ---------------------------------------------------------------------------
+echo "\n--- GROUP 15: Services-Resources Domain Authorization Wiring ---\n";
+
+assertPass(
+    'ServiceService: declares AuthorizerInterface injection',
+    fileContains('system/modules/services-resources/services/ServiceService.php', 'AuthorizerInterface')
+);
+assertPass(
+    'ServiceService: requireAuthorized called for SERVICE_MANAGE',
+    fileContains('system/modules/services-resources/services/ServiceService.php', 'ResourceAction::SERVICE_MANAGE')
+);
+assertPass(
+    'register_services_resources: ServiceService receives AuthorizerInterface',
+    fileContains('system/modules/bootstrap/register_services_resources.php', 'AuthorizerInterface::class')
+);
+
+// ---------------------------------------------------------------------------
+// GROUP 16: Settings domain wiring (PRIVILEGED-PLANE-CLOSURE-AND-STEP-UP-AUTH-01)
+// ---------------------------------------------------------------------------
+echo "\n--- GROUP 16: Settings Domain Authorization Wiring ---\n";
+
+$settingsServices = [
+    'system/modules/settings/services/BranchOperatingHoursService.php'        => 'BranchOperatingHoursService',
+    'system/modules/settings/services/PriceModificationReasonService.php'      => 'PriceModificationReasonService',
+    'system/modules/settings/services/BranchClosureDateService.php'            => 'BranchClosureDateService',
+    'system/modules/settings/services/AppointmentCancellationReasonService.php' => 'AppointmentCancellationReasonService',
+];
+foreach ($settingsServices as $relPath => $name) {
+    assertPass(
+        "{$name}: declares AuthorizerInterface injection",
+        fileContains($relPath, 'AuthorizerInterface')
+    );
+    assertPass(
+        "{$name}: requireAuthorized called for BRANCH_SETTINGS_MANAGE",
+        fileContains($relPath, 'ResourceAction::BRANCH_SETTINGS_MANAGE')
+    );
+}
+assertPass(
+    'register_settings: settings services receive AuthorizerInterface (bootstrap updated)',
+    fileContains(
+        'system/modules/bootstrap/register_sales_public_commerce_memberships_settings.php',
+        'AuthorizerInterface::class'
+    )
+);
+
+// ---------------------------------------------------------------------------
+// GROUP 17: PLT-AUTH-02 guardrail covers all 15 services
+// ---------------------------------------------------------------------------
+echo "\n--- GROUP 17: PLT-AUTH-02 Guardrail Scope (15 services) ---\n";
+
+assertPass(
+    'PLT-AUTH-02 guardrail covers AppointmentService',
+    fileContains(
+        'system/scripts/ci/guardrail_plt_auth_02_service_authorizer_enforcement.php',
+        'AppointmentService.php'
+    )
+);
+assertPass(
+    'PLT-AUTH-02 guardrail covers StaffGroupService',
+    fileContains(
+        'system/scripts/ci/guardrail_plt_auth_02_service_authorizer_enforcement.php',
+        'StaffGroupService.php'
+    )
+);
+assertPass(
+    'PLT-AUTH-02 guardrail covers ServiceService',
+    fileContains(
+        'system/scripts/ci/guardrail_plt_auth_02_service_authorizer_enforcement.php',
+        'ServiceService.php'
+    )
+);
+assertPass(
+    'PLT-AUTH-02 guardrail covers BranchOperatingHoursService',
+    fileContains(
+        'system/scripts/ci/guardrail_plt_auth_02_service_authorizer_enforcement.php',
+        'BranchOperatingHoursService.php'
+    )
+);
+
+// ---------------------------------------------------------------------------
+// GROUP 18: PLT-MFA-01 verifier + guardrail present
+// ---------------------------------------------------------------------------
+echo "\n--- GROUP 18: PLT-MFA-01 Proof Artifacts ---\n";
+
+assertPass(
+    'verify_plt_mfa_01_privileged_plane_step_up_auth_01.php exists',
+    fileExists('system/scripts/read-only/verify_plt_mfa_01_privileged_plane_step_up_auth_01.php')
+);
+assertPass(
+    'guardrail_plt_mfa_01_privileged_plane_step_up.php exists',
+    fileExists('system/scripts/ci/guardrail_plt_mfa_01_privileged_plane_step_up.php')
+);
+
+// ---------------------------------------------------------------------------
 // Summary
 // ---------------------------------------------------------------------------
 echo "\n=============================================================\n";

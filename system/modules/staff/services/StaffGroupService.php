@@ -8,6 +8,10 @@ use Core\App\Application;
 use Core\App\Database;
 use Core\Audit\AuditService;
 use Core\Branch\BranchContext;
+use Core\Kernel\Authorization\AuthorizerInterface;
+use Core\Kernel\Authorization\ResourceAction;
+use Core\Kernel\Authorization\ResourceRef;
+use Core\Kernel\RequestContextHolder;
 use Core\Organization\OrganizationRepositoryScope;
 use Core\Permissions\PermissionService;
 use Modules\Staff\Repositories\StaffGroupRepository;
@@ -23,12 +27,17 @@ final class StaffGroupService
         private Database $db,
         private OrganizationRepositoryScope $orgScope,
         private PermissionService $permissions,
+        private RequestContextHolder $contextHolder,
+        private AuthorizerInterface $authorizer,
     ) {
     }
 
     public function create(array $data): int
     {
         return $this->transactional(function () use ($data): int {
+            $ctx = $this->contextHolder->requireContext();
+            $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::STAFF_MANAGE, ResourceRef::collection('staff'));
             $branchId = $this->resolveBranchScope($data['branch_id'] ?? null);
             $name = $this->normalizeName((string) ($data['name'] ?? ''));
             if ($this->groups->activeNameExists($branchId, $name)) {
@@ -53,6 +62,9 @@ final class StaffGroupService
     public function update(int $id, array $data): void
     {
         $this->transactional(function () use ($id, $data): void {
+            $ctx = $this->contextHolder->requireContext();
+            $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::STAFF_MANAGE, ResourceRef::instance('staff', $id));
             $group = $this->requireGroup($id);
             $name = $this->normalizeName((string) ($data['name'] ?? ''));
             if ($this->groups->activeNameExistsInTenantScope($this->tenantBranchContextId(), $group['branch_id'] !== null ? (int) $group['branch_id'] : null, $name, $id)) {
@@ -81,6 +93,9 @@ final class StaffGroupService
     public function deactivate(int $id): void
     {
         $this->transactional(function () use ($id): void {
+            $ctx = $this->contextHolder->requireContext();
+            $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::STAFF_MANAGE, ResourceRef::instance('staff', $id));
             $group = $this->requireGroup($id);
             if ((int) ($group['is_active'] ?? 0) === 0) {
                 return;
@@ -99,6 +114,9 @@ final class StaffGroupService
     public function attachStaff(int $groupId, int $staffId): void
     {
         $this->transactional(function () use ($groupId, $staffId): void {
+            $ctx = $this->contextHolder->requireContext();
+            $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::STAFF_MANAGE, ResourceRef::instance('staff', $groupId));
             $group = $this->requireGroup($groupId);
             if ((int) ($group['is_active'] ?? 0) !== 1) {
                 throw new \DomainException('Cannot attach staff to an inactive group.');
@@ -121,6 +139,9 @@ final class StaffGroupService
     public function detachStaff(int $groupId, int $staffId): void
     {
         $this->transactional(function () use ($groupId, $staffId): void {
+            $ctx = $this->contextHolder->requireContext();
+            $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::STAFF_MANAGE, ResourceRef::instance('staff', $groupId));
             $group = $this->requireGroup($groupId);
             if (!$this->groups->hasMember($groupId, $staffId)) {
                 throw new \DomainException('Staff member is not attached to this group.');

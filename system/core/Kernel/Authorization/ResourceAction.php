@@ -26,6 +26,7 @@ enum ResourceAction: string
     case APPOINTMENT_CREATE     = 'appointment:create';
     case APPOINTMENT_MODIFY     = 'appointment:modify';
     case APPOINTMENT_CANCEL     = 'appointment:cancel';
+    case APPOINTMENT_DELETE     = 'appointment:delete';
 
     // -- Clients --
     case CLIENT_VIEW            = 'client:view';
