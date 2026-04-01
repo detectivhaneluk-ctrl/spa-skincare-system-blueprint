@@ -10,6 +10,7 @@ use Core\App\SettingsService;
 use Core\Audit\AuditService;
 use Core\Branch\BranchContext;
 use Core\Organization\OrganizationRepositoryScope;
+use Core\Organization\OutOfBandLifecycleGuard;
 use Modules\Memberships\Repositories\ClientMembershipRepository;
 use Modules\Memberships\Repositories\MembershipBillingCycleRepository;
 use Modules\Memberships\Repositories\MembershipDefinitionRepository;
@@ -39,7 +40,8 @@ final class MembershipBillingService
         private AuditService $audit,
         private SettingsService $settings,
         private BranchContext $branchContext,
-        private OrganizationRepositoryScope $orgScope
+        private OrganizationRepositoryScope $orgScope,
+        private OutOfBandLifecycleGuard $lifecycleGuard
     ) {
     }
 
@@ -102,10 +104,21 @@ final class MembershipBillingService
     {
         $ids = $this->cycles->listDueClientMembershipIds($branchId);
         $stats = ['examined' => count($ids), 'invoiced' => 0, 'skipped' => 0, 'errors' => []];
+        /** @var array<int, bool> $lifecycleCache */
+        $lifecycleCache = [];
         foreach ($ids as $row) {
             $cmId = (int) ($row['id'] ?? 0);
             $mbr = isset($row['branch_id']) && $row['branch_id'] !== '' && $row['branch_id'] !== null
                 ? (int) $row['branch_id'] : null;
+            if ($mbr !== null && $mbr > 0) {
+                if (!array_key_exists($mbr, $lifecycleCache)) {
+                    $lifecycleCache[$mbr] = $this->lifecycleGuard->isExecutionAllowedForBranch($mbr);
+                }
+                if (!$lifecycleCache[$mbr]) {
+                    ++$stats['skipped'];
+                    continue;
+                }
+            }
             try {
                 $r = $this->transactional(fn () => $this->processDueRenewalSingle($cmId, $mbr));
                 if ($r === 'invoiced') {

@@ -10,6 +10,7 @@ use Core\App\SettingsService;
 use Core\Audit\AuditService;
 use Core\Contracts\DistributedLockInterface;
 use Core\Kernel\RequestContextHolder;
+use Core\Organization\OutOfBandLifecycleGuard;
 use Modules\Appointments\Repositories\AppointmentRepository;
 use Modules\Appointments\Repositories\WaitlistRepository;
 use Modules\Notifications\Services\NotificationService;
@@ -48,7 +49,8 @@ final class WaitlistService
         private NotificationService $notifications,
         private OutboundTransactionalNotificationService $outboundTransactional,
         private AvailabilityService $availability,
-        private DistributedLockInterface $distributedLock
+        private DistributedLockInterface $distributedLock,
+        private OutOfBandLifecycleGuard $lifecycleGuard
     ) {
     }
 
@@ -510,12 +512,24 @@ final class WaitlistService
         $offersExpired = 0;
         $chainedAttempts = 0;
         $chainedCreated = 0;
+        $lifecycleSkipped = 0;
         $errors = [];
+        /** @var array<int, bool> $lifecycleCache */
+        $lifecycleCache = [];
 
         foreach ($rows as $r) {
             try {
                 $id = (int) $r['id'];
                 $bid = $r['branch_id'] !== null && $r['branch_id'] !== '' ? (int) $r['branch_id'] : null;
+                if ($bid !== null && $bid > 0) {
+                    if (!array_key_exists($bid, $lifecycleCache)) {
+                        $lifecycleCache[$bid] = $this->lifecycleGuard->isExecutionAllowedForBranch($bid);
+                    }
+                    if (!$lifecycleCache[$bid]) {
+                        ++$lifecycleSkipped;
+                        continue;
+                    }
+                }
                 $this->suppressStaleWaitlistOfferOutbound($id, $bid, 'expired');
                 $before = $this->repo->find($id);
                 $this->notifyWaitlistOfferExpiredIfEnabled($id, $bid, $before);
@@ -552,6 +566,7 @@ final class WaitlistService
             'chained_not_reoffered' => $offersExpired - $chainedCreated,
             'errors' => $errors,
             'lock_held' => false,
+            'lifecycle_skipped' => $lifecycleSkipped,
         ];
     }
 

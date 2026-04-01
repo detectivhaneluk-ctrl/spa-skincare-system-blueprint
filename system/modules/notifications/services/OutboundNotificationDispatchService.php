@@ -7,6 +7,7 @@ namespace Modules\Notifications\Services;
 use Core\App\Config;
 use Core\Audit\AuditService;
 use Core\Contracts\OutboundMailTransportInterface;
+use Core\Organization\OutOfBandLifecycleGuard;
 use Modules\Notifications\Repositories\OutboundNotificationAttemptRepository;
 use Modules\Notifications\Repositories\OutboundNotificationMessageRepository;
 use Modules\Notifications\Services\OutboundChannelPolicy;
@@ -32,7 +33,8 @@ final class OutboundNotificationDispatchService
         private AuditService $audit,
         private LogOutboundMailTransport $logMail,
         private PhpMailOutboundTransport $phpMail,
-        private SmtpOutboundMailTransport $smtpMail
+        private SmtpOutboundMailTransport $smtpMail,
+        private OutOfBandLifecycleGuard $lifecycleGuard
     ) {
     }
 
@@ -60,7 +62,10 @@ final class OutboundNotificationDispatchService
             'sent_legacy_compatible' => 0,
             'reclaimed_stale' => 0,
             'retry_scheduled' => 0,
+            'lifecycle_skipped' => 0,
         ];
+        /** @var array<int, bool> $lifecycleCache */
+        $lifecycleCache = [];
 
         $staleMinutes = (int) $this->config->get('outbound.dispatch_stale_claim_minutes', 15);
         $staleMinutes = max(1, min(1440, $staleMinutes));
@@ -81,6 +86,16 @@ final class OutboundNotificationDispatchService
             $branchId = isset($row['branch_id']) && $row['branch_id'] !== '' && $row['branch_id'] !== null
                 ? (int) $row['branch_id']
                 : null;
+            if ($branchId !== null && $branchId > 0) {
+                if (!array_key_exists($branchId, $lifecycleCache)) {
+                    $lifecycleCache[$branchId] = $this->lifecycleGuard->isExecutionAllowedForBranch($branchId);
+                }
+                if (!$lifecycleCache[$branchId]) {
+                    $this->messages->finishClaimedSkipped($id, 'org_lifecycle_suspended');
+                    ++$stats['lifecycle_skipped'];
+                    continue;
+                }
+            }
             if (!OutboundChannelPolicy::isOperational($channel)) {
                 $n = $this->attempts->nextAttemptNo($id);
                 if ($channel === 'sms') {

@@ -10,6 +10,7 @@ use Core\App\SettingsService;
 use Core\Audit\AuditService;
 use Core\Branch\BranchContext;
 use Core\Organization\OrganizationRepositoryScope;
+use Core\Organization\OutOfBandLifecycleGuard;
 use Modules\Memberships\Repositories\ClientMembershipRepository;
 
 /**
@@ -26,7 +27,8 @@ final class MembershipLifecycleService
         private BranchContext $branchContext,
         private OrganizationRepositoryScope $orgScope,
         private SettingsService $settings,
-        private MembershipBillingService $membershipBilling
+        private MembershipBillingService $membershipBilling,
+        private OutOfBandLifecycleGuard $lifecycleGuard
     ) {
     }
 
@@ -227,6 +229,8 @@ final class MembershipLifecycleService
         $today = new \DateTimeImmutable('today');
         $updatedBy = $this->currentUserId();
         $n = 0;
+        /** @var array<int, bool> $lifecycleCache */
+        $lifecycleCache = [];
         foreach ($candidates as $row) {
             $ends = trim((string) ($row['ends_at'] ?? ''));
             if ($ends === '' || preg_match('/^\d{4}-\d{2}-\d{2}$/', $ends) !== 1) {
@@ -234,6 +238,12 @@ final class MembershipLifecycleService
             }
             $lockBranch = (int) ($row['lock_branch_id'] ?? 0);
             if ($lockBranch <= 0) {
+                continue;
+            }
+            if (!array_key_exists($lockBranch, $lifecycleCache)) {
+                $lifecycleCache[$lockBranch] = $this->lifecycleGuard->isExecutionAllowedForBranch($lockBranch);
+            }
+            if (!$lifecycleCache[$lockBranch]) {
                 continue;
             }
             $graceDays = max(0, (int) ($this->settings->getMembershipSettings($lockBranch)['grace_period_days'] ?? 0));

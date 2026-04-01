@@ -285,7 +285,7 @@ See PLT-AUTH-02 CLOSED section above. Final proof: **137/137** assertions pass.
 
 | ID | Item | Notes |
 |----|------|-------|
-| — | No current LIVE task | `OUT-OF-BAND-INTEGRITY-AND-WORKER-LIFECYCLE-CLOSURE-01` is `CLOSED` (2026-04-01). Evidence: `verify_out_of_band_integrity_and_worker_lifecycle_closure_01.php` 25/25 PASS, `guardrail_out_of_band_integrity_and_worker_lifecycle_closure_01.php` 9/9 PASS, `smoke_out_of_band_integrity_and_worker_lifecycle_closure_01.php` 4/4 PASS, canonical release law `ACCEPTED` (report SHA256 `6d44215b75b299e3cd2ff8f534da84a5c17ab7327ba24b3719ae77a91acf8c1f`). Promote the next task explicitly before implementation. |
+| BACKGROUND-FLOW-FAIL-CLOSED-CLOSURE-01 | Background/non-HTTP fail-closed family closure | **LIVE** (2026-04-01). Closes the remaining multi-branch global sweep paths: `memberships_cron.php` (expiry + billing + reminders), `waitlist_expire_offers.php`, `NotificationsOutboundDrainHandler`. All audited background surfaces must be fail-closed on lifecycle/context mismatch via canonical `OutOfBandLifecycleGuard` before any mutation or dispatch. |
 
 ---
 
@@ -293,7 +293,7 @@ See PLT-AUTH-02 CLOSED section above. Final proof: **137/137** assertions pass.
 
 | ID | Item | Notes |
 |----|------|-------|
-| — | No PARKED/NEXT task | `OUT-OF-BAND-INTEGRITY-AND-WORKER-LIFECYCLE-CLOSURE-01` is closed. No successor is promoted in this task. |
+| — | No PARKED/NEXT task | To be promoted after `BACKGROUND-FLOW-FAIL-CLOSED-CLOSURE-01` closes. |
 
 ---
 

@@ -17,6 +17,25 @@ final class OutOfBandLifecycleGuard
     ) {
     }
 
+    /**
+     * Non-throwing variant for use inside global sweep iterations (e.g. per-row in a cron pass).
+     * Returns false when the branch or its parent organization is suspended, deleted, or unavailable.
+     * Actor checks are skipped — intended for system-initiated background sweeps with no human actor.
+     * Callers that iterate many rows for the same branch should cache results locally to avoid N+1 queries.
+     */
+    public function isExecutionAllowedForBranch(int $branchId, ?int $organizationId = null): bool
+    {
+        if ($branchId <= 0) {
+            return false;
+        }
+        try {
+            $this->assertExecutionAllowedForBranch($branchId, $organizationId);
+            return true;
+        } catch (\DomainException) {
+            return false;
+        }
+    }
+
     public function assertExecutionAllowedForBranch(int $branchId, ?int $organizationId = null, ?int $actorUserId = null): void
     {
         if ($branchId <= 0) {

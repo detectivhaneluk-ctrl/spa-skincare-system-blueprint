@@ -9,6 +9,7 @@ use Core\App\Database;
 use Core\App\SettingsService;
 use Core\Audit\AuditService;
 use Core\Branch\BranchContext;
+use Core\Organization\OutOfBandLifecycleGuard;
 use Modules\Clients\Repositories\ClientRepository;
 use Modules\Memberships\Repositories\ClientMembershipRepository;
 use Modules\Memberships\Repositories\MembershipBenefitUsageRepository;
@@ -48,7 +49,8 @@ final class MembershipService
         private NotificationService $notifications,
         private OutboundTransactionalNotificationService $outboundTransactional,
         private MembershipBillingService $membershipBilling,
-        private MembershipLifecycleService $lifecycle
+        private MembershipLifecycleService $lifecycle,
+        private OutOfBandLifecycleGuard $lifecycleGuard
     ) {
     }
 
@@ -784,16 +786,28 @@ final class MembershipService
             'skipped_duplicate' => 0,
             'skipped_disabled_or_zero_reminder' => 0,
             'skipped_notifications_disabled' => 0,
+            'skipped_lifecycle_suspended' => 0,
             'outreach_pending_enqueued' => 0,
             'outreach_duplicate_ignored' => 0,
             'outreach_skipped' => 0,
             'outreach_failed' => 0,
         ];
+        /** @var array<int, bool> $lifecycleCache */
+        $lifecycleCache = [];
 
         foreach ($rows as $row) {
             $branchId = isset($row['branch_id']) && $row['branch_id'] !== '' && $row['branch_id'] !== null
                 ? (int) $row['branch_id']
                 : null;
+            if ($branchId !== null && $branchId > 0) {
+                if (!array_key_exists($branchId, $lifecycleCache)) {
+                    $lifecycleCache[$branchId] = $this->lifecycleGuard->isExecutionAllowedForBranch($branchId);
+                }
+                if (!$lifecycleCache[$branchId]) {
+                    ++$stats['skipped_lifecycle_suspended'];
+                    continue;
+                }
+            }
             $settings = $this->settings->getMembershipSettings($branchId);
             $reminderDays = max(0, (int) ($settings['renewal_reminder_days'] ?? 0));
             if ($reminderDays <= 0) {
