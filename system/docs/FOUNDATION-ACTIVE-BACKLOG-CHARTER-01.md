@@ -1,4 +1,4 @@
-# Foundation active backlog — CHARTER-01 (normalized)
+﻿# Foundation active backlog — CHARTER-01 (normalized)
 
 **Backbone Closure Mode — live execution queue:** This file is the **only** place that may list **LIVE** implementation work.  
 **Master execution plan:** `BACKBONE-CLOSURE-MASTER-PLAN-01.md`  
@@ -9,7 +9,7 @@
 > **SCALE WAVE LAUNCH — 2026-03-31 (status updated 2026-04-01):**  
 > Foundation A1–A7 (all phases), PLT-Q-01, WAVE-01 through WAVE-06 are all **CLOSED**. PLT-AUTH-02 is **CLOSED** (full closure 2026-04-01). PLT-MFA-01 is **CLOSED** (2026-04-01).  
 > The scale-wave campaign ran in `SCALE-WAVE-EXECUTION-CHARTER-01.md` — WAVE-01 through WAVE-06 all DONE.  
-> **WAVE-07 (READ/WRITE ROUTING + PROXYSQL RUNTIME PROOF) is now LIVE (promoted 2026-04-01).** Candidate chosen: READ/WRITE ROUTING. Alternative candidate (shard-readiness hotspots) not selected this wave.  
+> **WAVE-07 (READ/WRITE ROUTING + PROXYSQL RUNTIME PROOF) is CLOSED (2026-04-01).** Candidate chosen: READ/WRITE ROUTING. Alternative candidate (shard-readiness hotspots) not selected this wave.  
 > See `system/docs/SCALE-WAVE-EXECUTION-CHARTER-01.md` §WAVE-07 for full spec and proof contract.  
 > PLT-AUTH-02 remaining surfaces were **fully closed** by `PRIVILEGED-PLANE-CLOSURE-AND-STEP-UP-AUTH-01` (2026-04-01): 15 services wired, 137/137 verifier assertions pass. See PRIVILEGED-PLANE-CLOSURE-AND-STEP-UP-AUTH-01 section below.
 
@@ -285,7 +285,7 @@ See PLT-AUTH-02 CLOSED section above. Final proof: **137/137** assertions pass.
 
 | ID | Item | Notes |
 |----|------|-------|
-| **WAVE-07** | READ/WRITE ROUTING + PROXYSQL RUNTIME PROOF | Promoted 2026-04-01. Candidate chosen: READ/WRITE ROUTING (ProxySQL runtime proof). Alternative candidate (shard-readiness hotspots) not selected. `ReadWriteConnectionResolver` + `ReadQueryExecutor` + sticky-primary + `AvailabilityService::listDayAppointmentsGroupedByStaff` replica-eligible wiring. See `SCALE-WAVE-EXECUTION-CHARTER-01.md` §WAVE-07. |
+| **WAVE-07** | READ/WRITE ROUTING + PROXYSQL RUNTIME PROOF | CLOSED 2026-04-01. 11 replica-eligible display reads (appointment/client/service/staff/availability); locking/conflict/correctness paths stay primary. Verifier 109 PASS, guardrail 41 PASS. See `SCALE-WAVE-EXECUTION-CHARTER-01.md` WAVE-07 CLOSURE VERDICT. |
 
 ---
 
@@ -293,13 +293,13 @@ See PLT-AUTH-02 CLOSED section above. Final proof: **137/137** assertions pass.
 
 | ID | Item | Notes |
 |----|------|-------|
-| — | No PARKED/NEXT task | WAVE-07 is currently LIVE. After WAVE-07 closes, the next candidate is **WAVE-07b — HIGH-RISK SHARD-READINESS HOTSPOTS** or the next scale-wave promotion per `SCALE-WAVE-EXECUTION-CHARTER-01.md`. |
+| — | No PARKED/NEXT task | WAVE-07 is CLOSED (2026-04-01). The next candidate is **HIGH-RISK SHARD-READINESS HOTSPOTS** or the next scale-wave promotion per `SCALE-WAVE-EXECUTION-CHARTER-01.md`. |
 
 ---
 
 ## FOUNDATION ROADMAP (A1–A8) — 2026 Foundation Plan
 
-Full ordered roadmap. **FOUNDATION-A1..A7 PHASE-4** are all CLOSED. All FOUNDATION-A7 phases complete. **PLT-Q-01** is CLOSED. **PLT-AUTH-02** is CLOSED (2026-04-01, full closure). **PLT-MFA-01** is CLOSED (2026-04-01). **WAVE-07 is LIVE (promoted 2026-04-01).** Remaining items are **PLANNED** inventory — not in-progress, not concurrent.
+Full ordered roadmap. **FOUNDATION-A1..A7 PHASE-4** are all CLOSED. All FOUNDATION-A7 phases complete. **PLT-Q-01** is CLOSED. **PLT-AUTH-02** is CLOSED (2026-04-01, full closure). **PLT-MFA-01** is CLOSED (2026-04-01). **WAVE-07 is CLOSED (2026-04-01).** Remaining items are **PLANNED** inventory — not in-progress, not concurrent.
 
 | Order | ID | Name | Status | Notes |
 |-------|----|------|--------|-------|

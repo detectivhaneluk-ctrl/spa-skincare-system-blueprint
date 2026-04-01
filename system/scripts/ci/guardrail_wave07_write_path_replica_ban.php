@@ -283,7 +283,72 @@ if (file_exists($staffRepoFile)) {
 
 echo "\n";
 
-// ─── Summary ───
+// ─── G7-G: WAVE-07C — appointment locking, conflict, and write-adjacent methods must NOT use forRead() ───
+
+echo "G7-G: WAVE-07C — appointment locking, conflict-check, and write-adjacent methods stay primary\n";
+
+$apptRepoFile = $repoRoot . '/system/modules/appointments/repositories/AppointmentRepository.php';
+if (file_exists($apptRepoFile)) {
+    $arc = (string) file_get_contents($apptRepoFile);
+
+    // loadForUpdate — FOR UPDATE locking
+    $lfuPos = strpos($arc, 'public function loadForUpdate(TenantContext $ctx, int $id): ?array');
+    $lfuEnd = $lfuPos !== false ? strpos($arc, "\n    public function ", $lfuPos + 50) : false;
+    if ($lfuPos !== false && $lfuEnd !== false) {
+        w7guard_assert(!str_contains(substr($arc, $lfuPos, $lfuEnd - $lfuPos), '->forRead()'), 'AppointmentRepository::loadForUpdate() does NOT use forRead() — FOR UPDATE locking must stay primary');
+    } else {
+        w7guard_assert(false, 'AppointmentRepository::loadForUpdate() boundary not found');
+    }
+
+    // findForUpdate — FOR UPDATE locking
+    $ffuPos = strpos($arc, 'public function findForUpdate(int $id): ?array');
+    $ffuEnd = $ffuPos !== false ? strpos($arc, "\n    public function ", $ffuPos + 50) : false;
+    if ($ffuPos !== false && $ffuEnd !== false) {
+        w7guard_assert(!str_contains(substr($arc, $ffuPos, $ffuEnd - $ffuPos), '->forRead()'), 'AppointmentRepository::findForUpdate() does NOT use forRead() — FOR UPDATE locking must stay primary');
+    } else {
+        w7guard_assert(false, 'AppointmentRepository::findForUpdate() boundary not found');
+    }
+
+    // hasStaffConflict — booking conflict check
+    $hscPos = strpos($arc, 'public function hasStaffConflict(');
+    $hscEnd = $hscPos !== false ? strpos($arc, "\n    public function ", $hscPos + 50) : false;
+    if ($hscPos !== false && $hscEnd !== false) {
+        w7guard_assert(!str_contains(substr($arc, $hscPos, $hscEnd - $hscPos), '->forRead()'), 'AppointmentRepository::hasStaffConflict() does NOT use forRead() — booking conflict check must be authoritative');
+    } else {
+        w7guard_assert(false, 'AppointmentRepository::hasStaffConflict() boundary not found');
+    }
+
+    // hasRoomConflict — booking conflict check (followed by private method, use private boundary)
+    $hrcPos = strpos($arc, 'public function hasRoomConflict(');
+    $hrcEnd = $hrcPos !== false ? strpos($arc, "\n    private function ", $hrcPos + 50) : false;
+    if ($hrcPos !== false && $hrcEnd !== false) {
+        w7guard_assert(!str_contains(substr($arc, $hrcPos, $hrcEnd - $hrcPos), '->forRead()'), 'AppointmentRepository::hasRoomConflict() does NOT use forRead() — booking conflict check must be authoritative');
+    } else {
+        w7guard_assert(false, 'AppointmentRepository::hasRoomConflict() boundary not found');
+    }
+
+    // lockRoomRowForConflictCheck — explicit row lock
+    $lrrPos = strpos($arc, 'public function lockRoomRowForConflictCheck(');
+    $lrrEnd = $lrrPos !== false ? strpos($arc, "\n    public function ", $lrrPos + 50) : false;
+    if ($lrrPos !== false && $lrrEnd !== false) {
+        w7guard_assert(!str_contains(substr($arc, $lrrPos, $lrrEnd - $lrrPos), '->forRead()'), 'AppointmentRepository::lockRoomRowForConflictCheck() does NOT use forRead() — room row lock must stay primary');
+    } else {
+        w7guard_assert(false, 'AppointmentRepository::lockRoomRowForConflictCheck() boundary not found');
+    }
+
+    // find() — single-record, read-your-write concern (redirect target after write)
+    $findPos = strpos($arc, 'public function find(int $id, bool $withTrashed = false): ?array');
+    $findEnd = $findPos !== false ? strpos($arc, "\n    public function ", $findPos + 50) : false;
+    if ($findPos !== false && $findEnd !== false) {
+        w7guard_assert(!str_contains(substr($arc, $findPos, $findEnd - $findPos), '->forRead()'), 'AppointmentRepository::find() does NOT use forRead() — redirect target after write (read-your-write)');
+    } else {
+        w7guard_assert(false, 'AppointmentRepository::find() boundary not found');
+    }
+} else {
+    w7guard_assert(false, 'AppointmentRepository.php not found');
+}
+
+echo "\n";
 
 $total = $pass + $fail;
 echo "=== WAVE-07 GUARDRAIL SUMMARY ===\n";

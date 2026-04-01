@@ -139,7 +139,11 @@ final class AppointmentRepository
         $params[] = $limit;
         $params[] = $offset;
 
-        return $this->db->fetchAll($sql, $params);
+        // WAVE-07C: display-only paginated appointment list — replica-eligible.
+        // Only called from AppointmentController::index() (pure GET); all write actions
+        // (create/cancel/reschedule/updateStatus/delete) redirect before this runs.
+        // Booking conflict checks (hasStaffConflict, hasRoomConflict, loadForUpdate) stay primary.
+        return $this->db->forRead()->fetchAll($sql, $params);
     }
 
     public function count(array $filters = []): int
@@ -175,7 +179,8 @@ final class AppointmentRepository
         $sql .= $frag['sql'];
         $params = array_merge($params, $frag['params']);
 
-        $row = $this->db->fetchOne($sql, $params);
+        // WAVE-07C: display count companion — replica-eligible for same reason as list().
+        $row = $this->db->forRead()->fetchOne($sql, $params);
         return (int) ($row['c'] ?? 0);
     }
 

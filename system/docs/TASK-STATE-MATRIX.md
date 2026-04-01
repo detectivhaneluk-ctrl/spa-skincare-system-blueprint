@@ -1,8 +1,8 @@
-# Task State Matrix
+﻿# Task State Matrix
 
 > **ARCHITECTURE RESET - 2026-03-31:** The previous LIVE task (`PLT-TNT-01`) has been **ARCHIVED / SUPERSEDED** by the 2026 Architecture Reset. The active roadmap is now **FOUNDATION-A1..A8**. The LIVE execution queue is `FOUNDATION-ACTIVE-BACKLOG-CHARTER-01.md`. Strategy document: `docs/ARCHITECTURE-RESET-2026-CANONICAL-ROADMAP.md`. This matrix remains the **full status inventory** - its `OPEN`/`PARTIAL`/`REOPENED` rows are evidence records, not active sprint items.
 
-> **SCALE-HARDENING CAMPAIGN - 2026-03-31:** A separate campaign track runs in `SCALE-WAVE-EXECUTION-CHARTER-01.md`. WAVE-01 through WAVE-06 are all **DONE**. **WAVE-07 (READ/WRITE ROUTING + PROXYSQL RUNTIME PROOF) is LIVE (promoted 2026-04-01).** See that charter for canonical status. Some rows in this matrix (e.g. PLT-REDIS-01, PLT-SESS-01) have been updated to reflect wave closures.
+> **SCALE-HARDENING CAMPAIGN - 2026-03-31:** A separate campaign track runs in `SCALE-WAVE-EXECUTION-CHARTER-01.md`. WAVE-01 through WAVE-06 are all **DONE**. **WAVE-07 (READ/WRITE ROUTING + PROXYSQL RUNTIME PROOF) is CLOSED (2026-04-01).** See that charter for canonical status. Some rows in this matrix (e.g. PLT-REDIS-01, PLT-SESS-01) have been updated to reflect wave closures.
 
 Date: 2026-03-29 (addendum **02** deep findings; backbone closure canonicalization; **ACTIVE-SPINE-TIGHTENING-02**)  
 Rule: status is assigned from runtime/code truth, not narrative closure. **`BOOKER-PARITY-MASTER-ROADMAP.md` §3.1** uses the same labels (Booker doc is **deferred** for execution — see banner there). This file is the **strictest status/evidence source** (`CLOSED` / `PARTIAL` / `OPEN` / `REOPENED` / `AUDIT-ONLY` / `PLANNED`).  

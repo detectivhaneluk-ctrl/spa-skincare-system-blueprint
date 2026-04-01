@@ -357,6 +357,84 @@ if ($staffFbuPos !== false && $staffFbuEnd !== false) {
 
 echo "\n";
 
+// ─── W7-M: WAVE-07C — appointment display/list replica-eligible surfaces ───
+
+echo "W7-M: WAVE-07C — appointment display/list replica-eligible surfaces\n";
+
+$apptRepoFile = $repoRoot . '/system/modules/appointments/repositories/AppointmentRepository.php';
+wave07_assert(file_exists($apptRepoFile), 'AppointmentRepository.php exists');
+
+// list() wired to forRead()
+wave07_file_contains($apptRepoFile, '// WAVE-07C: display-only paginated appointment list — replica-eligible.', 'AppointmentRepository::list() has WAVE-07C audit comment');
+wave07_file_contains($apptRepoFile, "return \$this->db->forRead()->fetchAll(\$sql, \$params);", 'AppointmentRepository::list() uses forRead() for replica routing');
+
+// count() wired to forRead()
+wave07_file_contains($apptRepoFile, '// WAVE-07C: display count companion — replica-eligible for same reason as list().', 'AppointmentRepository::count() has WAVE-07C audit comment');
+wave07_file_contains($apptRepoFile, "\$row = \$this->db->forRead()->fetchOne(\$sql, \$params);\n        return (int) (\$row['c'] ?? 0);\n    }\n\n    public function create(", 'AppointmentRepository::count() uses forRead() for replica routing');
+
+// Verify protected appointment paths do NOT use forRead()
+$apptRepoContent = (string) file_get_contents($apptRepoFile);
+
+// find() — single-record, redirect target after write (read-your-write concern)
+$findPos = strpos($apptRepoContent, 'public function find(int $id, bool $withTrashed = false): ?array');
+$findEnd = $findPos !== false ? strpos($apptRepoContent, "\n    public function ", $findPos + 50) : false;
+if ($findPos !== false && $findEnd !== false) {
+    wave07_assert(!str_contains(substr($apptRepoContent, $findPos, $findEnd - $findPos), '->forRead()'), 'AppointmentRepository::find() does NOT use forRead() — redirect target after write (read-your-write)');
+} else {
+    wave07_assert(false, 'AppointmentRepository::find() boundary not found');
+}
+
+// loadForUpdate() — FOR UPDATE locking read
+$lfuPos = strpos($apptRepoContent, 'public function loadForUpdate(TenantContext $ctx, int $id): ?array');
+$lfuEnd = $lfuPos !== false ? strpos($apptRepoContent, "\n    public function ", $lfuPos + 50) : false;
+if ($lfuPos !== false && $lfuEnd !== false) {
+    wave07_assert(!str_contains(substr($apptRepoContent, $lfuPos, $lfuEnd - $lfuPos), '->forRead()'), 'AppointmentRepository::loadForUpdate() does NOT use forRead() — FOR UPDATE locking requires primary');
+} else {
+    wave07_assert(false, 'AppointmentRepository::loadForUpdate() boundary not found');
+}
+
+// findForUpdate() — FOR UPDATE locking read
+$ffuPos = strpos($apptRepoContent, 'public function findForUpdate(int $id): ?array');
+$ffuEnd = $ffuPos !== false ? strpos($apptRepoContent, "\n    public function ", $ffuPos + 50) : false;
+if ($ffuPos !== false && $ffuEnd !== false) {
+    wave07_assert(!str_contains(substr($apptRepoContent, $ffuPos, $ffuEnd - $ffuPos), '->forRead()'), 'AppointmentRepository::findForUpdate() does NOT use forRead() — FOR UPDATE locking requires primary');
+} else {
+    wave07_assert(false, 'AppointmentRepository::findForUpdate() boundary not found');
+}
+
+// hasStaffConflict() — booking correctness, must stay primary
+$hscPos = strpos($apptRepoContent, 'public function hasStaffConflict(');
+$hscEnd = $hscPos !== false ? strpos($apptRepoContent, "\n    public function ", $hscPos + 50) : false;
+if ($hscPos !== false && $hscEnd !== false) {
+    wave07_assert(!str_contains(substr($apptRepoContent, $hscPos, $hscEnd - $hscPos), '->forRead()'), 'AppointmentRepository::hasStaffConflict() does NOT use forRead() — conflict check must be authoritative');
+} else {
+    wave07_assert(false, 'AppointmentRepository::hasStaffConflict() boundary not found');
+}
+
+// hasRoomConflict — booking conflict check (followed by private method, use private boundary)
+$hrcPos = strpos($apptRepoContent, 'public function hasRoomConflict(');
+$hrcEnd = $hrcPos !== false ? strpos($apptRepoContent, "\n    private function ", $hrcPos + 50) : false;
+if ($hrcPos !== false && $hrcEnd !== false) {
+    wave07_assert(!str_contains(substr($apptRepoContent, $hrcPos, $hrcEnd - $hrcPos), '->forRead()'), 'AppointmentRepository::hasRoomConflict() does NOT use forRead() — conflict check must be authoritative');
+} else {
+    wave07_assert(false, 'AppointmentRepository::hasRoomConflict() boundary not found');
+}
+
+// lockRoomRowForConflictCheck() — explicit row lock
+$lrrPos = strpos($apptRepoContent, 'public function lockRoomRowForConflictCheck(');
+$lrrEnd = $lrrPos !== false ? strpos($apptRepoContent, "\n    public function ", $lrrPos + 50) : false;
+if ($lrrPos !== false && $lrrEnd !== false) {
+    wave07_assert(!str_contains(substr($apptRepoContent, $lrrPos, $lrrEnd - $lrrPos), '->forRead()'), 'AppointmentRepository::lockRoomRowForConflictCheck() does NOT use forRead() — room row lock requires primary');
+} else {
+    wave07_assert(false, 'AppointmentRepository::lockRoomRowForConflictCheck() boundary not found');
+}
+
+// AvailabilityService day-calendar path still uses forRead() (WAVE-07 initial)
+$availFile = $repoRoot . '/system/modules/appointments/services/AvailabilityService.php';
+wave07_file_contains($availFile, '$this->db->forRead()->fetchAll($sql, $params)', 'AvailabilityService::listDayAppointmentsGroupedByStaff still uses forRead() (WAVE-07 initial, unchanged)');
+
+echo "\n";
+
 // ─── Summary ───
 
 $total = $pass + $fail;

@@ -1,10 +1,10 @@
-﻿# Scale Wave Execution Charter — 01
+# Scale Wave Execution Charter — 01
 
 **Date:** 2026-03-31  
-**Status:** WAVE-01 DONE · WAVE-02 DONE · WAVE-03 DONE · WAVE-04 DONE · WAVE-05 DONE · WAVE-06 DONE · WAVE-07 LIVE  
+**Status:** WAVE-01 DONE · WAVE-02 DONE · WAVE-03 DONE · WAVE-04 DONE · WAVE-05 DONE · WAVE-06 DONE · WAVE-07 DONE  
 **Authority:** Architect verdict (2026-03-31 scalability & load assessment).  
 **Relationship to FOUNDATION-A series:** Foundation A1–A7 established the tenant/auth/service kernel. This charter launches on top of that kernel to address the **runtime, infrastructure, and scale** layer. These waves do **not** reopen or contradict Foundation work — they build on it.  
-**Active queue:** This file. **WAVE-07 is LIVE** (promoted 2026-04-01). See §WAVE-07 below.  
+**Active queue:** This file. **WAVE-07 is CLOSED** (closed 2026-04-01). See §WAVE-07 below.  
 **Deferred registry:** `DEFERRED-AND-HISTORICAL-TASK-REGISTRY-01.md` (items parked per this charter).  
 **Full status inventory:** `TASK-STATE-MATRIX.md` (evidence rows; scale-campaign truth for waves **WAVE-01–WAVE-06** is **this charter**, not informal matrix rows).
 
@@ -20,6 +20,7 @@
 | WAVE-04 | **CLOSED** — safe scale ops (DDL policy, audit archival, booking rate limits, shard-readiness guardrail) | Commit `d167acf` family + policy docs |
 | WAVE-05 | **CLOSED** — `RequestLatencyMiddleware` + `PublicBookingRateLimitMiddleware` wired into global pipeline | `system/scripts/read-only/verify_wave05_live_enforcement_foundations_01.php` |
 | WAVE-06 | **CLOSED** — hot-path shared cache for permissions + day-calendar appointment list; invalidation on RBAC/staff-group and appointment/blocked-slot mutations; booking write path uncached | `system/scripts/read-only/verify_wave06_hot_path_cache_effectiveness_01.php` |
+| WAVE-07 | **CLOSED** — safe application-level read/write routing; ReadWriteConnectionResolver + ReadQueryExecutor + sticky-primary; 11 replica-eligible display reads across appointment/client/service/staff/availability; all locking and correctness paths stay primary | `system/scripts/read-only/verify_wave07_read_write_routing_01.php` (109 PASS) |
 
 **Code vs paperwork rule:** If this table disagrees with an older paragraph elsewhere in the repo, **this table wins** unless a new commit updates both.
 
@@ -28,8 +29,9 @@
 ## NEXT GATE TO OPEN NEW WAVE
 
 - **WAVE-06 is CLOSED** — do not reopen without a new charter amendment.
-- **WAVE-07 is LIVE** — promoted to LIVE in `FOUNDATION-ACTIVE-BACKLOG-CHARTER-01.md` (2026-04-01). Candidate: READ/WRITE ROUTING + PROXYSQL RUNTIME PROOF. Implementation in progress.
-- **Recommended next candidate:** **WAVE-07 — READ/WRITE ROUTING + PROXYSQL RUNTIME PROOF** — WAVE-03 delivered artifacts; proving **safe** read/write split in runtime (no correctness regression) is the natural scale step before sharding hotspots. Alternative: **WAVE-07 — HIGH-RISK SHARD-READINESS HOTSPOTS** — only if read/write routing is deferred; addresses `organization_id` hotspots under load. **Pick one** to avoid parallel “wave 7” drift.
+- **WAVE-07 is CLOSED** — closed 2026-04-01. All 109 verifier assertions pass. See §WAVE-07 CLOSURE VERDICT below.
+- **Next wave gate:** Choose one candidate: HIGH-RISK SHARD-READINESS HOTSPOTS or the next scale-wave per the architect's assessment. Promote only after this charter is updated.
+- **Alternative not selected:** WAVE-07 — HIGH-RISK SHARD-READINESS HOTSPOTS — deferred. `organization_id` hotspot work is a candidate for the wave after WAVE-07 closes.
 
 ---
 
@@ -54,7 +56,7 @@ These are in order of production urgency. The waves executed in order **WAVE-01 
 
 ## Anti-drift rules
 
-- **At most one LIVE wave** at a time; **currently none** (all listed waves DONE).
+- **At most one LIVE wave** at a time; **currently none** (WAVE-07 CLOSED 2026-04-01; WAVE-01 through WAVE-07 all DONE).
 - No UI polish, product feature expansion, or marketing automation within these waves.
 - No fake done. Every wave closes with a proof script that is machine-runnable.
 - Booking transaction correctness must remain intact. Any read-path change must not weaken final in-transaction revalidation.
@@ -262,7 +264,7 @@ See `DEFERRED-AND-HISTORICAL-TASK-REGISTRY-01.md` for full list. Summary of what
 | WAVE-04 | Safe Scale Operations | **DONE** | (included in WAVE-04 commit) | `d167acf` |
 | WAVE-05 | Live Enforcement Foundations | **DONE** | `verify_wave05_live_enforcement_foundations_01.php` (18/18 PASS) | `082c409` |
 | WAVE-06 | Hot Path Cache Effectiveness | **DONE** | `verify_wave06_hot_path_cache_effectiveness_01.php` (v3, 45 PASS) | `517056c` + corrective-closure commit |
-| WAVE-07 | READ/WRITE ROUTING + PROXYSQL RUNTIME PROOF | **LIVE** | erify_wave07_read_write_routing_01.php | *(in progress 2026-04-01)* |
+| WAVE-07 | READ/WRITE ROUTING + PROXYSQL RUNTIME PROOF | **DONE** | verify_wave07_read_write_routing_01.php (109 PASS) · guardrail_wave07_write_path_replica_ban.php (41 PASS) | b9fe2ed + 4b8d4aa + WAVE-07C closure |
 
 **What is DONE:**
 - Redis is mandatory in production; NoopSharedCache blocked at runtime startup
@@ -281,9 +283,9 @@ See `DEFERRED-AND-HISTORICAL-TASK-REGISTRY-01.md` for full list. Summary of what
 - All cache paths fail-open; Redis unavailability never breaks a production request
 - Working-hours / staff-schedule / availability-exception mutations correctly excluded from calendar-cache invalidation requirement (cache only stores appointment rows)
 
-**What was NOT started at WAVE-06 close (WAVE-07 candidates identified):**
-- Read/write routing via ProxySQL at the application layer (artifacts exist, runtime routing not wired) — **NOW LIVE as WAVE-07**
-- High-risk shard-readiness hotspots audit — alternative candidate, deferred
+**What was NOT started at WAVE-06 close (now CLOSED in WAVE-07):**
+- Read/write routing via ProxySQL at the application layer — **CLOSED in WAVE-07** (initial + WAVE-07B + WAVE-07C; verifier 109 PASS, guardrail 41 PASS)
+- High-risk shard-readiness hotspots audit — **still deferred; candidate for next wave**
 
 ---
 
@@ -295,13 +297,54 @@ See `DEFERRED-AND-HISTORICAL-TASK-REGISTRY-01.md` for full list. Summary of what
 3. Exactly one candidate chosen: READ/WRITE ROUTING + PROXYSQL RUNTIME PROOF
 4. WAVE-07 promoted to LIVE in `FOUNDATION-ACTIVE-BACKLOG-CHARTER-01.md` (2026-04-01)
 
-**WAVE-07: READ/WRITE ROUTING + PROXYSQL RUNTIME PROOF — LIVE**  
-*Implementation:* `ReadWriteConnectionResolver` + `ReadQueryExecutor` + sticky-primary + `AvailabilityService::listDayAppointmentsGroupedByStaff` replica-eligible wiring (initial surface, 2026-04-01).  
+**WAVE-07: READ/WRITE ROUTING + PROXYSQL RUNTIME PROOF — CLOSED (2026-04-01)**  
+*Initial (WAVE-07):* `ReadWriteConnectionResolver` + `ReadQueryExecutor` + sticky-primary + `AvailabilityService::listDayAppointmentsGroupedByStaff` replica-eligible wiring (2026-04-01).  
 *WAVE-07B — Expanded replica-eligible surfaces (2026-04-01):*  
 `ClientRepository::list()`, `ClientRepository::count()`, `ClientRepository::listOwnedClientsForBranch()`, `ClientRepository::countOwnedClientsForBranch()` — display-only paginated client lists.  
 `ServiceRepository::list()`, `ServiceRepository::count()` — display-only service catalog reads.  
 `StaffRepository::list()`, `StaffRepository::count()` — display-only staff list reads.  
-All 8 methods confirmed: write controllers redirect (no same-request read-after-write); `AvailabilityService` does not use `StaffRepository`; `ServiceRepository::find()` and locking/single-record variants stay on primary.  
-*Verifier:* `verify_wave07_read_write_routing_01.php` — 97 assertions PASS (W7-A through W7-L).  
-*Guardrail:* `guardrail_wave07_write_path_replica_ban.php` — 35 assertions PASS (G7-A through G7-F).  
+*WAVE-07C — Appointment display closure (2026-04-01):*  
+`AppointmentRepository::list()`, `AppointmentRepository::count()` — display-only paginated appointment list (index page only; booking conflict checks stay primary).  
+*All 11 replica-eligible methods confirmed:* write controllers redirect (no same-request read-after-write); locking/conflict/single-record variants stay primary; sticky-primary protects post-write correctness; fail-safe fallback on replica unavailability.  
+*Verifier:* `verify_wave07_read_write_routing_01.php` — 109 assertions PASS (W7-A through W7-M).  
+*Guardrail:* `guardrail_wave07_write_path_replica_ban.php` — 41 assertions PASS (G7-A through G7-G).  
 *Alternative not selected:* WAVE-07 HIGH-RISK SHARD-READINESS HOTSPOTS — deferred.
+
+---
+
+## WAVE-07 CLOSURE VERDICT
+
+**Date:** 2026-04-01  
+**Status:** CLOSED — all invariants machine-proved via `verify_wave07_read_write_routing_01.php` (109 PASS) and `guardrail_wave07_write_path_replica_ban.php` (41 PASS).
+
+| # | Invariant | Proof section |
+|---|-----------|---------------|
+| 1 | `ReadWriteConnectionResolver` + `ReadQueryExecutor` infrastructure present and correct API | W7-A |
+| 2 | `Database::forRead()`, `requirePrimary()`, `isStickyPrimary()` wired correctly | W7-B |
+| 3 | Replica config fields present; defaults to no-split when `DB_REPLICA_HOST` empty | W7-C |
+| 4 | Bootstrap singleton registration lazy-safe (no eager `DB_DATABASE` requirement) | W7-D |
+| 5 | `transaction()` and `insert()` trigger `requirePrimary()` (sticky-primary gate) | W7-E |
+| 6 | `AvailabilityService::listDayAppointmentsGroupedByStaff` display path uses `forRead()` | W7-F |
+| 7 | Booking correctness paths (`isSlotAvailable`, `hasBufferedAppointmentConflict`, `AppointmentService`) do NOT use `forRead()` | W7-G |
+| 8 | Replica connect failure falls back to primary (fail-safe, never throws) | W7-H |
+| 9 | `routingTarget()` / `isReplica()` observability on every promoted read path | W7-I |
+| 10 | WAVE-03 ProxySQL artifacts still intact | W7-J |
+| 11 | No-split mode (no replica config) safely uses primary PDO for all `forRead()` calls | W7-K |
+| 12 | WAVE-07B: 8 client/service/staff list+count reads use `forRead()`; locking/single-record variants stay primary | W7-L |
+| 13 | WAVE-07C: `AppointmentRepository::list()` + `count()` use `forRead()`; find/loadForUpdate/hasStaffConflict/hasRoomConflict/lockRoom stay primary | W7-M |
+
+**Replica-eligible surfaces (11 total):**
+1. `AvailabilityService::listDayAppointmentsGroupedByStaff` (calendar display, cache-miss path)
+2. `ClientRepository::list()`
+3. `ClientRepository::count()`
+4. `ClientRepository::listOwnedClientsForBranch()`
+5. `ClientRepository::countOwnedClientsForBranch()`
+6. `ServiceRepository::list()`
+7. `ServiceRepository::count()`
+8. `StaffRepository::list()`
+9. `StaffRepository::count()`
+10. `AppointmentRepository::list()`
+11. `AppointmentRepository::count()`
+
+**Run command:** `php system/scripts/read-only/verify_wave07_read_write_routing_01.php` — expect exit 0 / 109 PASS.  
+**Guardrail:** `php system/scripts/ci/guardrail_wave07_write_path_replica_ban.php` — expect exit 0 / 41 PASS.
