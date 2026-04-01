@@ -6,7 +6,7 @@
 **Platform facts + layer proofs:** `FOUNDATION-PRODUCTION-HARDENING-TRUTH-MAP-CHARTER-01.md`  
 **Deferred product/polish and Phase 1 inventory not promoted here:** `DEFERRED-AND-HISTORICAL-TASK-REGISTRY-01.md`
 
-> **LIVE (2026-04-01): CI-AND-REGRESSION-BREADTH-CLOSURE-01** — closes the CI/regression-proof gap: all backbone guardrail scripts wired into PR fast gate; PHPUnit minimum harness installed; key verifier/smoke families added to CI; fast-vs-deep topology made explicit. Implementation in progress.
+> **CLOSED (2026-04-01): CI-AND-REGRESSION-BREADTH-CLOSURE-01** — CI/regression breadth gap closed. All 10 backbone guardrail scripts wired into PR fast gate. PHPUnit 11 harness installed (`TenantContextTest`, `AccessDecisionTest`). 5 key backbone verifier families gated on every PR. Fast/deep CI topology explicit. Verifier 65/65 PASS. Commit: `78c7a06`.
 
 > **SCALE WAVE LAUNCH — 2026-03-31 (status updated 2026-04-01):**  
 > Foundation A1–A7 (all phases), PLT-Q-01, WAVE-01 through WAVE-06 are all **CLOSED**. PLT-AUTH-02 is **CLOSED** (full closure 2026-04-01). PLT-MFA-01 is **CLOSED** (2026-04-01).  
@@ -308,11 +308,33 @@ See PLT-AUTH-02 CLOSED section above. Final proof: **137/137** assertions pass.
 
 ---
 
+## CI-AND-REGRESSION-BREADTH-CLOSURE-01 — **CLOSED** (2026-04-01)
+
+**CI/regression breadth gap closed — backbone guardrails, PHPUnit harness, and fast/deep topology now machine-enforced.**
+
+| Item | Evidence |
+|------|----------|
+| PHPUnit 11 installed in `require-dev` | `composer.json` |
+| `phpunit.xml.dist` — `tests/Unit` testsuite, `tests/bootstrap.php` | `phpunit.xml.dist` |
+| `tests/bootstrap.php` — loads Composer autoloader | `tests/bootstrap.php` |
+| `TenantContextTest` — 12+ assertions: all named constructors, `requireResolvedTenant()` fail-closed, support-entry audit actor, `UnresolvedTenantContextException` thrown | `tests/Unit/Core/Kernel/TenantContextTest.php` |
+| `AccessDecisionTest` — 6 assertions: allow/deny, `orThrow()` fail-closed, `AuthorizationException` thrown on denial | `tests/Unit/Core/Kernel/Authorization/AccessDecisionTest.php` |
+| `pr-fast-guardrails.yml` updated: all 10 backbone `guardrail_*.php` scripts wired as separate named steps, PHPUnit run (`composer run test`), 5 key backbone verifier families | `.github/workflows/pr-fast-guardrails.yml` |
+| CI topology comment explicit: `FAST GATE (no DB)` vs `DEEP GATE (tenant-isolation-gate, DB-backed)` | `.github/workflows/pr-fast-guardrails.yml` |
+| PHPStan scope expanded: `tests/Unit`, 7 kernel pure-object files (`TenantContext.php`, `AssuranceLevel.php`, `PrincipalKind.php`, `ExecutionSurface.php`, `UnresolvedTenantContextException.php`, `AccessDecision.php`, `AuthorizationException.php`) | `phpstan.neon.dist` |
+| `composer.json` `ci:guardrails` composite script — all 10 backbone guardrails | `composer.json` |
+| `composer.json` `test` script — `phpunit` | `composer.json` |
+| `composer.json` `autoload-dev` — `Tests\\` → `tests/` | `composer.json` |
+| New verifier: **65/65** PASS | `system/scripts/read-only/verify_ci_and_regression_breadth_closure_01.php` |
+| Commit SHA | `78c7a06` |
+
+---
+
 ## LIVE (exactly one)
 
 | ID | Item | Notes |
 |----|------|-------|
-| **CI-AND-REGRESSION-BREADTH-CLOSURE-01** | CI/regression breadth closure | **LIVE (2026-04-01).** Closes the gap between script-only proof and real CI enforcement. Scope: wire all backbone `system/scripts/ci/guardrail_*.php` to PR fast gate; install PHPUnit minimum harness (`tests/Unit/`); add key read-only verifier families to CI; make fast-vs-deep topology explicit and machine-verified. |
+| — | No current LIVE task | `CI-AND-REGRESSION-BREADTH-CLOSURE-01` is `CLOSED` (2026-04-01). Evidence: `verify_ci_and_regression_breadth_closure_01.php` 65/65 PASS, all 10 backbone guardrails wired to PR fast gate, PHPUnit harness installed, fast/deep topology explicit. Promote the next task explicitly before implementation. |
 
 ---
 
@@ -320,7 +342,7 @@ See PLT-AUTH-02 CLOSED section above. Final proof: **137/137** assertions pass.
 
 | ID | Item | Notes |
 |----|------|-------|
-| — | No PARKED/NEXT task | `CI-AND-REGRESSION-BREADTH-CLOSURE-01` is LIVE. No successor promoted yet. |
+| — | No PARKED/NEXT task | `CI-AND-REGRESSION-BREADTH-CLOSURE-01` is closed. No successor promoted yet. |
 
 ---
 
