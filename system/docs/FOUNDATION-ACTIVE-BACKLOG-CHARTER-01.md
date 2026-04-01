@@ -1,4 +1,4 @@
-﻿# Foundation active backlog — CHARTER-01 (normalized)
+# Foundation active backlog — CHARTER-01 (normalized)
 
 **Backbone Closure Mode — live execution queue:** This file is the **only** place that may list **LIVE** implementation work.  
 **Master execution plan:** `BACKBONE-CLOSURE-MASTER-PLAN-01.md`  
@@ -285,7 +285,7 @@ See PLT-AUTH-02 CLOSED section above. Final proof: **137/137** assertions pass.
 
 | ID | Item | Notes |
 |----|------|-------|
-| **WAVE-07** | READ/WRITE ROUTING + PROXYSQL RUNTIME PROOF | CLOSED 2026-04-01. 11 replica-eligible display reads (appointment/client/service/staff/availability); locking/conflict/correctness paths stay primary. Verifier 109 PASS, guardrail 41 PASS. See `SCALE-WAVE-EXECUTION-CHARTER-01.md` WAVE-07 CLOSURE VERDICT. |
+| — | No current LIVE task | WAVE-07 is CLOSED (2026-04-01). Promote the next wave via `SCALE-WAVE-EXECUTION-CHARTER-01.md` before starting implementation. |
 
 ---
 
