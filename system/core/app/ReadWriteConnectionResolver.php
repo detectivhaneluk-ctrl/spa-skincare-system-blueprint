@@ -26,6 +26,12 @@ use PDO;
  *     returns false and callers fall back to primary. The error is logged but
  *     never bubbles up as a fatal.
  *
+ *   - Lazy config reading: the database config is NOT read at construction time.
+ *     It is deferred until the first actual connection use. This means the
+ *     resolver is safe to instantiate even when DB_DATABASE is not set — the
+ *     error only surfaces when a connection is genuinely needed. This preserves
+ *     the same lazy-boot semantics that Database had before WAVE-07.
+ *
  * This resolver is a singleton registered in bootstrap.php. The Database class
  * holds a reference to it and exposes {@see Database::forRead()} and
  * {@see Database::requirePrimary()}.
@@ -37,14 +43,17 @@ final class ReadWriteConnectionResolver
     private bool $stickyPrimary = false;
     private bool $replicaConnectFailed = false;
 
+    /** @var array{host: string, port: int, database: string, username: string, password: string, charset: string}|null */
+    private ?array $resolvedPrimaryConfig = null;
+
+    /** @var array{host: string, port: int, database: string, username: string, password: string, charset: string}|null|false */
+    private mixed $resolvedReplicaConfig = false;  // false = not yet resolved; null = no replica
+
     /**
-     * @param array{host: string, port: int, database: string, username: string, password: string, charset: string} $primaryConfig
-     * @param array{host: string, port: int, database: string, username: string, password: string, charset: string}|null $replicaConfig null = no split
+     * @param Config $config  Application config. Database section is read lazily on first connection use.
      */
-    public function __construct(
-        private readonly array $primaryConfig,
-        private readonly ?array $replicaConfig
-    ) {
+    public function __construct(private readonly Config $config)
+    {
     }
 
     /**
@@ -54,7 +63,7 @@ final class ReadWriteConnectionResolver
     public function primaryConnection(): PDO
     {
         if ($this->primary === null) {
-            $this->primary = $this->buildPdo($this->primaryConfig);
+            $this->primary = $this->buildPdo($this->primaryConfig());
         }
 
         return $this->primary;
@@ -79,8 +88,12 @@ final class ReadWriteConnectionResolver
         }
 
         if ($this->replica === null) {
+            $replicaCfg = $this->replicaConfig();
+            if ($replicaCfg === null) {
+                return ['pdo' => $this->primaryConnection(), 'target' => 'primary'];
+            }
             try {
-                $this->replica = $this->buildPdo($this->replicaConfig);
+                $this->replica = $this->buildPdo($replicaCfg);
             } catch (\Throwable $e) {
                 $this->replicaConnectFailed = true;
                 if (function_exists('slog')) {
@@ -125,7 +138,7 @@ final class ReadWriteConnectionResolver
      */
     public function canUseReplica(): bool
     {
-        return $this->replicaConfig !== null
+        return $this->replicaConfig() !== null
             && !$this->stickyPrimary
             && !$this->replicaConnectFailed;
     }
@@ -136,7 +149,59 @@ final class ReadWriteConnectionResolver
      */
     public function isReplicaConfigured(): bool
     {
-        return $this->replicaConfig !== null;
+        return $this->replicaConfig() !== null;
+    }
+
+    /**
+     * Lazily resolve and cache the primary config array.
+     *
+     * @return array{host: string, port: int, database: string, username: string, password: string, charset: string}
+     */
+    private function primaryConfig(): array
+    {
+        if ($this->resolvedPrimaryConfig === null) {
+            $db = $this->config->get('database');
+            $this->resolvedPrimaryConfig = [
+                'host'     => (string) ($db['host'] ?? '127.0.0.1'),
+                'port'     => (int) ($db['port'] ?? 3306),
+                'database' => (string) ($db['database'] ?? ''),
+                'username' => (string) ($db['username'] ?? 'root'),
+                'password' => (string) ($db['password'] ?? ''),
+                'charset'  => (string) ($db['charset'] ?? 'utf8mb4'),
+            ];
+        }
+
+        return $this->resolvedPrimaryConfig;
+    }
+
+    /**
+     * Lazily resolve and cache the replica config array.
+     * Returns null if no replica is configured.
+     *
+     * @return array{host: string, port: int, database: string, username: string, password: string, charset: string}|null
+     */
+    private function replicaConfig(): ?array
+    {
+        if ($this->resolvedReplicaConfig === false) {
+            $db = $this->config->get('database');
+            $replicaHost = trim((string) ($db['replica_host'] ?? ''));
+            $routingEnabled = (bool) ($db['read_write_routing_enabled'] ?? false);
+
+            if ($routingEnabled && $replicaHost !== '') {
+                $this->resolvedReplicaConfig = [
+                    'host'     => $replicaHost,
+                    'port'     => (int) ($db['replica_port'] ?? 3306),
+                    'database' => (string) ($db['database'] ?? ''),
+                    'username' => (string) ($db['username'] ?? 'root'),
+                    'password' => (string) ($db['password'] ?? ''),
+                    'charset'  => (string) ($db['charset'] ?? 'utf8mb4'),
+                ];
+            } else {
+                $this->resolvedReplicaConfig = null;
+            }
+        }
+
+        return $this->resolvedReplicaConfig;
     }
 
     /**

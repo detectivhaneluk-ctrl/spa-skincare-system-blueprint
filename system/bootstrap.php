@@ -26,34 +26,13 @@ $container = new \Core\App\Container();
 
 $container->singleton(\Core\App\Config::class, fn () => new \Core\App\Config(SYSTEM_PATH . '/config'));
 // WAVE-07: ReadWriteConnectionResolver — manages primary + replica PDO connections.
-// Attached to Database after construction. Resolver is a no-op (no-split) when
-// DB_REPLICA_HOST is empty or DB_READ_WRITE_ROUTING is not true.
-$container->singleton(\Core\App\ReadWriteConnectionResolver::class, function ($c) {
-    $config = $c->get(\Core\App\Config::class);
-    $db = $config->get('database');
-    $primaryCfg = [
-        'host'     => $db['host'],
-        'port'     => (int) $db['port'],
-        'database' => $db['database'],
-        'username' => $db['username'],
-        'password' => $db['password'],
-        'charset'  => $db['charset'],
-    ];
-    $replicaHost = trim((string) ($db['replica_host'] ?? ''));
-    $routingEnabled = (bool) ($db['read_write_routing_enabled'] ?? false);
-    $replicaCfg = null;
-    if ($routingEnabled && $replicaHost !== '') {
-        $replicaCfg = [
-            'host'     => $replicaHost,
-            'port'     => (int) ($db['replica_port'] ?? 3306),
-            'database' => $db['database'],
-            'username' => $db['username'],
-            'password' => $db['password'],
-            'charset'  => $db['charset'],
-        ];
-    }
-    return new \Core\App\ReadWriteConnectionResolver($primaryCfg, $replicaCfg);
-});
+// Attached to Database after construction. Config is read lazily on first connection
+// use, preserving the same lazy-boot semantics Database had before WAVE-07.
+// Resolver is a no-op (no-split) when DB_REPLICA_HOST is empty or
+// DB_READ_WRITE_ROUTING is not true — controlled by system/config/database.php.
+$container->singleton(\Core\App\ReadWriteConnectionResolver::class, fn ($c) => new \Core\App\ReadWriteConnectionResolver(
+    $c->get(\Core\App\Config::class)
+));
 $container->singleton(\Core\App\Database::class, function ($c) {
     $db = new \Core\App\Database($c->get(\Core\App\Config::class));
     $db->setReadWriteResolver($c->get(\Core\App\ReadWriteConnectionResolver::class));

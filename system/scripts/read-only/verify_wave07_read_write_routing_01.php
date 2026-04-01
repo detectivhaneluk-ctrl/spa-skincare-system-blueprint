@@ -66,7 +66,7 @@ wave07_file_contains($resolverFile, 'public function isStickyPrimary(): bool', '
 wave07_file_contains($resolverFile, 'public function canUseReplica(): bool', 'ReadWriteConnectionResolver::canUseReplica() exists');
 wave07_file_contains($resolverFile, 'public function isReplicaConfigured(): bool', 'ReadWriteConnectionResolver::isReplicaConfigured() exists');
 wave07_file_contains($resolverFile, '$this->stickyPrimary = true', 'ReadWriteConnectionResolver sets stickyPrimary flag');
-wave07_file_contains($resolverFile, "return ['pdo' => \$this->primaryConnection(), 'target' => 'primary']", "replicaConnectionForRead() returns primary when canUseReplica() is false");
+wave07_file_contains($resolverFile, 'public function __construct(private readonly Config $config)', 'ReadWriteConnectionResolver constructor accepts Config (lazy config read — no eager DB_DATABASE requirement)');
 wave07_file_contains($resolverFile, "'target' => 'replica'", "replicaConnectionForRead() returns 'replica' target when routing to replica");
 wave07_file_contains($resolverFile, 'primary_fallback_replica_connect_error', 'Replica connect failure returns primary_fallback target');
 wave07_file_contains($resolverFile, "slog('warning', 'db_routing', 'replica_connect_failed'", 'Replica connect failure is slog-logged');
@@ -128,9 +128,8 @@ wave07_assert(file_exists($bootstrapFile), 'system/bootstrap.php exists');
 wave07_file_contains($bootstrapFile, 'ReadWriteConnectionResolver::class', 'bootstrap registers ReadWriteConnectionResolver singleton');
 wave07_file_contains($bootstrapFile, 'setReadWriteResolver', 'bootstrap calls setReadWriteResolver on Database');
 wave07_file_contains($bootstrapFile, "\$db->setReadWriteResolver(\$c->get(\\Core\\App\\ReadWriteConnectionResolver::class))", 'bootstrap attaches resolver to Database singleton');
-wave07_file_contains($bootstrapFile, "'replica_host'", 'bootstrap reads replica_host from config');
-wave07_file_contains($bootstrapFile, "'read_write_routing_enabled'", 'bootstrap reads read_write_routing_enabled from config');
-wave07_file_contains($bootstrapFile, '$replicaCfg = null', 'bootstrap defaults to null replica config (no split)');
+wave07_file_contains($bootstrapFile, "new \\Core\\App\\ReadWriteConnectionResolver(", 'bootstrap constructs ReadWriteConnectionResolver with Config (lazy config read)');
+wave07_file_contains($bootstrapFile, 'Config::class', 'bootstrap passes Config to ReadWriteConnectionResolver');
 
 echo "\n";
 
@@ -277,8 +276,9 @@ wave07_assert(
     str_contains($dbContent2, "new \\Core\\App\\ReadQueryExecutor(\$this->connection(), 'primary')"),
     "Database::forRead() falls back to primary PDO when resolver is null — no-split mode is safe"
 );
-wave07_file_contains($bootstrapFile, '$replicaCfg = null', 'Bootstrap defaults replicaCfg to null (no-split)');
-wave07_file_contains($bootstrapFile, "\$routingEnabled && \$replicaHost !== ''", 'Bootstrap requires BOTH routing flag AND non-empty replica host to enable split');
+wave07_file_contains($resolverFile, '$routingEnabled && $replicaHost', 'Resolver requires BOTH routing flag AND non-empty replica host to enable split (lazy-read)');
+wave07_file_contains($resolverFile, '$this->resolvedReplicaConfig = null', 'Resolver defaults to null replica config when routing not enabled (no-split)');
+wave07_file_contains($bootstrapFile, "fn (\$c) => new \\Core\\App\\ReadWriteConnectionResolver(", 'Bootstrap factory is a single-line no-eager-config construction (lazy-safe)');
 
 echo "\n";
 
