@@ -285,7 +285,7 @@ See PLT-AUTH-02 CLOSED section above. Final proof: **137/137** assertions pass.
 
 | ID | Item | Notes |
 |----|------|-------|
-| **CRITICAL-INTEGRITY-FAIL-CLOSED-BOUNDARY-AND-LIFECYCLE-CLOSURE-01** | Tenant-boundary fail-closed + lifecycle/suspension closure | LIVE 2026-04-01. Closes: (1) FK-only child repo structural trust-upstream gap in GiftCardService/PackageService; (2) extends lifecycle/suspension verifier surface to out-of-scope modules; (3) reconciles TASK-STATE-MATRIX REOPENED/OPEN items for memberships/giftcards/packages and lifecycle. Machine-runnable verifier + guardrail. |
+| — | No current LIVE task | `CRITICAL-INTEGRITY-FAIL-CLOSED-BOUNDARY-AND-LIFECYCLE-CLOSURE-01` is `CLOSED` (2026-04-01). Evidence: `verify_critical_integrity_fail_closed_boundary_01.php` 29/29 PASS, `guardrail_critical_integrity_fail_closed_boundary_01.php` 9/9 PASS, canonical release law `ACCEPTED` (report SHA256 `621acbc1455c84d74b289f82b8cce846ba0836157674ec44b72fbbc399293f5a`). Promote the next task explicitly before implementation. |
 
 ---
 
@@ -293,7 +293,7 @@ See PLT-AUTH-02 CLOSED section above. Final proof: **137/137** assertions pass.
 
 | ID | Item | Notes |
 |----|------|-------|
-| — | No PARKED/NEXT task | `CRITICAL-INTEGRITY-FAIL-CLOSED-BOUNDARY-AND-LIFECYCLE-CLOSURE-01` is LIVE. After it closes: next candidate is HIGH-RISK SHARD-READINESS HOTSPOTS or next scale-wave per `SCALE-WAVE-EXECUTION-CHARTER-01.md`. |
+| — | No PARKED/NEXT task | `CRITICAL-INTEGRITY-FAIL-CLOSED-BOUNDARY-AND-LIFECYCLE-CLOSURE-01` is closed. No successor is promoted in this task. |
 
 ---
 
