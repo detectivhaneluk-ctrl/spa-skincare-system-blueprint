@@ -24,6 +24,7 @@ require $base . '/modules/bootstrap.php';
 use Core\Runtime\Jobs\RuntimeExecutionConflictException;
 use Core\Runtime\Jobs\RuntimeExecutionKeys;
 use Core\Runtime\Jobs\RuntimeExecutionRegistry;
+use Core\Organization\OutOfBandLifecycleGuard;
 
 $opts = getopt('', ['key:', 'branch::', 'dry-run::']);
 $key = isset($opts['key']) ? trim((string) $opts['key']) : '';
@@ -80,6 +81,16 @@ if ($branch === null) {
 
 $branchId = (int) ($branch['id'] ?? 0);
 $orgId = (int) ($branch['organization_id'] ?? 0);
+/** @var OutOfBandLifecycleGuard $lifecycleGuard */
+$lifecycleGuard = app(OutOfBandLifecycleGuard::class);
+try {
+    $lifecycleGuard->assertExecutionAllowedForBranch($branchId, $orgId, null);
+} catch (\DomainException $e) {
+    flock($lockFh, LOCK_UN);
+    fclose($lockFh);
+    fwrite(STDERR, 'marketing-automations: lifecycle_blocked: ' . $e->getMessage() . PHP_EOL);
+    exit(1);
+}
 app(\Core\Branch\BranchContext::class)->setCurrentBranchId($branchId);
 app(\Core\Organization\OrganizationContext::class)->setFromResolution(
     $orgId,

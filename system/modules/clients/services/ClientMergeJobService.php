@@ -13,6 +13,7 @@ use Core\Kernel\Authorization\ResourceAction;
 use Core\Kernel\Authorization\ResourceRef;
 use Core\Kernel\RequestContextHolder;
 use Core\Organization\OrganizationContext;
+use Core\Organization\OutOfBandLifecycleGuard;
 use Core\Organization\OrganizationScopedBranchAssert;
 use Modules\Clients\Repositories\ClientMergeJobRepository;
 use Modules\Clients\Repositories\ClientRepository;
@@ -39,6 +40,7 @@ final class ClientMergeJobService
         private ClientService $clientService,
         private BranchContext $branchContext,
         private OrganizationContext $organizationContext,
+        private OutOfBandLifecycleGuard $outOfBandLifecycleGuard,
         private OrganizationScopedBranchAssert $organizationScopedBranchAssert,
         private RequestContextHolder $contextHolder,
         private \Core\Runtime\Queue\RuntimeAsyncJobRepository $runtimeAsyncJobs,
@@ -418,6 +420,20 @@ final class ClientMergeJobService
         $notes = isset($job['merge_notes']) && is_string($job['merge_notes']) && $job['merge_notes'] !== ''
             ? $job['merge_notes']
             : null;
+
+        try {
+            $this->outOfBandLifecycleGuard->assertExecutionAllowedForBranch($branchId, $organizationId, $actor);
+        } catch (\DomainException $e) {
+            $this->markJobFailed(
+                $jobId,
+                $organizationId > 0 ? $organizationId : null,
+                'LIFECYCLE_BLOCKED',
+                'Merge job is no longer allowed for this tenant context.',
+                $e->getMessage()
+            );
+
+            return;
+        }
 
         try {
             $result = $this->clientService->mergeClientsAsActor($primaryId, $secondaryId, $notes, $actor);

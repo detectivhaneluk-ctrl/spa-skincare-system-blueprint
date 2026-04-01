@@ -20,7 +20,8 @@ $container->singleton(\Modules\Intake\Services\IntakeFormService::class, fn ($c)
     $c->get(\Core\App\Database::class),
     $c->get(\Core\Audit\AuditService::class),
     $c->get(\Core\App\SettingsService::class),
-    $c->get(\Core\Organization\OrganizationRepositoryScope::class)
+    $c->get(\Core\Organization\OrganizationRepositoryScope::class),
+    $c->get(\Core\Organization\OrganizationLifecycleGate::class)
 ));
 $container->singleton(\Modules\Intake\Controllers\IntakeAdminController::class, fn ($c) => new \Modules\Intake\Controllers\IntakeAdminController($c->get(\Modules\Intake\Services\IntakeFormService::class), $c->get(\Core\Branch\BranchContext::class)));
 $container->singleton(\Modules\Intake\Controllers\IntakePublicController::class, fn ($c) => new \Modules\Intake\Controllers\IntakePublicController($c->get(\Modules\Intake\Services\IntakeFormService::class), $c->get(\Modules\OnlineBooking\Services\PublicBookingAbuseGuardService::class)));

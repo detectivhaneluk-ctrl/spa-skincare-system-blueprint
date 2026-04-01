@@ -62,6 +62,10 @@ $container->singleton(\Core\Organization\OrganizationContext::class, fn () => ne
 $container->singleton(\Core\Organization\OrganizationLifecycleGate::class, fn ($c) => new \Core\Organization\OrganizationLifecycleGate(
     $c->get(\Core\App\Database::class)
 ));
+$container->singleton(\Core\Organization\OutOfBandLifecycleGuard::class, fn ($c) => new \Core\Organization\OutOfBandLifecycleGuard(
+    $c->get(\Core\App\Database::class),
+    $c->get(\Core\Organization\OrganizationLifecycleGate::class)
+));
 // OrganizationContextResolver + StaffMultiOrgOrganizationResolutionGate: registered in modules/bootstrap.php
 // after module singletons (resolver depends on UserOrganizationMembershipReadService).
 $container->singleton(\Core\Organization\OrganizationScopedBranchAssert::class, fn ($c) => new \Core\Organization\OrganizationScopedBranchAssert(

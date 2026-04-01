@@ -285,7 +285,7 @@ See PLT-AUTH-02 CLOSED section above. Final proof: **137/137** assertions pass.
 
 | ID | Item | Notes |
 |----|------|-------|
-| — | No current LIVE task | `CRITICAL-INTEGRITY-FAIL-CLOSED-BOUNDARY-AND-LIFECYCLE-CLOSURE-01` is `CLOSED` (2026-04-01). Evidence: `verify_critical_integrity_fail_closed_boundary_01.php` 29/29 PASS, `guardrail_critical_integrity_fail_closed_boundary_01.php` 9/9 PASS, canonical release law `ACCEPTED` (report SHA256 `621acbc1455c84d74b289f82b8cce846ba0836157674ec44b72fbbc399293f5a`). Promote the next task explicitly before implementation. |
+| — | No current LIVE task | `OUT-OF-BAND-INTEGRITY-AND-WORKER-LIFECYCLE-CLOSURE-01` is `CLOSED` (2026-04-01). Evidence: `verify_out_of_band_integrity_and_worker_lifecycle_closure_01.php` 25/25 PASS, `guardrail_out_of_band_integrity_and_worker_lifecycle_closure_01.php` 9/9 PASS, `smoke_out_of_band_integrity_and_worker_lifecycle_closure_01.php` 4/4 PASS, canonical release law `ACCEPTED` (report SHA256 `6d44215b75b299e3cd2ff8f534da84a5c17ab7327ba24b3719ae77a91acf8c1f`). Promote the next task explicitly before implementation. |
 
 ---
 
@@ -293,7 +293,7 @@ See PLT-AUTH-02 CLOSED section above. Final proof: **137/137** assertions pass.
 
 | ID | Item | Notes |
 |----|------|-------|
-| — | No PARKED/NEXT task | `CRITICAL-INTEGRITY-FAIL-CLOSED-BOUNDARY-AND-LIFECYCLE-CLOSURE-01` is closed. No successor is promoted in this task. |
+| — | No PARKED/NEXT task | `OUT-OF-BAND-INTEGRITY-AND-WORKER-LIFECYCLE-CLOSURE-01` is closed. No successor is promoted in this task. |
 
 ---
 

@@ -7,19 +7,17 @@ namespace Modules\Payroll\Controllers;
 use Core\App\Application;
 use Core\Auth\AuthService;
 use Core\Branch\BranchContext;
-use Core\Organization\OrganizationContext;
-use Core\Organization\OrganizationScopedBranchAssert;
 use Core\Permissions\PermissionService;
 use Modules\Payroll\Repositories\PayrollCompensationRuleRepository;
+use Modules\Payroll\Services\PayrollRuleService;
 use Modules\Payroll\Services\PayrollService;
 
 final class PayrollRuleController
 {
     public function __construct(
         private PayrollCompensationRuleRepository $rules,
+        private PayrollRuleService $ruleService,
         private BranchContext $branchContext,
-        private OrganizationContext $organizationContext,
-        private OrganizationScopedBranchAssert $organizationScopedBranchAssert,
         private AuthService $auth,
         private PermissionService $perms,
     ) {
@@ -59,14 +57,9 @@ final class PayrollRuleController
             return;
         }
         try {
-            $data = $this->branchContext->enforceBranchOnCreate($data, 'branch_id');
-            if ($this->organizationContext->getCurrentOrganizationId() !== null) {
-                $bid = $data['branch_id'] ?? null;
-                if ($bid === null || $bid === '') {
-                    throw new \DomainException('Rule branch is required when organization context is resolved.');
-                }
-                $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization((int) $bid);
-            }
+            $user = $this->auth->user();
+            $uid = $user ? (int) $user['id'] : null;
+            $this->ruleService->createRule($data, $uid);
         } catch (\DomainException $e) {
             $errors = ['_general' => $e->getMessage()];
             $rule = array_merge($this->emptyRuleForm(), $this->parseRulePost());
@@ -75,12 +68,6 @@ final class PayrollRuleController
             require base_path('modules/payroll/views/rules/create.php');
             return;
         }
-        $user = $this->auth->user();
-        $uid = $user ? (int) $user['id'] : null;
-        $this->rules->create(array_merge($data, [
-            'created_by' => $uid,
-            'updated_by' => $uid,
-        ]));
         flash('success', 'Rule created.');
         header('Location: /payroll/rules');
         exit;
@@ -123,21 +110,18 @@ final class PayrollRuleController
             require base_path('modules/payroll/views/rules/edit.php');
             return;
         }
-        $ctxBranch = $this->branchContext->getCurrentBranchId();
-        if ($ctxBranch !== null) {
-            $pb = $data['branch_id'] ?? null;
-            if ($pb !== null && (int) $pb !== $ctxBranch) {
-                $errors = ['_general' => 'Branch does not match your assigned branch.'];
-                $rule = array_merge($rule, $data);
-                $title = 'Edit compensation rule';
-                $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
-                require base_path('modules/payroll/views/rules/edit.php');
-                return;
-            }
+        try {
+            $user = $this->auth->user();
+            $uid = $user ? (int) $user['id'] : null;
+            $this->ruleService->updateRule($id, $data, $uid);
+        } catch (\DomainException $e) {
+            $errors = ['_general' => $e->getMessage()];
+            $rule = array_merge($rule, $data);
+            $title = 'Edit compensation rule';
+            $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
+            require base_path('modules/payroll/views/rules/edit.php');
+            return;
         }
-        $user = $this->auth->user();
-        $uid = $user ? (int) $user['id'] : null;
-        $this->rules->update($id, array_merge($data, ['updated_by' => $uid]));
         flash('success', 'Rule updated.');
         header('Location: /payroll/rules');
         exit;

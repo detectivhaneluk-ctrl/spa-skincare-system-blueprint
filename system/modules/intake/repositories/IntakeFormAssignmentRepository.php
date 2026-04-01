@@ -11,10 +11,9 @@ use Core\Organization\OrganizationRepositoryScope;
  * Staff paths use branch-derived {@see OrganizationRepositoryScope} fragments.
  *
  * **Public token paths** ({@see findByTokenHashWithPublicGraphOrgCohesion}, {@see findByAssignmentIdAndTokenHashWithPublicGraphOrgCohesion}):
- * there is **no** HTTP tenant context. Reads prove **single-organization structural cohesion** among assignment, template, client,
- * and optional appointment branch FKs, plus a **fallback anchor** when all branch columns are NULL (client tied to an org via
- * appointment or invoice). This is **not** the same as resolved-tenant {@see OrganizationRepositoryScope::clientProfileOrgMembershipExistsClause()}.
- * Global-null templates with no concrete branch anywhere remain **partially** anchored (token secrecy + client org proof only).
+ * there is **no** HTTP tenant context. Reads prove **single active-organization structural cohesion** among assignment, template, client,
+ * and optional appointment branch FKs, plus a **fallback anchor** when all branch columns are NULL (client tied to exactly one active org
+ * via appointment or invoice). This is **not** the same as resolved-tenant {@see OrganizationRepositoryScope::clientProfileOrgMembershipExistsClause()}.
  */
 final class IntakeFormAssignmentRepository
 {
@@ -244,9 +243,9 @@ final class IntakeFormAssignmentRepository
     }
 
     /**
-     * No request-scoped organization id: require all non-null branch FKs among assignment/template/client/(appointment)
-     * to resolve to at most one {@code organizations.id}, and require either a concrete branch anchor on the graph or
-     * client org membership via completed appointment/invoice rows (subset of profile semantics).
+ * No request-scoped organization id: require all non-null branch FKs among assignment/template/client/(appointment)
+ * to resolve to at most one **active** {@code organizations.id}, and require either a concrete branch anchor on the graph or
+ * exactly one active organization anchor via the client’s appointment/invoice rows.
      */
     private function publicGraphOrgCohesionSql(): string
     {
@@ -260,7 +259,7 @@ final class IntakeFormAssignmentRepository
       UNION ALL SELECT ap.branch_id FROM appointments ap WHERE ap.id = a.appointment_id AND ap.deleted_at IS NULL
     ) q
     INNER JOIN branches br ON br.id = q.bid AND br.deleted_at IS NULL
-    INNER JOIN organizations org ON org.id = br.organization_id AND org.deleted_at IS NULL
+    INNER JOIN organizations org ON org.id = br.organization_id AND org.deleted_at IS NULL AND org.suspended_at IS NULL
     WHERE q.bid IS NOT NULL
   ) <= 1
 )
@@ -272,19 +271,21 @@ AND (
     (SELECT ap2.branch_id FROM appointments ap2 WHERE ap2.id = a.appointment_id AND ap2.deleted_at IS NULL LIMIT 1)
   ) IS NOT NULL
   OR (
-    EXISTS (
-      SELECT 1 FROM appointments apx
+    SELECT COUNT(DISTINCT hist.organization_id)
+    FROM (
+      SELECT bx.organization_id
+      FROM appointments apx
       INNER JOIN branches bx ON bx.id = apx.branch_id AND bx.deleted_at IS NULL
-      INNER JOIN organizations ox ON ox.id = bx.organization_id AND ox.deleted_at IS NULL
+      INNER JOIN organizations ox ON ox.id = bx.organization_id AND ox.deleted_at IS NULL AND ox.suspended_at IS NULL
       WHERE apx.client_id = c.id AND apx.deleted_at IS NULL AND apx.branch_id IS NOT NULL
-    )
-    OR EXISTS (
-      SELECT 1 FROM invoices inv
+      UNION
+      SELECT bix.organization_id
+      FROM invoices inv
       INNER JOIN branches bix ON bix.id = inv.branch_id AND bix.deleted_at IS NULL
-      INNER JOIN organizations oix ON oix.id = bix.organization_id AND oix.deleted_at IS NULL
+      INNER JOIN organizations oix ON oix.id = bix.organization_id AND oix.deleted_at IS NULL AND oix.suspended_at IS NULL
       WHERE inv.client_id = c.id AND inv.deleted_at IS NULL AND inv.branch_id IS NOT NULL
-    )
-  )
+    ) hist
+  ) = 1
 )
 SQL;
     }

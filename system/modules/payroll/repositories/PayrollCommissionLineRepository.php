@@ -33,7 +33,31 @@ final class PayrollCommissionLineRepository
      */
     public function insert(array $row): int
     {
-        $this->db->insert('payroll_commission_lines', $this->normalize($row));
+        $norm = $this->normalize($row);
+        $runId = (int) ($norm['payroll_run_id'] ?? 0);
+        if ($runId <= 0) {
+            throw new \DomainException('Payroll commission line requires a payroll run.');
+        }
+
+        $run = $this->db->fetchOne(
+            'SELECT branch_id FROM payroll_runs WHERE id = ? LIMIT 1',
+            [$runId]
+        );
+        if ($run === null) {
+            throw new \DomainException('Payroll run not found for commission line.');
+        }
+
+        $runBranchId = (int) ($run['branch_id'] ?? 0);
+        if ($runBranchId <= 0) {
+            throw new \DomainException('Payroll run branch is invalid.');
+        }
+
+        if (isset($norm['branch_id']) && $norm['branch_id'] !== null && $norm['branch_id'] !== '' && (int) $norm['branch_id'] !== $runBranchId) {
+            throw new \DomainException('Payroll commission line branch must match parent run branch.');
+        }
+
+        $norm['branch_id'] = $runBranchId;
+        $this->db->insert('payroll_commission_lines', $norm);
 
         return $this->db->lastInsertId();
     }

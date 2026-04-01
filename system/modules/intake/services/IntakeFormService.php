@@ -9,6 +9,7 @@ use Core\App\SettingsService;
 use Core\Audit\AuditService;
 use Core\Auth\SessionAuth;
 use Core\Branch\BranchContext;
+use Core\Organization\OrganizationLifecycleGate;
 use Core\Organization\OrganizationRepositoryScope;
 use Modules\Appointments\Repositories\AppointmentRepository;
 use Modules\Clients\Repositories\ClientRepository;
@@ -47,6 +48,7 @@ final class IntakeFormService
         private AuditService $audit,
         private SettingsService $settings,
         private OrganizationRepositoryScope $orgScope,
+        private OrganizationLifecycleGate $lifecycleGate,
     ) {
     }
 
@@ -297,6 +299,9 @@ final class IntakeFormService
             return ['ok' => false, 'errors' => ['_token' => self::PUBLIC_ACCESS_UNAVAILABLE_MESSAGE]];
         }
         if (!$this->isPublicIntakePolicyAllowingForAssignment($a)) {
+            return ['ok' => false, 'errors' => ['_token' => self::PUBLIC_ACCESS_UNAVAILABLE_MESSAGE]];
+        }
+        if (!isset($a['template_active']) || (int) $a['template_active'] !== 1) {
             return ['ok' => false, 'errors' => ['_token' => self::PUBLIC_ACCESS_UNAVAILABLE_MESSAGE]];
         }
         if ($this->submissions->findByAssignmentIdForPublicTokenFlow((int) $a['id'])) {
@@ -633,6 +638,9 @@ final class IntakeFormService
                 [$scopedBranchId]
             );
             if ($row === null) {
+                return false;
+            }
+            if ($this->lifecycleGate->isBranchLinkedToSuspendedOrganization($scopedBranchId)) {
                 return false;
             }
         }
