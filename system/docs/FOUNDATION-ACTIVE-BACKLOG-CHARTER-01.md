@@ -6,13 +6,12 @@
 **Platform facts + layer proofs:** `FOUNDATION-PRODUCTION-HARDENING-TRUTH-MAP-CHARTER-01.md`  
 **Deferred product/polish and Phase 1 inventory not promoted here:** `DEFERRED-AND-HISTORICAL-TASK-REGISTRY-01.md`
 
-> **SCALE WAVE LAUNCH — 2026-03-31:**  
-> Foundation A1–A7 (all phases) and PLT-Q-01 are **CLOSED**. PLT-AUTH-02 is **PARKED** (auth wiring continues after scale infrastructure is in place).  
-> The new active execution lane is **SCALE-WAVE-EXECUTION-CHARTER-01.md** — four infrastructure waves targeting 1000+ salon readiness.  
-> Active single LIVE task: **WAVE-01 — PRODUCTION RUNTIME FOUNDATION** (Redis mandatory, session handler, distributed lock, startup guardrails).  
-> Parked/next: **WAVE-02 — QUEUE THROUGHPUT HARDENING**.  
-> See `system/docs/SCALE-WAVE-EXECUTION-CHARTER-01.md` for full scope, wave order, and success criteria.  
-> PLT-AUTH-02 remaining surfaces (appointments service wiring, staff/settings service wiring, full platform control-plane action enforcement) are **DEFERRED** to after WAVE-04 closes or can be promoted individually if a specific auth gap blocks a scale wave deliverable.
+> **SCALE WAVE LAUNCH — 2026-03-31 (status updated 2026-04-01):**  
+> Foundation A1–A7 (all phases), PLT-Q-01, WAVE-01 through WAVE-06 are all **CLOSED**. PLT-AUTH-02 is **CLOSED** (full closure 2026-04-01). PLT-MFA-01 is **CLOSED** (2026-04-01).  
+> The scale-wave campaign ran in `SCALE-WAVE-EXECUTION-CHARTER-01.md` — WAVE-01 through WAVE-06 all DONE.  
+> **No task is currently LIVE.** WAVE-07 (READ/WRITE ROUTING + PROXYSQL RUNTIME PROOF) is **PARKED/NEXT**.  
+> See `system/docs/SCALE-WAVE-EXECUTION-CHARTER-01.md` §NEXT GATE for WAVE-07 promotion criteria.  
+> PLT-AUTH-02 remaining surfaces were **fully closed** by `PRIVILEGED-PLANE-CLOSURE-AND-STEP-UP-AUTH-01` (2026-04-01): 15 services wired, 137/137 verifier assertions pass. See PRIVILEGED-PLANE-CLOSURE-AND-STEP-UP-AUTH-01 section below.
 
 > **ARCHITECTURE RESET — 2026-03-31:**  
 > The old ROOT-01 id-only closure wave (PLT-TNT-01 incremental module-by-module repository patching) has been **ARCHIVED / SUPERSEDED** by this reset.  
