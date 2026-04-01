@@ -1,4 +1,21 @@
 # Cheapest high-value checks on every PR (does not replace canonical release law).
+#
+# CI TOPOLOGY (CI-AND-REGRESSION-BREADTH-CLOSURE-01, 2026-04-01):
+#   FAST GATE (this workflow, no DB required):
+#     - PHP lint + composer validate/dump
+#     - Case/path audit + architecture contracts + forbidden paths + changed-path policy
+#     - Hotspot proof metadata
+#     - PHPStan static analysis
+#     - PHPUnit unit tests (pure value objects, no DB)
+#     - All backbone domain guardrails (system/scripts/ci/guardrail_*.php)
+#     - Key backbone verifier families (read-only, no DB)
+#
+#   DEEP GATE (tenant-isolation-gate.yml, DB-backed, on every push + PR):
+#     - Canonical release law: migrate, seed, Tier A gate, Tier B smokes, db truth, zip artifact
+#
+#   SECURITY (security-guardrails.yml, on every push + PR):
+#     - gitleaks, composer audit, dependency-review
+#
 name: PR fast guardrails
 
 on:
@@ -28,7 +45,7 @@ jobs:
       - name: Composer validate
         run: composer validate --strict --no-check-publish
 
-      - name: Composer install (dev tools e.g. PHPStan)
+      - name: Composer install (dev tools — PHPStan, PHPUnit)
         run: composer install --no-interaction --prefer-dist
 
       - name: Composer dump autoload (auditor + autoload consistency)
@@ -77,3 +94,63 @@ jobs:
 
       - name: PHPStan (scoped baseline)
         run: composer run phpstan
+
+      - name: PHPUnit unit tests (no DB — pure kernel value objects)
+        run: composer run test
+
+      # -------------------------------------------------------------------
+      # Backbone domain guardrails — all static, no DB required.
+      # These enforce platform-wide architectural invariants on every PR.
+      # -------------------------------------------------------------------
+
+      - name: Guardrail — service layer DB ban
+        run: php system/scripts/ci/guardrail_service_layer_db_ban.php
+
+      - name: Guardrail — id-only repo API freeze
+        run: php system/scripts/ci/guardrail_id_only_repo_api_freeze.php
+
+      - name: Guardrail — async state machine ban
+        run: php system/scripts/ci/guardrail_async_state_machine_ban.php
+
+      - name: Guardrail — auth service authorizer enforcement
+        run: php system/scripts/ci/guardrail_plt_auth_02_service_authorizer_enforcement.php
+
+      - name: Guardrail — MFA privileged plane step-up
+        run: php system/scripts/ci/guardrail_plt_mfa_01_privileged_plane_step_up.php
+
+      - name: Guardrail — out-of-band lifecycle and worker integrity
+        run: php system/scripts/ci/guardrail_out_of_band_integrity_and_worker_lifecycle_closure_01.php
+
+      - name: Guardrail — critical integrity fail-closed boundary
+        run: php system/scripts/ci/guardrail_critical_integrity_fail_closed_boundary_01.php
+
+      - name: Guardrail — Wave 07 write-path replica ban
+        run: php system/scripts/ci/guardrail_wave07_write_path_replica_ban.php
+
+      - name: Guardrail — shard readiness organization_id
+        run: php system/scripts/ci/guardrail_shard_readiness_organization_id.php
+
+      - name: Guardrail — online DDL large table migrations
+        run: php system/scripts/ci/guardrail_online_ddl_large_table_migrations.php
+
+      # -------------------------------------------------------------------
+      # Key backbone read-only verifier families — highest-risk invariants.
+      # All static (no DB). Chosen for maximum blast-radius coverage.
+      # Full 170+ verifier suite runs locally or on demand; only the highest-
+      # value families are gated on every PR for speed.
+      # -------------------------------------------------------------------
+
+      - name: Verifier — background flow fail-closed (42 checks)
+        run: php system/scripts/read-only/verify_background_flow_fail_closed_closure_01.php
+
+      - name: Verifier — out-of-band integrity and worker lifecycle (25 checks)
+        run: php system/scripts/read-only/verify_out_of_band_integrity_and_worker_lifecycle_closure_01.php
+
+      - name: Verifier — kernel tenant context (74 checks)
+        run: php system/scripts/read-only/verify_kernel_tenant_context_01.php
+
+      - name: Verifier — auth enforcement wiring
+        run: php system/scripts/read-only/verify_plt_auth_02_authorization_enforcement_wiring_01.php
+
+      - name: Verifier — critical integrity fail-closed boundary
+        run: php system/scripts/read-only/verify_critical_integrity_fail_closed_boundary_01.php

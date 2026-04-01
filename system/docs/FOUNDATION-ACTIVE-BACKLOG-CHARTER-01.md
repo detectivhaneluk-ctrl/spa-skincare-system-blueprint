@@ -6,6 +6,8 @@
 **Platform facts + layer proofs:** `FOUNDATION-PRODUCTION-HARDENING-TRUTH-MAP-CHARTER-01.md`  
 **Deferred product/polish and Phase 1 inventory not promoted here:** `DEFERRED-AND-HISTORICAL-TASK-REGISTRY-01.md`
 
+> **LIVE (2026-04-01): CI-AND-REGRESSION-BREADTH-CLOSURE-01** — closes the CI/regression-proof gap: all backbone guardrail scripts wired into PR fast gate; PHPUnit minimum harness installed; key verifier/smoke families added to CI; fast-vs-deep topology made explicit. Implementation in progress.
+
 > **SCALE WAVE LAUNCH — 2026-03-31 (status updated 2026-04-01):**  
 > Foundation A1–A7 (all phases), PLT-Q-01, WAVE-01 through WAVE-06 are all **CLOSED**. PLT-AUTH-02 is **CLOSED** (full closure 2026-04-01). PLT-MFA-01 is **CLOSED** (2026-04-01).  
 > The scale-wave campaign ran in `SCALE-WAVE-EXECUTION-CHARTER-01.md` — WAVE-01 through WAVE-06 all DONE.  
@@ -310,7 +312,7 @@ See PLT-AUTH-02 CLOSED section above. Final proof: **137/137** assertions pass.
 
 | ID | Item | Notes |
 |----|------|-------|
-| — | No current LIVE task | `BACKGROUND-FLOW-FAIL-CLOSED-CLOSURE-01` is `CLOSED` (2026-04-01). Evidence: `verify_background_flow_fail_closed_closure_01.php` 42/42 PASS, `smoke_background_flow_fail_closed_closure_01.php` 10/10 PASS, `guardrail_out_of_band_integrity_and_worker_lifecycle_closure_01.php` 15/15 PASS, release law `ACCEPTED`. Promote the next task explicitly before implementation. |
+| **CI-AND-REGRESSION-BREADTH-CLOSURE-01** | CI/regression breadth closure | **LIVE (2026-04-01).** Closes the gap between script-only proof and real CI enforcement. Scope: wire all backbone `system/scripts/ci/guardrail_*.php` to PR fast gate; install PHPUnit minimum harness (`tests/Unit/`); add key read-only verifier families to CI; make fast-vs-deep topology explicit and machine-verified. |
 
 ---
 
@@ -318,7 +320,7 @@ See PLT-AUTH-02 CLOSED section above. Final proof: **137/137** assertions pass.
 
 | ID | Item | Notes |
 |----|------|-------|
-| — | No PARKED/NEXT task | `BACKGROUND-FLOW-FAIL-CLOSED-CLOSURE-01` is closed. No successor is promoted in this task. |
+| — | No PARKED/NEXT task | `CI-AND-REGRESSION-BREADTH-CLOSURE-01` is LIVE. No successor promoted yet. |
 
 ---
 

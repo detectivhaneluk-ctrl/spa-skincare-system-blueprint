@@ -1,5 +1,14 @@
-# Scoped static analysis: expand paths over time (full system/ is separate adoption).
+# Scoped static analysis: system/scripts/ci (existing) + unit tests + kernel pure objects.
+# Expand paths over time as more of system/ is confirmed clean at level 6.
 parameters:
     level: 6
     paths:
         - system/scripts/ci
+        - system/core/Kernel/TenantContext.php
+        - system/core/Kernel/AssuranceLevel.php
+        - system/core/Kernel/PrincipalKind.php
+        - system/core/Kernel/ExecutionSurface.php
+        - system/core/Kernel/UnresolvedTenantContextException.php
+        - system/core/Kernel/Authorization/AccessDecision.php
+        - system/core/Kernel/Authorization/AuthorizationException.php
+        - tests/Unit

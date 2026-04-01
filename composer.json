@@ -7,7 +7,8 @@
     "php": "^8.2"
   },
   "require-dev": {
-    "phpstan/phpstan": "^2.1"
+    "phpstan/phpstan": "^2.1",
+    "phpunit/phpunit": "^11.5"
   },
   "config": {
     "optimize-autoloader": true,
@@ -120,11 +121,29 @@
       "Modules\\Staff\\Services\\": "system/modules/staff/services/"
     }
   },
+  "autoload-dev": {
+    "psr-4": {
+      "Tests\\": "tests/"
+    }
+  },
   "scripts": {
     "release-law:audit": "php system/scripts/release/run_case_path_auditor.php",
     "release-law": "php system/scripts/release/run_canonical_release_law.php",
     "ci:architecture": "php system/scripts/ci/verify_architecture_contracts.php",
     "ci:forbidden-paths": "php system/scripts/ci/verify_forbidden_tracked_paths.php",
+    "ci:guardrails": [
+      "php system/scripts/ci/guardrail_service_layer_db_ban.php",
+      "php system/scripts/ci/guardrail_id_only_repo_api_freeze.php",
+      "php system/scripts/ci/guardrail_async_state_machine_ban.php",
+      "php system/scripts/ci/guardrail_plt_auth_02_service_authorizer_enforcement.php",
+      "php system/scripts/ci/guardrail_plt_mfa_01_privileged_plane_step_up.php",
+      "php system/scripts/ci/guardrail_out_of_band_integrity_and_worker_lifecycle_closure_01.php",
+      "php system/scripts/ci/guardrail_critical_integrity_fail_closed_boundary_01.php",
+      "php system/scripts/ci/guardrail_wave07_write_path_replica_ban.php",
+      "php system/scripts/ci/guardrail_shard_readiness_organization_id.php",
+      "php system/scripts/ci/guardrail_online_ddl_large_table_migrations.php"
+    ],
+    "test": "phpunit",
     "phpstan": "phpstan analyse -c phpstan.neon.dist --no-progress --memory-limit=512M"
   }
 }
