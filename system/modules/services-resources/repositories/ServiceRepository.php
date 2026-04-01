@@ -51,7 +51,9 @@ final class ServiceRepository
         $sql .= $frag['sql'];
         $params = array_merge($params, $frag['params']);
         $sql .= ' ORDER BY c.sort_order, c.name, s.name';
-        return $this->db->fetchAll($sql, $params);
+        // WAVE-07B: display-only service catalog list — replica-eligible.
+        // Writes (create/update/delete) redirect to next request; ServiceRepository::find() stays primary.
+        return $this->db->forRead()->fetchAll($sql, $params);
     }
 
     /**
@@ -68,7 +70,7 @@ final class ServiceRepository
         }
         $sql .= $frag['sql'];
         $params = array_merge($params, $frag['params']);
-        $row = $this->db->fetchOne($sql, $params);
+        $row = $this->db->forRead()->fetchOne($sql, $params);
 
         return (int) ($row['c'] ?? 0);
     }

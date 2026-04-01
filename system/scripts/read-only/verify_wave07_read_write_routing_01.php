@@ -282,6 +282,81 @@ wave07_file_contains($bootstrapFile, "fn (\$c) => new \\Core\\App\\ReadWriteConn
 
 echo "\n";
 
+// ─── W7-L: WAVE-07B expanded replica-eligible surfaces ───
+
+echo "W7-L: WAVE-07B — expanded replica-eligible read surfaces\n";
+
+// Client list/count
+$clientRepoFile = $repoRoot . '/system/modules/clients/repositories/ClientRepository.php';
+wave07_assert(file_exists($clientRepoFile), 'ClientRepository.php exists');
+wave07_file_contains($clientRepoFile, '// WAVE-07B: display-only paginated list — eligible for replica read.', 'ClientRepository::list() has WAVE-07B audit comment');
+wave07_file_contains($clientRepoFile, "return \$this->db->forRead()->fetchAll(\$sql, \$params);\n    }\n\n    public function count(", 'ClientRepository::list() uses forRead() for replica routing');
+wave07_file_contains($clientRepoFile, "// WAVE-07B: display count companion — replica-eligible for same reason as list().\n        \$row = \$this->db->forRead()->fetchOne(\$sql, \$params);\n\n        return (int) (\$row['c'] ?? 0);\n    }\n\n    /**\n     * Same branch row predicate", 'ClientRepository::count() uses forRead() for replica routing');
+
+// Owned tenanted list/count
+wave07_file_contains($clientRepoFile, '// WAVE-07B: display-only paginated tenanted list — replica-eligible (same safety proof as list()).', 'ClientRepository::listOwnedClientsForBranch() has WAVE-07B audit comment');
+wave07_file_contains($clientRepoFile, "return \$this->db->forRead()->fetchAll(\$sql, \$params);\n    }\n\n    /**\n     * Canonical: count live, unmerged clients", 'ClientRepository::listOwnedClientsForBranch() uses forRead()');
+wave07_file_contains($clientRepoFile, "// WAVE-07B: display count companion — replica-eligible.\n        \$row = \$this->db->forRead()->fetchOne(\$sql, \$params);\n\n        return (int) (\$row['c'] ?? 0);\n    }\n}", 'ClientRepository::countOwnedClientsForBranch() uses forRead()');
+
+// Service catalog list/count
+$serviceRepoFile = $repoRoot . '/system/modules/services-resources/repositories/ServiceRepository.php';
+wave07_assert(file_exists($serviceRepoFile), 'ServiceRepository.php exists');
+wave07_file_contains($serviceRepoFile, '// WAVE-07B: display-only service catalog list — replica-eligible.', 'ServiceRepository::list() has WAVE-07B audit comment');
+wave07_file_contains($serviceRepoFile, "return \$this->db->forRead()->fetchAll(\$sql, \$params);", 'ServiceRepository::list() uses forRead()');
+wave07_file_contains($serviceRepoFile, "\$row = \$this->db->forRead()->fetchOne(\$sql, \$params);\n\n        return (int) (\$row['c'] ?? 0);\n    }\n\n    public function create(", 'ServiceRepository::count() uses forRead()');
+
+// Staff list/count
+$staffRepoFile = $repoRoot . '/system/modules/staff/repositories/StaffRepository.php';
+wave07_assert(file_exists($staffRepoFile), 'StaffRepository.php exists');
+wave07_file_contains($staffRepoFile, '// WAVE-07B: display-only staff list — replica-eligible.', 'StaffRepository::list() has WAVE-07B audit comment');
+wave07_file_contains($staffRepoFile, "return \$this->db->forRead()->fetchAll(\$sql, \$params);", 'StaffRepository::list() uses forRead()');
+wave07_file_contains($staffRepoFile, "// WAVE-07B: display count companion — replica-eligible for same reason as list().\n        \$row = \$this->db->forRead()->fetchOne(\$sql, \$params);\n        return (int) (\$row['c'] ?? 0);", 'StaffRepository::count() uses forRead()');
+
+// Verify protected paths in these repos do NOT use forRead()
+// ClientRepository: find(), ForUpdate, lock* must stay on primary
+wave07_file_not_contains($clientRepoFile, "findForUpdate\(\).*forRead\(\)", "ClientRepository::findForUpdate() does not use forRead()");
+$clientRepoContent = (string) file_get_contents($clientRepoFile);
+$findMethodPos = strpos($clientRepoContent, 'public function find(int $id, bool $withTrashed = false): ?array');
+$findMethodEnd = $findMethodPos !== false ? strpos($clientRepoContent, "\n    public function ", $findMethodPos + 50) : false;
+if ($findMethodPos !== false && $findMethodEnd !== false) {
+    $findBody = substr($clientRepoContent, $findMethodPos, $findMethodEnd - $findMethodPos);
+    wave07_assert(!str_contains($findBody, '->forRead()'), 'ClientRepository::find() does NOT use forRead() — single-record read stays primary');
+} else {
+    wave07_assert(false, 'ClientRepository::find() boundary not found');
+}
+
+// ServiceRepository: find() must stay on primary (used in checkout provider)
+$serviceRepoContent = (string) file_get_contents($serviceRepoFile);
+$svcFindPos = strpos($serviceRepoContent, 'public function find(int $id): ?array');
+$svcFindEnd = $svcFindPos !== false ? strpos($serviceRepoContent, "\n    public function ", $svcFindPos + 50) : false;
+if ($svcFindPos !== false && $svcFindEnd !== false) {
+    $svcFindBody = substr($serviceRepoContent, $svcFindPos, $svcFindEnd - $svcFindPos);
+    wave07_assert(!str_contains($svcFindBody, '->forRead()'), 'ServiceRepository::find() does NOT use forRead() — used in checkout provider, stays primary');
+} else {
+    wave07_assert(false, 'ServiceRepository::find() boundary not found');
+}
+
+// StaffRepository: find() and findByUserId() must stay on primary (appointment/payroll context)
+$staffRepoContent = (string) file_get_contents($staffRepoFile);
+$staffFindPos = strpos($staffRepoContent, 'public function find(int $id, bool $withTrashed = false): ?array');
+$staffFindEnd = $staffFindPos !== false ? strpos($staffRepoContent, "\n    public function ", $staffFindPos + 50) : false;
+if ($staffFindPos !== false && $staffFindEnd !== false) {
+    $staffFindBody = substr($staffRepoContent, $staffFindPos, $staffFindEnd - $staffFindPos);
+    wave07_assert(!str_contains($staffFindBody, '->forRead()'), 'StaffRepository::find() does NOT use forRead() — appointment/payroll context stays primary');
+} else {
+    wave07_assert(false, 'StaffRepository::find() boundary not found');
+}
+$staffFbuPos = strpos($staffRepoContent, 'public function findByUserId(int $userId): ?array');
+$staffFbuEnd = $staffFbuPos !== false ? strpos($staffRepoContent, "\n    public function ", $staffFbuPos + 50) : false;
+if ($staffFbuPos !== false && $staffFbuEnd !== false) {
+    $staffFbuBody = substr($staffRepoContent, $staffFbuPos, $staffFbuEnd - $staffFbuPos);
+    wave07_assert(!str_contains($staffFbuBody, '->forRead()'), 'StaffRepository::findByUserId() does NOT use forRead() — payroll identity resolution stays primary');
+} else {
+    wave07_assert(false, 'StaffRepository::findByUserId() boundary not found');
+}
+
+echo "\n";
+
 // ─── Summary ───
 
 $total = $pass + $fail;

@@ -53,7 +53,9 @@ final class StaffRepository
         $sql .= ' ORDER BY s.last_name, s.first_name LIMIT ? OFFSET ?';
         $params[] = $limit;
         $params[] = $offset;
-        return $this->db->fetchAll($sql, $params);
+        // WAVE-07B: display-only staff list — replica-eligible.
+        // AvailabilityService does not use StaffRepository. Writes → redirect. find() stays primary.
+        return $this->db->forRead()->fetchAll($sql, $params);
     }
 
     public function count(array $filters = []): int
@@ -70,7 +72,8 @@ final class StaffRepository
         }
         $sql .= $frag['sql'];
         $params = array_merge($params, $frag['params']);
-        $row = $this->db->fetchOne($sql, $params);
+        // WAVE-07B: display count companion — replica-eligible for same reason as list().
+        $row = $this->db->forRead()->fetchOne($sql, $params);
         return (int) ($row['c'] ?? 0);
     }
 

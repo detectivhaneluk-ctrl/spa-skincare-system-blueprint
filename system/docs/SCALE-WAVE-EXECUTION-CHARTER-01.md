@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿# Scale Wave Execution Charter — 01
+﻿# Scale Wave Execution Charter — 01
 
 **Date:** 2026-03-31  
 **Status:** WAVE-01 DONE · WAVE-02 DONE · WAVE-03 DONE · WAVE-04 DONE · WAVE-05 DONE · WAVE-06 DONE · WAVE-07 LIVE  
@@ -296,5 +296,12 @@ See `DEFERRED-AND-HISTORICAL-TASK-REGISTRY-01.md` for full list. Summary of what
 4. WAVE-07 promoted to LIVE in `FOUNDATION-ACTIVE-BACKLOG-CHARTER-01.md` (2026-04-01)
 
 **WAVE-07: READ/WRITE ROUTING + PROXYSQL RUNTIME PROOF — LIVE**  
-*Implementation:* `ReadWriteConnectionResolver` + `ReadQueryExecutor` + sticky-primary + `AvailabilityService::listDayAppointmentsGroupedByStaff` replica-eligible wiring.  
+*Implementation:* `ReadWriteConnectionResolver` + `ReadQueryExecutor` + sticky-primary + `AvailabilityService::listDayAppointmentsGroupedByStaff` replica-eligible wiring (initial surface, 2026-04-01).  
+*WAVE-07B — Expanded replica-eligible surfaces (2026-04-01):*  
+`ClientRepository::list()`, `ClientRepository::count()`, `ClientRepository::listOwnedClientsForBranch()`, `ClientRepository::countOwnedClientsForBranch()` — display-only paginated client lists.  
+`ServiceRepository::list()`, `ServiceRepository::count()` — display-only service catalog reads.  
+`StaffRepository::list()`, `StaffRepository::count()` — display-only staff list reads.  
+All 8 methods confirmed: write controllers redirect (no same-request read-after-write); `AvailabilityService` does not use `StaffRepository`; `ServiceRepository::find()` and locking/single-record variants stay on primary.  
+*Verifier:* `verify_wave07_read_write_routing_01.php` — 97 assertions PASS (W7-A through W7-L).  
+*Guardrail:* `guardrail_wave07_write_path_replica_ban.php` — 35 assertions PASS (G7-A through G7-F).  
 *Alternative not selected:* WAVE-07 HIGH-RISK SHARD-READINESS HOTSPOTS — deferred.

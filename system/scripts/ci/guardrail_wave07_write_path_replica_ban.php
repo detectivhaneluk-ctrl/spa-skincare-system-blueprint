@@ -194,6 +194,95 @@ if (file_exists($executorFile)) {
 
 echo "\n";
 
+// ─── G7-F: WAVE-07B — locking/single-record/write-adjacent repository methods must NOT use forRead() ───
+
+echo "G7-F: WAVE-07B — locking, single-record, and write-adjacent repository methods stay primary\n";
+
+// ClientRepository: locking reads and single-record find() must never use forRead()
+$clientRepoFile = $repoRoot . '/system/modules/clients/repositories/ClientRepository.php';
+if (file_exists($clientRepoFile)) {
+    $crc = (string) file_get_contents($clientRepoFile);
+
+    // findForUpdate — locking read, must stay primary
+    $ffu = strpos($crc, 'public function findForUpdate(int $id): ?array');
+    $ffuEnd = $ffu !== false ? strpos($crc, "\n    public function ", $ffu + 50) : false;
+    if ($ffu !== false && $ffuEnd !== false) {
+        w7guard_assert(!str_contains(substr($crc, $ffu, $ffuEnd - $ffu), '->forRead()'), 'ClientRepository::findForUpdate() does NOT use forRead() — FOR UPDATE locking requires primary');
+    } else {
+        w7guard_assert(false, 'ClientRepository::findForUpdate() boundary not found');
+    }
+
+    // lockActiveByEmailBranch — locking read
+    $lab = strpos($crc, 'public function lockActiveByEmailBranch(');
+    $labEnd = $lab !== false ? strpos($crc, "\n    public function ", $lab + 50) : false;
+    if ($lab !== false && $labEnd !== false) {
+        w7guard_assert(!str_contains(substr($crc, $lab, $labEnd - $lab), '->forRead()'), 'ClientRepository::lockActiveByEmailBranch() does NOT use forRead() — locking read requires primary');
+    } else {
+        w7guard_assert(false, 'ClientRepository::lockActiveByEmailBranch() boundary not found');
+    }
+
+    // loadOwnedClientForUpdate — locking read
+    $locu = strpos($crc, 'public function loadOwnedClientForUpdate(');
+    $locuEnd = $locu !== false ? strpos($crc, "\n    public function ", $locu + 50) : false;
+    if ($locu !== false && $locuEnd !== false) {
+        w7guard_assert(!str_contains(substr($crc, $locu, $locuEnd - $locu), '->forRead()'), 'ClientRepository::loadOwnedClientForUpdate() does NOT use forRead() — locking read requires primary');
+    } else {
+        w7guard_assert(false, 'ClientRepository::loadOwnedClientForUpdate() boundary not found');
+    }
+
+    // findDuplicates — merge decision proximity, must stay primary
+    $fd = strpos($crc, 'public function findDuplicates(');
+    $fdEnd = $fd !== false ? strpos($crc, "\n    public function ", $fd + 50) : false;
+    if ($fd !== false && $fdEnd !== false) {
+        w7guard_assert(!str_contains(substr($crc, $fd, $fdEnd - $fd), '->forRead()'), 'ClientRepository::findDuplicates() does NOT use forRead() — merge flow proximity requires primary');
+    } else {
+        w7guard_assert(false, 'ClientRepository::findDuplicates() boundary not found');
+    }
+} else {
+    w7guard_assert(false, 'ClientRepository.php not found');
+}
+
+// ServiceRepository: find() must stay on primary (used in checkout provider flow)
+$serviceRepoFile = $repoRoot . '/system/modules/services-resources/repositories/ServiceRepository.php';
+if (file_exists($serviceRepoFile)) {
+    $src = (string) file_get_contents($serviceRepoFile);
+    $sfPos = strpos($src, 'public function find(int $id): ?array');
+    $sfEnd = $sfPos !== false ? strpos($src, "\n    public function ", $sfPos + 50) : false;
+    if ($sfPos !== false && $sfEnd !== false) {
+        w7guard_assert(!str_contains(substr($src, $sfPos, $sfEnd - $sfPos), '->forRead()'), 'ServiceRepository::find() does NOT use forRead() — checkout provider / edit form requires primary');
+    } else {
+        w7guard_assert(false, 'ServiceRepository::find() boundary not found');
+    }
+} else {
+    w7guard_assert(false, 'ServiceRepository.php not found');
+}
+
+// StaffRepository: find() and findByUserId() must stay primary (appointment + payroll context)
+$staffRepoFile = $repoRoot . '/system/modules/staff/repositories/StaffRepository.php';
+if (file_exists($staffRepoFile)) {
+    $strc = (string) file_get_contents($staffRepoFile);
+
+    $sfbPos = strpos($strc, 'public function findByUserId(int $userId): ?array');
+    $sfbEnd = $sfbPos !== false ? strpos($strc, "\n    public function ", $sfbPos + 50) : false;
+    if ($sfbPos !== false && $sfbEnd !== false) {
+        w7guard_assert(!str_contains(substr($strc, $sfbPos, $sfbEnd - $sfbPos), '->forRead()'), 'StaffRepository::findByUserId() does NOT use forRead() — payroll identity resolution requires primary');
+    } else {
+        w7guard_assert(false, 'StaffRepository::findByUserId() boundary not found');
+    }
+
+    $stfPos = strpos($strc, 'public function find(int $id, bool $withTrashed = false): ?array');
+    $stfEnd = $stfPos !== false ? strpos($strc, "\n    public function ", $stfPos + 50) : false;
+    if ($stfPos !== false && $stfEnd !== false) {
+        w7guard_assert(!str_contains(substr($strc, $stfPos, $stfEnd - $stfPos), '->forRead()'), 'StaffRepository::find() does NOT use forRead() — appointment + payroll context requires primary');
+    } else {
+        w7guard_assert(false, 'StaffRepository::find() boundary not found');
+    }
+} else {
+    w7guard_assert(false, 'StaffRepository.php not found');
+}
+
+echo "\n";
+
 // ─── Summary ───
 
 $total = $pass + $fail;

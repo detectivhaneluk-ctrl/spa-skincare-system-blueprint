@@ -315,7 +315,9 @@ final class ClientRepository
         $params[] = $limit;
         $params[] = $offset;
 
-        return $this->db->fetchAll($sql, $params);
+        // WAVE-07B: display-only paginated list — eligible for replica read.
+        // Writes (create/update/delete) redirect to next request; no same-request post-write read here.
+        return $this->db->forRead()->fetchAll($sql, $params);
     }
 
     public function count(array $filters = []): int
@@ -327,7 +329,8 @@ final class ClientRepository
         $this->appendStaffClientRowBranchEnvelope($sql, $params, $filters);
         $sql .= $frag['sql'];
         $params = array_merge($params, $frag['params']);
-        $row = $this->db->fetchOne($sql, $params);
+        // WAVE-07B: display count companion — replica-eligible for same reason as list().
+        $row = $this->db->forRead()->fetchOne($sql, $params);
 
         return (int) ($row['c'] ?? 0);
     }
@@ -1067,7 +1070,8 @@ final class ClientRepository
         $params[] = $limit;
         $params[] = $offset;
 
-        return $this->db->fetchAll($sql, $params);
+        // WAVE-07B: display-only paginated tenanted list — replica-eligible (same safety proof as list()).
+        return $this->db->forRead()->fetchAll($sql, $params);
     }
 
     /**
@@ -1084,7 +1088,8 @@ final class ClientRepository
         $params[] = $scope['branch_id'];
         $sql .= $frag['sql'];
         $params = array_merge($params, $frag['params']);
-        $row = $this->db->fetchOne($sql, $params);
+        // WAVE-07B: display count companion — replica-eligible.
+        $row = $this->db->forRead()->fetchOne($sql, $params);
 
         return (int) ($row['c'] ?? 0);
     }
