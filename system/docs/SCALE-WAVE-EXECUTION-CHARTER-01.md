@@ -1,10 +1,10 @@
-﻿# Scale Wave Execution Charter — 01
+﻿﻿﻿﻿﻿# Scale Wave Execution Charter — 01
 
 **Date:** 2026-03-31  
-**Status:** WAVE-01 DONE · WAVE-02 DONE · WAVE-03 DONE · WAVE-04 DONE · WAVE-05 DONE · WAVE-06 DONE  
+**Status:** WAVE-01 DONE · WAVE-02 DONE · WAVE-03 DONE · WAVE-04 DONE · WAVE-05 DONE · WAVE-06 DONE · WAVE-07 LIVE  
 **Authority:** Architect verdict (2026-03-31 scalability & load assessment).  
 **Relationship to FOUNDATION-A series:** Foundation A1–A7 established the tenant/auth/service kernel. This charter launches on top of that kernel to address the **runtime, infrastructure, and scale** layer. These waves do **not** reopen or contradict Foundation work — they build on it.  
-**Active queue:** This file. **No wave is LIVE** until explicitly promoted in the “Next gate” section below.  
+**Active queue:** This file. **WAVE-07 is LIVE** (promoted 2026-04-01). See §WAVE-07 below.  
 **Deferred registry:** `DEFERRED-AND-HISTORICAL-TASK-REGISTRY-01.md` (items parked per this charter).  
 **Full status inventory:** `TASK-STATE-MATRIX.md` (evidence rows; scale-campaign truth for waves **WAVE-01–WAVE-06** is **this charter**, not informal matrix rows).
 
@@ -28,7 +28,7 @@
 ## NEXT GATE TO OPEN NEW WAVE
 
 - **WAVE-06 is CLOSED** — do not reopen without a new charter amendment.
-- **WAVE-07 is PARKED / NEXT** — promoted to PARKED/NEXT in `FOUNDATION-ACTIVE-BACKLOG-CHARTER-01.md` (2026-04-01) after PRIVILEGED-PLANE-CLOSURE-AND-STEP-UP-AUTH-01 closed. Do not start implementation until explicitly promoted to LIVE in that charter.
+- **WAVE-07 is LIVE** — promoted to LIVE in `FOUNDATION-ACTIVE-BACKLOG-CHARTER-01.md` (2026-04-01). Candidate: READ/WRITE ROUTING + PROXYSQL RUNTIME PROOF. Implementation in progress.
 - **Recommended next candidate:** **WAVE-07 — READ/WRITE ROUTING + PROXYSQL RUNTIME PROOF** — WAVE-03 delivered artifacts; proving **safe** read/write split in runtime (no correctness regression) is the natural scale step before sharding hotspots. Alternative: **WAVE-07 — HIGH-RISK SHARD-READINESS HOTSPOTS** — only if read/write routing is deferred; addresses `organization_id` hotspots under load. **Pick one** to avoid parallel “wave 7” drift.
 
 ---
@@ -262,7 +262,7 @@ See `DEFERRED-AND-HISTORICAL-TASK-REGISTRY-01.md` for full list. Summary of what
 | WAVE-04 | Safe Scale Operations | **DONE** | (included in WAVE-04 commit) | `d167acf` |
 | WAVE-05 | Live Enforcement Foundations | **DONE** | `verify_wave05_live_enforcement_foundations_01.php` (18/18 PASS) | `082c409` |
 | WAVE-06 | Hot Path Cache Effectiveness | **DONE** | `verify_wave06_hot_path_cache_effectiveness_01.php` (v3, 45 PASS) | `517056c` + corrective-closure commit |
-| WAVE-07 | *(not started)* | **PLANNED** | — | — |
+| WAVE-07 | READ/WRITE ROUTING + PROXYSQL RUNTIME PROOF | **LIVE** | erify_wave07_read_write_routing_01.php | *(in progress 2026-04-01)* |
 
 **What is DONE:**
 - Redis is mandatory in production; NoopSharedCache blocked at runtime startup
@@ -281,22 +281,20 @@ See `DEFERRED-AND-HISTORICAL-TASK-REGISTRY-01.md` for full list. Summary of what
 - All cache paths fail-open; Redis unavailability never breaks a production request
 - Working-hours / staff-schedule / availability-exception mutations correctly excluded from calendar-cache invalidation requirement (cache only stores appointment rows)
 
-**What is NOT started (WAVE-07 candidates):**
-- Read/write routing via ProxySQL at the application layer (artifacts exist, runtime routing not wired)
-- High-risk shard-readiness hotspots audit
+**What was NOT started at WAVE-06 close (WAVE-07 candidates identified):**
+- Read/write routing via ProxySQL at the application layer (artifacts exist, runtime routing not wired) — **NOW LIVE as WAVE-07**
+- High-risk shard-readiness hotspots audit — alternative candidate, deferred
 
 ---
 
-## NEXT WAVE GATE CONDITION
+## WAVE-07 GATE — MET 2026-04-01
 
-**Gate:** WAVE-07 may be opened when:
-1. This file shows WAVE-06 DONE (confirmed above — see `WAVE-06 CLOSURE VERDICT`)
-2. `verify_wave06_hot_path_cache_effectiveness_01.php` (v3) exits 0 / 44 PASS
-3. No open regression or proof gap on /gift-cards or /appointments/calendar/day
-4. Exactly one WAVE-07 candidate is chosen and committed to this charter
+**Gate conditions met:**
+1. WAVE-06 DONE — confirmed (`6e803fa` + corrective-closure commit; verifier v3 45 PASS)
+2. PLT-AUTH-02 CLOSED, PLT-MFA-01 CLOSED — canonical docs consistent
+3. Exactly one candidate chosen: READ/WRITE ROUTING + PROXYSQL RUNTIME PROOF
+4. WAVE-07 promoted to LIVE in `FOUNDATION-ACTIVE-BACKLOG-CHARTER-01.md` (2026-04-01)
 
-**WAVE-07 RECOMMENDED CANDIDATE:**  
-**WAVE-07: READ/WRITE ROUTING + PROXYSQL RUNTIME PROOF**  
-*Rationale:* WAVE-03 created ProxySQL deployment artifacts but the application DB layer has no read/write routing. At 1000+ salons, the single DB endpoint saturates on heavy read traffic (calendar polls, availability search). Wiring read replicas via ProxySQL is the next highest-impact infra move.  
-*Alternative:* WAVE-07 HIGH-RISK SHARD-READINESS HOTSPOTS — only if DB scaling is already in place.  
-*Do not open WAVE-07 in the same session as this corrective closure unless proof budget is fully satisfied.*
+**WAVE-07: READ/WRITE ROUTING + PROXYSQL RUNTIME PROOF — LIVE**  
+*Implementation:* `ReadWriteConnectionResolver` + `ReadQueryExecutor` + sticky-primary + `AvailabilityService::listDayAppointmentsGroupedByStaff` replica-eligible wiring.  
+*Alternative not selected:* WAVE-07 HIGH-RISK SHARD-READINESS HOTSPOTS — deferred.

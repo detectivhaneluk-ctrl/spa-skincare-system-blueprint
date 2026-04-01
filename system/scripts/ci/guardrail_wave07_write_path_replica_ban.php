@@ -1,0 +1,208 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * WAVE-07 CI Guardrail: write-path replica ban.
+ *
+ * Enforces invariants that protect booking and payment correctness:
+ *
+ *  G7-A  Write-critical services must NOT call ->forRead()
+ *        (AppointmentService, PaymentService, InvoiceService, RegisterSessionService,
+ *         WaitlistService, StaffGroupService, StaffGroupPermissionService, ServiceService,
+ *         all settings mutation services)
+ *
+ *  G7-B  AvailabilityService booking-critical methods (isSlotAvailable,
+ *        hasBufferedAppointmentConflict) must NOT call ->forRead()
+ *
+ *  G7-C  Database::insert() must call requirePrimary() — sticky-primary gate
+ *
+ *  G7-D  Database::transaction() must call requirePrimary() — sticky-primary gate
+ *
+ *  G7-E  ReadQueryExecutor must NOT expose write methods (insert, exec, transaction)
+ *
+ * Run: php system/scripts/ci/guardrail_wave07_write_path_replica_ban.php
+ * Expected: all assertions PASS, exit code 0.
+ * CI failure: any FAIL means a write path has been incorrectly wired to replica.
+ */
+
+$repoRoot = dirname(__DIR__, 3);
+$pass = 0;
+$fail = 0;
+
+function w7guard_assert(bool $condition, string $label): void
+{
+    global $pass, $fail;
+    echo ($condition ? '  PASS  ' : '  FAIL  ') . $label . "\n";
+    $condition ? ++$pass : ++$fail;
+}
+
+function w7guard_no_forread(string $file, string $serviceName): void
+{
+    $fullPath = $GLOBALS['repoRoot'] . '/' . $file;
+    if (!file_exists($fullPath)) {
+        w7guard_assert(false, "{$serviceName} — file not found: {$file}");
+        return;
+    }
+    $content = (string) file_get_contents($fullPath);
+    w7guard_assert(
+        !str_contains($content, '->forRead()'),
+        "{$serviceName} does NOT use ->forRead() — write-critical service must stay on primary"
+    );
+}
+
+echo "\n=== WAVE-07 CI GUARDRAIL: WRITE-PATH REPLICA BAN ===\n\n";
+
+// ─── G7-A: Write-critical services must not use ->forRead() ───
+
+echo "G7-A: Write-critical services — no ->forRead() calls\n";
+
+$writeCriticalServices = [
+    'system/modules/appointments/services/AppointmentService.php'      => 'AppointmentService',
+    'system/modules/sales/services/PaymentService.php'                  => 'PaymentService',
+    'system/modules/sales/services/InvoiceService.php'                  => 'InvoiceService',
+    'system/modules/sales/services/RegisterSessionService.php'          => 'RegisterSessionService',
+    'system/modules/staff/services/StaffGroupService.php'               => 'StaffGroupService',
+    'system/modules/staff/services/StaffGroupPermissionService.php'     => 'StaffGroupPermissionService',
+    'system/modules/services-resources/services/ServiceService.php'    => 'ServiceService',
+    'system/modules/settings/services/BranchOperatingHoursService.php'  => 'BranchOperatingHoursService',
+    'system/modules/settings/services/PriceModificationReasonService.php' => 'PriceModificationReasonService',
+    'system/modules/settings/services/BranchClosureDateService.php'     => 'BranchClosureDateService',
+    'system/modules/settings/services/AppointmentCancellationReasonService.php' => 'AppointmentCancellationReasonService',
+    'system/core/auth/SessionAuth.php'                                  => 'SessionAuth (privileged transitions)',
+    'system/core/audit/AuditService.php'                                => 'AuditService',
+    'system/core/Permissions/PermissionService.php'                     => 'PermissionService (auth read-your-write)',
+];
+
+foreach ($writeCriticalServices as $relPath => $name) {
+    w7guard_no_forread($relPath, $name);
+}
+
+echo "\n";
+
+// ─── G7-B: Booking-critical methods in AvailabilityService ───
+
+echo "G7-B: AvailabilityService booking-critical methods — no ->forRead() calls\n";
+
+$availFile = $repoRoot . '/system/modules/appointments/services/AvailabilityService.php';
+w7guard_assert(file_exists($availFile), 'AvailabilityService.php exists');
+
+if (file_exists($availFile)) {
+    $content = (string) file_get_contents($availFile);
+
+    // isSlotAvailable — extract method body and verify
+    $isSlotPos = strpos($content, 'public function isSlotAvailable(');
+    $nextMethodPos = $isSlotPos !== false ? strpos($content, "\n    public function ", $isSlotPos + 50) : false;
+    if ($isSlotPos !== false && $nextMethodPos !== false) {
+        $isSlotBody = substr($content, $isSlotPos, $nextMethodPos - $isSlotPos);
+        w7guard_assert(
+            !str_contains($isSlotBody, '->forRead()'),
+            'isSlotAvailable() does NOT use ->forRead() — booking correctness requires primary'
+        );
+    } else {
+        w7guard_assert(false, 'isSlotAvailable() method boundary not found in AvailabilityService');
+    }
+
+    // hasBufferedAppointmentConflict — extract method body and verify
+    $hbcPos = strpos($content, 'private function hasBufferedAppointmentConflict(');
+    $nextPrivatePos = $hbcPos !== false ? strpos($content, "\n    private function ", $hbcPos + 50) : false;
+    if ($hbcPos !== false && $nextPrivatePos !== false) {
+        $hbcBody = substr($content, $hbcPos, $nextPrivatePos - $hbcPos);
+        w7guard_assert(
+            !str_contains($hbcBody, '->forRead()'),
+            'hasBufferedAppointmentConflict() does NOT use ->forRead() — booking correctness requires primary'
+        );
+    } else {
+        w7guard_assert(false, 'hasBufferedAppointmentConflict() method boundary not found in AvailabilityService');
+    }
+
+    // getAvailableSlots — also booking-critical
+    $gasPos = strpos($content, 'public function getAvailableSlots(');
+    $gasEnd = $gasPos !== false ? strpos($content, "\n    public function ", $gasPos + 50) : false;
+    if ($gasPos !== false && $gasEnd !== false) {
+        $gasBody = substr($content, $gasPos, $gasEnd - $gasPos);
+        w7guard_assert(
+            !str_contains($gasBody, '->forRead()'),
+            'getAvailableSlots() does NOT use ->forRead() — availability search requires primary'
+        );
+    }
+}
+
+echo "\n";
+
+// ─── G7-C: Database::insert() must trigger sticky-primary ───
+
+echo "G7-C: Database::insert() triggers sticky-primary (requirePrimary call)\n";
+
+$dbFile = $repoRoot . '/system/core/App/Database.php';
+w7guard_assert(file_exists($dbFile), 'Database.php exists');
+
+if (file_exists($dbFile)) {
+    $dbContent = (string) file_get_contents($dbFile);
+    $insertPos = strpos($dbContent, 'public function insert(');
+    $insertEnd = $insertPos !== false ? strpos($dbContent, "\n        return (int) \$this->connection()->lastInsertId()", $insertPos) : false;
+    if ($insertPos !== false && $insertEnd !== false) {
+        $insertBody = substr($dbContent, $insertPos, $insertEnd - $insertPos + 60);
+        w7guard_assert(
+            str_contains($insertBody, '$this->requirePrimary()'),
+            'Database::insert() calls $this->requirePrimary() before write (sticky-primary enforcement)'
+        );
+    } else {
+        w7guard_assert(false, 'Database::insert() body not found — cannot verify requirePrimary guard');
+    }
+}
+
+echo "\n";
+
+// ─── G7-D: Database::transaction() must trigger sticky-primary ───
+
+echo "G7-D: Database::transaction() triggers sticky-primary (requirePrimary call)\n";
+
+if (file_exists($dbFile)) {
+    $dbContent = (string) file_get_contents($dbFile);
+    $txnPos = strpos($dbContent, 'public function transaction(');
+    $txnEnd = $txnPos !== false ? strpos($dbContent, "\n    }", $txnPos + 50) : false;
+    if ($txnPos !== false && $txnEnd !== false) {
+        $txnBody = substr($dbContent, $txnPos, $txnEnd - $txnPos + 10);
+        w7guard_assert(
+            str_contains($txnBody, '$this->requirePrimary()'),
+            'Database::transaction() calls $this->requirePrimary() before BEGIN (sticky-primary enforcement)'
+        );
+    } else {
+        w7guard_assert(false, 'Database::transaction() body not found — cannot verify requirePrimary guard');
+    }
+}
+
+echo "\n";
+
+// ─── G7-E: ReadQueryExecutor must not expose write API ───
+
+echo "G7-E: ReadQueryExecutor — no write methods exposed\n";
+
+$executorFile = $repoRoot . '/system/core/App/ReadQueryExecutor.php';
+w7guard_assert(file_exists($executorFile), 'ReadQueryExecutor.php exists');
+
+if (file_exists($executorFile)) {
+    $execContent = (string) file_get_contents($executorFile);
+    w7guard_assert(!str_contains($execContent, 'public function insert('), 'ReadQueryExecutor has no insert() method');
+    w7guard_assert(!str_contains($execContent, 'public function transaction('), 'ReadQueryExecutor has no transaction() method');
+    w7guard_assert(!str_contains($execContent, 'public function exec('), 'ReadQueryExecutor has no exec() method');
+    w7guard_assert(!str_contains($execContent, 'public function query('), 'ReadQueryExecutor has no generic query() — only typed fetch methods');
+    w7guard_assert(str_contains($execContent, 'public function fetchAll('), 'ReadQueryExecutor has fetchAll() (read-only)');
+    w7guard_assert(str_contains($execContent, 'public function fetchOne('), 'ReadQueryExecutor has fetchOne() (read-only)');
+}
+
+echo "\n";
+
+// ─── Summary ───
+
+$total = $pass + $fail;
+echo "=== WAVE-07 GUARDRAIL SUMMARY ===\n";
+echo "PASS: {$pass} / {$total}\n";
+if ($fail > 0) {
+    echo "FAIL: {$fail} / {$total}\n";
+    echo "\nSTATUS: FAIL — A write-critical path violation exists. Fix before releasing.\n\n";
+    exit(1);
+}
+echo "\nSTATUS: PASS — All write-path replica ban guardrails satisfied.\n\n";
+exit(0);

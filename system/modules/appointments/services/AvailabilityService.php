@@ -527,7 +527,10 @@ final class AvailabilityService
             $params[] = $branchId;
         }
         $sql .= ' ORDER BY a.staff_id, a.start_at';
-        $rows = $this->db->fetchAll($sql, $params);
+        // WAVE-07: display-only path — eligible for replica read.
+        // The booking write path uses isSlotAvailable() which always hits primary directly.
+        // Bounded lag (≤ replica replication window) is acceptable for calendar display.
+        $rows = $this->db->forRead()->fetchAll($sql, $params);
         $grouped = [];
         foreach ($rows as $row) {
             $sid = (int) ($row['staff_id'] ?? 0);

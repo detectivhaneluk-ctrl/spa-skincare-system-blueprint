@@ -25,7 +25,40 @@ $container = new \Core\App\Container();
 \Core\App\Application::setContainer($container);
 
 $container->singleton(\Core\App\Config::class, fn () => new \Core\App\Config(SYSTEM_PATH . '/config'));
-$container->singleton(\Core\App\Database::class, fn ($c) => new \Core\App\Database($c->get(\Core\App\Config::class)));
+// WAVE-07: ReadWriteConnectionResolver — manages primary + replica PDO connections.
+// Attached to Database after construction. Resolver is a no-op (no-split) when
+// DB_REPLICA_HOST is empty or DB_READ_WRITE_ROUTING is not true.
+$container->singleton(\Core\App\ReadWriteConnectionResolver::class, function ($c) {
+    $config = $c->get(\Core\App\Config::class);
+    $db = $config->get('database');
+    $primaryCfg = [
+        'host'     => $db['host'],
+        'port'     => (int) $db['port'],
+        'database' => $db['database'],
+        'username' => $db['username'],
+        'password' => $db['password'],
+        'charset'  => $db['charset'],
+    ];
+    $replicaHost = trim((string) ($db['replica_host'] ?? ''));
+    $routingEnabled = (bool) ($db['read_write_routing_enabled'] ?? false);
+    $replicaCfg = null;
+    if ($routingEnabled && $replicaHost !== '') {
+        $replicaCfg = [
+            'host'     => $replicaHost,
+            'port'     => (int) ($db['replica_port'] ?? 3306),
+            'database' => $db['database'],
+            'username' => $db['username'],
+            'password' => $db['password'],
+            'charset'  => $db['charset'],
+        ];
+    }
+    return new \Core\App\ReadWriteConnectionResolver($primaryCfg, $replicaCfg);
+});
+$container->singleton(\Core\App\Database::class, function ($c) {
+    $db = new \Core\App\Database($c->get(\Core\App\Config::class));
+    $db->setReadWriteResolver($c->get(\Core\App\ReadWriteConnectionResolver::class));
+    return $db;
+});
 $container->singleton(\Core\Auth\UserSessionEpochRepository::class, fn ($c) => new \Core\Auth\UserSessionEpochRepository($c->get(\Core\App\Database::class)));
 $container->singleton(\Core\Auth\SessionAuth::class, fn ($c) => new \Core\Auth\SessionAuth(
     $c->get(\Core\App\Database::class),
