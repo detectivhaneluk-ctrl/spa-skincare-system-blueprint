@@ -32,6 +32,12 @@ final class BackendHealthReasonCodes
 
     public const SHARED_CACHE_PRODUCTION_REDIS_REQUIRED = 'SHARED_CACHE_PRODUCTION_REDIS_REQUIRED';
 
+    public const ASYNC_QUEUE_TABLE_MISSING = 'ASYNC_QUEUE_TABLE_MISSING';
+
+    public const ASYNC_QUEUE_DEAD_JOBS = 'ASYNC_QUEUE_DEAD_JOBS';
+
+    public const ASYNC_QUEUE_STALE_JOBS = 'ASYNC_QUEUE_STALE_JOBS';
+
     /** Structured log {@see StructuredLogger} event when consolidated health is not healthy. */
     public const LOG_EVENT_BACKEND_HEALTH_ISSUE = 'observability.backend_health.issue_v1';
 }

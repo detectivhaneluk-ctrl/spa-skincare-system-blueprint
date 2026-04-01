@@ -37,6 +37,7 @@ final class BackendHealthCollector
             $this->probeRuntimeRegistry(),
             $this->probeImagePipeline(),
             $this->probeSharedCache(),
+            $this->probeAsyncQueue(),
         ];
 
         $overall = BackendHealthStatus::HEALTHY;
@@ -318,5 +319,69 @@ final class BackendHealthCollector
     private function truncate(string $s, int $max): string
     {
         return strlen($s) <= $max ? $s : substr($s, 0, $max - 1) . '…';
+    }
+
+    /**
+     * Probes runtime_async_jobs for dead-letter and stale-processing rows.
+     *
+     * Dead-letter jobs (status=dead) mean a job exhausted all retry attempts and
+     * requires operator intervention — see OPS-WORKER-SUPERVISION-01.md § Dead-letter.
+     * Stale processing rows (processing > 900 s) indicate a stuck or crashed worker.
+     */
+    private function probeAsyncQueue(): BackendHealthLayerSnapshot
+    {
+        if (!$this->tableExists('runtime_async_jobs')) {
+            return new BackendHealthLayerSnapshot(
+                BackendHealthLayer::ASYNC_QUEUE,
+                BackendHealthStatus::FAILED,
+                [BackendHealthReasonCodes::ASYNC_QUEUE_TABLE_MISSING],
+                'runtime_async_jobs table missing (migration 124).'
+            );
+        }
+
+        try {
+            $pdo = $this->pdo();
+
+            $st = $pdo->prepare("SELECT COUNT(*) FROM runtime_async_jobs WHERE status = 'dead'");
+            $st->execute();
+            $dead = (int) $st->fetchColumn();
+
+            $st2 = $pdo->prepare(
+                "SELECT COUNT(*) FROM runtime_async_jobs WHERE status = 'processing' AND reserved_at IS NOT NULL AND reserved_at < DATE_SUB(NOW(3), INTERVAL 900 SECOND)"
+            );
+            $st2->execute();
+            $stale = (int) $st2->fetchColumn();
+        } catch (\Throwable $e) {
+            return new BackendHealthLayerSnapshot(
+                BackendHealthLayer::ASYNC_QUEUE,
+                BackendHealthStatus::DEGRADED,
+                [BackendHealthReasonCodes::ASYNC_QUEUE_TABLE_MISSING],
+                $this->truncate($e->getMessage(), 240)
+            );
+        }
+
+        $reasons = [];
+        if ($dead > 0) {
+            $reasons[] = BackendHealthReasonCodes::ASYNC_QUEUE_DEAD_JOBS;
+        }
+        if ($stale > 0) {
+            $reasons[] = BackendHealthReasonCodes::ASYNC_QUEUE_STALE_JOBS;
+        }
+
+        if ($reasons !== []) {
+            return new BackendHealthLayerSnapshot(
+                BackendHealthLayer::ASYNC_QUEUE,
+                BackendHealthStatus::DEGRADED,
+                $reasons,
+                'async_queue dead=' . $dead . ' stale_processing=' . $stale
+            );
+        }
+
+        return new BackendHealthLayerSnapshot(
+            BackendHealthLayer::ASYNC_QUEUE,
+            BackendHealthStatus::HEALTHY,
+            [],
+            'async_queue dead=0 stale=0'
+        );
     }
 }

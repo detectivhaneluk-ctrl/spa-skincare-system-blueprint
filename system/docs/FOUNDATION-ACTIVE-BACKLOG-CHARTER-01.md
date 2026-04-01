@@ -8,6 +8,8 @@
 
 > **CLOSED (2026-04-01): CI-AND-REGRESSION-BREADTH-CLOSURE-01** — CI/regression breadth gap closed. All 10 backbone guardrail scripts wired into PR fast gate. PHPUnit 11 harness installed (`TenantContextTest`, `AccessDecisionTest`). 5 key backbone verifier families gated on every PR. Fast/deep CI topology explicit. Verifier 65/65 PASS. Commit: `78c7a06`.
 
+> **CLOSED (2026-04-01): MINIMUM-OPS-RESILIENCE-GATE-01** — Minimum operational resilience gate closed. Async queue dead-letter/stale blind spot added to consolidated backend health probe (`probeAsyncQueue()` in `BackendHealthCollector`). Worker supervision runbook (`OPS-WORKER-SUPERVISION-01.md`): systemd/Supervisor templates, liveness check, DLQ policy, stale-reclaim schedule. Backup/restore minimum truth (`OPS-BACKUP-RESTORE-01.md`): MySQL dump procedure, restore steps, post-restore verification, honest deferral list. Verifier 41/41 PASS. Release law ACCEPTED (70/70 Tier A).
+
 > **SCALE WAVE LAUNCH — 2026-03-31 (status updated 2026-04-01):**  
 > Foundation A1–A7 (all phases), PLT-Q-01, WAVE-01 through WAVE-06 are all **CLOSED**. PLT-AUTH-02 is **CLOSED** (full closure 2026-04-01). PLT-MFA-01 is **CLOSED** (2026-04-01).  
 > The scale-wave campaign ran in `SCALE-WAVE-EXECUTION-CHARTER-01.md` — WAVE-01 through WAVE-06 all DONE.  
@@ -330,11 +332,29 @@ See PLT-AUTH-02 CLOSED section above. Final proof: **137/137** assertions pass.
 
 ---
 
+## MINIMUM-OPS-RESILIENCE-GATE-01 — **CLOSED** (2026-04-01)
+
+**Minimum operational resilience gate — async queue dead-letter visibility, worker supervision truth, backup/restore documented, queue failure policy explicit.**
+
+| Item | Evidence |
+|------|----------|
+| `BackendHealthLayer::ASYNC_QUEUE` constant added | `system/core/Observability/BackendHealthLayer.php` |
+| `BackendHealthReasonCodes::ASYNC_QUEUE_TABLE_MISSING / DEAD_JOBS / STALE_JOBS` added | `system/core/Observability/BackendHealthReasonCodes.php` |
+| `BackendHealthCollector::probeAsyncQueue()` — `runtime_async_jobs` dead + stale rows in consolidated health report | `system/core/Observability/BackendHealthCollector.php` |
+| `probeAsyncQueue()` added to `collectAll()` — 6 layers total | `BackendHealthCollector.php` |
+| Ops runbook: worker supervision, systemd/Supervisor templates, liveness checks, stale-reclaim cron schedule | `system/docs/OPS-WORKER-SUPERVISION-01.md` |
+| Ops runbook: dead-letter policy — inspect, re-queue, discard, escalate decision matrix | `system/docs/OPS-WORKER-SUPERVISION-01.md` §4 |
+| Ops runbook: backup/restore — MySQL dump (`--single-transaction`), restore procedure, post-restore verification, honest deferral list | `system/docs/OPS-BACKUP-RESTORE-01.md` |
+| New verifier: **41/41** PASS | `system/scripts/read-only/verify_minimum_ops_resilience_gate_01.php` |
+| Release law | ACCEPTED (70/70 Tier A) |
+
+---
+
 ## LIVE (exactly one)
 
 | ID | Item | Notes |
 |----|------|-------|
-| — | No current LIVE task | `CI-AND-REGRESSION-BREADTH-CLOSURE-01` is `CLOSED` (2026-04-01). Evidence: `verify_ci_and_regression_breadth_closure_01.php` 65/65 PASS, all 10 backbone guardrails wired to PR fast gate, PHPUnit harness installed, fast/deep topology explicit. Promote the next task explicitly before implementation. |
+| — | No current LIVE task | `MINIMUM-OPS-RESILIENCE-GATE-01` is `CLOSED` (2026-04-01). Evidence: `verify_minimum_ops_resilience_gate_01.php` 41/41 PASS, `probeAsyncQueue()` wired in `BackendHealthCollector`, ops runbooks delivered, release law ACCEPTED 70/70. Promote the next task explicitly before implementation. |
 
 ---
 
@@ -342,7 +362,7 @@ See PLT-AUTH-02 CLOSED section above. Final proof: **137/137** assertions pass.
 
 | ID | Item | Notes |
 |----|------|-------|
-| — | No PARKED/NEXT task | `CI-AND-REGRESSION-BREADTH-CLOSURE-01` is closed. No successor promoted yet. |
+| — | No PARKED/NEXT task | `MINIMUM-OPS-RESILIENCE-GATE-01` is closed. No successor promoted yet. |
 
 ---
 

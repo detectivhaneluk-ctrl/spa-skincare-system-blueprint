@@ -16,4 +16,6 @@ final class BackendHealthLayer
     public const IMAGE_PIPELINE = 'image_pipeline';
 
     public const SHARED_CACHE = 'shared_cache';
+
+    public const ASYNC_QUEUE = 'async_queue';
 }
