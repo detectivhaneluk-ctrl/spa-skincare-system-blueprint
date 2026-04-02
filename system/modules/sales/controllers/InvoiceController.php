@@ -437,10 +437,16 @@ final class InvoiceController
         if (!$this->ensureBranchAccess($invoice)) {
             return;
         }
-        $this->service->delete($id);
-        flash('success', 'Invoice deleted.');
-        header('Location: /sales/invoices');
-        exit;
+        try {
+            $this->service->delete($id);
+            flash('success', 'Invoice deleted.');
+            header('Location: /sales/invoices');
+            exit;
+        } catch (\Throwable $e) {
+            flash('error', $e->getMessage());
+            header('Location: /sales/invoices/' . $id);
+            exit;
+        }
     }
 
     public function cancel(int $id): void
@@ -456,8 +462,12 @@ final class InvoiceController
         if (!$this->ensureBranchAccess($invoice)) {
             return;
         }
-        $this->service->cancel($id);
-        flash('success', 'Invoice cancelled.');
+        try {
+            $this->service->cancel($id);
+            flash('success', 'Invoice cancelled.');
+        } catch (\Throwable $e) {
+            flash('error', $e->getMessage());
+        }
         header('Location: /sales/invoices/' . $id);
         exit;
     }

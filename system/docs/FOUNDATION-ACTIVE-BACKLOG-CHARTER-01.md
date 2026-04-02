@@ -1,4 +1,4 @@
-# Foundation active backlog — CHARTER-01 (normalized)
+﻿# Foundation active backlog — CHARTER-01 (normalized)
 
 **Backbone Closure Mode — live execution queue:** This file is the **only** place that may list **LIVE** implementation work.  
 **Master execution plan:** `BACKBONE-CLOSURE-MASTER-PLAN-01.md`  
@@ -354,7 +354,7 @@ See PLT-AUTH-02 CLOSED section above. Final proof: **137/137** assertions pass.
 
 | ID | Item | Notes |
 |----|------|-------|
-| — | No current LIVE task | `MINIMUM-OPS-RESILIENCE-GATE-01` is `CLOSED` (2026-04-01). Evidence: `verify_minimum_ops_resilience_gate_01.php` 41/41 PASS, `probeAsyncQueue()` wired in `BackendHealthCollector`, ops runbooks delivered, release law ACCEPTED 70/70. Promote the next task explicitly before implementation. |
+| — | No current LIVE task | `SALES-CANONICAL-OPERATOR-FLOW-HARDENING-01` is `CLOSED` (2026-04-02). Evidence: `verify_sales_canonical_operator_flow_hardening_01.php` 24/24 PASS. `InvoiceController::destroy()` and `cancel()` now wrap service calls in `try`/`catch`; `DomainException` → flash error + redirect to invoice show instead of HTTP 500. Guardrails: `guardrail_service_layer_db_ban` PASS, `guardrail_id_only_repo_api_freeze` PASS, `guardrail_plt_auth_02_service_authorizer_enforcement` 15/15 PASS. PHP lint PASS. |
 
 ---
 
