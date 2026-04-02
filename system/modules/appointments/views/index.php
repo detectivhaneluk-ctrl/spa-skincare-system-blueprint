@@ -27,9 +27,8 @@ $apptListCalendarHref = '/appointments/calendar/day' . ($apptListCalendarQ !== [
                         <div class="appt-list-field">
                             <label class="appt-list-field__label" for="appt-list-branch">Branch</label>
                             <select id="appt-list-branch" name="branch_id" class="appt-list-field__control">
-                                <option value="">All branches</option>
                                 <?php foreach ($branches as $b): ?>
-                                <option value="<?= (int) $b['id'] ?>" <?= (isset($_GET['branch_id']) && (int)$_GET['branch_id'] === (int)$b['id']) ? 'selected' : '' ?>><?= htmlspecialchars($b['name']) ?></option>
+                                <option value="<?= (int) $b['id'] ?>" <?= ((int) ($branchId ?? 0) === (int) $b['id']) ? 'selected' : '' ?>><?= htmlspecialchars($b['name']) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -70,7 +69,7 @@ $apptListCalendarHref = '/appointments/calendar/day' . ($apptListCalendarQ !== [
         </form>
         <div class="appt-list-toolbar__actions">
             <a href="<?= htmlspecialchars($apptListCalendarHref) ?>" class="appt-list-btn appt-list-btn--ghost">Day calendar</a>
-            <a href="/appointments/create" class="appt-list-btn appt-list-btn--solid appt-list-btn--with-icon" title="New appointment"><span class="appt-list-btn__ic" aria-hidden="true">+</span><span>Add Appointment</span></a>
+            <a href="<?= htmlspecialchars($workspace['new_appointment_url'] ?? '/appointments/create') ?>" class="appt-list-btn appt-list-btn--solid appt-list-btn--with-icon" title="New appointment"><span class="appt-list-btn__ic" aria-hidden="true">+</span><span>Add Appointment</span></a>
         </div>
     </div>
 
@@ -114,7 +113,7 @@ if (count($rows) === 0) {
     echo '<p class="appt-list-empty__title">No appointments match your filters</p>';
     echo '<p class="appt-list-empty__text">Adjust branch, date range, or status and use <strong>Filter</strong>, or create a new booking.</p>';
     echo '<p class="appt-list-empty__actions">';
-    echo '<a class="appt-list-empty__link" href="/appointments/create">Add Appointment</a>';
+    echo '<a class="appt-list-empty__link" href="' . htmlspecialchars((string) ($workspace['new_appointment_url'] ?? '/appointments/create'), ENT_QUOTES, 'UTF-8') . '">Add Appointment</a>';
     echo '<span class="appt-list-empty__sep" aria-hidden="true">·</span>';
     echo '<a class="appt-list-empty__link" href="' . htmlspecialchars($apptListCalendarHref, ENT_QUOTES, 'UTF-8') . '">Day calendar</a>';
     echo '</p>';

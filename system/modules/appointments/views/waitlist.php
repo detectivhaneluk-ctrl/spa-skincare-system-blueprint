@@ -28,7 +28,7 @@ $waitlistListQ = !empty($branchId) ? '?' . http_build_query(['branch_id' => (int
             <span class="appt-waitlist-nav-sep" aria-hidden="true">·</span>
             <a href="<?= htmlspecialchars('/appointments' . $waitlistListQ, ENT_QUOTES, 'UTF-8') ?>" class="appt-waitlist-nav-link">Appointments list</a>
             <span class="appt-waitlist-nav-sep" aria-hidden="true">·</span>
-            <a href="/appointments/create" class="appt-waitlist-nav-link">New appointment</a>
+            <a href="<?= htmlspecialchars((string) ($workspace['new_appointment_url'] ?? '/appointments/create')) ?>" class="appt-waitlist-nav-link">New appointment</a>
         </nav>
     </div>
 
@@ -48,7 +48,6 @@ $waitlistListQ = !empty($branchId) ? '?' . http_build_query(['branch_id' => (int
                         <div class="appt-waitlist-field">
                             <label class="appt-waitlist-field__label" for="waitlist-branch">Branch</label>
                             <select id="waitlist-branch" name="branch_id" class="appt-waitlist-field__control">
-                                <option value="">All branches</option>
                                 <?php foreach ($branches as $b): ?>
                                 <option value="<?= (int) $b['id'] ?>" <?= ((int) ($branchId ?? 0) === (int) $b['id']) ? 'selected' : '' ?>><?= htmlspecialchars($b['name']) ?></option>
                                 <?php endforeach; ?>
@@ -145,11 +144,11 @@ $waitlistListQ = !empty($branchId) ? '?' . http_build_query(['branch_id' => (int
                 <div class="appt-waitlist-empty__actions">
                     <a href="<?= htmlspecialchars($waitlistCreateUrl) ?>" class="appt-waitlist-btn appt-waitlist-btn--solid appt-waitlist-empty__cta-primary">Add Waitlist Entry</a>
                     <div class="appt-waitlist-empty__secondary">
-                        <a href="/appointments/create" class="appt-waitlist-btn appt-waitlist-btn--ghost">New appointment</a>
+                        <a href="<?= htmlspecialchars((string) ($workspace['new_appointment_url'] ?? '/appointments/create')) ?>" class="appt-waitlist-btn appt-waitlist-btn--ghost">New appointment</a>
                         <a href="#waitlist-filter-form" class="appt-waitlist-btn appt-waitlist-btn--ghost">Adjust filters</a>
                     </div>
                 </div>
-                <p class="appt-waitlist-empty__tip" role="note">Operational tip: set <strong>Status</strong> to <strong>All</strong> or pick <strong>All branches</strong> to scan the full queue.</p>
+                <p class="appt-waitlist-empty__tip" role="note">Operational tip: set <strong>Status</strong> to <strong>All</strong> to scan the full queue for this branch.</p>
             </div>
         </td>
     </tr>
@@ -182,6 +181,8 @@ $waitlistListQ = !empty($branchId) ? '?' . http_build_query(['branch_id' => (int
             <td class="appt-waitlist-actions-cell">
                 <form method="post" action="/appointments/waitlist/<?= (int) $e['id'] ?>/status" class="appt-waitlist-inline-form">
                     <input type="hidden" name="<?= htmlspecialchars(config('app.csrf_token_name', 'csrf_token')) ?>" value="<?= htmlspecialchars($csrf) ?>">
+                    <input type="hidden" name="redirect_branch_id" value="<?= htmlspecialchars((string) ($branchId ?? '')) ?>">
+                    <input type="hidden" name="redirect_date" value="<?= htmlspecialchars((string) ($date ?? '')) ?>">
                     <select name="status" class="appt-waitlist-inline-form__select" aria-label="Set status">
                                 <?php foreach (['waiting', 'offered', 'matched', 'booked', 'cancelled'] as $st): ?>
                                 <option value="<?= $st ?>" <?= (($e['status'] ?? 'waiting') === $st) ? 'selected' : '' ?>><?= $st ?></option>
@@ -191,6 +192,8 @@ $waitlistListQ = !empty($branchId) ? '?' . http_build_query(['branch_id' => (int
                 </form>
                 <form method="post" action="/appointments/waitlist/<?= (int) $e['id'] ?>/link-appointment" class="appt-waitlist-inline-form">
                     <input type="hidden" name="<?= htmlspecialchars(config('app.csrf_token_name', 'csrf_token')) ?>" value="<?= htmlspecialchars($csrf) ?>">
+                    <input type="hidden" name="redirect_branch_id" value="<?= htmlspecialchars((string) ($branchId ?? '')) ?>">
+                    <input type="hidden" name="redirect_date" value="<?= htmlspecialchars((string) ($date ?? '')) ?>">
                     <input type="number" min="1" name="appointment_id" class="appt-waitlist-inline-form__input appt-waitlist-inline-form__input--narrow" placeholder="Appointment ID" aria-label="Appointment ID to link">
                     <button type="submit" class="appt-waitlist-mini-btn">Link</button>
                 </form>

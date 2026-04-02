@@ -28,14 +28,37 @@ Implementations live in Packages module providers.
 - Package ownership must match appointment client.
 # Appointments Module
 
-## Temporary Branch Behavior
+## Branch Contract (C-002 — Canonical Rule)
 
-Until `BranchContextMiddleware` is fully implemented:
+Every appointments page and JSON endpoint **requires** a resolved branch. There is no "global" or
+"all branches" mode.
 
-- **branch_id** comes from the form or query string. When null, appointments are "global" (no branch).
-- **List**: Optional `?branch_id=1` filter. When omitted, shows all appointments.
-- **Create/Edit**: User selects branch in the form. Conflict checks run within the same branch only.
-- **Conflict checks**: Staff and room overlaps are detected only against other non-cancelled appointments in the **same branch** (or both global when branch_id is null).
+Resolution order (applied by `resolveAppointmentBranchFromGetOrFail` /
+`resolveAppointmentBranchForPrincipalFromOptionalRequestId`):
+
+1. **Explicit `branch_id` query/post param** — validated against the principal's allowed branches
+   and the resolved organization. Takes precedence over session.
+2. **Session branch from `BranchContext::getCurrentBranchId()`** — used when no explicit param is
+   supplied. Fails closed with `DomainException` when no session branch is active.
+
+If resolution fails (no explicit param and no session branch), the controller redirects to
+`/dashboard` with a flash error — not back to `/appointments` (which would loop).
+
+The old "global / no-branch" behavior documented below is **retired**. Appointments always carry a
+`branch_id`. Rows with `branch_id IS NULL` are excluded by the org-scope SQL fragment and are
+unreachable from any current UI path.
+
+## Route Contract — Dual-Route System (BKM-008)
+
+| Purpose | Route | Handler |
+|---|---|---|
+| HTML page | `GET /appointments/calendar/day` | `AppointmentController::dayCalendarPage()` |
+| JSON data | `GET /calendar/day` | `AppointmentController::dayCalendar()` |
+
+The calendar page fetches its data from `/calendar/day` (not `/appointments/calendar/day`). Both
+routes share the same branch resolver. The page URL and the JSON URL are **intentionally different**
+paths. `history.replaceState` keeps the browser URL on `/appointments/calendar/day?...` while the
+fetch targets `/calendar/day?...`.
 
 ## Statuses
 
@@ -43,12 +66,17 @@ Until `BranchContextMiddleware` is fully implemented:
 
 ## Conflict Rules
 
-- Staff overlap: rejected if another non-cancelled appointment uses the same staff in the same time range and branch.
-- Room overlap: rejected if another non-cancelled appointment uses the same room in the same time range and branch.
+- Staff overlap: rejected if another non-cancelled appointment uses the same staff in the same time
+  range within the same organization.
+- Room overlap: rejected if another non-cancelled appointment uses the same room in the same time
+  range and branch.
 - When editing, the current appointment ID is excluded from overlap checks.
 
 ## end_at Behavior
 
-- **Create**: If end_time is left blank and a service is selected, end_at is auto-calculated from the service's duration_minutes.
-- **Edit**: Manual override is always allowed. If end_time is blank and a service is selected, end_at is auto-calculated.
-- **Rule**: end_at = start_at + service.duration_minutes when end_time is not provided and service has duration.
+- **Create**: If end_time is left blank and a service is selected, end_at is auto-calculated from
+  the service's `duration_minutes`.
+- **Edit**: Manual override is always allowed. If end_time is blank and a service is selected,
+  end_at is auto-calculated.
+- **Rule**: `end_at = start_at + service.duration_minutes` when end_time is not provided and service
+  has duration.

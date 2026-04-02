@@ -57,7 +57,6 @@ ob_start();
                     <div class="appts-command-field appts-command-field--grow">
                         <label class="appts-command-field__label" for="calendar-branch">Branch</label>
                         <select class="ds-select appts-command-field__control" id="calendar-branch" name="branch_id">
-                            <option value="">All branches</option>
                             <?php foreach ($branches as $b): ?>
                             <option value="<?= (int) $b['id'] ?>" <?= ((int)($branchId ?? 0) === (int)$b['id']) ? 'selected' : '' ?>><?= htmlspecialchars($b['name']) ?></option>
                             <?php endforeach; ?>
@@ -101,6 +100,8 @@ ob_start();
   /** Default booking length for create drawer prefill (start = clicked slot; end = start + this). Not grid step. */
   const DEFAULT_BOOKING_DURATION_MINUTES = 30;
   let selectedSlot = null;
+  /** AbortController for the in-flight /calendar/day fetch. Cancelled when a newer load() starts. */
+  let currentLoadAbort = null;
   function currentCalendarQuery() {
     const params = new URLSearchParams();
     params.set('date', dateEl.value);
@@ -635,8 +636,16 @@ ob_start();
     params.set('date', date);
     if (branchEl.value) params.set('branch_id', branchEl.value);
     statusEl.textContent = 'Loading day calendar…';
+    if (currentLoadAbort) {
+      currentLoadAbort.abort();
+    }
+    const abortCtrl = new AbortController();
+    currentLoadAbort = abortCtrl;
     try {
-      const res = await fetch('/calendar/day?' + params.toString(), {headers: {'Accept': 'application/json'}});
+      const res = await fetch('/calendar/day?' + params.toString(), {
+        headers: {'Accept': 'application/json'},
+        signal: abortCtrl.signal,
+      });
       const payload = await res.json();
       // BKM-008: success payloads include contract fields only; errors may be a string (422) or
       // { message } (auth/HTTP JSON). Avoid truthy non-string `error` and property access on non-objects.
@@ -655,6 +664,9 @@ ob_start();
       statusEl.textContent = '';
       renderCalendar(payload);
     } catch (e) {
+      if (e && e.name === 'AbortError') {
+        return;
+      }
       statusEl.textContent = 'Could not load calendar data.';
       wrap.innerHTML = '';
     }
@@ -667,10 +679,12 @@ ob_start();
     load();
   });
   dateEl.addEventListener('change', () => {
+    selectedSlot = null;
     syncCalendarUrl();
     load();
   });
   branchEl.addEventListener('change', () => {
+    selectedSlot = null;
     syncCalendarUrl();
     load();
   });

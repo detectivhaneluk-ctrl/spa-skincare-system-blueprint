@@ -273,7 +273,8 @@ final class AppointmentController
                 ], 422);
             }
             flash('error', $e->getMessage());
-            header('Location: /appointments/create');
+            $branchForRedirect = trim((string) ($_POST['branch_id'] ?? ''));
+            header('Location: /appointments/create' . ($branchForRedirect !== '' ? '?branch_id=' . (int) $branchForRedirect : ''));
             exit;
         }
 
@@ -301,7 +302,8 @@ final class AppointmentController
                 ], 422);
             }
             flash('error', $e->getMessage());
-            header('Location: /appointments/create');
+            $branchForRedirect = isset($data['branch_id']) && $data['branch_id'] !== null ? (int) $data['branch_id'] : 0;
+            header('Location: /appointments/create' . ($branchForRedirect > 0 ? '?branch_id=' . $branchForRedirect : ''));
             exit;
         }
     }
@@ -935,6 +937,8 @@ final class AppointmentController
     {
         $status = trim((string) ($_POST['status'] ?? ''));
         $notes = trim((string) ($_POST['notes'] ?? '')) ?: null;
+        $redirectBranchId = trim((string) ($_POST['redirect_branch_id'] ?? '')) !== '' ? (int) $_POST['redirect_branch_id'] : null;
+        $redirectDate = trim((string) ($_POST['redirect_date'] ?? ''));
         try {
             $this->waitlistService->updateStatus($id, $status, $notes);
             flash('success', 'Waitlist status updated.');
@@ -942,16 +946,24 @@ final class AppointmentController
             $this->exitIfAccessDenied($e);
             flash('error', $e->getMessage());
         }
-        header('Location: /appointments/waitlist');
+        header('Location: /appointments/waitlist' . $this->buildQueryString(array_filter([
+            'branch_id' => $redirectBranchId,
+            'date' => $redirectDate !== '' ? $redirectDate : null,
+        ], static fn ($v): bool => $v !== null)));
         exit;
     }
 
     public function waitlistLinkAppointmentAction(int $id): void
     {
         $appointmentId = (int) ($_POST['appointment_id'] ?? 0);
+        $redirectBranchId = trim((string) ($_POST['redirect_branch_id'] ?? '')) !== '' ? (int) $_POST['redirect_branch_id'] : null;
+        $redirectDate = trim((string) ($_POST['redirect_date'] ?? ''));
         if ($appointmentId <= 0) {
             flash('error', 'appointment_id is required.');
-            header('Location: /appointments/waitlist');
+            header('Location: /appointments/waitlist' . $this->buildQueryString(array_filter([
+                'branch_id' => $redirectBranchId,
+                'date' => $redirectDate !== '' ? $redirectDate : null,
+            ], static fn ($v): bool => $v !== null)));
             exit;
         }
         try {
@@ -961,17 +973,33 @@ final class AppointmentController
             $this->exitIfAccessDenied($e);
             flash('error', $e->getMessage());
         }
-        header('Location: /appointments/waitlist');
+        header('Location: /appointments/waitlist' . $this->buildQueryString(array_filter([
+            'branch_id' => $redirectBranchId,
+            'date' => $redirectDate !== '' ? $redirectDate : null,
+        ], static fn ($v): bool => $v !== null)));
         exit;
     }
 
     public function waitlistConvertAction(int $id): void
     {
+        $branchRaw = trim((string) ($_POST['branch_id'] ?? ''));
+        try {
+            $canonicalBranchId = $this->resolveAppointmentBranchForPrincipalFromOptionalRequestId(
+                $branchRaw !== '' ? $branchRaw : null
+            );
+        } catch (\Core\Errors\AccessDeniedException $e) {
+            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handleException($e);
+            exit;
+        } catch (\DomainException $e) {
+            flash('error', $e->getMessage());
+            header('Location: /appointments/waitlist');
+            exit;
+        }
         $payload = [
             'client_id' => trim((string) ($_POST['client_id'] ?? '')) !== '' ? (int) $_POST['client_id'] : null,
             'service_id' => trim((string) ($_POST['service_id'] ?? '')) !== '' ? (int) $_POST['service_id'] : null,
             'staff_id' => trim((string) ($_POST['staff_id'] ?? '')) !== '' ? (int) $_POST['staff_id'] : null,
-            'branch_id' => trim((string) ($_POST['branch_id'] ?? '')) !== '' ? (int) $_POST['branch_id'] : null,
+            'branch_id' => $canonicalBranchId,
             'start_time' => trim((string) ($_POST['start_time'] ?? '')),
             'notes' => trim((string) ($_POST['notes'] ?? '')) ?: null,
         ];
@@ -983,7 +1011,9 @@ final class AppointmentController
         } catch (\Throwable $e) {
             $this->exitIfAccessDenied($e);
             flash('error', $e->getMessage());
-            header('Location: /appointments/waitlist');
+            header('Location: /appointments/waitlist' . $this->buildQueryString(array_filter([
+                'branch_id' => $canonicalBranchId,
+            ], static fn ($v): bool => $v !== null)));
             exit;
         }
     }
@@ -1577,6 +1607,8 @@ final class AppointmentController
     /**
      * C-002: Canonical internal appointment branch — validated `branch_id` query param when present, else session
      * branch from {@see BranchContext}. No silent fallback to a default that ignores the URL selector.
+     * Callers that catch \DomainException must redirect to a page that does NOT itself require branch resolution
+     * (e.g. /dashboard) to avoid infinite redirect loops. Use {@see failAppointmentBranchResolution()} for this.
      *
      * @throws \DomainException
      */
@@ -1629,10 +1661,15 @@ final class AppointmentController
         return (int) $ctx;
     }
 
+    /**
+     * Fail-closed branch resolution: flash the error and land on a page that does not itself
+     * require branch resolution. Redirecting back to /appointments creates an infinite loop when
+     * no session branch is active and no branch_id is in the URL.
+     */
     private function failAppointmentBranchResolution(\DomainException $e): never
     {
         flash('error', $e->getMessage());
-        header('Location: /appointments');
+        header('Location: /dashboard');
         exit;
     }
 
