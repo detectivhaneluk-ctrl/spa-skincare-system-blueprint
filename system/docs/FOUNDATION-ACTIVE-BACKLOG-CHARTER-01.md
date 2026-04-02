@@ -354,7 +354,7 @@ See PLT-AUTH-02 CLOSED section above. Final proof: **137/137** assertions pass.
 
 | ID | Item | Notes |
 |----|------|-------|
-| — | No current LIVE task | `SALES-CANONICAL-OPERATOR-FLOW-HARDENING-01` is `CLOSED` (2026-04-02). Evidence: `verify_sales_canonical_operator_flow_hardening_01.php` 24/24 PASS. `InvoiceController::destroy()` and `cancel()` now wrap service calls in `try`/`catch`; `DomainException` → flash error + redirect to invoice show instead of HTTP 500. Guardrails: `guardrail_service_layer_db_ban` PASS, `guardrail_id_only_repo_api_freeze` PASS, `guardrail_plt_auth_02_service_authorizer_enforcement` 15/15 PASS. PHP lint PASS. |
+| — | No current LIVE task | `SALES-CANCEL-DELETE-ERROR-HANDLING-HARDENING-01` is `CLOSED` (2026-04-02, commit 8229f6e). **Narrow sub-task only — not the full Sales canonical operator flow hardening lane.** `InvoiceController::destroy()` and `cancel()` now wrap service calls in `try`/`catch`; `DomainException` → flash error + redirect instead of HTTP 500. Evidence: `verify_sales_canonical_operator_flow_hardening_01.php` 24/24 PASS. Guardrails PASS. **Full lane is `SALES-CANONICAL-OPERATOR-FLOW-HARDENING-01` — see PARKED row.** |
 
 ---
 
@@ -362,7 +362,7 @@ See PLT-AUTH-02 CLOSED section above. Final proof: **137/137** assertions pass.
 
 | ID | Item | Notes |
 |----|------|-------|
-| — | No PARKED/NEXT task | `MINIMUM-OPS-RESILIENCE-GATE-01` is closed. No successor promoted yet. |
+| SALES-CANONICAL-OPERATOR-FLOW-HARDENING-01 | Full Sales canonical operator-flow hardening | **PARKED/NEXT** — do not start until promoted explicitly. Scope (not closed by 8229f6e): (1) cashier journey coherence — `/sales` entry through invoice create/edit/show/payment/refund/register; coherent branch context, appointment prefill, membership checkout edge cases; (2) totals/status truth — invoice financial rollup consistency, status gate correctness, paid/partial/refunded transitions; (3) branch + register ambiguity reduction — register session open/close/move branch resolution; cashier workspace branch selector truth; (4) list/detail workspace clarity — invoice index filters, pagination state, invoice show balance/status display; (5) read-only verifier proving the above paths in code. Acceptance: verifier PASS + all 10 guardrails PASS + charter CLOSED. |
 
 ---
 
