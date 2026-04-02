@@ -1216,6 +1216,15 @@ body {
 }
 
 /* --- Immersive calendar workspace (grid scroll threshold; desktop) --- */
+/* Exit control: visibility must follow .is-immersive only. Plain [hidden] can lose to .ds-btn display rules. */
+.calendar-workspace:not(.is-immersive) .appts-immersive-exit {
+  display: none !important;
+  pointer-events: none;
+}
+.calendar-workspace.is-immersive .appts-immersive-exit {
+  display: inline-flex !important;
+  pointer-events: auto;
+}
 .calendar-workspace .appts-workspace-header__title,
 .calendar-workspace .appts-workspace-header__modes {
   max-height: 4rem;

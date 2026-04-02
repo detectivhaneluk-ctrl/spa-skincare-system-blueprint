@@ -62,6 +62,21 @@
       return;
     }
     exitBtn.hidden = !show;
+    exitBtn.setAttribute('aria-hidden', show ? 'false' : 'true');
+  }
+
+  /** Always sync DOM + internal flag (click handler must not no-op on state drift). */
+  function forceExitImmersive() {
+    suppressAutoEnter = true;
+    immersive = false;
+    root.classList.remove('is-immersive', 'is-immersive-transitioning');
+    setExitButtonVisible(false);
+    if (transitionTimer) {
+      window.clearTimeout(transitionTimer);
+      transitionTimer = null;
+    }
+    grid.scrollTop = 0;
+    scheduleEvaluate();
   }
 
   function setImmersive(next) {
@@ -134,13 +149,18 @@
     scheduleEvaluate();
   });
 
-  if (exitBtn) {
-    exitBtn.addEventListener('click', function () {
-      suppressAutoEnter = true;
-      setImmersive(false);
-      grid.scrollTop = 0;
-    });
-  }
+  root.addEventListener('click', function (e) {
+    var el = e.target;
+    if (!el || typeof el.closest !== 'function') {
+      return;
+    }
+    var btn = el.closest('[data-calendar-immersive-exit]');
+    if (!btn || !root.contains(btn)) {
+      return;
+    }
+    e.preventDefault();
+    forceExitImmersive();
+  });
 
   try {
     var mq = window.matchMedia('(prefers-reduced-motion: reduce)');

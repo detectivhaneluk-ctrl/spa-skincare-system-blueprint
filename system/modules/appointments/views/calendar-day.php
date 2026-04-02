@@ -64,7 +64,7 @@ ob_start();
                 </div>
             </form>
             <div class="appts-command-strip__actions">
-                <button type="button" class="ds-btn ds-btn--secondary appts-immersive-exit" id="calendar-immersive-exit" hidden aria-label="Restore full workspace header and navigation">Show chrome</button>
+                <button type="button" class="ds-btn ds-btn--secondary appts-immersive-exit" id="calendar-immersive-exit" data-calendar-immersive-exit hidden aria-hidden="true" aria-label="Restore full workspace header and navigation">Show chrome</button>
                 <button type="button" class="ds-btn ds-btn--secondary" id="calendar-blocked-time-btn">Blocked time</button>
             </div>
         </div>
