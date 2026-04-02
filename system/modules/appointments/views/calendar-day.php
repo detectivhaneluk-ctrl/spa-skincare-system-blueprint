@@ -105,6 +105,12 @@ ob_start();
     const raw = document.getElementById('appts-calendar-grid')?.dataset?.branchTimezone || 'UTC';
     try { new Intl.DateTimeFormat([], { timeZone: raw }); return raw; } catch (e) { return 'UTC'; }
   })();
+  /**
+   * Top inset added to all vertical pixel positions (labels, grid lines, blocks, now-line).
+   * Prevents the first time label from being clipped by the sticky header — a translateY(-50%) at top:0
+   * would otherwise overlap the header's background. The body height is also extended by this amount.
+   */
+  const GRID_TOP_INSET_PX = 10;
   let selectedSlot = null;
   /** AbortController for the in-flight /calendar/day fetch. Cancelled when a newer load() starts. */
   let currentLoadAbort = null;
@@ -172,7 +178,7 @@ ob_start();
       label.hidden = true;
       return;
     }
-    const topPx = (nowMinutes - nowLineVm.start) * PIXELS_PER_MINUTE;
+    const topPx = (nowMinutes - nowLineVm.start) * PIXELS_PER_MINUTE + GRID_TOP_INSET_PX;
     line.style.top  = topPx + 'px';
     label.style.top = topPx + 'px';
     label.textContent = fmtTime(nowMinutes);
@@ -197,13 +203,14 @@ ob_start();
     line.setAttribute('aria-hidden', 'true');
     calBody.appendChild(line);
 
-    const timeLabels = calBody.querySelector('.ops-time-labels');
+    // Label placed in .ops-calendar-body so it covers the time-axis column with its own background,
+    // replacing the nearby time label instead of competing with it.
     const label = document.createElement('div');
     label.id = 'ops-now-label-indicator';
     label.className = 'ops-now-label';
     label.hidden = true;
     label.setAttribute('aria-hidden', 'true');
-    (timeLabels || calBody).appendChild(label);
+    calBody.appendChild(label);
 
     positionNowLine();
 
@@ -211,7 +218,7 @@ ob_start();
       const { minutes: nowMinutes, dateStr: nowDate } = getBranchNow();
       const gridEl = document.getElementById('appts-calendar-grid');
       if (dateEl.value === nowDate && nowMinutes >= vm.start && nowMinutes <= vm.end && gridEl) {
-        const topPx = (nowMinutes - vm.start) * PIXELS_PER_MINUTE;
+        const topPx = (nowMinutes - vm.start) * PIXELS_PER_MINUTE + GRID_TOP_INSET_PX;
         const scrollTarget = Math.max(0, topPx - gridEl.clientHeight * 0.25);
         nowLineScrolled = true;
         setTimeout(() => gridEl.scrollTo({ top: scrollTarget, behavior: 'smooth' }), 100);
@@ -264,7 +271,7 @@ ob_start();
   }
 
   function snapTimeFromTop(offsetPx, dayStart, step) {
-    const rawMinutes = dayStart + Math.max(0, Math.round(offsetPx / PIXELS_PER_MINUTE));
+    const rawMinutes = dayStart + Math.max(0, Math.round((offsetPx - GRID_TOP_INSET_PX) / PIXELS_PER_MINUTE));
     const snapped = Math.round(rawMinutes / step) * step;
     return fmtTime(snapped);
   }
@@ -440,7 +447,7 @@ ob_start();
       end: safeEnd,
       step,
       marks: buildTimeMarks(dayStart, safeEnd, step),
-      height: range * PIXELS_PER_MINUTE,
+      height: range * PIXELS_PER_MINUTE + GRID_TOP_INSET_PX,
       branchHours: {
         available: !!branchHours.branch_hours_available,
         isClosedDay: !!branchHours.is_closed_day,
@@ -501,14 +508,16 @@ ob_start();
     vm.marks.forEach((mark) => {
       const row = document.createElement('div');
       row.className = 'ops-time-label';
-      row.style.top = ((mark - vm.start) * PIXELS_PER_MINUTE) + 'px';
+      row.style.top = ((mark - vm.start) * PIXELS_PER_MINUTE + GRID_TOP_INSET_PX) + 'px';
       const mod = ((mark % 60) + 60) % 60;
       if (mod === 0) {
         row.classList.add('ops-time-label--hour');
         row.textContent = fmtTime(mark);
+      } else if (mod === 30) {
+        row.classList.add('ops-time-label--half');
+        row.textContent = ':30';
       } else {
-        row.classList.add('ops-time-label--quarter');
-        row.textContent = ':' + String(mod).padStart(2, '0');
+        row.classList.add('ops-time-label--micro');
       }
       labelsCol.appendChild(row);
     });
@@ -532,7 +541,7 @@ ob_start();
       vm.marks.forEach((mark) => {
         const line = document.createElement('div');
         line.className = 'ops-grid-line';
-        line.style.top = ((mark - vm.start) * PIXELS_PER_MINUTE) + 'px';
+        line.style.top = ((mark - vm.start) * PIXELS_PER_MINUTE + GRID_TOP_INSET_PX) + 'px';
         lane.appendChild(line);
       });
 
@@ -541,13 +550,14 @@ ob_start();
         if (envelope.beforeHeight > 0) {
           const before = document.createElement('div');
           before.className = 'ops-lane-offhours ops-lane-offhours--before';
+          before.style.top = GRID_TOP_INSET_PX + 'px';
           before.style.height = envelope.beforeHeight + 'px';
           lane.appendChild(before);
         }
         if (envelope.afterHeight > 0) {
           const after = document.createElement('div');
           after.className = 'ops-lane-offhours ops-lane-offhours--after';
-          after.style.top = envelope.afterTop + 'px';
+          after.style.top = (envelope.afterTop + GRID_TOP_INSET_PX) + 'px';
           after.style.height = envelope.afterHeight + 'px';
           lane.appendChild(after);
         }
@@ -580,7 +590,7 @@ ob_start();
           if (item.statusLabel) {
             block.setAttribute('data-status', String(item.statusLabel).toLowerCase().replace(/\s+/g, '-').slice(0, 40));
           }
-          block.style.top = topPx + 'px';
+          block.style.top = (topPx + GRID_TOP_INSET_PX) + 'px';
           block.style.height = heightPx + 'px';
           if (item.link) {
             block.href = item.link;
@@ -628,7 +638,7 @@ ob_start();
         const rect = lane.getBoundingClientRect();
         const offsetY = e.clientY - rect.top;
         const snapped = snapTimeFromTop(offsetY, vm.start, vm.step);
-        const topPx = Math.max(0, (toMinutes(snapped) - vm.start) * PIXELS_PER_MINUTE);
+        const topPx = Math.max(GRID_TOP_INSET_PX, (toMinutes(snapped) - vm.start) * PIXELS_PER_MINUTE + GRID_TOP_INSET_PX);
         hoverPreview.hidden = false;
         hoverPreview.style.top = topPx + 'px';
         hoverLabel.textContent = col.label + ' · ' + snapped;
