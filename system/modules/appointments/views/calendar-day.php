@@ -16,26 +16,28 @@ ob_start();
 
 <div class="appointments-workspace-page ds-page appts-calendar-page">
 <div class="appts-calendar-body">
-    <div class="appts-month-day-rail" id="appts-month-day-rail" aria-label="Month and day navigation">
-        <div class="appts-month-day-rail__toolbar">
-            <div class="appts-month-day-rail__month-cluster" role="group" aria-label="Change month">
-                <button type="button" class="appts-month-day-rail__icon-btn" id="appts-rail-prev-month" aria-label="Previous month">‹</button>
-                <h2 class="appts-month-day-rail__title" id="appts-rail-month-label">Month</h2>
-                <button type="button" class="appts-month-day-rail__icon-btn" id="appts-rail-next-month" aria-label="Next month">›</button>
+    <aside class="appts-calendar-rail" aria-label="Month and day navigation">
+        <div class="appts-month-day-rail" id="appts-month-day-rail">
+            <div class="appts-month-day-rail__toolbar">
+                <p class="appts-month-day-rail__month-line" id="appts-rail-month-label">Month</p>
+                <div class="appts-month-day-rail__month-cluster" role="group" aria-label="Change month">
+                    <button type="button" class="appts-month-day-rail__icon-btn" id="appts-rail-prev-month" aria-label="Previous month">‹</button>
+                    <button type="button" class="appts-month-day-rail__icon-btn" id="appts-rail-next-month" aria-label="Next month">›</button>
+                </div>
+                <button type="button" class="ds-btn ds-btn--secondary appts-month-day-rail__today-btn" id="appts-rail-today">Today</button>
             </div>
-            <button type="button" class="ds-btn ds-btn--secondary appts-month-day-rail__today-btn" id="appts-rail-today">Today</button>
+            <div class="appts-month-day-rail__scroller" id="appts-rail-scroller">
+                <div class="appts-month-day-rail__days" id="appts-rail-days" role="group" aria-label="Days in month"></div>
+            </div>
         </div>
-        <div class="appts-month-day-rail__scroller" id="appts-rail-scroller">
-            <div class="appts-month-day-rail__days" id="appts-rail-days" role="group" aria-label="Days in month"></div>
-        </div>
-    </div>
+    </aside>
     <div class="appts-calendar-main">
         <div class="appts-command-strip" role="group" aria-label="Date, branch, and blocked time">
             <form method="get" action="/appointments/calendar/day" class="appts-command-strip__form" id="calendar-filter-form">
                 <div class="appts-command-strip__fields">
                     <div class="appts-command-field appts-command-field--date-secondary">
                         <label class="appts-command-field__label" for="calendar-date">Go to date</label>
-                        <input class="ds-input appts-command-field__control" type="date" id="calendar-date" name="date" value="<?= htmlspecialchars($calDate) ?>" required title="Pick any calendar date (same as day chips above)">
+                        <input class="ds-input appts-command-field__control" type="date" id="calendar-date" name="date" value="<?= htmlspecialchars($calDate) ?>" required title="Jump to any date (same as left rail)">
                     </div>
                     <div class="appts-command-field appts-command-field--grow">
                         <label class="appts-command-field__label" for="calendar-branch">Branch</label>
@@ -181,7 +183,7 @@ ob_start();
     try {
       reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     } catch (e) { reduced = false; }
-    sel.scrollIntoView({ inline: 'center', block: 'nearest', behavior: reduced ? 'auto' : 'smooth' });
+    sel.scrollIntoView({ block: 'center', inline: 'nearest', behavior: reduced ? 'auto' : 'smooth' });
   }
 
   function clearRailMetaClasses() {
@@ -239,11 +241,14 @@ ob_start();
       const nEl = document.createElement('span');
       nEl.className = 'appts-month-day-rail__day-num';
       nEl.textContent = String(d);
+      const main = document.createElement('span');
+      main.className = 'appts-month-day-rail__day-main';
+      main.appendChild(wEl);
+      main.appendChild(nEl);
       const dot = document.createElement('span');
       dot.className = 'appts-month-day-rail__day-dot';
       dot.setAttribute('aria-hidden', 'true');
-      btn.appendChild(wEl);
-      btn.appendChild(nEl);
+      btn.appendChild(main);
       btn.appendChild(dot);
       btn.addEventListener('click', () => {
         if (dateEl.value === iso) return;
