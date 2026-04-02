@@ -6,6 +6,7 @@ $shellModifier = (string) ($workspace['shell_modifier'] ?? '');
 $shellClass = 'workspace-shell' . ($shellModifier !== '' ? ' ' . htmlspecialchars($shellModifier, ENT_QUOTES, 'UTF-8') : '');
 $newAppointmentUrl = (string) ($workspace['new_appointment_url'] ?? '/appointments/create');
 $useCalendarNewAppointmentBtn = ($activeTab === 'calendar');
+$canCreate = (bool) ($workspace['can_create'] ?? false);
 ?>
 <div class="ds-workspace <?= $shellClass ?>">
     <header class="appts-workspace-header">
@@ -24,6 +25,7 @@ $useCalendarNewAppointmentBtn = ($activeTab === 'calendar');
                 </a>
                 <?php endforeach; ?>
             </nav>
+            <?php if ($canCreate): ?>
             <div class="appts-workspace-header__action">
                 <?php if ($useCalendarNewAppointmentBtn): ?>
                 <button type="button" class="ds-btn ds-btn--primary appts-workspace-header__new" id="calendar-new-appointment-btn" data-calendar-new-appt>New appointment</button>
@@ -31,6 +33,7 @@ $useCalendarNewAppointmentBtn = ($activeTab === 'calendar');
                 <a class="ds-btn ds-btn--primary appts-workspace-header__new" href="<?= htmlspecialchars($newAppointmentUrl) ?>">New appointment</a>
                 <?php endif; ?>
             </div>
+            <?php endif; ?>
         </div>
     </header>
 </div>

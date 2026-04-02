@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 $title = 'Appointment Day Calendar';
 /** Binds calendar workspace flex/scroll layout without relying on :has() (older browsers / edge cases). */
 $mainClass = trim((string) ($mainClass ?? '') . ' app-shell__main--calendar-workspace');
@@ -67,16 +67,23 @@ ob_start();
                     </div>
                     <div class="appts-command-field appts-command-field--grow">
                         <label class="appts-command-field__label" for="calendar-branch">Branch</label>
+                        <?php if (count($branches) === 1): ?>
+                        <span class="ds-input appts-command-field__control appts-command-field__control--locked"><?= htmlspecialchars($branches[0]['name']) ?></span>
+                        <input type="hidden" id="calendar-branch" name="branch_id" value="<?= (int) $branches[0]['id'] ?>">
+                        <?php else: ?>
                         <select class="ds-select appts-command-field__control" id="calendar-branch" name="branch_id">
                             <?php foreach ($branches as $b): ?>
                             <option value="<?= (int) $b['id'] ?>" <?= ((int)($branchId ?? 0) === (int)$b['id']) ? 'selected' : '' ?>><?= htmlspecialchars($b['name']) ?></option>
                             <?php endforeach; ?>
                         </select>
+                        <?php endif; ?>
                     </div>
                 </div>
             </form>
             <div class="appts-command-strip__actions">
+                <?php if ($workspace['can_create'] ?? false): ?>
                 <button type="button" class="ds-btn ds-btn--primary appts-command-strip__new-appt" data-calendar-new-appt>New appointment</button>
+                <?php endif; ?>
                 <button type="button" class="ds-btn ds-btn--secondary appts-immersive-exit" id="calendar-immersive-exit" data-calendar-immersive-exit hidden aria-hidden="true" aria-label="Restore full workspace header and navigation">Show chrome</button>
                 <button type="button" class="ds-btn ds-btn--secondary" id="calendar-blocked-time-btn">Blocked time</button>
             </div>

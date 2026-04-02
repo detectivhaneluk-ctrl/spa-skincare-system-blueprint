@@ -39,17 +39,17 @@ final class TenantOwnedDataScopeGuard
 
     public function assertClientInScope(int $clientId, ?int $expectedBranchId = null): void
     {
-        $this->assertEntityInScope('clients', $clientId, $expectedBranchId, 'client');
+        $this->assertNullBranchCapableEntityInScope('clients', $clientId, $expectedBranchId, 'client');
     }
 
     public function assertStaffInScope(int $staffId, ?int $expectedBranchId = null): void
     {
-        $this->assertEntityInScope('staff', $staffId, $expectedBranchId, 'staff');
+        $this->assertNullBranchCapableEntityInScope('staff', $staffId, $expectedBranchId, 'staff');
     }
 
     public function assertServiceInScope(int $serviceId, ?int $expectedBranchId = null): void
     {
-        $this->assertEntityInScope('services', $serviceId, $expectedBranchId, 'service');
+        $this->assertNullBranchCapableEntityInScope('services', $serviceId, $expectedBranchId, 'service');
     }
 
     public function assertAppointmentInScope(int $appointmentId, ?int $expectedBranchId = null): void
@@ -107,6 +107,62 @@ final class TenantOwnedDataScopeGuard
     public function assertRoomInScope(int $roomId, ?int $expectedBranchId = null): void
     {
         $this->assertEntityInScope('rooms', $roomId, $expectedBranchId, 'room');
+    }
+
+    /**
+     * Scope guard for entities that may be org-global (branch_id IS NULL).
+     *
+     * Used for staff (null-home/org-wide members visible in calendar columns via staffSelectableAtOperationBranchTenantClause),
+     * services (org-global SKUs), and clients (branchless org-level profiles).
+     *
+     * Two accepted conditions:
+     * (a) entity.branch_id == requiredBranchId AND that branch belongs to the current org.
+     * (b) entity.branch_id IS NULL (org-global entity) AND requiredBranchId belongs to the current org.
+     *
+     * Rooms and appointments always carry an explicit branch_id — use assertEntityInScope for those.
+     */
+    private function assertNullBranchCapableEntityInScope(string $table, int $id, ?int $expectedBranchId, string $label): void
+    {
+        if ($id <= 0) {
+            throw new \DomainException('Invalid ' . $label . ' id.');
+        }
+        $scope = $this->requireResolvedTenantScope();
+        $requiredBranchId = $expectedBranchId !== null ? $expectedBranchId : $scope['branch_id'];
+        if ($requiredBranchId <= 0) {
+            throw new AccessDeniedException('Selected ' . $label . ' is outside branch scope.');
+        }
+        $sql = "SELECT t.id, t.branch_id
+                FROM {$table} t
+                WHERE t.id = ? AND t.deleted_at IS NULL
+                  AND (
+                    (
+                      t.branch_id = ?
+                      AND EXISTS (
+                        SELECT 1 FROM branches b
+                        INNER JOIN organizations o ON o.id = b.organization_id AND o.deleted_at IS NULL
+                        WHERE b.id = t.branch_id AND b.deleted_at IS NULL AND o.id = ?
+                      )
+                    )
+                    OR (
+                      t.branch_id IS NULL
+                      AND EXISTS (
+                        SELECT 1 FROM branches b
+                        INNER JOIN organizations o ON o.id = b.organization_id AND o.deleted_at IS NULL
+                        WHERE b.id = ? AND b.deleted_at IS NULL AND o.id = ?
+                      )
+                    )
+                  )
+                LIMIT 1";
+        $row = $this->db->fetchOne($sql, [
+            $id,
+            $requiredBranchId,
+            $scope['organization_id'],
+            $requiredBranchId,
+            $scope['organization_id'],
+        ]);
+        if ($row === null) {
+            throw new AccessDeniedException('Selected ' . $label . ' is outside tenant scope.');
+        }
     }
 
     private function assertEntityInScope(string $table, int $id, ?int $expectedBranchId, string $label): void

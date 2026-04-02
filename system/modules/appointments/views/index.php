@@ -26,11 +26,16 @@ $apptListCalendarHref = '/appointments/calendar/day' . ($apptListCalendarQ !== [
                     <div class="appt-list-filter-cluster__fields">
                         <div class="appt-list-field">
                             <label class="appt-list-field__label" for="appt-list-branch">Branch</label>
+                            <?php if (count($branches) === 1): ?>
+                            <span class="appt-list-field__control ds-input form-control--locked"><?= htmlspecialchars($branches[0]['name']) ?></span>
+                            <input type="hidden" name="branch_id" value="<?= (int) $branches[0]['id'] ?>">
+                            <?php else: ?>
                             <select id="appt-list-branch" name="branch_id" class="appt-list-field__control">
                                 <?php foreach ($branches as $b): ?>
                                 <option value="<?= (int) $b['id'] ?>" <?= ((int) ($branchId ?? 0) === (int) $b['id']) ? 'selected' : '' ?>><?= htmlspecialchars($b['name']) ?></option>
                                 <?php endforeach; ?>
                             </select>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -127,7 +132,22 @@ if (count($rows) === 0) {
 
 <?php if ($total > count($appointments)): ?>
     <div class="appt-list-footer">
-        <p class="pagination appt-list-pagination">Page <?= (int) $page ?> · <?= (int) $total ?> total</p>
+        <?php
+        $lastPage = (int) ceil($total / $perPage);
+        $paginationQuery = array_filter([
+            'branch_id' => $_GET['branch_id'] ?? null,
+            'from_date' => $_GET['from_date'] ?? null,
+            'to_date' => $_GET['to_date'] ?? null,
+            'status' => $_GET['status'] ?? null,
+        ], fn ($v) => $v !== null && $v !== '');
+        $prevHref = $page > 1 ? '/appointments?' . http_build_query(array_merge($paginationQuery, ['page' => $page - 1])) : null;
+        $nextHref = $page < $lastPage ? '/appointments?' . http_build_query(array_merge($paginationQuery, ['page' => $page + 1])) : null;
+        ?>
+        <p class="pagination appt-list-pagination">
+            <?php if ($prevHref !== null): ?><a class="appt-list-btn appt-list-btn--ghost" href="<?= htmlspecialchars($prevHref) ?>">← Prev</a><?php endif; ?>
+            Page <?= (int) $page ?> of <?= $lastPage ?> · <?= (int) $total ?> total
+            <?php if ($nextHref !== null): ?><a class="appt-list-btn appt-list-btn--ghost" href="<?= htmlspecialchars($nextHref) ?>">Next →</a><?php endif; ?>
+        </p>
     </div>
 <?php endif; ?>
 </div>

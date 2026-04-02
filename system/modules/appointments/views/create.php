@@ -35,12 +35,17 @@ ob_start();
         <div class="appt-create-section__body">
             <div class="form-row">
                 <label for="branch_id">Branch</label>
+                <?php if (count($branches) === 1): ?>
+                <span class="ds-input form-control--locked"><?= htmlspecialchars($branches[0]['name']) ?></span>
+                <input type="hidden" id="branch_id" name="branch_id" value="<?= (int) $branches[0]['id'] ?>">
+                <?php else: ?>
                 <select id="branch_id" name="branch_id">
                     <option value="">—</option>
                     <?php foreach ($branches as $b): ?>
                     <option value="<?= (int) $b['id'] ?>" <?= ((int)($appointment['branch_id'] ?? 0)) === (int)$b['id'] ? 'selected' : '' ?>><?= htmlspecialchars($b['name']) ?></option>
                     <?php endforeach; ?>
                 </select>
+                <?php endif; ?>
             </div>
         </div>
     </section>

@@ -1849,6 +1849,14 @@ final class AppointmentController
             $newAppointmentQuery['date'] = $date;
         }
 
+        $auth = Application::container()->get(\Core\Auth\SessionAuth::class);
+        $userId = $auth->id();
+        $canCreate = false;
+        if ($userId !== null && $userId > 0) {
+            $permService = Application::container()->get(\Core\Permissions\PermissionService::class);
+            $canCreate = $permService->has((int) $userId, 'appointments.create');
+        }
+
         return [
             'active_tab' => $activeTab,
             'tabs' => [
@@ -1857,6 +1865,7 @@ final class AppointmentController
                 ['id' => 'waitlist', 'label' => 'Waitlist', 'url' => '/appointments/waitlist' . $this->buildQueryString($waitlistQuery)],
             ],
             'new_appointment_url' => '/appointments/create' . $this->buildQueryString($newAppointmentQuery),
+            'can_create' => $canCreate,
         ];
     }
 
