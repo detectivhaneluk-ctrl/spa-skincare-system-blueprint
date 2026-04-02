@@ -1172,7 +1172,8 @@ body {
 }
 .appts-command-strip__actions {
   display: inline-flex;
-  align-items: end;
+  align-items: center;
+  gap: var(--ds-space-2);
 }
 .appts-calendar-meta {
   display: flex;
@@ -1229,6 +1230,12 @@ body {
   display: inline-flex !important;
   pointer-events: auto;
 }
+.calendar-workspace .appts-workspace-header {
+  overflow: hidden;
+  max-height: 12rem;
+  opacity: 1;
+  transition: max-height 0.28s ease, opacity 0.22s ease, margin 0.22s ease;
+}
 .calendar-workspace .appts-workspace-header__title,
 .calendar-workspace .appts-workspace-header__modes {
   max-height: 4rem;
@@ -1246,13 +1253,13 @@ body {
   pointer-events: none;
   transform: translateY(-4px);
 }
-.calendar-workspace.is-immersive .appts-workspace-header__row {
-  gap: var(--ds-space-2);
-  min-height: 2.5rem;
-  align-items: center;
-}
 .calendar-workspace.is-immersive .appts-workspace-header {
-  margin-bottom: var(--ds-space-2);
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
 }
 .calendar-workspace.is-immersive .appts-calendar-body {
   grid-template-columns: 3.5rem minmax(0, 1fr);
@@ -1297,6 +1304,7 @@ body {
 .calendar-workspace.is-immersive .appts-command-field__label {
   font-size: 0.5625rem;
 }
+.calendar-workspace.is-immersive-prefers-reduced .appts-workspace-header,
 .calendar-workspace.is-immersive-prefers-reduced .appts-workspace-header__title,
 .calendar-workspace.is-immersive-prefers-reduced .appts-workspace-header__modes,
 .calendar-workspace.is-immersive-prefers-reduced .appts-calendar-meta,
@@ -1305,6 +1313,27 @@ body {
 }
 .calendar-workspace.is-immersive-transitioning .appts-calendar-grid {
   pointer-events: auto;
+}
+/* In immersive mode: reclaim all wasted vertical space above command strip */
+.calendar-workspace.is-immersive .ds-workspace {
+  margin-bottom: 0;
+}
+.calendar-workspace.is-immersive .appointments-workspace-page,
+.calendar-workspace.is-immersive .appts-calendar-page {
+  margin-top: 0;
+}
+/* Shrink (not zero) main top padding — 8px breathing room below the navbar bar */
+.app-shell__main:has(.calendar-workspace.is-immersive),
+.app-shell__main.calendar-main-is-immersive {
+  padding-top: var(--ds-space-2);
+  padding-bottom: var(--ds-space-1);
+}
+/* Command strip "New appointment" — hidden in normal mode, promoted in immersive */
+.appts-command-strip__new-appt {
+  display: none !important;
+}
+.calendar-workspace.is-immersive .appts-command-strip__new-appt {
+  display: inline-flex !important;
 }
 
 @media (max-width: 960px) {

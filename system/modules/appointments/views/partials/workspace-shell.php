@@ -26,7 +26,7 @@ $useCalendarNewAppointmentBtn = ($activeTab === 'calendar');
             </nav>
             <div class="appts-workspace-header__action">
                 <?php if ($useCalendarNewAppointmentBtn): ?>
-                <button type="button" class="ds-btn ds-btn--primary appts-workspace-header__new" id="calendar-new-appointment-btn">New appointment</button>
+                <button type="button" class="ds-btn ds-btn--primary appts-workspace-header__new" id="calendar-new-appointment-btn" data-calendar-new-appt>New appointment</button>
                 <?php else: ?>
                 <a class="ds-btn ds-btn--primary appts-workspace-header__new" href="<?= htmlspecialchars($newAppointmentUrl) ?>">New appointment</a>
                 <?php endif; ?>

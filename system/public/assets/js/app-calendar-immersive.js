@@ -17,6 +17,7 @@
   var root = document.getElementById('calendar-workspace-root');
   var grid = document.getElementById('appts-calendar-grid');
   var exitBtn = document.getElementById('calendar-immersive-exit');
+  var mainEl = root ? (root.closest('.app-shell__main') || document.querySelector('.app-shell__main')) : null;
 
   if (!root || !grid) {
     return;
@@ -74,6 +75,7 @@
     suppressAutoEnter = true;
     immersive = false;
     root.classList.remove('is-immersive', 'is-immersive-transitioning');
+    if (mainEl) { mainEl.classList.remove('calendar-main-is-immersive'); }
     setExitButtonVisible(false);
     if (transitionTimer) {
       window.clearTimeout(transitionTimer);
@@ -89,6 +91,7 @@
     }
     immersive = next;
     root.classList.toggle('is-immersive', next);
+    if (mainEl) { mainEl.classList.toggle('calendar-main-is-immersive', next); }
     setExitButtonVisible(next);
 
     if (reducedMotion) {

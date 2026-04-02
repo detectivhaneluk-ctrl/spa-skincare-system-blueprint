@@ -65,6 +65,7 @@ ob_start();
                 </div>
             </form>
             <div class="appts-command-strip__actions">
+                <button type="button" class="ds-btn ds-btn--primary appts-command-strip__new-appt" data-calendar-new-appt>New appointment</button>
                 <button type="button" class="ds-btn ds-btn--secondary appts-immersive-exit" id="calendar-immersive-exit" data-calendar-immersive-exit hidden aria-hidden="true" aria-label="Restore full workspace header and navigation">Show chrome</button>
                 <button type="button" class="ds-btn ds-btn--secondary" id="calendar-blocked-time-btn">Blocked time</button>
             </div>
@@ -89,7 +90,7 @@ ob_start();
   const statusEl = document.getElementById('calendar-status');
   const branchHoursIndicatorEl = document.getElementById('calendar-branch-hours-indicator');
   const wrap = document.getElementById('calendar-day-wrap');
-  const newAppointmentBtn = document.getElementById('calendar-new-appointment-btn');
+  const newAppointmentBtns = document.querySelectorAll('[data-calendar-new-appt]');
   const blockedTimeBtn = document.getElementById('calendar-blocked-time-btn');
   const PIXELS_PER_MINUTE = 1.4;
   const MIN_BLOCK_HEIGHT = 20;
@@ -689,7 +690,7 @@ ob_start();
     load();
   });
 
-  newAppointmentBtn.addEventListener('click', async () => {
+  newAppointmentBtns.forEach((btn) => btn.addEventListener('click', async () => {
     if (!selectedSlot) {
       selectedSlot = {
         staffId: null,
@@ -698,7 +699,7 @@ ob_start();
       };
     }
     await openDrawerUrl(buildNewAppointmentUrl());
-  });
+  }));
   blockedTimeBtn.addEventListener('click', async () => {
     await openDrawerUrl(buildBlockedTimeUrl());
   });
