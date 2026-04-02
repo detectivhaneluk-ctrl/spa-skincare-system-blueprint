@@ -1132,6 +1132,16 @@ body {
   color: var(--ds-color-text-tertiary);
   line-height: var(--ds-leading-tight);
 }
+.appts-cal-card__summary-status {
+  margin: 0.35rem var(--ds-space-2) 0;
+  text-align: center;
+  font-size: var(--ds-text-xs);
+  line-height: var(--ds-leading-normal);
+  color: var(--ds-color-danger);
+}
+.appts-cal-card__summary-status[hidden] {
+  display: none;
+}
 .appts-cal-card__hero {
   border-radius: var(--ds-radius-sm);
   border: 1px solid var(--ds-color-border-light);

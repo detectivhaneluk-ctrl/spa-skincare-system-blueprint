@@ -276,9 +276,6 @@
         try {
           await submitDrawerForm(form);
         } catch (error) {
-          if (!statusEl.hidden) {
-            return;
-          }
           setStatus(error && error.message ? error.message : 'Could not complete request.', 'error');
         }
       });
