@@ -19,7 +19,8 @@ use Modules\Staff\Services\StaffGroupService;
 
 final class AvailabilityService
 {
-    private const SLOT_MINUTES = 30;
+    /** Day calendar grid + internal slot search iteration (quarter-hour operator grid). */
+    private const SLOT_MINUTES = 15;
     private const BLOCKING_STATUSES = ['scheduled', 'confirmed', 'in_progress', 'completed'];
     private const DAY_APT_CACHE_TTL = 30;
     private const DAY_APT_CACHE_KEY_PREFIX = 'cal_v1:day_apts';

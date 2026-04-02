@@ -91,6 +91,10 @@ ob_start();
   const MIN_BLOCK_HEIGHT = 20;
   const MAX_TITLE_LENGTH = 48;
   const MAX_META_LENGTH = 56;
+  /** Calendar grid / snap / hover / grid lines (from API time_grid.slot_minutes; fallback quarter-hour). */
+  const GRID_STEP_FALLBACK_MINUTES = 15;
+  /** Default booking length for create drawer prefill (start = clicked slot; end = start + this). Not grid step. */
+  const DEFAULT_BOOKING_DURATION_MINUTES = 30;
   let selectedSlot = null;
   function currentCalendarQuery() {
     const params = new URLSearchParams();
@@ -128,8 +132,11 @@ ob_start();
     if (selectedSlot && selectedSlot.time) {
       params.set('time', selectedSlot.time);
     }
-    if (selectedSlot && selectedSlot.slotMinutes) {
-      params.set('slot_minutes', String(selectedSlot.slotMinutes));
+    const duration = selectedSlot && selectedSlot.bookingDurationMinutes != null
+      ? Number(selectedSlot.bookingDurationMinutes)
+      : DEFAULT_BOOKING_DURATION_MINUTES;
+    if (Number.isFinite(duration) && duration > 0) {
+      params.set('slot_minutes', String(duration));
     }
     return '/appointments/create?' + params.toString();
   }
@@ -217,7 +224,8 @@ ob_start();
     const closureDate = payload.closure_date && typeof payload.closure_date === 'object'
       ? payload.closure_date
       : {};
-    const step = Number(grid.slot_minutes || 30);
+    const rawGridStep = Number(grid.slot_minutes);
+    const step = Number.isFinite(rawGridStep) && rawGridStep > 0 ? rawGridStep : GRID_STEP_FALLBACK_MINUTES;
     const dayStart = toMinutes(grid.day_start || '09:00');
     const dayEnd = toMinutes(grid.day_end || '18:00');
     const safeEnd = dayEnd > dayStart ? dayEnd : dayStart + step;
@@ -374,7 +382,14 @@ ob_start();
       const row = document.createElement('div');
       row.className = 'ops-time-label';
       row.style.top = ((mark - vm.start) * PIXELS_PER_MINUTE) + 'px';
-      row.textContent = fmtTime(mark);
+      const mod = ((mark % 60) + 60) % 60;
+      if (mod === 0) {
+        row.classList.add('ops-time-label--hour');
+        row.textContent = fmtTime(mark);
+      } else {
+        row.classList.add('ops-time-label--quarter');
+        row.textContent = ':' + String(mod).padStart(2, '0');
+      }
       labelsCol.appendChild(row);
     });
     body.appendChild(labelsCol);
@@ -513,7 +528,7 @@ ob_start();
           staffId: col.id,
           staffLabel: col.label,
           time: snapTimeFromTop(offsetY, vm.start, vm.step),
-          slotMinutes: vm.step,
+          bookingDurationMinutes: DEFAULT_BOOKING_DURATION_MINUTES,
         };
         const url = buildNewAppointmentUrl();
         const started = await openDrawerUrl(url);
@@ -658,7 +673,7 @@ ob_start();
       selectedSlot = {
         staffId: null,
         time: '09:00',
-        slotMinutes: 30,
+        bookingDurationMinutes: DEFAULT_BOOKING_DURATION_MINUTES,
       };
     }
     await openDrawerUrl(buildNewAppointmentUrl());

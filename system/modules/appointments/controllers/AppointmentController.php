@@ -701,7 +701,7 @@ final class AppointmentController
         $closedDayRecordsCount = $this->countTotalRecords($appointmentsByStaff) + $this->countTotalRecords($blockedByStaff);
         $timeGrid = [
             'date' => $grid['date'] ?? $date,
-            'slot_minutes' => isset($grid['slot_minutes']) ? (int) $grid['slot_minutes'] : 30,
+            'slot_minutes' => isset($grid['slot_minutes']) ? (int) $grid['slot_minutes'] : 15,
             'day_start' => isset($grid['day_start']) && (string) $grid['day_start'] !== '' ? substr((string) $grid['day_start'], 0, 5) : '09:00',
             'day_end' => isset($grid['day_end']) && (string) $grid['day_end'] !== '' ? substr((string) $grid['day_end'], 0, 5) : '18:00',
         ];

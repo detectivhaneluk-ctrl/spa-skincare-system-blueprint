@@ -580,6 +580,19 @@ body {
   margin: 0;
   padding: var(--ds-space-4) var(--ds-shell-pad-x) var(--ds-space-8);
 }
+/* Appointments day calendar: one scroll surface inside the grid (desktop workspace). */
+.app-shell__main:has(.appts-calendar-page) {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  padding-bottom: var(--ds-space-2);
+}
+.app-shell__main:has(.appts-calendar-page) > .ds-workspace,
+.app-shell__main:has(.appts-calendar-page) > .flash {
+  flex-shrink: 0;
+}
 .app-shell__main--auth {
   display: flex;
   justify-content: center;
@@ -1011,16 +1024,23 @@ body {
 
 .appts-calendar-page {
   margin-top: var(--ds-space-1);
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 .appts-calendar-body {
   display: grid;
   grid-template-columns: minmax(164px, 188px) minmax(0, 1fr);
   gap: var(--ds-space-3);
-  align-items: start;
+  align-items: stretch;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 .appts-calendar-rail {
   border-right: 1px solid var(--ds-color-divider);
   padding-right: var(--ds-space-3);
+  align-self: start;
 }
 .appts-calendar-rail__month {
   margin: 0;
@@ -1094,6 +1114,10 @@ body {
 
 .appts-calendar-main {
   min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
 }
 .appts-command-strip {
   display: flex;
@@ -1103,6 +1127,7 @@ body {
   gap: var(--ds-space-2) var(--ds-space-3);
   padding: 0;
   margin-bottom: var(--ds-space-2);
+  flex-shrink: 0;
 }
 .appts-command-strip__form {
   flex: 1;
@@ -1145,6 +1170,7 @@ body {
   justify-content: space-between;
   gap: var(--ds-space-2) var(--ds-space-3);
   margin-bottom: 0.4rem;
+  flex-shrink: 0;
 }
 .appts-calendar-meta__hint {
   margin: 0;
@@ -1160,17 +1186,21 @@ body {
 }
 .appts-calendar-hours {
   margin: 0.2rem 0 0.45rem;
+  flex-shrink: 0;
 }
 .appts-calendar-grid {
   border: 1px solid var(--ds-color-border-light);
   border-radius: var(--ds-radius-md);
-  overflow: hidden;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
   background: var(--ds-color-bg-muted);
+  -webkit-overflow-scrolling: touch;
 }
 .calendar-day-wrap {
   margin: 0;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+  min-width: min-content;
+  overflow: visible;
 }
 .calendar-empty-hint {
   margin: 1.25rem 1rem;
@@ -1201,6 +1231,10 @@ body {
   grid-template-columns: 76px repeat(auto-fit, minmax(152px, 1fr));
   border-bottom: 1px solid var(--ds-color-divider);
   background: var(--ds-color-bg-subtle);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  box-shadow: 0 1px 0 var(--ds-color-divider);
 }
 .ops-time-head, .ops-staff-head {
   padding: 0.45rem 0.55rem;
@@ -1259,6 +1293,17 @@ body {
   color: #64748b;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.03em;
+}
+.ops-time-label--hour {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #475569;
+}
+.ops-time-label--quarter {
+  font-size: 0.5625rem;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.02em;
 }
 .ops-lanes {
   display: grid;
