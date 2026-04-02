@@ -1,4 +1,4 @@
-# Sales Module
+﻿# Sales Module
 
 ## Invoice Status Rules
 - **draft**: Editable, not yet finalized
@@ -22,10 +22,6 @@
 - **paid_amount**: Sum of payments with status='completed'
 - **Status**: Derived from total vs paid (paid >= total → paid; paid > 0 → partial; else open)
 
-## Temporary Branch Behavior
-- branch_id from form/query. When null, invoices are global.
-- List filters by branch_id when provided.
-- No session-based branch context yet.
 
 ## Invoice currency (canonical)
 - **`invoices.currency`:** set on **create** only via `SettingsService::getEffectiveCurrencyCode($invoiceBranchId)` (establishment.currency + legacy merge); not updatable via `InvoiceService::update` (ignored if sent).
@@ -85,7 +81,7 @@
 - **Service:** `InvoiceFinancialRollupTruthAuditService`; **CLI:** `system/scripts/audit_invoice_financial_rollup_truth_readonly.php` (`--invoice-id=`, `--json`).
 - **Ops:** `system/docs/INVOICE-FINANCIAL-ROLLUP-TRUTH-OPS.md` — truth/audit only; **no** repair or production recompute. **Stop after WAVE-07** — await full ZIP truth audit (**no WAVE-08** in this track).
 
-## Temporary Appointment Integration
+## Appointment Integration (AppointmentCheckoutProvider)
 - When creating invoice with ?appointment_id=X, AppointmentCheckoutProvider prefills:
   - client_id, client name
   - One service line item (service_id, name, price)
