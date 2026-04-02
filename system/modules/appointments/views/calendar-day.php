@@ -1,5 +1,7 @@
 <?php
 $title = 'Appointment Day Calendar';
+/** Binds calendar workspace flex/scroll layout without relying on :has() (older browsers / edge cases). */
+$mainClass = trim((string) ($mainClass ?? '') . ' app-shell__main--calendar-workspace');
 $workspace = isset($workspace) && is_array($workspace) ? $workspace : [];
 $workspace['shell_modifier'] = 'workspace-shell--calendar';
 $calDateRaw = $date ?? date('Y-m-d');
@@ -349,6 +351,7 @@ ob_start();
     renderBranchHoursIndicator(vm.branchHours, vm.closureDate);
     if (!vm.columns.length) {
       wrap.innerHTML = '<p class="calendar-empty-hint">No active staff for this branch and date.</p>';
+      window.dispatchEvent(new CustomEvent('calendar-workspace:grid-updated'));
       return;
     }
 
@@ -548,6 +551,7 @@ ob_start();
     body.appendChild(laneWrap);
     root.appendChild(body);
     wrap.appendChild(root);
+    window.dispatchEvent(new CustomEvent('calendar-workspace:grid-updated'));
   }
 
   function renderBranchHoursIndicator(meta, closureMeta) {

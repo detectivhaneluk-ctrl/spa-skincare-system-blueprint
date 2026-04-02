@@ -7,6 +7,10 @@
 
   var ENTER_SCROLL_PX = 96;
   var EXIT_SCROLL_PX = 28;
+  /** Below this, use tiny thresholds so small overflow still allows intentional enter (large monitors). */
+  var MIN_MEANINGFUL_SCROLL_RANGE_PX = 16;
+  var ENTER_SCROLL_RATIO = 0.22;
+  var EXIT_SCROLL_RATIO = 0.07;
   var TRANSITION_MS = 280;
   var SCROLL_RESET_CLEAR_PX = 6;
 
@@ -102,15 +106,39 @@
     }, TRANSITION_MS);
   }
 
+  function scrollRangePx() {
+    return Math.max(0, grid.scrollHeight - grid.clientHeight);
+  }
+
+  /** Hysteresis scaled to how much the grid can actually scroll (fixed px caps for tall grids). */
+  function scrollThresholds() {
+    var maxScroll = scrollRangePx();
+    if (maxScroll <= 0) {
+      return { enter: Infinity, exit: 0, maxScroll: maxScroll };
+    }
+    if (maxScroll < MIN_MEANINGFUL_SCROLL_RANGE_PX) {
+      if (maxScroll < 3) {
+        return { enter: Infinity, exit: 0, maxScroll: maxScroll };
+      }
+      var enterTiny = Math.max(1, Math.min(maxScroll - 1, Math.floor(maxScroll * 0.45)));
+      /* Exit at top: st < 1 (scrollTop is integer in practice). */
+      return { enter: enterTiny, exit: 1, maxScroll: maxScroll };
+    }
+    var enterAt = Math.min(ENTER_SCROLL_PX, Math.max(12, Math.ceil(maxScroll * ENTER_SCROLL_RATIO)));
+    var exitAt = Math.min(EXIT_SCROLL_PX, Math.max(4, Math.floor(maxScroll * EXIT_SCROLL_RATIO)));
+    if (exitAt >= enterAt) {
+      exitAt = Math.max(0, enterAt - 8);
+    }
+    return { enter: enterAt, exit: exitAt, maxScroll: maxScroll };
+  }
+
   function evaluateScroll() {
     if (isDrawerOpen()) {
       return;
     }
-    if (isFocusBlockingImmersive()) {
-      return;
-    }
 
     var st = grid.scrollTop;
+    var th = scrollThresholds();
 
     if (suppressAutoEnter) {
       if (st < SCROLL_RESET_CLEAR_PX) {
@@ -120,10 +148,24 @@
       }
     }
 
-    if (!immersive && st > ENTER_SCROLL_PX) {
-      setImmersive(true);
-    } else if (immersive && st < EXIT_SCROLL_PX) {
+    /* Layout lost scroll range entirely: force standard workspace. */
+    if (th.maxScroll <= 0 && immersive) {
       setImmersive(false);
+      return;
+    }
+
+    /* Always allow scroll-to-top exit so chrome restores even if a filter field still has focus. */
+    if (immersive && st < th.exit) {
+      setImmersive(false);
+      return;
+    }
+
+    if (isFocusBlockingImmersive()) {
+      return;
+    }
+
+    if (!immersive && st > th.enter) {
+      setImmersive(true);
     }
   }
 
@@ -180,6 +222,7 @@
   }
 
   window.addEventListener('app:drawer-closed', scheduleEvaluate);
+  window.addEventListener('calendar-workspace:grid-updated', scheduleEvaluate);
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', scheduleEvaluate);

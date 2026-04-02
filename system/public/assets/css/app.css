@@ -581,7 +581,8 @@ body {
   padding: var(--ds-space-4) var(--ds-shell-pad-x) var(--ds-space-8);
 }
 /* Appointments day calendar: one scroll surface inside the grid (desktop workspace). */
-.app-shell__main:has(.calendar-workspace) {
+.app-shell__main:has(.calendar-workspace),
+.app-shell__main.app-shell__main--calendar-workspace {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
@@ -589,7 +590,8 @@ body {
   overflow: hidden;
   padding-bottom: var(--ds-space-2);
 }
-.app-shell__main:has(.calendar-workspace) > .calendar-workspace {
+.app-shell__main:has(.calendar-workspace) > .calendar-workspace,
+.app-shell__main.app-shell__main--calendar-workspace > .calendar-workspace {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
@@ -597,7 +599,9 @@ body {
   width: 100%;
 }
 .app-shell__main:has(.calendar-workspace) > .calendar-workspace > .ds-workspace,
-.app-shell__main:has(.calendar-workspace) > .calendar-workspace > .flash {
+.app-shell__main:has(.calendar-workspace) > .calendar-workspace > .flash,
+.app-shell__main.app-shell__main--calendar-workspace > .calendar-workspace > .ds-workspace,
+.app-shell__main.app-shell__main--calendar-workspace > .calendar-workspace > .flash {
   flex-shrink: 0;
 }
 .app-shell__main--auth {
