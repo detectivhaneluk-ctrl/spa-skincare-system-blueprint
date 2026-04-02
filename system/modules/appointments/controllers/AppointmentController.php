@@ -69,14 +69,22 @@ final class AppointmentController
     }
 
     /**
-     * Access denials must reach {@see HttpErrorHandler} as 403, not flash/422 from generic catch blocks.
+     * Context-aware access-denial exit for action catch blocks (catch \Throwable $e).
+     * If $e is an AccessDeniedException: responds with 403 JSON for JSON/XHR requests,
+     * or flashes an error and redirects to /dashboard for HTML requests.
+     * No-op for any other exception type (caller handles remaining errors).
      */
     private function exitIfAccessDenied(\Throwable $e): void
     {
-        if ($e instanceof AccessDeniedException) {
-            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handleException($e);
-            exit;
+        if (!($e instanceof AccessDeniedException)) {
+            return;
         }
+        if ($this->wantsJsonRequest()) {
+            Response::jsonPublicApiError(403, 'FORBIDDEN', 'Access denied.');
+        }
+        flash('error', 'Access denied.');
+        header('Location: /dashboard');
+        exit;
     }
 
     public function index(): void
@@ -84,8 +92,7 @@ final class AppointmentController
         try {
             $branchId = $this->resolveAppointmentBranchFromGetOrFail();
         } catch (\Core\Errors\AccessDeniedException $e) {
-            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handleException($e);
-            exit;
+            $this->failAppointmentBranchAccessDenied($e);
         } catch (\DomainException $e) {
             $this->failAppointmentBranchResolution($e);
         }
@@ -125,8 +132,10 @@ final class AppointmentController
         try {
             $branchId = $this->resolveAppointmentBranchFromGetOrFail();
         } catch (\Core\Errors\AccessDeniedException $e) {
-            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handleException($e);
-            exit;
+            if ($this->wantsJsonRequest()) {
+                Response::jsonPublicApiError(403, 'FORBIDDEN', 'Branch access denied.');
+            }
+            $this->failAppointmentBranchAccessDenied($e);
         } catch (\DomainException $e) {
             $this->failAppointmentBranchResolution($e);
         }
@@ -680,8 +689,9 @@ final class AppointmentController
         try {
             $branchId = $this->resolveAppointmentBranchFromGetOrFail();
         } catch (\Core\Errors\AccessDeniedException $e) {
-            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handleException($e);
-            exit;
+            $this->respondDayCalendarJsonError('FORBIDDEN', 'Branch access denied.', 403);
+
+            return;
         } catch (\DomainException $e) {
             $this->respondDayCalendarJsonError('VALIDATION_FAILED', $e->getMessage(), 422);
 
@@ -809,8 +819,7 @@ final class AppointmentController
         try {
             $branchId = $this->resolveAppointmentBranchFromGetOrFail();
         } catch (\Core\Errors\AccessDeniedException $e) {
-            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handleException($e);
-            exit;
+            $this->failAppointmentBranchAccessDenied($e);
         } catch (\DomainException $e) {
             $this->failAppointmentBranchResolution($e);
         }
@@ -829,8 +838,7 @@ final class AppointmentController
         try {
             $branchId = $this->resolveAppointmentBranchFromGetOrFail();
         } catch (\Core\Errors\AccessDeniedException $e) {
-            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handleException($e);
-            exit;
+            $this->failAppointmentBranchAccessDenied($e);
         } catch (\DomainException $e) {
             $this->failAppointmentBranchResolution($e);
         }
@@ -874,8 +882,7 @@ final class AppointmentController
         try {
             $branchId = $this->resolveAppointmentBranchFromGetOrFail();
         } catch (\Core\Errors\AccessDeniedException $e) {
-            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handleException($e);
-            exit;
+            $this->failAppointmentBranchAccessDenied($e);
         } catch (\DomainException $e) {
             $this->failAppointmentBranchResolution($e);
         }
@@ -1105,8 +1112,10 @@ final class AppointmentController
         try {
             $branchId = $this->resolveAppointmentBranchFromGetOrFail();
         } catch (\Core\Errors\AccessDeniedException $e) {
-            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handleException($e);
-            exit;
+            if ($this->wantsJsonRequest()) {
+                Response::jsonPublicApiError(403, 'FORBIDDEN', 'Branch access denied.');
+            }
+            $this->failAppointmentBranchAccessDenied($e);
         } catch (\DomainException $e) {
             if ($this->wantsJsonRequest()) {
                 $this->respondJson([
@@ -1292,8 +1301,7 @@ final class AppointmentController
         try {
             $branchId = $this->resolveAppointmentBranchFromGetOrFail();
         } catch (\Core\Errors\AccessDeniedException $e) {
-            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handleException($e);
-            exit;
+            Response::jsonPublicApiError(403, 'FORBIDDEN', 'Branch access denied.');
         } catch (\DomainException $e) {
             Response::jsonPublicApiError(422, 'VALIDATION_FAILED', $e->getMessage());
 
@@ -1388,8 +1396,7 @@ final class AppointmentController
         try {
             $branchId = $this->resolveAppointmentBranchFromGetOrFail();
         } catch (\Core\Errors\AccessDeniedException $e) {
-            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handleException($e);
-            exit;
+            Response::jsonPublicApiError(403, 'FORBIDDEN', 'Branch access denied.');
         } catch (\DomainException $e) {
             Response::jsonPublicApiError(422, 'VALIDATION_FAILED', $e->getMessage());
             return;
@@ -1601,7 +1608,19 @@ final class AppointmentController
 
     private function getBranches(): array
     {
-        return $this->branchDirectory->getActiveBranchesForSelection();
+        $all = $this->branchDirectory->getActiveBranchesForSelection();
+        $userId = Application::container()->get(\Core\Auth\SessionAuth::class)->id();
+        if ($userId === null || $userId <= 0) {
+            return $all;
+        }
+        $allowed = $this->tenantBranchAccess->allowedBranchIdsForUser((int) $userId);
+        if (empty($allowed)) {
+            return $all;
+        }
+        return array_values(array_filter(
+            $all,
+            fn (array $b): bool => in_array((int) ($b['id'] ?? 0), $allowed, true)
+        ));
     }
 
     /**
@@ -1669,6 +1688,18 @@ final class AppointmentController
     private function failAppointmentBranchResolution(\DomainException $e): never
     {
         flash('error', $e->getMessage());
+        header('Location: /dashboard');
+        exit;
+    }
+
+    /**
+     * Fail-closed forbidden-branch access: flash an honest message and redirect to a safe page.
+     * HTML appointments pages must never render a raw error page for expected authorization failures.
+     * For JSON/XHR callers, respond with 403 JSON before calling this.
+     */
+    private function failAppointmentBranchAccessDenied(AccessDeniedException $e): never
+    {
+        flash('error', 'You do not have access to the requested branch.');
         header('Location: /dashboard');
         exit;
     }

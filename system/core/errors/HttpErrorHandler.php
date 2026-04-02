@@ -12,7 +12,9 @@ use Throwable;
  * Global error handling. HTML or JSON per Accept header.
  * Conventions: CONVENTIONS.md §3
  *
- * Expected tenant branch/organization scope denials use {@see AccessDeniedException} → HTTP 403 (non-debug), not fragile message matching.
+ * Expected tenant branch/organization scope denials use {@see AccessDeniedException} → HTTP 403 always
+ * (including debug mode). AccessDeniedException is an expected authorization failure, not a bug — it must
+ * never re-throw as an unhandled exception or produce a stack-trace page even during development.
  */
 final class HttpErrorHandler
 {
@@ -56,14 +58,16 @@ final class HttpErrorHandler
 
     public function handleException(Throwable $e): void
     {
-        if (config('app.debug')) {
-            throw $e;
-        }
+        // AccessDeniedException is an expected authorization failure, not an unexpected error.
+        // Always handle gracefully — never re-throw, even in debug mode.
         if ($e instanceof AccessDeniedException) {
             $this->logger->log('warning', 'security.access_denied', $e->getMessage(), []);
             $this->respondForbidden($e->getMessage());
 
             return;
+        }
+        if (config('app.debug')) {
+            throw $e;
         }
         $code = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
         $category = $code >= 500 ? 'http.server_error' : 'http.application_error';
