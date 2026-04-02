@@ -350,6 +350,27 @@ See PLT-AUTH-02 CLOSED section above. Final proof: **137/137** assertions pass.
 
 ---
 
+## FINAL-BACKEND-CLOSURE-BEFORE-UI-AND-DESIGN-GATE-01 — **CLOSED** (2026-04-02)
+
+**Final backend correctness closure gate before new pages/design work — bounded scope only.**
+
+| Item | Evidence |
+|------|----------|
+| **Phase 1 — Residual tenant/data-plane audit**: All audited out-of-scope module repos (marketing, payroll, documents, notifications, intake) confirmed using `OrganizationRepositoryScope` fragments. Zero new id-only HTTP paths found. | Code inspection: `PayrollRunRepository`, `PayrollCompensationRuleRepository`, `PayrollCommissionLineRepository`, `MarketingCampaignRunRepository`, all intake/documents/notifications repos |
+| `OutboundNotificationMessageRepository::find(int $id)` explicit ROOT-01 docblock added: queue-worker-internal only, zero HTTP callers, not for tenant HTTP use | `system/modules/notifications/repositories/OutboundNotificationMessageRepository.php` |
+| **Phase 2 — Non-HTTP lifecycle/suspension**: BACKGROUND-FLOW-FAIL-CLOSED-CLOSURE-01 (2026-04-01) already closed this family — memberships cron, waitlist cron, notifications drain all lifecycle-gated. TASK-STATE-MATRIX OPEN section updated to accurately reflect this closure. | `system/docs/TASK-STATE-MATRIX.md` OPEN section updated |
+| **Phase 3 — Inventory matrix accuracy**: Corrected two stale rows claiming `detachActiveProductsFromCategory/Brand` and `ServiceRepository::list` were "unchanged" — code inspection confirms both already use proper scope predicates (`resolvedTenantCatalogProductVisibilityClause`, `branchColumnOwnedByResolvedOrganizationExistsClause`). Remaining items explicitly documented as intentional deferrals. | `system/docs/INVENTORY-TENANT-DATA-PLANE-HARDENING-01-MATRIX.md` post-wave-05 audit section |
+| **Phase 4 — PHPUnit module-level coverage**: `PolicyAuthorizerTest` added with 10 assertions covering critical security invariants: FOUNDER allow for platform actions, FOUNDER deny for tenant-scoped actions (unresolved), SUPPORT_ACTOR read-allow, SUPPORT_ACTOR write-block, `requireAuthorized` throws on denial, unresolved-context deny, guest-context deny (tenant + platform), tenant principal denied platform actions. Architecture note documented: FOUNDER tenant-scoped allow arm is reserved for future `founderWithTenantScope()` constructor. | `tests/Unit/Core/Kernel/Authorization/PolicyAuthorizerTest.php` |
+| PHPStan expanded: `PolicyAuthorizer.php`, `ResourceAction.php`, `ResourceRef.php` added to `phpstan.neon.dist` paths | `phpstan.neon.dist` |
+| ROOT families: ROOT-01 (no new id-only HTTP gaps confirmed), ROOT-04 (inventory repair/global fallback documented), ROOT-05 (PolicyAuthorizer authorization path now PHPUnit-covered) | All phases above |
+| TASK-STATE-MATRIX updated: lifecycle OPEN section corrected, PHPUnit partial row updated, tenant data-plane OPEN row updated with audit findings | `system/docs/TASK-STATE-MATRIX.md` |
+
+**Architecture finding documented**: `PolicyAuthorizer::authorize()` `match` arm for `PrincipalKind::FOUNDER` on tenant-scoped actions is currently unreachable through production `TenantContext` named constructors. Documented in `PolicyAuthorizerTest` and this charter as reserved for a future `TenantContext::founderWithTenantScope()` constructor.
+
+**Final verdict**: Backend correctness residuals that materially mattered before new page/design work are now reduced or closed. What remains is either (a) future platform expansion (BranchContext→RequestContextHolder migration for intake/documents, payroll/marketing background lifecycle audit, FND-TST-04 broader PHPUnit suite), or (b) intentionally deferred documented repair/global patterns.
+
+---
+
 ## LIVE (exactly one)
 
 | ID | Item | Notes |

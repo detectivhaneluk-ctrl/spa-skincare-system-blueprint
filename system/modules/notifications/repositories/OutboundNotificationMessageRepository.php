@@ -48,6 +48,17 @@ final class OutboundNotificationMessageRepository
         });
     }
 
+    /**
+     * Queue-worker-internal id-only read. NOT for tenant HTTP paths.
+     *
+     * ROOT-01 note: this method carries no intrinsic org/branch predicate.
+     * Contract: callers must hold an authoritative claim on the row (e.g. queue worker that
+     * claimed the row via {@see claimPendingBatchForDispatch}) — not for arbitrary id lookups.
+     * There are zero HTTP callers of this method in the codebase; do not add any without
+     * first adding an org-scope predicate or using a scoped variant.
+     *
+     * @internal queue-worker only
+     */
     public function find(int $id): ?array
     {
         return $this->db->fetchOne('SELECT * FROM outbound_notification_messages WHERE id = ?', [$id]);

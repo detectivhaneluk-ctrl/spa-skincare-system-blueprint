@@ -32,5 +32,17 @@ Status: **PARTIAL** (Tier A: `verify_inventory_taxonomy_tenant_scope_readonly_01
 | **Legacy taxonomy backfill + orphan FK audit/apply** | **Unscoped product scans / duplicate group listing** | **`listNonDeletedForTaxonomyBackfillInResolvedTenantCatalog`; orphan counts/examples/clear + duplicate trim groups use resolved-tenant catalog visibility on products and taxonomy** |
 | **Duplicate retire / post-tree apply + parent cycle (no session branch)** | **Id-only category/brand `softDelete`; unscoped ancestor walk** | **`softDeleteLiveInResolvedTenantCatalogScope`; `ancestorChainContainsIdInResolvedTenantCatalogScope` for relink cycle check** |
 
-**Remaining (real gaps after wave 05):** **`ProductRepository::find` / `list` / `listActiveForUnifiedCatalog`** and **`SupplierRepository` / taxonomy id-only `find`/`list`/`update`/`softDelete`** **@deprecated** for non-tenant tooling; **`StockMovementRepository::existsSaleDeductionForInvoiceItem`** still **reference_id-only** (no in-repo callers); **settlement aggregates + `sumNetQuantityForInvoiceItem`** still use **unscoped `stock_movements` only** when **`SalesTenantScope::invoiceClause` SQL is empty** (repair/global mode); **`ProductCategoryRepository::listLiveForParentGraphAudit()`** / **`ancestorChainContainsId`** retained **deprecated** with **no protected HTTP callers**; **`detachActiveProductsFromCategory` / `detachActiveProductsFromBrand`** and **cross-module `ServiceRepository::list`** unchanged this wave.
+**Post wave-05 audit (2026-04-02, FINAL-BACKEND-CLOSURE-BEFORE-UI-AND-DESIGN-GATE-01):**
+
+Stale claims corrected after code inspection:
+- **`detachActiveProductsFromCategory` / `detachActiveProductsFromBrand`** — Prior claim "unchanged this wave" was incorrect. Code inspection confirms both methods already use `resolvedTenantCatalogProductVisibilityClause('p')` in their UPDATE WHERE clause. Scoped. No further work needed.
+- **`ServiceRepository::list`** — Prior claim "unchanged" was incorrect. Code inspection confirms it already uses `branchColumnOwnedByResolvedOrganizationExistsClause('s')` appended to every SQL result set. Scoped. No further work needed.
+
+**Remaining intentional deferrals (not blockers for new page/design work):**
+- **Deprecated `ProductRepository::find` / `list` / `listActiveForUnifiedCatalog`** and **deprecated `SupplierRepository` / taxonomy id-only helpers** — `@deprecated`; protected HTTP paths do not call them; they are locked with `LogicException` throws where appropriate. Future: remove when all repair tooling is updated.
+- **`StockMovementRepository::existsSaleDeductionForInvoiceItem`** — reference_id-only, zero in-repo HTTP callers; documented as verifier-only structural check (ROOT-01 documented, verifier: `verify_critical_integrity_fail_closed_boundary_01.php`). Deferred: add org-scoped variant only when a HTTP caller is introduced.
+- **`sumNetQuantityForInvoiceItem` / settlement aggregates using unscoped `stock_movements` when `SalesTenantScope::invoiceClause` SQL is empty** — intentional repair/global-mode path (ROOT-04 documented). The empty-clause condition only occurs in global admin tooling paths, not tenant HTTP runtime. Deferred: future platform-scale work.
+- **`ProductCategoryRepository::listLiveForParentGraphAudit()` / `ancestorChainContainsId`** — `@deprecated`; zero protected HTTP callers. Deferred: remove when CLI tooling is updated.
+
+**Matrix final status: PARTIAL (wave 1–5 closed; remaining items are documented intentional deferrals, not current HTTP safety risks)**
 

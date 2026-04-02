@@ -11,4 +11,7 @@ parameters:
         - system/core/Kernel/UnresolvedTenantContextException.php
         - system/core/Kernel/Authorization/AccessDecision.php
         - system/core/Kernel/Authorization/AuthorizationException.php
+        - system/core/Kernel/Authorization/PolicyAuthorizer.php
+        - system/core/Kernel/Authorization/ResourceAction.php
+        - system/core/Kernel/Authorization/ResourceRef.php
         - tests/Unit
