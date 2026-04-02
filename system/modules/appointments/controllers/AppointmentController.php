@@ -722,6 +722,7 @@ final class AppointmentController
         $this->respondJson(array_merge($this->dayCalendarContractEnvelope(), [
             'date' => $date,
             'branch_id' => $branchId,
+            'branch_timezone' => \Core\App\ApplicationTimezone::getAppliedIdentifier() ?? 'UTC',
             'staff' => $staff,
             'appointments_by_staff' => $appointmentsByStaff,
             'appointment_calendar_display' => [
@@ -829,6 +830,7 @@ final class AppointmentController
         $flash = flash();
         $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
         $workspace = $this->workspaceContext('calendar', $branchId, $date);
+        $branchTimezone = \Core\App\ApplicationTimezone::getAppliedIdentifier() ?? 'UTC';
         require base_path('modules/appointments/views/calendar-day.php');
     }
 

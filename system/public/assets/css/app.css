@@ -1461,6 +1461,41 @@ body {
   border-top: 1px solid #f1f5f9;
   pointer-events: none;
 }
+.ops-now-line {
+  position: absolute;
+  left: 76px;
+  right: 0;
+  height: 2px;
+  background: #ef4444;
+  z-index: 4;
+  pointer-events: none;
+}
+.ops-now-line::before {
+  content: '';
+  position: absolute;
+  left: -9px;
+  top: -4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ef4444;
+}
+.ops-now-label {
+  position: absolute;
+  right: 3px;
+  transform: translateY(-50%);
+  font-size: 0.5625rem;
+  font-weight: 800;
+  color: #ef4444;
+  background: #fff;
+  border: 1px solid #fca5a5;
+  padding: 1px 3px;
+  border-radius: 3px;
+  z-index: 3;
+  pointer-events: none;
+  white-space: nowrap;
+  line-height: 1.4;
+}
 .calendar-branch-hours-indicator {
   margin: 0.2rem 0 0.45rem;
   font-size: 0.72rem;

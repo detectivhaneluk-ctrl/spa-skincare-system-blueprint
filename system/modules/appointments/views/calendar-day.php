@@ -75,7 +75,7 @@ ob_start();
             <div id="calendar-status" class="appts-calendar-meta__status" role="status" aria-live="polite">Loading day calendar…</div>
         </div>
         <div id="calendar-branch-hours-indicator" class="appts-calendar-hours calendar-branch-hours-indicator" role="status" aria-live="polite"></div>
-        <div class="appts-calendar-grid" id="appts-calendar-grid">
+        <div class="appts-calendar-grid" id="appts-calendar-grid" data-branch-timezone="<?= htmlspecialchars($branchTimezone ?? 'UTC') ?>">
             <div id="calendar-day-wrap" class="calendar-day-wrap"></div>
         </div>
     </div>
@@ -100,14 +100,125 @@ ob_start();
   const GRID_STEP_FALLBACK_MINUTES = 15;
   /** Default booking length for create drawer prefill (start = clicked slot; end = start + this). Not grid step. */
   const DEFAULT_BOOKING_DURATION_MINUTES = 30;
+  /** Branch-effective IANA timezone, validated client-side. Falls back to 'UTC' if Intl rejects the identifier. */
+  const BRANCH_TIMEZONE = (() => {
+    const raw = document.getElementById('appts-calendar-grid')?.dataset?.branchTimezone || 'UTC';
+    try { new Intl.DateTimeFormat([], { timeZone: raw }); return raw; } catch (e) { return 'UTC'; }
+  })();
   let selectedSlot = null;
   /** AbortController for the in-flight /calendar/day fetch. Cancelled when a newer load() starts. */
   let currentLoadAbort = null;
+  /** now-line: current grid vm reference; null when no calendar is rendered. */
+  let nowLineVm = null;
+  /** now-line: setInterval id; cleared whenever the grid is destroyed or re-rendered. */
+  let nowLineTimer = null;
+  /** now-line: true after first auto-scroll on today; reset when date or branch changes explicitly. */
+  let nowLineScrolled = false;
   function currentCalendarQuery() {
     const params = new URLSearchParams();
     params.set('date', dateEl.value);
     if (branchEl.value) params.set('branch_id', branchEl.value);
     return params;
+  }
+
+  /**
+   * Returns branch-local current time as { minutes, dateStr } using Intl.DateTimeFormat.
+   * Falls back to browser-local time if Intl fails (should not happen; BRANCH_TIMEZONE is pre-validated).
+   */
+  function getBranchNow() {
+    const now = new Date();
+    try {
+      const parts = new Intl.DateTimeFormat([], {
+        timeZone: BRANCH_TIMEZONE,
+        hour: '2-digit', minute: '2-digit',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour12: false,
+      }).formatToParts(now);
+      let h = 0, m = 0, y = '', mo = '', d = '';
+      for (const p of parts) {
+        if (p.type === 'hour')   h  = parseInt(p.value, 10) || 0;
+        if (p.type === 'minute') m  = parseInt(p.value, 10) || 0;
+        if (p.type === 'year')   y  = p.value;
+        if (p.type === 'month')  mo = p.value;
+        if (p.type === 'day')    d  = p.value;
+      }
+      return { minutes: h * 60 + m, dateStr: y + '-' + mo + '-' + d };
+    } catch (e) {
+      return {
+        minutes: now.getHours() * 60 + now.getMinutes(),
+        dateStr: now.toISOString().slice(0, 10),
+      };
+    }
+  }
+
+  /** Remove now-line DOM elements and cancel the update timer. */
+  function destroyNowLine() {
+    if (nowLineTimer) { clearInterval(nowLineTimer); nowLineTimer = null; }
+    nowLineVm = null;
+    document.getElementById('ops-now-line-indicator')?.remove();
+    document.getElementById('ops-now-label-indicator')?.remove();
+  }
+
+  /** Reposition (or hide) the now-line based on current branch-local time vs selected date. */
+  function positionNowLine() {
+    const line  = document.getElementById('ops-now-line-indicator');
+    const label = document.getElementById('ops-now-label-indicator');
+    if (!nowLineVm || !line || !label) return;
+    const { minutes: nowMinutes, dateStr: nowDate } = getBranchNow();
+    const isToday = dateEl.value === nowDate;
+    const inRange = nowMinutes >= nowLineVm.start && nowMinutes <= nowLineVm.end;
+    if (!isToday || !inRange) {
+      line.hidden = true;
+      label.hidden = true;
+      return;
+    }
+    const topPx = (nowMinutes - nowLineVm.start) * PIXELS_PER_MINUTE;
+    line.style.top  = topPx + 'px';
+    label.style.top = topPx + 'px';
+    label.textContent = fmtTime(nowMinutes);
+    line.hidden  = false;
+    label.hidden = false;
+  }
+
+  /**
+   * Create now-line and now-label DOM elements, position them, and start the 30-second update timer.
+   * Also performs one-time auto-scroll near current time if today and not yet scrolled.
+   */
+  function initNowLine(vm) {
+    destroyNowLine();
+    nowLineVm = vm;
+    const calBody = wrap.querySelector('.ops-calendar-body');
+    if (!calBody) return;
+
+    const line = document.createElement('div');
+    line.id = 'ops-now-line-indicator';
+    line.className = 'ops-now-line';
+    line.hidden = true;
+    line.setAttribute('aria-hidden', 'true');
+    calBody.appendChild(line);
+
+    const timeLabels = calBody.querySelector('.ops-time-labels');
+    const label = document.createElement('div');
+    label.id = 'ops-now-label-indicator';
+    label.className = 'ops-now-label';
+    label.hidden = true;
+    label.setAttribute('aria-hidden', 'true');
+    (timeLabels || calBody).appendChild(label);
+
+    positionNowLine();
+
+    if (!nowLineScrolled) {
+      const { minutes: nowMinutes, dateStr: nowDate } = getBranchNow();
+      const gridEl = document.getElementById('appts-calendar-grid');
+      if (dateEl.value === nowDate && nowMinutes >= vm.start && nowMinutes <= vm.end && gridEl) {
+        const topPx = (nowMinutes - vm.start) * PIXELS_PER_MINUTE;
+        const scrollTarget = Math.max(0, topPx - gridEl.clientHeight * 0.25);
+        nowLineScrolled = true;
+        setTimeout(() => gridEl.scrollTo({ top: scrollTarget, behavior: 'smooth' }), 100);
+      }
+    }
+
+    nowLineTimer = setInterval(positionNowLine, 30_000);
   }
 
   function syncCalendarUrl() {
@@ -353,6 +464,7 @@ ob_start();
     renderBranchHoursIndicator(vm.branchHours, vm.closureDate);
     if (!vm.columns.length) {
       wrap.innerHTML = '<p class="calendar-empty-hint">No active staff for this branch and date.</p>';
+      destroyNowLine();
       window.dispatchEvent(new CustomEvent('calendar-workspace:grid-updated'));
       return;
     }
@@ -553,6 +665,7 @@ ob_start();
     body.appendChild(laneWrap);
     root.appendChild(body);
     wrap.appendChild(root);
+    initNowLine(vm);
     window.dispatchEvent(new CustomEvent('calendar-workspace:grid-updated'));
   }
 
@@ -637,6 +750,7 @@ ob_start();
     params.set('date', date);
     if (branchEl.value) params.set('branch_id', branchEl.value);
     statusEl.textContent = 'Loading day calendar…';
+    destroyNowLine();
     if (currentLoadAbort) {
       currentLoadAbort.abort();
     }
@@ -681,11 +795,13 @@ ob_start();
   });
   dateEl.addEventListener('change', () => {
     selectedSlot = null;
+    nowLineScrolled = false;
     syncCalendarUrl();
     load();
   });
   branchEl.addEventListener('change', () => {
     selectedSlot = null;
+    nowLineScrolled = false;
     syncCalendarUrl();
     load();
   });
