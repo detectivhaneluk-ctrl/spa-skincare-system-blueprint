@@ -4,24 +4,33 @@ $activeTab = (string) ($workspace['active_tab'] ?? '');
 $tabs = isset($workspace['tabs']) && is_array($workspace['tabs']) ? $workspace['tabs'] : [];
 $shellModifier = (string) ($workspace['shell_modifier'] ?? '');
 $shellClass = 'workspace-shell' . ($shellModifier !== '' ? ' ' . htmlspecialchars($shellModifier, ENT_QUOTES, 'UTF-8') : '');
+$newAppointmentUrl = (string) ($workspace['new_appointment_url'] ?? '/appointments/create');
+$useCalendarNewAppointmentBtn = ($activeTab === 'calendar');
 ?>
-<div class="<?= $shellClass ?>">
-    <header class="workspace-module-head">
-        <div class="workspace-module-head__text">
-            <h1 class="workspace-module-head__title">Appointments</h1>
-            <p class="workspace-module-head__sub">Day calendar, list view, waitlist, and new bookings.</p>
+<div class="ds-workspace <?= $shellClass ?>">
+    <header class="appts-workspace-header">
+        <div class="appts-workspace-header__row">
+            <h1 class="appts-workspace-header__title">Appointments</h1>
+            <nav class="appts-workspace-header__modes ds-segmented" aria-label="Appointments sections">
+                <?php foreach ($tabs as $tab): ?>
+                <?php
+                $tabId = (string) ($tab['id'] ?? '');
+                $isActive = $tabId !== '' && $tabId === $activeTab;
+                $tabUrl = (string) ($tab['url'] ?? '/appointments');
+                ?>
+                <a href="<?= htmlspecialchars($tabUrl) ?>"
+                   class="ds-segmented__link appts-workspace-header__mode-link<?= $isActive ? ' is-active' : '' ?>"<?= $isActive ? ' aria-current="page"' : '' ?>>
+                    <?= htmlspecialchars((string) ($tab['label'] ?? 'Tab')) ?>
+                </a>
+                <?php endforeach; ?>
+            </nav>
+            <div class="appts-workspace-header__action">
+                <?php if ($useCalendarNewAppointmentBtn): ?>
+                <button type="button" class="ds-btn ds-btn--primary appts-workspace-header__new" id="calendar-new-appointment-btn">New appointment</button>
+                <?php else: ?>
+                <a class="ds-btn ds-btn--primary appts-workspace-header__new" href="<?= htmlspecialchars($newAppointmentUrl) ?>">New appointment</a>
+                <?php endif; ?>
+            </div>
         </div>
     </header>
-    <nav class="workspace-subnav" aria-label="Appointments workspace">
-        <?php foreach ($tabs as $tab): ?>
-        <?php
-        $tabId = (string) ($tab['id'] ?? '');
-        $isActive = $tabId !== '' && $tabId === $activeTab;
-        ?>
-        <a href="<?= htmlspecialchars((string) ($tab['url'] ?? '/appointments')) ?>"
-           class="workspace-subnav__link workspace-tab<?= $isActive ? ' workspace-subnav__link--active workspace-tab--active' : '' ?>"<?= $isActive ? ' aria-current="page"' : '' ?>>
-            <?= htmlspecialchars((string) ($tab['label'] ?? 'Tab')) ?>
-        </a>
-        <?php endforeach; ?>
-    </nav>
 </div>

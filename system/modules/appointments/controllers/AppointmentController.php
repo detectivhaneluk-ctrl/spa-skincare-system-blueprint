@@ -139,7 +139,7 @@ final class AppointmentController
         $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
         $flash = flash();
         $errors = [];
-        $appointment = ['status' => 'scheduled', 'date' => $date ?? ''];
+        $appointment = ['status' => 'scheduled', 'date' => $date ?? '', 'branch_id' => $branchId];
         $prefillClientId = (int) ($_GET['client_id'] ?? 0);
         if ($prefillClientId > 0) {
             foreach ($clients as $cRow) {
@@ -159,6 +159,44 @@ final class AppointmentController
             }
         }
         $workspace = $this->workspaceContext('new', $branchId, $date);
+        if ($this->isDrawerRequest()) {
+            $appointment['staff_id'] = trim((string) ($_GET['staff_id'] ?? '')) !== '' ? (int) $_GET['staff_id'] : ($appointment['staff_id'] ?? null);
+            $appointment['room_id'] = trim((string) ($_GET['room_id'] ?? '')) !== '' ? (int) $_GET['room_id'] : ($appointment['room_id'] ?? null);
+            $appointment['slot_minutes'] = max(5, (int) ($_GET['slot_minutes'] ?? 30));
+            $prefillStaffId = isset($appointment['staff_id']) ? (int) $appointment['staff_id'] : 0;
+            if ($prefillStaffId > 0) {
+                $knownStaffIds = array_map(static fn (array $row): int => (int) ($row['id'] ?? 0), $staff);
+                if (!in_array($prefillStaffId, $knownStaffIds, true)) {
+                    $extraStaff = Application::container()->get(\Modules\Staff\Repositories\StaffRepository::class)->find($prefillStaffId);
+                    if (is_array($extraStaff)) {
+                        $staff[] = $extraStaff;
+                    } else {
+                        $fallbackStaffLabel = trim((string) ($_GET['staff_label'] ?? ''));
+                        if ($fallbackStaffLabel !== '') {
+                            $staff[] = [
+                                'id' => $prefillStaffId,
+                                'first_name' => $fallbackStaffLabel,
+                                'last_name' => '',
+                            ];
+                        }
+                    }
+                }
+            }
+            $prefillTime = $this->normalizeDrawerTimePrefill((string) ($_GET['time'] ?? ''));
+            if ($prefillTime !== null) {
+                $appointment['prefill_time'] = $prefillTime;
+                $appointment['start_time'] = $prefillTime;
+                $appointment['selected_start_time'] = ($appointment['date'] ?? '') !== '' ? ($appointment['date'] . ' ' . $prefillTime) : '';
+                if (($appointment['date'] ?? '') !== '') {
+                    $startTs = strtotime((string) $appointment['selected_start_time']);
+                    if ($startTs !== false) {
+                        $appointment['prefill_end_time'] = date('H:i', $startTs + ((int) $appointment['slot_minutes'] * 60));
+                    }
+                }
+            }
+            require base_path('modules/appointments/views/drawer/create.php');
+            return;
+        }
         require base_path('modules/appointments/views/create.php');
     }
 
@@ -228,6 +266,12 @@ final class AppointmentController
             Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handleException($e);
             exit;
         } catch (\DomainException $e) {
+            if ($this->wantsJsonRequest()) {
+                $this->respondJson([
+                    'success' => false,
+                    'error' => ['message' => $e->getMessage()],
+                ], 422);
+            }
             flash('error', $e->getMessage());
             header('Location: /appointments/create');
             exit;
@@ -235,11 +279,27 @@ final class AppointmentController
 
         try {
             $id = $this->service->createFromSlot($data);
+            if ($this->wantsJsonRequest()) {
+                $this->respondJson([
+                    'success' => true,
+                    'data' => [
+                        'message' => 'Appointment created.',
+                        'refresh_calendar' => true,
+                        'open_url' => '/appointments/' . $id,
+                    ],
+                ], 201);
+            }
             flash('success', 'Appointment created.');
             header('Location: /appointments/' . $id);
             exit;
         } catch (\Throwable $e) {
             $this->exitIfAccessDenied($e);
+            if ($this->wantsJsonRequest()) {
+                $this->respondJson([
+                    'success' => false,
+                    'error' => ['message' => $e->getMessage()],
+                ], 422);
+            }
             flash('error', $e->getMessage());
             header('Location: /appointments/create');
             exit;
@@ -287,6 +347,10 @@ final class AppointmentController
         $packageConsumptions = $this->packageConsumption->listAppointmentConsumptions((int) $appointment['id']);
         $flash = flash();
         $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
+        if ($this->isDrawerRequest()) {
+            require base_path('modules/appointments/views/drawer/show.php');
+            return;
+        }
         require base_path('modules/appointments/views/show.php');
     }
 
@@ -330,11 +394,27 @@ final class AppointmentController
         }
         try {
             $this->service->markCheckedIn($id);
+            if ($this->wantsJsonRequest()) {
+                $this->respondJson([
+                    'success' => true,
+                    'data' => [
+                        'message' => 'Checked in recorded.',
+                        'refresh_calendar' => true,
+                        'reload_url' => '/appointments/' . $id,
+                    ],
+                ]);
+            }
             flash('success', 'Checked in recorded.');
         } catch (AccessDeniedException $e) {
             Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handleException($e);
             exit;
         } catch (\DomainException | \RuntimeException $e) {
+            if ($this->wantsJsonRequest()) {
+                $this->respondJson([
+                    'success' => false,
+                    'error' => ['message' => $e->getMessage()],
+                ], 422);
+            }
             flash('error', $e->getMessage());
         }
         header('Location: /appointments/' . $id);
@@ -384,9 +464,25 @@ final class AppointmentController
             $notes = trim((string) ($_POST['notes'] ?? '')) ?: null;
             $reasonId = trim((string) ($_POST['cancellation_reason_id'] ?? '')) !== '' ? (int) $_POST['cancellation_reason_id'] : null;
             $this->service->cancel($id, $notes, $reasonId);
+            if ($this->wantsJsonRequest()) {
+                $this->respondJson([
+                    'success' => true,
+                    'data' => [
+                        'message' => 'Appointment cancelled.',
+                        'refresh_calendar' => true,
+                        'reload_url' => '/appointments/' . $id,
+                    ],
+                ]);
+            }
             flash('success', 'Appointment cancelled.');
         } catch (\Throwable $e) {
             $this->exitIfAccessDenied($e);
+            if ($this->wantsJsonRequest()) {
+                $this->respondJson([
+                    'success' => false,
+                    'error' => ['message' => $e->getMessage()],
+                ], 422);
+            }
             flash('error', $e->getMessage());
         }
         header('Location: /appointments/' . $id);
@@ -407,6 +503,9 @@ final class AppointmentController
                     'success' => true,
                     'data' => [
                         'appointment_id' => $id,
+                        'message' => 'Appointment rescheduled.',
+                        'refresh_calendar' => true,
+                        'reload_url' => '/appointments/' . $id,
                     ],
                 ]);
                 return;
@@ -443,9 +542,25 @@ final class AppointmentController
         $noShowReasonId = trim((string) ($_POST['no_show_reason_id'] ?? '')) !== '' ? (int) $_POST['no_show_reason_id'] : null;
         try {
             $this->service->updateStatus($id, $status, $notes, $cancellationReasonId, $noShowReasonId);
+            if ($this->wantsJsonRequest()) {
+                $this->respondJson([
+                    'success' => true,
+                    'data' => [
+                        'message' => 'Appointment status updated.',
+                        'refresh_calendar' => true,
+                        'reload_url' => '/appointments/' . $id,
+                    ],
+                ]);
+            }
             flash('success', 'Appointment status updated.');
         } catch (\Throwable $e) {
             $this->exitIfAccessDenied($e);
+            if ($this->wantsJsonRequest()) {
+                $this->respondJson([
+                    'success' => false,
+                    'error' => ['message' => $e->getMessage()],
+                ], 422);
+            }
             flash('error', $e->getMessage());
         }
         header('Location: /appointments/' . $id);
@@ -471,6 +586,10 @@ final class AppointmentController
         $branches = $this->getBranches();
         $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
         $errors = [];
+        if ($this->isDrawerRequest()) {
+            require base_path('modules/appointments/views/drawer/edit.php');
+            return;
+        }
         require base_path('modules/appointments/views/edit.php');
     }
 
@@ -493,6 +612,16 @@ final class AppointmentController
         }
         try {
             $this->service->update($id, $data);
+            if ($this->wantsJsonRequest()) {
+                $this->respondJson([
+                    'success' => true,
+                    'data' => [
+                        'message' => 'Appointment updated.',
+                        'refresh_calendar' => true,
+                        'open_url' => '/appointments/' . $id,
+                    ],
+                ]);
+            }
             flash('success', 'Appointment updated.');
             header('Location: /appointments/' . $id);
             exit;
@@ -513,6 +642,16 @@ final class AppointmentController
     public function destroy(int $id): void
     {
         $this->service->delete($id);
+        if ($this->wantsJsonRequest()) {
+            $this->respondJson([
+                'success' => true,
+                'data' => [
+                    'message' => 'Appointment deleted.',
+                    'refresh_calendar' => true,
+                    'close_drawer' => true,
+                ],
+            ]);
+        }
         flash('success', 'Appointment deleted.');
         header('Location: /appointments');
         exit;
@@ -862,9 +1001,28 @@ final class AppointmentController
         ];
         try {
             $this->blockedSlotService->create($payload);
+            if ($this->wantsJsonRequest()) {
+                $this->respondJson([
+                    'success' => true,
+                    'data' => [
+                        'message' => 'Blocked slot created.',
+                        'refresh_calendar' => true,
+                        'reload_url' => '/appointments/blocked-slots/panel' . $this->buildQueryString([
+                            'branch_id' => $payload['branch_id'],
+                            'date' => $payload['block_date'] !== '' ? $payload['block_date'] : null,
+                        ]),
+                    ],
+                ]);
+            }
             flash('success', 'Blocked slot created.');
         } catch (\Throwable $e) {
             $this->exitIfAccessDenied($e);
+            if ($this->wantsJsonRequest()) {
+                $this->respondJson([
+                    'success' => false,
+                    'error' => ['message' => $e->getMessage()],
+                ], 422);
+            }
             flash('error', $e->getMessage());
         }
         header('Location: /appointments/calendar/day' . $this->buildQueryString([
@@ -880,9 +1038,28 @@ final class AppointmentController
         $branchId = trim((string) ($_POST['branch_id'] ?? '')) !== '' ? (int) $_POST['branch_id'] : null;
         try {
             $this->blockedSlotService->delete($id);
+            if ($this->wantsJsonRequest()) {
+                $this->respondJson([
+                    'success' => true,
+                    'data' => [
+                        'message' => 'Blocked slot deleted.',
+                        'refresh_calendar' => true,
+                        'reload_url' => '/appointments/blocked-slots/panel' . $this->buildQueryString([
+                            'branch_id' => $branchId,
+                            'date' => $date !== '' ? $date : null,
+                        ]),
+                    ],
+                ]);
+            }
             flash('success', 'Blocked slot deleted.');
         } catch (\Throwable $e) {
             $this->exitIfAccessDenied($e);
+            if ($this->wantsJsonRequest()) {
+                $this->respondJson([
+                    'success' => false,
+                    'error' => ['message' => $e->getMessage()],
+                ], 422);
+            }
             flash('error', $e->getMessage());
         }
         header('Location: /appointments/calendar/day' . $this->buildQueryString([
@@ -890,6 +1067,30 @@ final class AppointmentController
             'date' => $date !== '' ? $date : null,
         ]));
         exit;
+    }
+
+    public function blockedSlotsPanel(): void
+    {
+        $date = $this->queryDateOrNull() ?? date('Y-m-d');
+        try {
+            $branchId = $this->resolveAppointmentBranchFromGetOrFail();
+        } catch (\Core\Errors\AccessDeniedException $e) {
+            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handleException($e);
+            exit;
+        } catch (\DomainException $e) {
+            if ($this->wantsJsonRequest()) {
+                $this->respondJson([
+                    'success' => false,
+                    'error' => ['message' => $e->getMessage()],
+                ], 422);
+            }
+            $this->failAppointmentBranchResolution($e);
+        }
+        $branches = $this->getBranches();
+        $blockedSlots = $this->blockedSlotRepo->listForDate($date, $branchId);
+        $staffOptions = $this->staffList->list($branchId);
+        $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
+        require base_path('modules/appointments/views/drawer/blocked-slots.php');
     }
 
     /**
@@ -1272,6 +1473,14 @@ final class AppointmentController
         $appointment = $this->addFormDatetimeFields($data);
         $appointment['status'] = $appointment['status'] ?? 'scheduled';
         $workspace = $this->workspaceContext('new', $branchId, $appointment['date'] ?? null);
+        if ($this->wantsJsonRequest()) {
+            $html = $this->renderPartialToString('modules/appointments/views/drawer/create.php', get_defined_vars());
+            $this->respondJson([
+                'success' => false,
+                'error' => ['message' => 'Please fix the highlighted booking fields.'],
+                'data' => ['html' => $html],
+            ], 422);
+        }
         require base_path('modules/appointments/views/create.php');
         exit;
     }
@@ -1286,6 +1495,14 @@ final class AppointmentController
         $branches = $this->getBranches();
         $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
         $appointment = $this->addFormDatetimeFields($appointment);
+        if ($this->wantsJsonRequest()) {
+            $html = $this->renderPartialToString('modules/appointments/views/drawer/edit.php', get_defined_vars());
+            $this->respondJson([
+                'success' => false,
+                'error' => ['message' => 'Please fix the highlighted appointment fields.'],
+                'data' => ['html' => $html],
+            ], 422);
+        }
         require base_path('modules/appointments/views/edit.php');
         exit;
     }
@@ -1432,19 +1649,24 @@ final class AppointmentController
     {
         $listQuery = [];
         $calendarQuery = [];
-        $createQuery = [];
         $waitlistQuery = [];
 
         if ($branchId !== null) {
             $listQuery['branch_id'] = $branchId;
             $calendarQuery['branch_id'] = $branchId;
-            $createQuery['branch_id'] = $branchId;
             $waitlistQuery['branch_id'] = $branchId;
         }
         if ($date !== null && $date !== '') {
             $calendarQuery['date'] = $date;
-            $createQuery['date'] = $date;
             $waitlistQuery['date'] = $date;
+        }
+
+        $newAppointmentQuery = [];
+        if ($branchId !== null) {
+            $newAppointmentQuery['branch_id'] = $branchId;
+        }
+        if ($date !== null && $date !== '') {
+            $newAppointmentQuery['date'] = $date;
         }
 
         return [
@@ -1452,9 +1674,9 @@ final class AppointmentController
             'tabs' => [
                 ['id' => 'calendar', 'label' => 'Calendar', 'url' => '/appointments/calendar/day' . $this->buildQueryString($calendarQuery)],
                 ['id' => 'list', 'label' => 'List', 'url' => '/appointments' . $this->buildQueryString($listQuery)],
-                ['id' => 'new', 'label' => 'New Appointment', 'url' => '/appointments/create' . $this->buildQueryString($createQuery)],
                 ['id' => 'waitlist', 'label' => 'Waitlist', 'url' => '/appointments/waitlist' . $this->buildQueryString($waitlistQuery)],
             ],
+            'new_appointment_url' => '/appointments/create' . $this->buildQueryString($newAppointmentQuery),
         ];
     }
 
@@ -1496,6 +1718,34 @@ final class AppointmentController
         $requestedWith = strtolower(trim((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')));
 
         return $requestedWith === 'xmlhttprequest';
+    }
+
+    private function isDrawerRequest(): bool
+    {
+        return (string) ($_GET['drawer'] ?? '') === '1'
+            || (string) ($_SERVER['HTTP_X_APP_DRAWER'] ?? '') === '1';
+    }
+
+    private function normalizeDrawerTimePrefill(string $value): ?string
+    {
+        $value = trim($value);
+        if (preg_match('/^\d{2}:\d{2}$/', $value) === 1) {
+            return $value;
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<string, mixed> $vars
+     */
+    private function renderPartialToString(string $relativePath, array $vars): string
+    {
+        extract($vars, EXTR_SKIP);
+        ob_start();
+        require base_path($relativePath);
+
+        return (string) ob_get_clean();
     }
 
     /**

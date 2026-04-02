@@ -26,169 +26,55 @@ ob_start();
 <div class="flash flash-<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($flash[$t] ?? '') ?></div>
 <?php endif; ?>
 
-<div class="appointments-workspace-page">
-<div class="calendar-workspace">
-    <div class="calendar-op-canvas">
-    <div class="calendar-workspace-layout">
-        <aside class="calendar-sidebar" aria-label="Calendar quick navigation">
-            <div class="calendar-sidebar-card calendar-sidebar-card--viewing<?= $isViewingToday ? ' calendar-sidebar-card--is-today' : '' ?>">
-                <div class="calendar-sidebar-dateplate" aria-hidden="true"></div>
-                <div class="calendar-sidebar-dateblock">
-                    <p class="calendar-sidebar-kicker"><?= htmlspecialchars($sidebarMonth) ?></p>
-                    <p class="calendar-sidebar-daynum"><?= htmlspecialchars($sidebarDayNum) ?></p>
-                    <p class="calendar-sidebar-weekday"><?= htmlspecialchars($sidebarWeekday) ?></p>
-                </div>
-                <?php if ($isViewingToday): ?>
-                <span class="calendar-pill calendar-pill--today">Today</span>
-                <?php else: ?>
-                <span class="calendar-pill calendar-pill--other-day">Selected day</span>
-                <?php endif; ?>
-                <div class="calendar-sidebar-nav" role="group" aria-label="Change day">
-                    <a class="calendar-nav-btn" href="<?= htmlspecialchars($calDayUrl($prevDate)) ?>"><span class="calendar-nav-icon" aria-hidden="true">←</span><span>Prev</span></a>
-                    <a class="calendar-nav-btn calendar-nav-btn--primary" href="<?= htmlspecialchars($calDayUrl($todayDate)) ?>"><span class="calendar-nav-icon calendar-nav-icon--dot" aria-hidden="true">·</span><span>Today</span></a>
-                    <a class="calendar-nav-btn" href="<?= htmlspecialchars($calDayUrl($nextDate)) ?>"><span>Next</span><span class="calendar-nav-icon" aria-hidden="true">→</span></a>
-                </div>
-                <p class="calendar-sidebar-foot">Change date or branch in the toolbar; the schedule grid reloads for this day.</p>
-            </div>
-        </aside>
-        <div class="calendar-workspace-primary">
-            <div class="calendar-op-utilities-stack">
-            <div class="calendar-op-utilities-row">
-                <header class="calendar-toolbar calendar-toolbar--utilities" role="group" aria-label="Calendar scope">
-                <form method="get" action="/appointments/calendar/day" class="calendar-toolbar-form" id="calendar-filter-form">
-                    <div class="calendar-toolbar-fields">
-                        <div class="calendar-field">
-                            <label for="calendar-date">Date</label>
-                            <input type="date" id="calendar-date" name="date" value="<?= htmlspecialchars($calDate) ?>" required>
-                        </div>
-                        <div class="calendar-field calendar-field--grow">
-                            <label for="calendar-branch">Branch</label>
-                            <select id="calendar-branch" name="branch_id">
-                                <option value="">All branches</option>
-                                <?php foreach ($branches as $b): ?>
-                                <option value="<?= (int) $b['id'] ?>" <?= ((int)($branchId ?? 0) === (int)$b['id']) ? 'selected' : '' ?>><?= htmlspecialchars($b['name']) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="calendar-toolbar-submit">
-                            <button type="submit" class="calendar-btn calendar-btn--primary">Apply</button>
-                        </div>
+<div class="appointments-workspace-page ds-page appts-calendar-page">
+<div class="appts-calendar-body">
+    <aside class="appts-calendar-rail" aria-label="Selected day">
+        <p class="appts-calendar-rail__month"><?= htmlspecialchars($sidebarMonth) ?></p>
+        <p class="appts-calendar-rail__daynum"><?= htmlspecialchars($sidebarDayNum) ?></p>
+        <p class="appts-calendar-rail__weekday"><?= htmlspecialchars($sidebarWeekday) ?></p>
+        <?php if ($isViewingToday): ?>
+        <span class="appts-calendar-rail__pill appts-calendar-rail__pill--today">Today</span>
+        <?php else: ?>
+        <span class="appts-calendar-rail__pill appts-calendar-rail__pill--other">Selected day</span>
+        <?php endif; ?>
+        <div class="appts-calendar-rail__nav" role="group" aria-label="Change day">
+            <a class="appts-calendar-rail__nav-btn" href="<?= htmlspecialchars($calDayUrl($prevDate)) ?>"><span aria-hidden="true">←</span> Prev</a>
+            <a class="appts-calendar-rail__nav-btn appts-calendar-rail__nav-btn--accent" href="<?= htmlspecialchars($calDayUrl($todayDate)) ?>">Today</a>
+            <a class="appts-calendar-rail__nav-btn" href="<?= htmlspecialchars($calDayUrl($nextDate)) ?>">Next <span aria-hidden="true">→</span></a>
+        </div>
+    </aside>
+    <div class="appts-calendar-main">
+        <div class="appts-command-strip" role="group" aria-label="Date, branch, and blocked time">
+            <form method="get" action="/appointments/calendar/day" class="appts-command-strip__form" id="calendar-filter-form">
+                <div class="appts-command-strip__fields">
+                    <div class="appts-command-field">
+                        <label class="appts-command-field__label" for="calendar-date">Date</label>
+                        <input class="ds-input appts-command-field__control" type="date" id="calendar-date" name="date" value="<?= htmlspecialchars($calDate) ?>" required>
                     </div>
-                </form>
-                <div class="calendar-toolbar-aside">
-                    <a href="/appointments" class="calendar-toolbar-link calendar-toolbar-link--with-leading" title="Appointments list view"><span class="calendar-toolbar-link__ic" aria-hidden="true">›</span><span>List view</span></a>
+                    <div class="appts-command-field appts-command-field--grow">
+                        <label class="appts-command-field__label" for="calendar-branch">Branch</label>
+                        <select class="ds-select appts-command-field__control" id="calendar-branch" name="branch_id">
+                            <option value="">All branches</option>
+                            <?php foreach ($branches as $b): ?>
+                            <option value="<?= (int) $b['id'] ?>" <?= ((int)($branchId ?? 0) === (int)$b['id']) ? 'selected' : '' ?>><?= htmlspecialchars($b['name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
                 </div>
-                </header>
-            </div>
-            <div class="calendar-op-meta-row">
-                <p class="calendar-toolbar-hint">Staff columns · appointments and blocked time by length</p>
-                <div id="calendar-status" class="calendar-load-status" role="status" aria-live="polite">Loading day calendar…</div>
-            </div>
-            <div id="calendar-branch-hours-indicator" class="calendar-branch-hours-indicator" role="status" aria-live="polite"></div>
-            </div>
-            <div class="calendar-op-grid-wrap">
-            <div class="calendar-grid-surface">
-                <div id="calendar-day-wrap" class="calendar-day-wrap"></div>
-            </div>
+            </form>
+            <div class="appts-command-strip__actions">
+                <button type="button" class="ds-btn ds-btn--secondary" id="calendar-blocked-time-btn">Blocked time</button>
             </div>
         </div>
-    </div>
-    </div>
-
-    <section class="calendar-blocked-panel calendar-op-secondary" aria-labelledby="calendar-blocked-heading">
-        <header class="calendar-blocked-head">
-            <h2 id="calendar-blocked-heading" class="calendar-blocked-title">Blocked slots</h2>
-            <p class="calendar-blocked-lead">Add or remove blocks for the selected date and scope. Uses the same branch filter as the calendar above.</p>
-        </header>
-
-        <form method="post" action="/appointments/blocked-slots" class="entity-form calendar-blocked-form">
-            <input type="hidden" name="<?= htmlspecialchars(config('app.csrf_token_name', 'csrf_token')) ?>" value="<?= htmlspecialchars($csrf) ?>">
-            <div class="calendar-blocked-form-grid">
-                <div class="form-row">
-                    <label for="blocked-branch-id">Branch</label>
-                    <select id="blocked-branch-id" name="branch_id">
-                        <option value="">—</option>
-                        <?php foreach ($branches as $b): ?>
-                        <option value="<?= (int) $b['id'] ?>" <?= ((int)($branchId ?? 0) === (int)$b['id']) ? 'selected' : '' ?>><?= htmlspecialchars($b['name']) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="form-row">
-                    <label for="blocked-staff-id">Staff *</label>
-                    <select id="blocked-staff-id" name="staff_id" required>
-                        <option value="">—</option>
-                        <?php foreach ($staffOptions as $st): ?>
-                        <option value="<?= (int) $st['id'] ?>"><?= htmlspecialchars(trim(($st['first_name'] ?? '') . ' ' . ($st['last_name'] ?? ''))) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="form-row">
-                    <label for="blocked-title">Title / Reason *</label>
-                    <input type="text" id="blocked-title" name="title" required maxlength="150" value="Blocked">
-                </div>
-                <div class="form-row">
-                    <label for="blocked-date">Date *</label>
-                    <input type="date" id="blocked-date" name="block_date" required value="<?= htmlspecialchars($calDate) ?>">
-                </div>
-                <div class="form-row">
-                    <label for="blocked-start">Start Time *</label>
-                    <input type="time" id="blocked-start" name="start_time" required>
-                </div>
-                <div class="form-row">
-                    <label for="blocked-end">End Time *</label>
-                    <input type="time" id="blocked-end" name="end_time" required>
-                </div>
-                <div class="form-row calendar-blocked-field--full">
-                    <label for="blocked-notes">Notes</label>
-                    <textarea id="blocked-notes" name="notes" rows="2"></textarea>
-                </div>
-            </div>
-            <div class="form-actions">
-                <button type="submit" class="calendar-btn calendar-btn--primary">Add blocked slot</button>
-            </div>
-        </form>
-
-        <div class="calendar-blocked-list">
-            <h3 class="calendar-blocked-subtitle" id="calendar-blocked-list-heading">Blocks for this date</h3>
-            <div class="calendar-blocked-table-scroll" role="region" aria-labelledby="calendar-blocked-list-heading">
-                <table class="index-table calendar-blocked-table">
-                    <thead>
-                    <tr>
-                        <th scope="col">Staff</th>
-                        <th scope="col">Title</th>
-                        <th scope="col">Date</th>
-                        <th scope="col">Time</th>
-                        <th scope="col">Notes</th>
-                        <th scope="col">Action</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <?php if (empty($blockedSlots)): ?>
-                    <tr><td colspan="6"><span class="hint">No blocked slots for selected date/scope.</span></td></tr>
-                    <?php else: ?>
-                        <?php foreach ($blockedSlots as $bs): ?>
-                        <tr>
-                            <td><?= htmlspecialchars(trim(($bs['staff_first_name'] ?? '') . ' ' . ($bs['staff_last_name'] ?? ''))) ?: '—' ?></td>
-                            <td><?= htmlspecialchars($bs['title'] ?? 'Blocked') ?></td>
-                            <td><?= htmlspecialchars($bs['block_date'] ?? '') ?></td>
-                            <td><?= htmlspecialchars((string) ($bs['start_time'] ?? '')) ?> – <?= htmlspecialchars((string) ($bs['end_time'] ?? '')) ?></td>
-                            <td><?= htmlspecialchars((string) ($bs['notes'] ?? '')) ?></td>
-                            <td>
-                                <form method="post" action="/appointments/blocked-slots/<?= (int) $bs['id'] ?>/delete" class="calendar-blocked-delete-form" onsubmit="return confirm('Delete blocked slot?')">
-                                    <input type="hidden" name="<?= htmlspecialchars(config('app.csrf_token_name', 'csrf_token')) ?>" value="<?= htmlspecialchars($csrf) ?>">
-                                    <input type="hidden" name="date" value="<?= htmlspecialchars($date ?? '') ?>">
-                                    <input type="hidden" name="branch_id" value="<?= htmlspecialchars((string) ($branchId ?? '')) ?>">
-                                    <button type="submit" class="calendar-btn calendar-btn--danger calendar-btn--small">Delete</button>
-                                </form>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
+        <div class="appts-calendar-meta">
+            <p class="appts-calendar-meta__hint">Staff columns · appointments and blocked time by length</p>
+            <div id="calendar-status" class="appts-calendar-meta__status" role="status" aria-live="polite">Loading day calendar…</div>
         </div>
-    </section>
+        <div id="calendar-branch-hours-indicator" class="appts-calendar-hours calendar-branch-hours-indicator" role="status" aria-live="polite"></div>
+        <div class="appts-calendar-grid">
+            <div id="calendar-day-wrap" class="calendar-day-wrap"></div>
+        </div>
+    </div>
 </div>
 </div>
 
@@ -199,10 +85,64 @@ ob_start();
   const statusEl = document.getElementById('calendar-status');
   const branchHoursIndicatorEl = document.getElementById('calendar-branch-hours-indicator');
   const wrap = document.getElementById('calendar-day-wrap');
+  const newAppointmentBtn = document.getElementById('calendar-new-appointment-btn');
+  const blockedTimeBtn = document.getElementById('calendar-blocked-time-btn');
   const PIXELS_PER_MINUTE = 1.4;
   const MIN_BLOCK_HEIGHT = 20;
   const MAX_TITLE_LENGTH = 48;
   const MAX_META_LENGTH = 56;
+  let selectedSlot = null;
+  function currentCalendarQuery() {
+    const params = new URLSearchParams();
+    params.set('date', dateEl.value);
+    if (branchEl.value) params.set('branch_id', branchEl.value);
+    return params;
+  }
+
+  function syncCalendarUrl() {
+    if (!window.history || typeof window.history.replaceState !== 'function') {
+      return;
+    }
+    const q = currentCalendarQuery();
+    const suffix = q.toString();
+    const path = '/appointments/calendar/day' + (suffix !== '' ? '?' + suffix : '');
+    window.history.replaceState(null, '', path);
+  }
+
+  function openDrawerUrl(url) {
+    if (window.AppDrawer && typeof window.AppDrawer.openUrl === 'function') {
+      return window.AppDrawer.openUrl(url);
+    }
+    window.location.href = url;
+    return Promise.resolve(true);
+  }
+
+  function buildNewAppointmentUrl() {
+    const params = currentCalendarQuery();
+    if (selectedSlot && selectedSlot.staffId) {
+      params.set('staff_id', String(selectedSlot.staffId));
+    }
+    if (selectedSlot && selectedSlot.staffLabel) {
+      params.set('staff_label', selectedSlot.staffLabel);
+    }
+    if (selectedSlot && selectedSlot.time) {
+      params.set('time', selectedSlot.time);
+    }
+    if (selectedSlot && selectedSlot.slotMinutes) {
+      params.set('slot_minutes', String(selectedSlot.slotMinutes));
+    }
+    return '/appointments/create?' + params.toString();
+  }
+
+  function buildBlockedTimeUrl() {
+    return '/appointments/blocked-slots/panel?' + currentCalendarQuery().toString();
+  }
+
+  function snapTimeFromTop(offsetPx, dayStart, step) {
+    const rawMinutes = dayStart + Math.max(0, Math.round(offsetPx / PIXELS_PER_MINUTE));
+    const snapped = Math.round(rawMinutes / step) * step;
+    return fmtTime(snapped);
+  }
 
   function toMinutes(hhmm) {
     const [h, m] = String(hhmm || '00:00').split(':').map(Number);
@@ -437,9 +377,6 @@ ob_start();
       row.textContent = fmtTime(mark);
       labelsCol.appendChild(row);
     });
-    labelsCol.addEventListener('click', () => {
-      wrap.querySelectorAll('.ops-lane--selected').forEach((el) => el.classList.remove('ops-lane--selected'));
-    });
     body.appendChild(labelsCol);
 
     const laneWrap = document.createElement('div');
@@ -448,6 +385,14 @@ ob_start();
       const lane = document.createElement('div');
       lane.className = 'ops-lane';
       lane.setAttribute('role', 'presentation');
+      lane.dataset.staffId = String(col.id);
+      const hoverPreview = document.createElement('div');
+      hoverPreview.className = 'ops-slot-preview';
+      hoverPreview.hidden = true;
+      const hoverLabel = document.createElement('div');
+      hoverLabel.className = 'ops-slot-preview__label';
+      hoverPreview.appendChild(hoverLabel);
+      lane.appendChild(hoverPreview);
 
       vm.marks.forEach((mark) => {
         const line = document.createElement('div');
@@ -484,7 +429,8 @@ ob_start();
         .forEach((item) => {
           const topPx = Math.max(0, Number(item.top) || 0);
           const heightPx = Math.max(MIN_BLOCK_HEIGHT, Number(item.height) || MIN_BLOCK_HEIGHT);
-          const block = document.createElement(item.link ? 'a' : 'div');
+          const isDrawerBlock = !!item.link || item.kind === 'blocked';
+          const block = document.createElement(isDrawerBlock ? 'a' : 'div');
           block.className = 'ops-block ' + (item.kind === 'blocked' ? 'ops-block-blocked' : 'ops-block-appt');
           if (item.kind === 'appointment' && item.prebooked) {
             block.classList.add('ops-block-appt--prebooked');
@@ -503,6 +449,10 @@ ob_start();
           block.style.height = heightPx + 'px';
           if (item.link) {
             block.href = item.link;
+            block.dataset.drawerUrl = item.link;
+          } else if (item.kind === 'blocked') {
+            block.href = buildBlockedTimeUrl();
+            block.dataset.drawerUrl = buildBlockedTimeUrl();
           }
           if (item.timeLabel) {
             const timeEl = document.createElement('div');
@@ -535,14 +485,43 @@ ob_start();
           lane.appendChild(block);
         });
 
-      lane.addEventListener('click', (e) => {
-        if (e.target.closest('.ops-block')) return;
-        if (lane.classList.contains('ops-lane--selected')) {
-          lane.classList.remove('ops-lane--selected');
+      lane.addEventListener('mousemove', (e) => {
+        if (e.target.closest('.ops-block')) {
+          hoverPreview.hidden = true;
           return;
         }
-        wrap.querySelectorAll('.ops-lane--selected').forEach((el) => el.classList.remove('ops-lane--selected'));
-        lane.classList.add('ops-lane--selected');
+        const rect = lane.getBoundingClientRect();
+        const offsetY = e.clientY - rect.top;
+        const snapped = snapTimeFromTop(offsetY, vm.start, vm.step);
+        const topPx = Math.max(0, (toMinutes(snapped) - vm.start) * PIXELS_PER_MINUTE);
+        hoverPreview.hidden = false;
+        hoverPreview.style.top = topPx + 'px';
+        hoverLabel.textContent = col.label + ' · ' + snapped;
+      });
+
+      lane.addEventListener('mouseleave', () => {
+        hoverPreview.hidden = true;
+      });
+
+      lane.addEventListener('click', async (e) => {
+        if (e.target.closest('.ops-block')) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const rect = lane.getBoundingClientRect();
+        const offsetY = e.clientY - rect.top;
+        selectedSlot = {
+          staffId: col.id,
+          staffLabel: col.label,
+          time: snapTimeFromTop(offsetY, vm.start, vm.step),
+          slotMinutes: vm.step,
+        };
+        const url = buildNewAppointmentUrl();
+        const started = await openDrawerUrl(url);
+        if (!started) {
+          statusEl.textContent = '';
+          return;
+        }
+        statusEl.textContent = 'Opening new appointment for ' + col.label + ' at ' + selectedSlot.time + '.';
       });
 
       laneWrap.appendChild(lane);
@@ -563,7 +542,7 @@ ob_start();
 
     if (!closureStorageReady) {
       branchHoursIndicatorEl.textContent = 'Closure-date storage is not available yet. Calendar uses existing operating-hours data only.';
-      branchHoursIndicatorEl.className = 'calendar-branch-hours-indicator calendar-branch-hours-indicator--missing';
+      branchHoursIndicatorEl.className = 'appts-calendar-hours calendar-branch-hours-indicator calendar-branch-hours-indicator--missing';
       return;
     }
 
@@ -574,7 +553,7 @@ ob_start();
         ? (' ' + closureVisibleRecords + ' existing record(s) are still visible for review.')
         : '';
       branchHoursIndicatorEl.textContent = 'Closed day (closure date).' + titlePart + notesPart + anomalyPart;
-      branchHoursIndicatorEl.className = 'calendar-branch-hours-indicator calendar-branch-hours-indicator--closed';
+      branchHoursIndicatorEl.className = 'appts-calendar-hours calendar-branch-hours-indicator calendar-branch-hours-indicator--closed';
       return;
     }
 
@@ -585,14 +564,14 @@ ob_start();
     const anomalies = Number(meta && meta.outOfHoursAppointments ? meta.outOfHoursAppointments : 0);
     if (!available) {
       branchHoursIndicatorEl.textContent = 'Opening hours not configured for this branch/day.';
-      branchHoursIndicatorEl.className = 'calendar-branch-hours-indicator calendar-branch-hours-indicator--missing';
+      branchHoursIndicatorEl.className = 'appts-calendar-hours calendar-branch-hours-indicator calendar-branch-hours-indicator--missing';
       return;
     }
     if (isClosed) {
       branchHoursIndicatorEl.textContent = anomalies > 0
         ? ('Closed today. ' + anomalies + ' existing appointment(s) found on a closed day.')
         : 'Closed today.';
-      branchHoursIndicatorEl.className = 'calendar-branch-hours-indicator calendar-branch-hours-indicator--closed';
+      branchHoursIndicatorEl.className = 'appts-calendar-hours calendar-branch-hours-indicator calendar-branch-hours-indicator--closed';
       return;
     }
     const base = (openTime && closeTime)
@@ -600,7 +579,7 @@ ob_start();
       : 'Opening hours not configured for this branch/day.';
     const suffix = anomalies > 0 ? (' | ' + anomalies + ' appointment(s) outside branch hours.') : '';
     branchHoursIndicatorEl.textContent = base + suffix;
-    branchHoursIndicatorEl.className = 'calendar-branch-hours-indicator calendar-branch-hours-indicator--open';
+    branchHoursIndicatorEl.className = 'appts-calendar-hours calendar-branch-hours-indicator calendar-branch-hours-indicator--open';
   }
 
   function branchEnvelopeForLane(meta, dayStart, dayEnd) {
@@ -659,8 +638,35 @@ ob_start();
     }
   }
 
-  document.getElementById('calendar-filter-form').addEventListener('submit', (e) => {
+  const filterForm = document.getElementById('calendar-filter-form');
+  filterForm.addEventListener('submit', (e) => {
     e.preventDefault();
+    syncCalendarUrl();
+    load();
+  });
+  dateEl.addEventListener('change', () => {
+    syncCalendarUrl();
+    load();
+  });
+  branchEl.addEventListener('change', () => {
+    syncCalendarUrl();
+    load();
+  });
+
+  newAppointmentBtn.addEventListener('click', async () => {
+    if (!selectedSlot) {
+      selectedSlot = {
+        staffId: null,
+        time: '09:00',
+        slotMinutes: 30,
+      };
+    }
+    await openDrawerUrl(buildNewAppointmentUrl());
+  });
+  blockedTimeBtn.addEventListener('click', async () => {
+    await openDrawerUrl(buildBlockedTimeUrl());
+  });
+  window.addEventListener('app:appointments-calendar-refresh', () => {
     load();
   });
 
