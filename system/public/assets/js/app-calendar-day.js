@@ -41,7 +41,7 @@
   })();
   /**
    * Top inset added to all vertical pixel positions (labels, grid lines, blocks, now-line).
-   * Prevents the first time label from being clipped by the sticky header — a translateY(-50%) at top:0
+   * Prevents the first time label from being clipped by the sticky header вЂ” a translateY(-50%) at top:0
    * would otherwise overlap the header's background. The body height is also extended by this amount.
    */
   const GRID_TOP_INSET_PX = 10;
@@ -191,7 +191,7 @@
     return n;
   }
 
-  /** Gregorian date-only arithmetic (UTC components) — weekday is global for Y-M-D. */
+  /** Gregorian date-only arithmetic (UTC components) вЂ” weekday is global for Y-M-D. */
   function shiftIsoDate(iso, deltaDays) {
     const parts = String(iso || '').split('-');
     if (parts.length !== 3) return iso;
@@ -204,7 +204,7 @@
     return x.getUTCFullYear() + '-' + String(x.getUTCMonth() + 1).padStart(2, '0') + '-' + String(x.getUTCDate()).padStart(2, '0');
   }
 
-  /** Monday = 0 … Sunday = 6 (ISO week aligned). */
+  /** Monday = 0 вЂ¦ Sunday = 6 (ISO week aligned). */
   function mondayOffsetFromIso(iso) {
     const parts = String(iso || '').split('-');
     if (parts.length !== 3) return 0;
@@ -1208,7 +1208,7 @@
         const topPx = Math.max(GRID_TOP_INSET_PX, (toMinutes(snapped) - vm.start) * PIXELS_PER_MINUTE + GRID_TOP_INSET_PX);
         hoverPreview.hidden = false;
         hoverPreview.style.top = topPx + 'px';
-        hoverLabel.textContent = col.label + ' · ' + snapped;
+        hoverLabel.textContent = col.label + ' В· ' + snapped;
       });
 
       lane.addEventListener('mouseleave', () => {
@@ -1329,7 +1329,7 @@
     const params = new URLSearchParams();
     params.set('date', date);
     if (branchEl.value) params.set('branch_id', branchEl.value);
-    statusEl.textContent = 'Loading day calendar…';
+    statusEl.textContent = 'Loading day calendarвЂ¦';
     destroyNowLine();
     if (currentLoadAbort) {
       currentLoadAbort.abort();
@@ -1399,7 +1399,7 @@
     selectedSlot = null;
     nowLineScrolled = false;
     pushCalendarHistoryIfChanged();
-    refreshCalendarSummaries();
+    renderSmartCard();
     load();
   });
 
@@ -1495,7 +1495,6 @@
     selectedSlot = null;
     nowLineScrolled = false;
     renderSmartCard();
-    refreshCalendarSummaries();
     load();
   });
 
