@@ -918,7 +918,8 @@ final class AppointmentController
         $workspace = $this->workspaceContext('calendar', $branchId, $date);
         $branchTimezone = \Core\App\ApplicationTimezone::getAppliedIdentifier() ?? 'UTC';
         $calendarWeekSummaryBootstrap = null;
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) === 1) {
+        $calendarMonthSummaryBootstrap = null;
+        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $date, $md) === 1) {
             try {
                 $calendarWeekSummaryBootstrap = $this->calendarMonthSummary->buildWeekPayload(
                     $branchId,
@@ -927,6 +928,17 @@ final class AppointmentController
                 );
             } catch (\Throwable) {
                 $calendarWeekSummaryBootstrap = null;
+            }
+            try {
+                $calendarMonthSummaryBootstrap = $this->calendarMonthSummary->buildPayload(
+                    $branchId,
+                    (int) $md[1],
+                    (int) $md[2],
+                    $date,
+                    date('Y-m-d')
+                );
+            } catch (\Throwable) {
+                $calendarMonthSummaryBootstrap = null;
             }
         }
         require base_path('modules/appointments/views/calendar-day.php');

@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= htmlspecialchars($title ?? 'SPA & Skincare') ?></title>
+    <link rel="stylesheet" href="/assets/css/design-tokens.css">
+    <link rel="stylesheet" href="/assets/css/design-system.css">
     <link rel="stylesheet" href="/assets/css/app.css">
+    <script src="/assets/js/app-drawer.js" defer></script>
 </head>
 <body>
     <?php
@@ -86,5 +89,6 @@
     <main class="app-shell__main main<?= !empty($hideNav) ? ' app-shell__main--auth' : '' ?><?= !empty($mainClass) ? ' ' . htmlspecialchars((string) $mainClass) : '' ?>">
         <?= $content ?? '' ?>
     </main>
+    <div id="app-drawer-host" class="app-drawer-host" aria-live="polite"></div>
 </body>
 </html>

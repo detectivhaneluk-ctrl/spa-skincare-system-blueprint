@@ -1,0 +1,90 @@
+/**
+ * Global desktop design tokens — SPA Admin
+ * Single source for color, space, radius, type, elevation, controls.
+ * Modules consume via var(--ds-*); avoid page-local hex for shared UI.
+ */
+:root {
+  /* —— Monochrome base —— */
+  --ds-color-bg-page: #f5f5f7;
+  --ds-color-bg-canvas: #ffffff;
+  --ds-color-bg-subtle: #fafafa;
+  --ds-color-bg-muted: #f0f0f3;
+
+  --ds-color-text: #1d1d1f;
+  --ds-color-text-secondary: #86868b;
+  --ds-color-text-tertiary: #aeaeb2;
+
+  --ds-color-border: rgba(0, 0, 0, 0.08);
+  --ds-color-border-light: rgba(0, 0, 0, 0.05);
+  --ds-color-divider: rgba(0, 0, 0, 0.06);
+
+  /* —— Accent: primary CTA + active nav/mode only —— */
+  --ds-color-accent: #0066cc;
+  --ds-color-accent-hover: #0055b3;
+  --ds-color-accent-muted: rgba(0, 102, 204, 0.1);
+  --ds-color-accent-border: rgba(0, 102, 204, 0.28);
+  --ds-color-focus-ring: rgba(0, 102, 204, 0.35);
+
+  /* —— Semantic (still restrained) —— */
+  --ds-color-danger: #b00020;
+  --ds-color-danger-bg: rgba(176, 0, 32, 0.06);
+  --ds-color-success: #1b7f3a;
+  --ds-color-success-bg: rgba(27, 127, 58, 0.08);
+  --ds-color-warning-bg: #fff8e6;
+  --ds-color-warning-text: #6b5a1a;
+
+  /* —— Typography —— */
+  --ds-font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --ds-text-xs: 0.6875rem;
+  --ds-text-sm: 0.8125rem;
+  --ds-text-md: 0.875rem;
+  --ds-text-lg: 1rem;
+  --ds-text-xl: 1.125rem;
+  --ds-text-2xl: 1.25rem;
+  --ds-text-display: 1.5rem;
+  --ds-font-normal: 400;
+  --ds-font-medium: 500;
+  --ds-font-semibold: 600;
+  --ds-font-bold: 700;
+  --ds-leading-tight: 1.25;
+  --ds-leading-normal: 1.5;
+  --ds-tracking-tight: -0.02em;
+
+  /* —— Spacing (8px grid) —— */
+  --ds-space-1: 0.25rem;
+  --ds-space-2: 0.5rem;
+  --ds-space-3: 0.75rem;
+  --ds-space-4: 1rem;
+  --ds-space-5: 1.25rem;
+  --ds-space-6: 1.5rem;
+  --ds-space-8: 2rem;
+  --ds-space-10: 2.5rem;
+
+  /* —— Radius —— */
+  --ds-radius-sm: 6px;
+  --ds-radius-md: 10px;
+  --ds-radius-lg: 12px;
+  --ds-radius-pill: 999px;
+
+  /* —— Shadows (soft, rare) —— */
+  --ds-shadow-xs: 0 1px 0 rgba(0, 0, 0, 0.04);
+  --ds-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --ds-shadow-md: 0 4px 14px rgba(0, 0, 0, 0.07);
+  --ds-shadow-drawer: -12px 0 40px rgba(0, 0, 0, 0.1);
+
+  /* —— Control sizes (desktop) —— */
+  --ds-control-height: 2.25rem;
+  --ds-control-height-sm: 2rem;
+  --ds-control-height-lg: 2.5rem;
+  --ds-control-padding-x: 0.75rem;
+
+  /* —— Layout —— */
+  --ds-shell-pad-x: var(--ds-space-5);
+  --ds-shell-pad-y: var(--ds-space-4);
+  --ds-workspace-max-width: none;
+  --ds-z-drawer: 80;
+
+  /* —— Motion (functional only) —— */
+  --ds-duration-drawer: 180ms;
+  --ds-ease-standard: ease;
+}

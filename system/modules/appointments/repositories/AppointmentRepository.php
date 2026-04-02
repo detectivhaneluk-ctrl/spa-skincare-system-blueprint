@@ -24,6 +24,7 @@ final class AppointmentRepository
     {
         $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('a');
         $sql = 'SELECT a.*, c.first_name as client_first_name, c.last_name as client_last_name,
+                c.email as client_email, c.phone as client_phone, c.home_country as client_country,
                 s.name as service_name, st.first_name as staff_first_name, st.last_name as staff_last_name,
                 r.name as room_name
                 FROM appointments a
@@ -52,6 +53,7 @@ final class AppointmentRepository
         ['branch_id' => $branchId] = $ctx->requireResolvedTenant();
         $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('a');
         $sql = 'SELECT a.*, c.first_name as client_first_name, c.last_name as client_last_name,
+                c.email as client_email, c.phone as client_phone, c.home_country as client_country,
                 s.name as service_name, st.first_name as staff_first_name, st.last_name as staff_last_name,
                 r.name as room_name
                 FROM appointments a
