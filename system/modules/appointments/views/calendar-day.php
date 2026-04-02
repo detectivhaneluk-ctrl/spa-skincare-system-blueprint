@@ -6,21 +6,6 @@ $workspace = isset($workspace) && is_array($workspace) ? $workspace : [];
 $workspace['shell_modifier'] = 'workspace-shell--calendar';
 $calDateRaw = $date ?? date('Y-m-d');
 $calDate = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $calDateRaw) ? (string) $calDateRaw : date('Y-m-d');
-$calDt = new DateTimeImmutable($calDate);
-$prevDate = $calDt->modify('-1 day')->format('Y-m-d');
-$nextDate = $calDt->modify('+1 day')->format('Y-m-d');
-$todayDate = (new DateTimeImmutable('today'))->format('Y-m-d');
-$calDayUrl = static function (string $d) use ($branchId): string {
-    $q = ['date' => $d];
-    if ($branchId !== null) {
-        $q['branch_id'] = (int) $branchId;
-    }
-    return '/appointments/calendar/day?' . http_build_query($q);
-};
-$sidebarMonth = $calDt->format('F Y');
-$sidebarWeekday = $calDt->format('l');
-$sidebarDayNum = $calDt->format('j');
-$isViewingToday = $calDate === $todayDate;
 ob_start();
 ?>
 <div class="calendar-workspace" id="calendar-workspace-root" data-calendar-immersive-root>
@@ -31,28 +16,26 @@ ob_start();
 
 <div class="appointments-workspace-page ds-page appts-calendar-page">
 <div class="appts-calendar-body">
-    <aside class="appts-calendar-rail" aria-label="Selected day">
-        <p class="appts-calendar-rail__month"><?= htmlspecialchars($sidebarMonth) ?></p>
-        <p class="appts-calendar-rail__daynum"><?= htmlspecialchars($sidebarDayNum) ?></p>
-        <p class="appts-calendar-rail__weekday"><?= htmlspecialchars($sidebarWeekday) ?></p>
-        <?php if ($isViewingToday): ?>
-        <span class="appts-calendar-rail__pill appts-calendar-rail__pill--today">Today</span>
-        <?php else: ?>
-        <span class="appts-calendar-rail__pill appts-calendar-rail__pill--other">Selected day</span>
-        <?php endif; ?>
-        <div class="appts-calendar-rail__nav" role="group" aria-label="Change day">
-            <a class="appts-calendar-rail__nav-btn" href="<?= htmlspecialchars($calDayUrl($prevDate)) ?>"><span aria-hidden="true">←</span> Prev</a>
-            <a class="appts-calendar-rail__nav-btn appts-calendar-rail__nav-btn--accent" href="<?= htmlspecialchars($calDayUrl($todayDate)) ?>">Today</a>
-            <a class="appts-calendar-rail__nav-btn" href="<?= htmlspecialchars($calDayUrl($nextDate)) ?>">Next <span aria-hidden="true">→</span></a>
+    <div class="appts-month-day-rail" id="appts-month-day-rail" aria-label="Month and day navigation">
+        <div class="appts-month-day-rail__toolbar">
+            <div class="appts-month-day-rail__month-cluster" role="group" aria-label="Change month">
+                <button type="button" class="appts-month-day-rail__icon-btn" id="appts-rail-prev-month" aria-label="Previous month">‹</button>
+                <h2 class="appts-month-day-rail__title" id="appts-rail-month-label">Month</h2>
+                <button type="button" class="appts-month-day-rail__icon-btn" id="appts-rail-next-month" aria-label="Next month">›</button>
+            </div>
+            <button type="button" class="ds-btn ds-btn--secondary appts-month-day-rail__today-btn" id="appts-rail-today">Today</button>
         </div>
-    </aside>
+        <div class="appts-month-day-rail__scroller" id="appts-rail-scroller">
+            <div class="appts-month-day-rail__days" id="appts-rail-days" role="group" aria-label="Days in month"></div>
+        </div>
+    </div>
     <div class="appts-calendar-main">
         <div class="appts-command-strip" role="group" aria-label="Date, branch, and blocked time">
             <form method="get" action="/appointments/calendar/day" class="appts-command-strip__form" id="calendar-filter-form">
                 <div class="appts-command-strip__fields">
-                    <div class="appts-command-field">
-                        <label class="appts-command-field__label" for="calendar-date">Date</label>
-                        <input class="ds-input appts-command-field__control" type="date" id="calendar-date" name="date" value="<?= htmlspecialchars($calDate) ?>" required>
+                    <div class="appts-command-field appts-command-field--date-secondary">
+                        <label class="appts-command-field__label" for="calendar-date">Go to date</label>
+                        <input class="ds-input appts-command-field__control" type="date" id="calendar-date" name="date" value="<?= htmlspecialchars($calDate) ?>" required title="Pick any calendar date (same as day chips above)">
                     </div>
                     <div class="appts-command-field appts-command-field--grow">
                         <label class="appts-command-field__label" for="calendar-branch">Branch</label>
@@ -86,6 +69,12 @@ ob_start();
 <script>
 (() => {
   const dateEl = document.getElementById('calendar-date');
+  const railScroller = document.getElementById('appts-rail-scroller');
+  const railDays = document.getElementById('appts-rail-days');
+  const railMonthLabel = document.getElementById('appts-rail-month-label');
+  const railPrevMonth = document.getElementById('appts-rail-prev-month');
+  const railNextMonth = document.getElementById('appts-rail-next-month');
+  const railTodayBtn = document.getElementById('appts-rail-today');
   const branchEl = document.getElementById('calendar-branch');
   const statusEl = document.getElementById('calendar-status');
   const branchHoursIndicatorEl = document.getElementById('calendar-branch-hours-indicator');
@@ -155,6 +144,143 @@ ob_start();
         dateStr: now.toISOString().slice(0, 10),
       };
     }
+  }
+
+  function addMonthsIso(isoDate, deltaM) {
+    const parts = String(isoDate || '').split('-');
+    if (parts.length !== 3) return isoDate;
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    const d = parseInt(parts[2], 10);
+    if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return isoDate;
+    const first = new Date(y, m - 1 + deltaM, 1);
+    const ny = first.getFullYear();
+    const nm = first.getMonth();
+    const lastD = new Date(ny, nm + 1, 0).getDate();
+    const nd = Math.min(d, lastD);
+    const out = new Date(ny, nm, nd);
+    return out.getFullYear() + '-' + String(out.getMonth() + 1).padStart(2, '0') + '-' + String(out.getDate()).padStart(2, '0');
+  }
+
+  function countAppointmentsInPayload(payload) {
+    const g = payload && payload.appointments_by_staff;
+    if (!g || typeof g !== 'object') return 0;
+    let n = 0;
+    for (const k of Object.keys(g)) {
+      const arr = g[k];
+      if (Array.isArray(arr)) n += arr.length;
+    }
+    return n;
+  }
+
+  function scrollRailToSelected() {
+    if (!railScroller || !railDays) return;
+    const sel = railDays.querySelector('.appts-month-day-rail__day--selected');
+    if (!sel) return;
+    let reduced = false;
+    try {
+      reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    } catch (e) { reduced = false; }
+    sel.scrollIntoView({ inline: 'center', block: 'nearest', behavior: reduced ? 'auto' : 'smooth' });
+  }
+
+  function clearRailMetaClasses() {
+    if (!railDays) return;
+    railDays.querySelectorAll('.appts-month-day-rail__day').forEach((el) => {
+      el.classList.remove('appts-month-day-rail__day--closed', 'appts-month-day-rail__day--has-appts');
+    });
+  }
+
+  function updateRailDayMeta(vm, apptCount) {
+    clearRailMetaClasses();
+    if (!railDays || !vm) return;
+    const sel = railDays.querySelector('.appts-month-day-rail__day--selected');
+    if (!sel) return;
+    const closed = (vm.branchHours && vm.branchHours.isClosedDay)
+      || (vm.closureDate && vm.closureDate.active);
+    if (closed) sel.classList.add('appts-month-day-rail__day--closed');
+    if (apptCount > 0) sel.classList.add('appts-month-day-rail__day--has-appts');
+  }
+
+  function renderMonthRail() {
+    if (!railDays || !railMonthLabel || !dateEl) return;
+    const cur = String(dateEl.value || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(cur)) return;
+    const y = parseInt(cur.slice(0, 4), 10);
+    const mo = parseInt(cur.slice(5, 7), 10);
+    if (!Number.isFinite(y) || !Number.isFinite(mo)) return;
+    const first = new Date(y, mo - 1, 1);
+    railMonthLabel.textContent = first.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+    const lastDay = new Date(y, mo, 0).getDate();
+    const todayStr = getBranchNow().dateStr;
+    railDays.innerHTML = '';
+    railDays.setAttribute('aria-label', 'Days in ' + first.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }));
+
+    for (let d = 1; d <= lastDay; d++) {
+      const iso = y + '-' + String(mo).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+      const dt = new Date(y, mo - 1, d);
+      const narrow = dt.toLocaleDateString(undefined, { weekday: 'narrow' });
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'appts-month-day-rail__day';
+      btn.dataset.date = iso;
+      const longLabel = dt.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+      btn.setAttribute('aria-label', longLabel);
+      if (iso === cur) {
+        btn.classList.add('appts-month-day-rail__day--selected');
+        btn.setAttribute('aria-current', 'date');
+      }
+      if (iso === todayStr) {
+        btn.classList.add('appts-month-day-rail__day--today');
+      }
+      const wEl = document.createElement('span');
+      wEl.className = 'appts-month-day-rail__day-wd';
+      wEl.textContent = narrow;
+      const nEl = document.createElement('span');
+      nEl.className = 'appts-month-day-rail__day-num';
+      nEl.textContent = String(d);
+      const dot = document.createElement('span');
+      dot.className = 'appts-month-day-rail__day-dot';
+      dot.setAttribute('aria-hidden', 'true');
+      btn.appendChild(wEl);
+      btn.appendChild(nEl);
+      btn.appendChild(dot);
+      btn.addEventListener('click', () => {
+        if (dateEl.value === iso) return;
+        selectedSlot = null;
+        nowLineScrolled = false;
+        dateEl.value = iso;
+        renderMonthRail();
+        syncCalendarUrl();
+        load();
+      });
+      railDays.appendChild(btn);
+    }
+    requestAnimationFrame(scrollRailToSelected);
+  }
+
+  function shiftCalendarMonth(deltaM) {
+    const cur = dateEl.value;
+    if (!cur) return;
+    const next = addMonthsIso(cur, deltaM);
+    selectedSlot = null;
+    nowLineScrolled = false;
+    dateEl.value = next;
+    renderMonthRail();
+    syncCalendarUrl();
+    load();
+  }
+
+  function goToBranchToday() {
+    const t = getBranchNow().dateStr;
+    if (!t || !/^\d{4}-\d{2}-\d{2}$/.test(t)) return;
+    if (dateEl.value === t) return;
+    selectedSlot = null;
+    nowLineScrolled = false;
+    dateEl.value = t;
+    renderMonthRail();
+    syncCalendarUrl();
+    load();
   }
 
   /** Remove now-line DOM elements and cancel the update timer. */
@@ -467,11 +593,13 @@ ob_start();
 
   function renderCalendar(payload) {
     wrap.innerHTML = '';
+    const apptCount = countAppointmentsInPayload(payload);
     const vm = buildCalendarViewModel(payload);
     renderBranchHoursIndicator(vm.branchHours, vm.closureDate);
     if (!vm.columns.length) {
       wrap.innerHTML = '<p class="calendar-empty-hint">No active staff for this branch and date.</p>';
       destroyNowLine();
+      updateRailDayMeta(vm, apptCount);
       window.dispatchEvent(new CustomEvent('calendar-workspace:grid-updated'));
       return;
     }
@@ -676,6 +804,7 @@ ob_start();
     root.appendChild(body);
     wrap.appendChild(root);
     initNowLine(vm);
+    updateRailDayMeta(vm, apptCount);
     window.dispatchEvent(new CustomEvent('calendar-workspace:grid-updated'));
   }
 
@@ -784,6 +913,7 @@ ob_start();
       if (!res.ok || errMsg) {
         statusEl.textContent = errMsg || 'Failed to load calendar.';
         wrap.innerHTML = '';
+        clearRailMetaClasses();
         return;
       }
       statusEl.textContent = '';
@@ -794,18 +924,21 @@ ob_start();
       }
       statusEl.textContent = 'Could not load calendar data.';
       wrap.innerHTML = '';
+      clearRailMetaClasses();
     }
   }
 
   const filterForm = document.getElementById('calendar-filter-form');
   filterForm.addEventListener('submit', (e) => {
     e.preventDefault();
+    renderMonthRail();
     syncCalendarUrl();
     load();
   });
   dateEl.addEventListener('change', () => {
     selectedSlot = null;
     nowLineScrolled = false;
+    renderMonthRail();
     syncCalendarUrl();
     load();
   });
@@ -833,6 +966,17 @@ ob_start();
     load();
   });
 
+  if (railPrevMonth) {
+    railPrevMonth.addEventListener('click', () => shiftCalendarMonth(-1));
+  }
+  if (railNextMonth) {
+    railNextMonth.addEventListener('click', () => shiftCalendarMonth(1));
+  }
+  if (railTodayBtn) {
+    railTodayBtn.addEventListener('click', () => goToBranchToday());
+  }
+
+  renderMonthRail();
   load();
 })();
 </script>

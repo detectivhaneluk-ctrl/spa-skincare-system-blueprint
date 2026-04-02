@@ -1041,86 +1041,171 @@ body {
   flex-direction: column;
 }
 .appts-calendar-body {
-  display: grid;
-  grid-template-columns: minmax(164px, 188px) minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: var(--ds-space-3);
   align-items: stretch;
   flex: 1 1 auto;
   min-height: 0;
 }
-.appts-calendar-rail {
-  border-right: 1px solid var(--ds-color-divider);
-  padding-right: var(--ds-space-3);
-  align-self: start;
-}
-.appts-calendar-rail__month {
-  margin: 0;
-  font-size: var(--ds-text-xs);
-  font-weight: var(--ds-font-semibold);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ds-color-text-tertiary);
-}
-.appts-calendar-rail__daynum {
-  margin: 0.3rem 0 0;
-  font-size: 1.625rem;
-  font-weight: var(--ds-font-bold);
-  line-height: 1;
-  color: var(--ds-color-text);
-}
-.appts-calendar-rail__weekday {
-  margin: 0.25rem 0 0;
-  font-size: var(--ds-text-sm);
-  color: var(--ds-color-text-secondary);
-}
-.appts-calendar-rail__pill {
-  display: inline-flex;
-  margin-top: 0.55rem;
-  padding: 0.16rem 0.45rem;
-  font-size: var(--ds-text-xs);
-  font-weight: var(--ds-font-semibold);
-  border-radius: var(--ds-radius-sm);
+
+/* Month–day operator rail (primary day selection) */
+.appts-month-day-rail {
+  flex-shrink: 0;
+  padding: var(--ds-space-2) var(--ds-space-3);
+  background: var(--ds-color-bg-subtle);
   border: 1px solid var(--ds-color-border-light);
+  border-radius: var(--ds-radius-md);
 }
-.appts-calendar-rail__pill--today {
-  color: var(--ds-color-accent);
-  background: var(--ds-color-accent-muted);
-  border-color: var(--ds-color-accent-border);
-}
-.appts-calendar-rail__pill--other {
-  color: var(--ds-color-text-secondary);
-  background: var(--ds-color-bg-muted);
-}
-.appts-calendar-rail__nav {
+.appts-month-day-rail__toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-top: 0.8rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-2) var(--ds-space-3);
+  margin-bottom: var(--ds-space-2);
 }
-.appts-calendar-rail__nav-btn {
-  flex: 1;
+.appts-month-day-rail__month-cluster {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
   min-width: 0;
+}
+.appts-month-day-rail__title {
+  margin: 0;
+  min-width: 8.5rem;
+  text-align: center;
+  font-size: var(--ds-text-sm);
+  font-weight: var(--ds-font-semibold);
+  letter-spacing: var(--ds-tracking-tight);
+  color: var(--ds-color-text);
+  line-height: var(--ds-leading-tight);
+}
+.appts-month-day-rail__icon-btn {
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.2rem;
-  padding: 0.36rem 0.38rem;
+  padding: 0;
+  border: none;
+  border-radius: var(--ds-radius-sm);
+  background: transparent;
+  color: var(--ds-color-text-secondary);
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.appts-month-day-rail__icon-btn:hover {
+  background: var(--ds-color-bg-muted);
+  color: var(--ds-color-text);
+}
+.appts-month-day-rail__icon-btn:focus-visible {
+  outline: 2px solid var(--ds-color-accent);
+  outline-offset: 2px;
+}
+.appts-month-day-rail__today-btn {
+  flex-shrink: 0;
   font-size: var(--ds-text-xs);
-  font-weight: var(--ds-font-semibold);
-  border: 1px solid var(--ds-color-border-light);
+  padding: 0.35rem 0.75rem;
+  min-height: 2.25rem;
+}
+.appts-month-day-rail__scroller {
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin: 0 calc(-1 * var(--ds-space-3));
+  padding: 0 var(--ds-space-3);
+  scrollbar-width: thin;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+.appts-month-day-rail__days {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+  padding: 0.1rem 0 0.15rem;
+  min-height: 3.35rem;
+  align-items: stretch;
+}
+.appts-month-day-rail__day {
+  flex: 0 0 auto;
+  min-width: 2.65rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.08rem;
+  padding: 0.35rem 0.42rem 0.42rem;
+  border: 1px solid transparent;
   border-radius: var(--ds-radius-sm);
   background: var(--ds-color-bg-canvas);
   color: var(--ds-color-text-secondary);
-  text-decoration: none;
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  scroll-snap-align: center;
 }
-.appts-calendar-rail__nav-btn:hover {
-  border-color: var(--ds-color-border);
+.appts-month-day-rail__day:hover {
+  border-color: var(--ds-color-border-light);
   color: var(--ds-color-text);
 }
-.appts-calendar-rail__nav-btn--accent {
+.appts-month-day-rail__day:focus-visible {
+  outline: 2px solid var(--ds-color-accent);
+  outline-offset: 2px;
+}
+.appts-month-day-rail__day-wd {
+  font-size: 0.65rem;
+  font-weight: var(--ds-font-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ds-color-text-tertiary);
+}
+.appts-month-day-rail__day-num {
+  font-size: var(--ds-text-sm);
+  font-weight: var(--ds-font-semibold);
+  color: inherit;
+}
+.appts-month-day-rail__day-dot {
+  display: block;
+  width: 4px;
+  height: 4px;
+  margin-top: 0.12rem;
+  border-radius: 50%;
+  background: transparent;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.appts-month-day-rail__day--today:not(.appts-month-day-rail__day--selected) {
+  box-shadow: inset 0 0 0 1px var(--ds-color-accent-border);
+}
+.appts-month-day-rail__day--today .appts-month-day-rail__day-wd {
   color: var(--ds-color-accent);
+}
+.appts-month-day-rail__day--selected {
   border-color: var(--ds-color-accent-border);
   background: var(--ds-color-accent-muted);
+  color: var(--ds-color-text);
+  box-shadow: 0 0 0 1px var(--ds-color-accent-border);
+}
+.appts-month-day-rail__day--selected .appts-month-day-rail__day-wd {
+  color: var(--ds-color-accent);
+}
+.appts-month-day-rail__day--closed {
+  opacity: 0.48;
+}
+.appts-month-day-rail__day--closed.appts-month-day-rail__day--selected {
+  opacity: 1;
+}
+.appts-month-day-rail__day--has-appts .appts-month-day-rail__day-dot {
+  background: var(--ds-color-accent);
+  opacity: 0.85;
+}
+.appts-command-field--date-secondary .appts-command-field__label {
+  color: var(--ds-color-text-tertiary);
+  font-weight: var(--ds-font-medium);
 }
 
 .appts-calendar-main {
@@ -1261,27 +1346,44 @@ body {
   padding: 0;
   pointer-events: none;
 }
-.calendar-workspace.is-immersive .appts-calendar-body {
-  grid-template-columns: 3.5rem minmax(0, 1fr);
+.calendar-workspace.is-immersive .appts-month-day-rail {
+  padding: var(--ds-space-1) var(--ds-space-2);
 }
-.calendar-workspace.is-immersive .appts-calendar-rail__month,
-.calendar-workspace.is-immersive .appts-calendar-rail__weekday,
-.calendar-workspace.is-immersive .appts-calendar-rail__pill {
-  display: none;
+.calendar-workspace.is-immersive .appts-month-day-rail__toolbar {
+  margin-bottom: var(--ds-space-1);
+  gap: var(--ds-space-1);
 }
-.calendar-workspace.is-immersive .appts-calendar-rail__daynum {
-  text-align: center;
-  font-size: 1.125rem;
-  margin: 0;
+.calendar-workspace.is-immersive .appts-month-day-rail__title {
+  font-size: var(--ds-text-xs);
+  min-width: 6.5rem;
 }
-.calendar-workspace.is-immersive .appts-calendar-rail__nav {
-  flex-direction: column;
-  gap: 0.2rem;
-  margin-top: 0.35rem;
+.calendar-workspace.is-immersive .appts-month-day-rail__icon-btn {
+  width: 1.85rem;
+  height: 1.85rem;
+  font-size: 1.15rem;
 }
-.calendar-workspace.is-immersive .appts-calendar-rail__nav-btn {
-  padding: 0.2rem 0.15rem;
-  font-size: 0.55rem;
+.calendar-workspace.is-immersive .appts-month-day-rail__today-btn {
+  min-height: 1.85rem;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.65rem;
+}
+.calendar-workspace.is-immersive .appts-month-day-rail__scroller {
+  margin: 0 calc(-1 * var(--ds-space-2));
+  padding: 0 var(--ds-space-2);
+}
+.calendar-workspace.is-immersive .appts-month-day-rail__days {
+  min-height: 2.95rem;
+  gap: 0.28rem;
+}
+.calendar-workspace.is-immersive .appts-month-day-rail__day {
+  min-width: 2.35rem;
+  padding: 0.28rem 0.32rem 0.35rem;
+}
+.calendar-workspace.is-immersive .appts-month-day-rail__day-wd {
+  font-size: 0.58rem;
+}
+.calendar-workspace.is-immersive .appts-month-day-rail__day-num {
+  font-size: var(--ds-text-xs);
 }
 .calendar-workspace .appts-calendar-meta,
 .calendar-workspace .appts-calendar-hours {
@@ -1341,14 +1443,15 @@ body {
     margin-left: 0;
   }
   .appts-calendar-body {
-    grid-template-columns: 1fr;
     gap: var(--ds-space-2);
   }
-  .appts-calendar-rail {
-    border-right: 0;
-    border-bottom: 1px solid var(--ds-color-divider);
-    padding-right: 0;
-    padding-bottom: var(--ds-space-2);
+  .appts-month-day-rail__title {
+    min-width: 0;
+    flex: 1;
+  }
+  .appts-month-day-rail__month-cluster {
+    flex: 1;
+    min-width: 0;
   }
 }
 
