@@ -142,6 +142,38 @@ final class BlockedSlotRepository
     }
 
     /**
+     * Count blocked-slot rows per block_date in an inclusive date range (branch + tenant scope).
+     *
+     * @return array<string,int> YYYY-MM-DD => count
+     */
+    public function countByBlockDateInRange(string $fromDate, string $toDate, ?int $branchId = null): array
+    {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $fromDate) !== 1 || preg_match('/^\d{4}-\d{2}-\d{2}$/', $toDate) !== 1) {
+            return [];
+        }
+
+        $sql = 'SELECT bs.block_date AS d, COUNT(*) AS c
+                FROM appointment_blocked_slots bs
+                WHERE bs.deleted_at IS NULL
+                  AND bs.block_date >= ?
+                  AND bs.block_date <= ?';
+        $params = [$fromDate, $toDate];
+        [$sql, $params] = $this->appendBlockedSlotBranchTenantClause($sql, $params, $branchId);
+        $sql .= ' GROUP BY bs.block_date';
+
+        $rows = $this->db->forRead()->fetchAll($sql, $params);
+        $out = [];
+        foreach ($rows as $row) {
+            $d = (string) ($row['d'] ?? '');
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) === 1) {
+                $out[$d] = (int) ($row['c'] ?? 0);
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * @param list<mixed> $params
      * @return array{0: string, 1: list<mixed>}
      */

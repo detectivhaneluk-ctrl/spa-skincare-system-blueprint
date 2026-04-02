@@ -16,10 +16,10 @@ ob_start();
 
 <div class="appointments-workspace-page ds-page appts-calendar-page">
 <div class="appts-calendar-body">
-    <aside class="appts-calendar-rail" aria-label="Month and day navigation">
-        <div class="appts-month-day-rail" id="appts-month-day-rail">
-            <div class="appts-month-day-rail__toolbar">
-                <p class="appts-month-day-rail__month-line" id="appts-rail-month-label">Month</p>
+    <aside class="appts-calendar-rail appts-smart-calendar-rail" aria-label="Smart calendar navigation">
+        <div class="appts-month-day-rail appts-smart-calendar" id="appts-month-day-rail" data-smart-calendar-root>
+            <div class="appts-month-day-rail__toolbar appts-smart-calendar__toolbar">
+                <p class="appts-month-day-rail__month-line appts-smart-calendar__month-label" id="appts-rail-month-label">Month</p>
                 <div class="appts-month-day-rail__month-cluster" role="group" aria-label="Change month">
                     <button type="button" class="appts-month-day-rail__icon-btn" id="appts-rail-prev-month" aria-label="Previous month">‹</button>
                     <button type="button" class="appts-month-day-rail__icon-btn" id="appts-rail-next-month" aria-label="Next month">›</button>
@@ -68,6 +68,19 @@ ob_start();
 </div>
 </div>
 
+<?php
+$__apptsMonthSummaryJson = '';
+if (!empty($calendarMonthSummaryBootstrap) && is_array($calendarMonthSummaryBootstrap)) {
+    $__apptsMonthSummaryJson = json_encode($calendarMonthSummaryBootstrap, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($__apptsMonthSummaryJson === false) {
+        $__apptsMonthSummaryJson = '';
+    }
+}
+?>
+<?php if ($__apptsMonthSummaryJson !== ''): ?>
+<script type="application/json" id="appts-calendar-month-summary-bootstrap"><?= $__apptsMonthSummaryJson ?></script>
+<?php endif; ?>
+
 <script>
 (() => {
   const dateEl = document.getElementById('calendar-date');
@@ -105,6 +118,10 @@ ob_start();
   let selectedSlot = null;
   /** AbortController for the in-flight /calendar/day fetch. Cancelled when a newer load() starts. */
   let currentLoadAbort = null;
+  /** AbortController for GET /calendar/month-summary (stale-response safe). */
+  let monthSummaryAbort = null;
+  /** Last applied month summary payload (branch + visible month); null until bootstrap or fetch. */
+  let latestMonthSummary = null;
   /** now-line: current grid vm reference; null when no calendar is rendered. */
   let nowLineVm = null;
   /** now-line: setInterval id; cleared whenever the grid is destroyed or re-rendered. */
@@ -186,18 +203,114 @@ ob_start();
     sel.scrollIntoView({ block: 'center', inline: 'nearest', behavior: reduced ? 'auto' : 'smooth' });
   }
 
-  function clearRailMetaClasses() {
+  function clearMonthSummaryDecorations() {
     if (!railDays) return;
     railDays.querySelectorAll('.appts-month-day-rail__day').forEach((el) => {
-      el.classList.remove('appts-month-day-rail__day--closed', 'appts-month-day-rail__day--has-appts');
+      el.classList.remove(
+        'appts-month-day-rail__day--closed',
+        'appts-month-day-rail__day--has-appts',
+        'appts-month-day-rail__day--has-blocked',
+        'appts-month-day-rail__day--busy-steady',
+        'appts-month-day-rail__day--busy-heavy',
+        'appts-month-day-rail__day--past',
+        'appts-month-day-rail__day--future'
+      );
+      el.querySelectorAll('.appts-month-day-rail__day-count').forEach((n) => n.remove());
     });
   }
 
+  function visibleMonthFromDateEl() {
+    const cur = String(dateEl && dateEl.value ? dateEl.value : '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(cur)) return null;
+    const y = parseInt(cur.slice(0, 4), 10);
+    const m = parseInt(cur.slice(5, 7), 10);
+    if (!Number.isFinite(y) || !Number.isFinite(m)) return null;
+    return { y, m };
+  }
+
+  function applyMonthSummaryPayload(payload) {
+    if (!payload || typeof payload !== 'object' || !payload.month_summary_contract || !railDays || !branchEl) {
+      return;
+    }
+    const bid = parseInt(String(branchEl.value || '0'), 10) || 0;
+    if ((Number(payload.branch_id) || 0) !== bid) {
+      return;
+    }
+    const vm = visibleMonthFromDateEl();
+    if (!vm || !payload.month) {
+      return;
+    }
+    const py = Number(payload.month.year);
+    const pm = Number(payload.month.month);
+    if (py !== vm.y || pm !== vm.m) {
+      clearMonthSummaryDecorations();
+      latestMonthSummary = null;
+      return;
+    }
+    latestMonthSummary = payload;
+    clearMonthSummaryDecorations();
+    const byDate = {};
+    const list = Array.isArray(payload.days) ? payload.days : [];
+    for (let i = 0; i < list.length; i++) {
+      const row = list[i];
+      if (row && row.date) byDate[row.date] = row;
+    }
+    railDays.querySelectorAll('.appts-month-day-rail__day').forEach((btn) => {
+      const iso = btn.dataset.date;
+      const row = byDate[iso];
+      if (!row) return;
+      if (row.branch_closed) btn.classList.add('appts-month-day-rail__day--closed');
+      const ac = Number(row.appointment_count) || 0;
+      if (ac > 0) {
+        btn.classList.add('appts-month-day-rail__day--has-appts');
+        const span = document.createElement('span');
+        span.className = 'appts-month-day-rail__day-count';
+        span.textContent = ac > 99 ? '99+' : String(ac);
+        span.setAttribute('aria-label', ac + ' appointments');
+        btn.appendChild(span);
+      }
+      if (row.has_blocked) btn.classList.add('appts-month-day-rail__day--has-blocked');
+      if (row.busy_level === 'steady') btn.classList.add('appts-month-day-rail__day--busy-steady');
+      if (row.busy_level === 'heavy') btn.classList.add('appts-month-day-rail__day--busy-heavy');
+      if (row.is_past) btn.classList.add('appts-month-day-rail__day--past');
+      if (row.is_future) btn.classList.add('appts-month-day-rail__day--future');
+    });
+  }
+
+  async function loadMonthSummary() {
+    const vm = visibleMonthFromDateEl();
+    if (!vm || !dateEl) return;
+    if (monthSummaryAbort) monthSummaryAbort.abort();
+    monthSummaryAbort = new AbortController();
+    const params = new URLSearchParams();
+    params.set('year', String(vm.y));
+    params.set('month', String(vm.m));
+    params.set('date', String(dateEl.value || '').trim());
+    if (branchEl && branchEl.value) params.set('branch_id', branchEl.value);
+    try {
+      const res = await fetch('/calendar/month-summary?' + params.toString(), {
+        headers: { Accept: 'application/json' },
+        signal: monthSummaryAbort.signal,
+      });
+      const payload = await res.json();
+      const err = payload && typeof payload === 'object' ? payload.error : undefined;
+      const errMsg = typeof err === 'string' ? err : err && typeof err === 'object' && typeof err.message === 'string' ? err.message : null;
+      if (!res.ok || errMsg) {
+        return;
+      }
+      if (payload && payload.month_summary_contract) {
+        applyMonthSummaryPayload(payload);
+      }
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
+    }
+  }
+
   function updateRailDayMeta(vm, apptCount) {
-    clearRailMetaClasses();
-    if (!railDays || !vm) return;
+    if (latestMonthSummary || !railDays || !vm) return;
     const sel = railDays.querySelector('.appts-month-day-rail__day--selected');
     if (!sel) return;
+    sel.classList.remove('appts-month-day-rail__day--closed', 'appts-month-day-rail__day--has-appts');
     const closed = (vm.branchHours && vm.branchHours.isClosedDay)
       || (vm.closureDate && vm.closureDate.active);
     if (closed) sel.classList.add('appts-month-day-rail__day--closed');
@@ -261,7 +374,20 @@ ob_start();
       });
       railDays.appendChild(btn);
     }
+    const bootEl = document.getElementById('appts-calendar-month-summary-bootstrap');
+    if (bootEl && bootEl.textContent) {
+      try {
+        const boot = JSON.parse(bootEl.textContent);
+        if (boot && boot.month_summary_contract) {
+          applyMonthSummaryPayload(boot);
+        }
+      } catch (e) { /* ignore */ }
+      bootEl.remove();
+    } else if (latestMonthSummary) {
+      applyMonthSummaryPayload(latestMonthSummary);
+    }
     requestAnimationFrame(scrollRailToSelected);
+    loadMonthSummary();
   }
 
   function shiftCalendarMonth(deltaM) {
@@ -918,7 +1044,8 @@ ob_start();
       if (!res.ok || errMsg) {
         statusEl.textContent = errMsg || 'Failed to load calendar.';
         wrap.innerHTML = '';
-        clearRailMetaClasses();
+        clearMonthSummaryDecorations();
+        latestMonthSummary = null;
         return;
       }
       statusEl.textContent = '';
@@ -929,7 +1056,8 @@ ob_start();
       }
       statusEl.textContent = 'Could not load calendar data.';
       wrap.innerHTML = '';
-      clearRailMetaClasses();
+      clearMonthSummaryDecorations();
+      latestMonthSummary = null;
     }
   }
 
@@ -951,6 +1079,7 @@ ob_start();
     selectedSlot = null;
     nowLineScrolled = false;
     syncCalendarUrl();
+    loadMonthSummary();
     load();
   });
 
@@ -968,6 +1097,7 @@ ob_start();
     await openDrawerUrl(buildBlockedTimeUrl());
   });
   window.addEventListener('app:appointments-calendar-refresh', () => {
+    loadMonthSummary();
     load();
   });
 

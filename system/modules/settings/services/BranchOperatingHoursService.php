@@ -178,6 +178,89 @@ final class BranchOperatingHoursService
     }
 
     /**
+     * Batch read of {@see getDayHoursMeta()} for many dates (one branch_operating_hours load).
+     *
+     * @param list<string> $dates YYYY-MM-DD
+     * @return array<string, array{
+     *   branch_hours_available: bool,
+     *   is_closed_day: bool,
+     *   is_configured_day: bool,
+     *   open_time: ?string,
+     *   close_time: ?string,
+     *   weekday: int
+     * }>
+     */
+    public function getDayHoursMetaBatch(?int $branchId, array $dates): array
+    {
+        $out = [];
+        if ($dates === []) {
+            return $out;
+        }
+
+        if (!$this->isStorageReady() || $branchId === null || $branchId <= 0) {
+            foreach ($dates as $date) {
+                if (!is_string($date) || preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) !== 1) {
+                    continue;
+                }
+                $dateTs = strtotime($date);
+                $weekday = (int) date('w', $dateTs !== false ? $dateTs : time());
+                $out[$date] = [
+                    'branch_hours_available' => false,
+                    'is_closed_day' => false,
+                    'is_configured_day' => false,
+                    'open_time' => null,
+                    'close_time' => null,
+                    'weekday' => $weekday,
+                ];
+            }
+
+            return $out;
+        }
+
+        $byWeekday = [];
+        foreach ($this->repo->listByBranch($branchId) as $row) {
+            $d = (int) ($row['day_of_week'] ?? -1);
+            if ($d >= 0 && $d <= 6) {
+                $byWeekday[$d] = $row;
+            }
+        }
+
+        foreach ($dates as $date) {
+            if (!is_string($date) || preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) !== 1) {
+                continue;
+            }
+            $dateTs = strtotime($date);
+            $weekday = (int) date('w', $dateTs !== false ? $dateTs : time());
+            if (!isset($byWeekday[$weekday])) {
+                $out[$date] = [
+                    'branch_hours_available' => true,
+                    'is_closed_day' => false,
+                    'is_configured_day' => false,
+                    'open_time' => null,
+                    'close_time' => null,
+                    'weekday' => $weekday,
+                ];
+
+                continue;
+            }
+            $row = $byWeekday[$weekday];
+            $start = $this->displayTime($row['start_time']);
+            $end = $this->displayTime($row['end_time']);
+            $isClosedDay = ($start === '' && $end === '');
+            $out[$date] = [
+                'branch_hours_available' => true,
+                'is_closed_day' => $isClosedDay,
+                'is_configured_day' => true,
+                'open_time' => $isClosedDay ? null : $start,
+                'close_time' => $isClosedDay ? null : $end,
+                'weekday' => $weekday,
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
      * @param array<mixed> $input
      * @return array<int,array{start_time:?string,end_time:?string}>
      */

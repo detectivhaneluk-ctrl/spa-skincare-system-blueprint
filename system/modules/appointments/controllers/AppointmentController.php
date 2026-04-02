@@ -25,6 +25,7 @@ use Modules\Appointments\Repositories\WaitlistRepository;
 use Modules\Appointments\Services\AvailabilityService;
 use Modules\Appointments\Services\AppointmentPrintSummaryService;
 use Modules\Appointments\Services\AppointmentService;
+use Modules\Appointments\Services\CalendarMonthSummaryService;
 use Modules\Appointments\Services\AppointmentSeriesService;
 use Modules\Appointments\Services\BlockedSlotService;
 use Modules\Appointments\Services\WaitlistService;
@@ -65,6 +66,7 @@ final class AppointmentController
         private TenantBranchAccessService $tenantBranchAccess,
         private OrganizationScopedBranchAssert $organizationScopedBranchAssert,
         private BranchContext $branchContext,
+        private CalendarMonthSummaryService $calendarMonthSummary,
     ) {
     }
 
@@ -751,6 +753,55 @@ final class AppointmentController
     }
 
     /**
+     * JSON month summary for the appointments calendar control plane (per-day counts, closed-day truth, branch-local today).
+     * Query: branch_id (resolved same as day calendar), year, month (optional — default from date=YYYY-MM-DD), date (selected day).
+     */
+    public function calendarMonthSummary(): void
+    {
+        $selRaw = trim((string) ($_GET['date'] ?? ''));
+        if ($selRaw === '' || preg_match('/^\d{4}-\d{2}-\d{2}$/', $selRaw) !== 1) {
+            $selRaw = date('Y-m-d');
+        }
+
+        $y = (int) ($_GET['year'] ?? 0);
+        $m = (int) ($_GET['month'] ?? 0);
+        if ($y < 1970 || $y > 2100 || $m < 1 || $m > 12) {
+            if (preg_match('/^(\d{4})-(\d{2})-\d{2}$/', $selRaw, $mm)) {
+                $y = (int) $mm[1];
+                $m = (int) $mm[2];
+            } else {
+                $y = (int) date('Y');
+                $m = (int) date('n');
+            }
+        }
+
+        try {
+            $branchId = $this->resolveAppointmentBranchFromGetOrFail();
+        } catch (\Core\Errors\AccessDeniedException $e) {
+            $this->respondMonthSummaryJsonError('FORBIDDEN', 'Branch access denied.', 403);
+
+            return;
+        } catch (\DomainException $e) {
+            $this->respondMonthSummaryJsonError('VALIDATION_FAILED', $e->getMessage(), 422);
+
+            return;
+        }
+
+        try {
+            $payload = $this->calendarMonthSummary->buildPayload(
+                $branchId,
+                $y,
+                $m,
+                $selRaw,
+                date('Y-m-d')
+            );
+            $this->respondJson($payload);
+        } catch (\InvalidArgumentException $e) {
+            $this->respondMonthSummaryJsonError('VALIDATION_FAILED', $e->getMessage(), 422);
+        }
+    }
+
+    /**
      * Top-level fields shared by success and error responses for GET /calendar/day.
      *
      * @return array{day_calendar_contract: array{name: string, version: int}, capabilities: array{move_preview: bool}}
@@ -831,6 +882,20 @@ final class AppointmentController
         $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
         $workspace = $this->workspaceContext('calendar', $branchId, $date);
         $branchTimezone = \Core\App\ApplicationTimezone::getAppliedIdentifier() ?? 'UTC';
+        $calendarMonthSummaryBootstrap = null;
+        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $date, $md)) {
+            try {
+                $calendarMonthSummaryBootstrap = $this->calendarMonthSummary->buildPayload(
+                    $branchId,
+                    (int) $md[1],
+                    (int) $md[2],
+                    $date,
+                    date('Y-m-d')
+                );
+            } catch (\Throwable) {
+                $calendarMonthSummaryBootstrap = null;
+            }
+        }
         require base_path('modules/appointments/views/calendar-day.php');
     }
 
@@ -1769,6 +1834,14 @@ final class AppointmentController
     private function respondDayCalendarJsonError(string $code, string $message, int $status = 422): void
     {
         Response::jsonPublicApiError($status, $code, $message, $this->dayCalendarContractEnvelope());
+    }
+
+    /**
+     * @param non-empty-string $code
+     */
+    private function respondMonthSummaryJsonError(string $code, string $message, int $status = 422): void
+    {
+        Response::jsonPublicApiError($status, $code, $message, $this->calendarMonthSummary->contractEnvelope());
     }
 
     private function respondJson(array $data, int $status = 200): void

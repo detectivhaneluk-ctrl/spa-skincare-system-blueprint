@@ -569,6 +569,64 @@ final class AvailabilityService
     }
 
     /**
+     * Per calendar-day counts of appointments overlapping that day (same overlap rule as {@see listDayAppointmentsGroupedByStaff}).
+     * One query for the month range, then in-memory bucketing (no N+1 per day).
+     *
+     * @return array<string,int> date YYYY-MM-DD => count
+     */
+    public function countOverlappingAppointmentsPerDayInRange(int $branchId, string $monthFirst, string $monthLast): array
+    {
+        if ($branchId <= 0) {
+            return [];
+        }
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $monthFirst) !== 1 || preg_match('/^\d{4}-\d{2}-\d{2}$/', $monthLast) !== 1) {
+            return [];
+        }
+
+        $rangeStart = $monthFirst . ' 00:00:00';
+        $rangeEnd = $monthLast . ' 23:59:59';
+        $sql = 'SELECT a.id, a.start_at, a.end_at
+                FROM appointments a
+                WHERE a.deleted_at IS NULL
+                  AND a.branch_id = ?
+                  AND a.staff_id > 0
+                  AND a.start_at <= ?
+                  AND a.end_at >= ?';
+        $rows = $this->db->forRead()->fetchAll($sql, [$branchId, $rangeEnd, $rangeStart]);
+
+        $days = [];
+        try {
+            $cur = new \DateTimeImmutable($monthFirst . ' 00:00:00');
+            $end = new \DateTimeImmutable($monthLast . ' 00:00:00');
+            while ($cur <= $end) {
+                $days[$cur->format('Y-m-d')] = 0;
+                $cur = $cur->modify('+1 day');
+            }
+        } catch (\Throwable) {
+            return [];
+        }
+
+        if ($days === []) {
+            return [];
+        }
+
+        $dayList = array_keys($days);
+        foreach ($rows as $row) {
+            $startAt = (string) ($row['start_at'] ?? '');
+            $endAt = (string) ($row['end_at'] ?? '');
+            foreach ($dayList as $d) {
+                $dayStart = $d . ' 00:00:00';
+                $dayEnd = $d . ' 23:59:59';
+                if ($startAt <= $dayEnd && $endAt >= $dayStart) {
+                    $days[$d]++;
+                }
+            }
+        }
+
+        return $days;
+    }
+
+    /**
      * Invalidate the day-calendar display cache for a given date and branch after any appointment mutation.
      * This is a best-effort call — cache errors are swallowed; the 30s TTL acts as a safety net.
      * IMPORTANT: this invalidates the DISPLAY cache only. The booking write-path conflict check
