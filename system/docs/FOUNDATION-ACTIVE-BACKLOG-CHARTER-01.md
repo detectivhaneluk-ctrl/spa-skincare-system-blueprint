@@ -1,4 +1,4 @@
-﻿# Foundation active backlog — CHARTER-01 (normalized)
+# Foundation active backlog — CHARTER-01 (normalized)
 
 **Backbone Closure Mode — live execution queue:** This file is the **only** place that may list **LIVE** implementation work.  
 **Master execution plan:** `BACKBONE-CLOSURE-MASTER-PLAN-01.md`  
@@ -354,7 +354,7 @@ See PLT-AUTH-02 CLOSED section above. Final proof: **137/137** assertions pass.
 
 | ID | Item | Notes |
 |----|------|-------|
-| — | No current LIVE task | `SALES-CANCEL-DELETE-ERROR-HANDLING-HARDENING-01` is `CLOSED` (2026-04-02, commit 8229f6e). **Narrow sub-task only — not the full Sales canonical operator flow hardening lane.** `InvoiceController::destroy()` and `cancel()` now wrap service calls in `try`/`catch`; `DomainException` → flash error + redirect instead of HTTP 500. Evidence: `verify_sales_canonical_operator_flow_hardening_01.php` 24/24 PASS. Guardrails PASS. **Full lane is `SALES-CANONICAL-OPERATOR-FLOW-HARDENING-01` — see PARKED row.** |
+| — | No current LIVE task | `SALES-CANCEL-DELETE-ERROR-HANDLING-HARDENING-01` is `CLOSED` (2026-04-02, commit 8229f6e). **Narrow sub-task only — not the full Sales canonical operator flow hardening lane.** `InvoiceController::destroy()` and `cancel()` now wrap service calls in `try`/`catch`; `DomainException` → flash error + redirect instead of HTTP 500. Evidence: `verify_sales_cancel_delete_error_handling_hardening_01.php` 24/24 PASS. Guardrails PASS. **Full lane is `SALES-CANONICAL-OPERATOR-FLOW-HARDENING-01` — see PARKED row.** |
 
 ---
 

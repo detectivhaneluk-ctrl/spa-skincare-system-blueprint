@@ -3,15 +3,18 @@
 declare(strict_types=1);
 
 /**
- * SALES-CANONICAL-OPERATOR-FLOW-HARDENING-01 — read-only verifier.
+ * SALES-CANCEL-DELETE-ERROR-HANDLING-HARDENING-01 — read-only verifier.
  *
- * Proves that every sales mutation operation in InvoiceController,
- * PaymentController, and RegisterController has a try/catch block so that
- * DomainExceptions from the service layer produce flash errors + redirects
- * instead of HTTP 500s.
+ * Proves that InvoiceController::destroy() and ::cancel() wrap service calls
+ * in try/catch so that DomainExceptions produce flash errors + redirects
+ * instead of HTTP 500s. Also proves the DomainException guard paths exist in
+ * InvoiceService (delete + cancel) and that all sibling mutation actions in
+ * PaymentController and RegisterController retain their existing try/catch
+ * coverage (regression check only — no structural change to those methods).
  *
- * Also proves the specific DomainException paths that triggered this task
- * are present in InvoiceService (delete + cancel).
+ * Scope: narrow cancel/delete error-handling fix only.
+ * Full Sales canonical operator-flow hardening is SALES-CANONICAL-OPERATOR-FLOW-HARDENING-01
+ * (PARKED/NEXT) and will have its own separate verifier when closed.
  */
 
 $pass = 0;
@@ -209,7 +212,7 @@ assertNotContains(
 echo "\n";
 echo str_repeat('-', 60) . "\n";
 $total = $pass + $fail;
-echo "SALES-CANONICAL-OPERATOR-FLOW-HARDENING-01: {$pass}/{$total} PASS\n";
+echo "SALES-CANCEL-DELETE-ERROR-HANDLING-HARDENING-01: {$pass}/{$total} PASS\n";
 echo str_repeat('-', 60) . "\n";
 
 if ($fail > 0) {
