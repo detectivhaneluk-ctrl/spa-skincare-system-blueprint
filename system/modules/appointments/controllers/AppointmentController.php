@@ -802,6 +802,41 @@ final class AppointmentController
     }
 
     /**
+     * JSON week summary (Mon–Sun) for the weekly-first smart calendar card.
+     * Query: branch_id (same resolution as day calendar), date (selected YYYY-MM-DD).
+     */
+    public function calendarWeekSummary(): void
+    {
+        $selRaw = trim((string) ($_GET['date'] ?? ''));
+        if ($selRaw === '' || preg_match('/^\d{4}-\d{2}-\d{2}$/', $selRaw) !== 1) {
+            $selRaw = date('Y-m-d');
+        }
+
+        try {
+            $branchId = $this->resolveAppointmentBranchFromGetOrFail();
+        } catch (\Core\Errors\AccessDeniedException $e) {
+            $this->respondWeekSummaryJsonError('FORBIDDEN', 'Branch access denied.', 403);
+
+            return;
+        } catch (\DomainException $e) {
+            $this->respondWeekSummaryJsonError('VALIDATION_FAILED', $e->getMessage(), 422);
+
+            return;
+        }
+
+        try {
+            $payload = $this->calendarMonthSummary->buildWeekPayload(
+                $branchId,
+                $selRaw,
+                date('Y-m-d')
+            );
+            $this->respondJson($payload);
+        } catch (\InvalidArgumentException $e) {
+            $this->respondWeekSummaryJsonError('VALIDATION_FAILED', $e->getMessage(), 422);
+        }
+    }
+
+    /**
      * Top-level fields shared by success and error responses for GET /calendar/day.
      *
      * @return array{day_calendar_contract: array{name: string, version: int}, capabilities: array{move_preview: bool}}
@@ -882,18 +917,16 @@ final class AppointmentController
         $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
         $workspace = $this->workspaceContext('calendar', $branchId, $date);
         $branchTimezone = \Core\App\ApplicationTimezone::getAppliedIdentifier() ?? 'UTC';
-        $calendarMonthSummaryBootstrap = null;
-        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $date, $md)) {
+        $calendarWeekSummaryBootstrap = null;
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) === 1) {
             try {
-                $calendarMonthSummaryBootstrap = $this->calendarMonthSummary->buildPayload(
+                $calendarWeekSummaryBootstrap = $this->calendarMonthSummary->buildWeekPayload(
                     $branchId,
-                    (int) $md[1],
-                    (int) $md[2],
                     $date,
                     date('Y-m-d')
                 );
             } catch (\Throwable) {
-                $calendarMonthSummaryBootstrap = null;
+                $calendarWeekSummaryBootstrap = null;
             }
         }
         require base_path('modules/appointments/views/calendar-day.php');
@@ -1842,6 +1875,14 @@ final class AppointmentController
     private function respondMonthSummaryJsonError(string $code, string $message, int $status = 422): void
     {
         Response::jsonPublicApiError($status, $code, $message, $this->calendarMonthSummary->contractEnvelope());
+    }
+
+    /**
+     * @param non-empty-string $code
+     */
+    private function respondWeekSummaryJsonError(string $code, string $message, int $status = 422): void
+    {
+        Response::jsonPublicApiError($status, $code, $message, $this->calendarMonthSummary->weekContractEnvelope());
     }
 
     private function respondJson(array $data, int $status = 200): void

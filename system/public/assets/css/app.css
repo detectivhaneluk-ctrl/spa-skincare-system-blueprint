@@ -1042,14 +1042,14 @@ body {
 }
 .appts-calendar-body {
   display: grid;
-  grid-template-columns: minmax(152px, 176px) minmax(0, 1fr);
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
   gap: var(--ds-space-3);
   align-items: stretch;
   flex: 1 1 auto;
   min-height: 0;
 }
 
-/* Left rail: smart calendar control plane (month summary from server; not a top strip) */
+/* Left: weekly-first smart calendar control card (backend week summary; not a top strip) */
 .appts-calendar-rail.appts-smart-calendar-rail {
   border-right: 1px solid var(--ds-color-border-light);
 }
@@ -1062,59 +1062,78 @@ body {
   padding-right: var(--ds-space-3);
   align-self: stretch;
 }
-.appts-smart-calendar {
+.appts-cal-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-2);
   border-radius: var(--ds-radius-md);
   border: 1px solid var(--ds-color-border-light);
   background: var(--ds-color-bg-canvas);
-  padding: var(--ds-space-2) var(--ds-space-2) var(--ds-space-2);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  padding: var(--ds-space-3) var(--ds-space-2);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
 }
-.appts-smart-calendar__toolbar {
-  padding-bottom: var(--ds-space-1);
-  border-bottom: 1px solid var(--ds-color-border-light);
-  margin-bottom: var(--ds-space-2);
+.appts-cal-card:focus-visible {
+  outline: 2px solid var(--ds-color-accent);
+  outline-offset: 2px;
 }
-.appts-smart-calendar__month-label {
-  text-align: center;
-  letter-spacing: 0.04em;
-}
-.appts-month-day-rail {
-  flex: 1;
-  min-height: 0;
+.appts-cal-card__header {
   display: flex;
   flex-direction: column;
-  padding: 0;
-  background: transparent;
-  border: none;
-  border-radius: 0;
-}
-.appts-month-day-rail__toolbar {
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
   gap: var(--ds-space-2);
-  margin-bottom: var(--ds-space-2);
 }
-.appts-month-day-rail__month-line {
+.appts-cal-card__context-month {
   margin: 0;
+  text-align: center;
   font-size: var(--ds-text-xs);
   font-weight: var(--ds-font-semibold);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ds-color-text-tertiary);
   line-height: var(--ds-leading-tight);
 }
-.appts-month-day-rail__month-cluster {
+.appts-cal-card__hero {
+  border-radius: var(--ds-radius-sm);
+  border: 1px solid var(--ds-color-border-light);
+  background: var(--ds-color-bg-subtle);
+  padding: var(--ds-space-2) var(--ds-space-2);
+}
+.appts-cal-card__hero-main {
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 0.2rem;
+  gap: var(--ds-space-3);
 }
-.appts-month-day-rail__icon-btn {
-  flex: 1 1 0;
-  max-width: 3rem;
-  height: 2rem;
+.appts-cal-card__hero-day {
+  font-size: 2.35rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--ds-color-text);
+}
+.appts-cal-card__hero-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.appts-cal-card__hero-weekday {
+  font-size: var(--ds-text-sm);
+  font-weight: var(--ds-font-semibold);
+  color: var(--ds-color-text-secondary);
+  line-height: var(--ds-leading-tight);
+}
+.appts-cal-card__nav {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
+}
+.appts-cal-card__nav-btn {
+  flex: 0 0 2.25rem;
+  width: 2.25rem;
+  height: 2.25rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1123,55 +1142,64 @@ body {
   border-radius: var(--ds-radius-sm);
   background: var(--ds-color-bg-canvas);
   color: var(--ds-color-text-secondary);
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   line-height: 1;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
-.appts-month-day-rail__icon-btn:hover {
+.appts-cal-card__nav-btn:hover {
   background: var(--ds-color-bg-muted);
   color: var(--ds-color-text);
   border-color: var(--ds-color-border);
 }
-.appts-month-day-rail__icon-btn:focus-visible {
+.appts-cal-card__nav-btn:focus-visible {
   outline: 2px solid var(--ds-color-accent);
   outline-offset: 2px;
 }
-.appts-month-day-rail__today-btn {
-  width: 100%;
+.appts-cal-card__today {
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: var(--ds-text-xs);
-  padding: 0.35rem 0.5rem;
-  min-height: 2rem;
+  padding: 0.4rem 0.5rem;
+  min-height: 2.25rem;
   justify-content: center;
 }
-.appts-month-day-rail__scroller {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
-  margin: 0;
-  padding: 0 0.1rem 0 0;
-  scrollbar-width: thin;
-  scroll-snap-type: y proximity;
-  -webkit-overflow-scrolling: touch;
-}
-.appts-month-day-rail__days {
+.appts-cal-card__strip-wrap {
   display: flex;
   flex-direction: column;
-  flex-wrap: nowrap;
-  gap: 0.28rem;
-  padding: 0 0 0.15rem;
-  align-items: stretch;
+  gap: 0.25rem;
 }
-.appts-month-day-rail__day {
-  flex: 0 0 auto;
-  width: 100%;
+.appts-cal-card__weekday-ribbon {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.15rem;
+  padding: 0 0.1rem;
+  font-size: 0.55rem;
+  font-weight: var(--ds-font-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--ds-color-text-tertiary);
+}
+.appts-cal-card__strip {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.2rem;
+  padding: 0.1rem 0 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+}
+.appts-cal-card__dow {
+  position: relative;
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.35rem;
-  padding: 0.32rem 0.4rem;
+  justify-content: flex-start;
+  gap: 0.2rem;
+  min-width: 0;
+  padding: 0.35rem 0.1rem 0.45rem;
   border: 1px solid transparent;
   border-radius: var(--ds-radius-sm);
   background: var(--ds-color-bg-subtle);
@@ -1179,41 +1207,23 @@ body {
   cursor: pointer;
   font: inherit;
   line-height: 1;
-  text-align: left;
   transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
   scroll-snap-align: center;
 }
-.appts-month-day-rail__day:hover {
+.appts-cal-card__dow:hover {
   border-color: var(--ds-color-border-light);
-  color: var(--ds-color-text);
   background: var(--ds-color-bg-canvas);
+  color: var(--ds-color-text);
 }
-.appts-month-day-rail__day:focus-visible {
+.appts-cal-card__dow:focus-visible {
   outline: 2px solid var(--ds-color-accent);
-  outline-offset: 2px;
+  outline-offset: 1px;
 }
-.appts-month-day-rail__day-main {
-  display: flex;
-  flex-direction: row;
-  align-items: baseline;
-  gap: 0.35rem;
-  min-width: 0;
-}
-.appts-month-day-rail__day-wd {
-  flex: 0 0 1.1rem;
-  font-size: 0.65rem;
-  font-weight: var(--ds-font-semibold);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--ds-color-text-tertiary);
-}
-.appts-month-day-rail__day-num {
+.appts-cal-card__dow-num {
   font-size: var(--ds-text-sm);
   font-weight: var(--ds-font-semibold);
-  color: inherit;
 }
-.appts-month-day-rail__day-dot {
-  flex-shrink: 0;
+.appts-cal-card__dow-dot {
   width: 5px;
   height: 5px;
   border-radius: 50%;
@@ -1221,37 +1231,39 @@ body {
   opacity: 0;
   transition: opacity 0.15s ease;
 }
-.appts-month-day-rail__day--today:not(.appts-month-day-rail__day--selected) {
+.appts-cal-card__dow--today:not(.appts-cal-card__dow--selected) {
   box-shadow: inset 0 0 0 1px var(--ds-color-accent-border);
 }
-.appts-month-day-rail__day--today .appts-month-day-rail__day-wd {
+.appts-cal-card__dow--today .appts-cal-card__dow-num {
   color: var(--ds-color-accent);
 }
-.appts-month-day-rail__day--selected {
+.appts-cal-card__dow--selected {
   border-color: var(--ds-color-accent-border);
   background: var(--ds-color-accent-muted);
   color: var(--ds-color-text);
   box-shadow: 0 0 0 1px var(--ds-color-accent-border);
 }
-.appts-month-day-rail__day--selected .appts-month-day-rail__day-wd {
+.appts-cal-card__dow--selected .appts-cal-card__dow-num {
   color: var(--ds-color-accent);
 }
-.appts-month-day-rail__day--closed {
+.appts-cal-card__dow--closed {
   opacity: 0.5;
 }
-.appts-month-day-rail__day--closed.appts-month-day-rail__day--selected {
+.appts-cal-card__dow--closed.appts-cal-card__dow--selected {
   opacity: 1;
 }
-.appts-month-day-rail__day--has-appts .appts-month-day-rail__day-dot {
+.appts-cal-card__dow--has-appts .appts-cal-card__dow-dot {
   background: var(--ds-color-accent);
   opacity: 0.9;
 }
-.appts-month-day-rail__day-count {
-  flex-shrink: 0;
-  min-width: 1.15rem;
-  padding: 0.1rem 0.28rem;
+.appts-cal-card__dow-count {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 0.85rem;
+  padding: 0.05rem 0.2rem;
   border-radius: var(--ds-radius-sm);
-  font-size: 0.62rem;
+  font-size: 0.55rem;
   font-weight: var(--ds-font-semibold);
   line-height: 1.1;
   text-align: center;
@@ -1259,25 +1271,24 @@ body {
   color: var(--ds-color-accent);
   border: 1px solid var(--ds-color-accent-border);
 }
-.appts-month-day-rail__day--selected .appts-month-day-rail__day-count {
+.appts-cal-card__dow--selected .appts-cal-card__dow-count {
   background: var(--ds-color-bg-canvas);
-  color: var(--ds-color-accent);
 }
-.appts-month-day-rail__day--has-blocked .appts-month-day-rail__day-dot {
+.appts-cal-card__dow--has-blocked .appts-cal-card__dow-dot {
   box-shadow: 2px 0 0 0 var(--ds-color-text-tertiary);
   opacity: 0.85;
 }
-.appts-month-day-rail__day--busy-steady.appts-month-day-rail__day--has-appts .appts-month-day-rail__day-dot {
+.appts-cal-card__dow--busy-steady.appts-cal-card__dow--has-appts .appts-cal-card__dow-dot {
   opacity: 1;
 }
-.appts-month-day-rail__day--busy-heavy.appts-month-day-rail__day--has-appts .appts-month-day-rail__day-dot {
+.appts-cal-card__dow--busy-heavy.appts-cal-card__dow--has-appts .appts-cal-card__dow-dot {
   box-shadow: 0 0 0 2px var(--ds-color-accent-border);
   opacity: 1;
 }
-.appts-month-day-rail__day--past:not(.appts-month-day-rail__day--selected) {
+.appts-cal-card__dow--past:not(.appts-cal-card__dow--selected) {
   opacity: 0.72;
 }
-.appts-month-day-rail__day--future:not(.appts-month-day-rail__day--selected) {
+.appts-cal-card__dow--future:not(.appts-cal-card__dow--selected) {
   opacity: 0.88;
 }
 .appts-command-field--date-secondary .appts-command-field__label {
@@ -1424,41 +1435,47 @@ body {
   pointer-events: none;
 }
 .calendar-workspace.is-immersive .appts-calendar-body {
-  grid-template-columns: minmax(6.75rem, 7.75rem) minmax(0, 1fr);
+  grid-template-columns: minmax(11rem, 13.5rem) minmax(0, 1fr);
   gap: var(--ds-space-2);
 }
 .calendar-workspace.is-immersive .appts-calendar-rail {
   padding-right: var(--ds-space-2);
 }
-.calendar-workspace.is-immersive .appts-month-day-rail__toolbar {
-  margin-bottom: var(--ds-space-1);
-  gap: 0.35rem;
+.calendar-workspace.is-immersive .appts-cal-card {
+  padding: var(--ds-space-2) var(--ds-space-1);
+  gap: var(--ds-space-1);
 }
-.calendar-workspace.is-immersive .appts-month-day-rail__month-line {
-  font-size: 0.5625rem;
-  letter-spacing: 0.05em;
+.calendar-workspace.is-immersive .appts-cal-card__context-month {
+  font-size: 0.5rem;
+  letter-spacing: 0.06em;
 }
-.calendar-workspace.is-immersive .appts-month-day-rail__icon-btn {
-  max-width: none;
-  height: 1.65rem;
+.calendar-workspace.is-immersive .appts-cal-card__hero-day {
+  font-size: 1.65rem;
+}
+.calendar-workspace.is-immersive .appts-cal-card__hero-weekday {
+  font-size: var(--ds-text-xs);
+}
+.calendar-workspace.is-immersive .appts-cal-card__nav-btn {
+  flex-basis: 1.85rem;
+  width: 1.85rem;
+  height: 1.85rem;
   font-size: 0.95rem;
 }
-.calendar-workspace.is-immersive .appts-month-day-rail__today-btn {
-  min-height: 1.65rem;
-  padding: 0.22rem 0.35rem;
-  font-size: 0.65rem;
+.calendar-workspace.is-immersive .appts-cal-card__today {
+  min-height: 1.85rem;
+  padding: 0.22rem 0.3rem;
+  font-size: 0.6rem;
 }
-.calendar-workspace.is-immersive .appts-month-day-rail__days {
-  gap: 0.2rem;
+.calendar-workspace.is-immersive .appts-cal-card__weekday-ribbon {
+  font-size: 0.5rem;
 }
-.calendar-workspace.is-immersive .appts-month-day-rail__day {
-  padding: 0.22rem 0.28rem;
+.calendar-workspace.is-immersive .appts-cal-card__strip {
+  gap: 0.12rem;
 }
-.calendar-workspace.is-immersive .appts-month-day-rail__day-wd {
-  font-size: 0.55rem;
-  flex-basis: 0.85rem;
+.calendar-workspace.is-immersive .appts-cal-card__dow {
+  padding: 0.22rem 0.05rem 0.32rem;
 }
-.calendar-workspace.is-immersive .appts-month-day-rail__day-num {
+.calendar-workspace.is-immersive .appts-cal-card__dow-num {
   font-size: var(--ds-text-xs);
 }
 .calendar-workspace .appts-calendar-meta,
@@ -1527,10 +1544,10 @@ body {
     border-bottom: 1px solid var(--ds-color-divider);
     padding-right: 0;
     padding-bottom: var(--ds-space-2);
-    max-height: min(42vh, 22rem);
+    max-height: none;
   }
-  .appts-month-day-rail__scroller {
-    max-height: min(36vh, 18rem);
+  .appts-cal-card {
+    max-width: 100%;
   }
 }
 

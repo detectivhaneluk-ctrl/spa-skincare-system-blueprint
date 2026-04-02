@@ -16,18 +16,29 @@ ob_start();
 
 <div class="appointments-workspace-page ds-page appts-calendar-page">
 <div class="appts-calendar-body">
-    <aside class="appts-calendar-rail appts-smart-calendar-rail" aria-label="Smart calendar navigation">
-        <div class="appts-month-day-rail appts-smart-calendar" id="appts-month-day-rail" data-smart-calendar-root>
-            <div class="appts-month-day-rail__toolbar appts-smart-calendar__toolbar">
-                <p class="appts-month-day-rail__month-line appts-smart-calendar__month-label" id="appts-rail-month-label">Month</p>
-                <div class="appts-month-day-rail__month-cluster" role="group" aria-label="Change month">
-                    <button type="button" class="appts-month-day-rail__icon-btn" id="appts-rail-prev-month" aria-label="Previous month">‹</button>
-                    <button type="button" class="appts-month-day-rail__icon-btn" id="appts-rail-next-month" aria-label="Next month">›</button>
+    <aside class="appts-calendar-rail appts-smart-calendar-rail" aria-label="Week calendar control">
+        <div class="appts-cal-card" id="appts-cal-card" data-smart-calendar-root tabindex="0">
+            <header class="appts-cal-card__header">
+                <p class="appts-cal-card__context-month" id="appts-cal-context-month" aria-live="polite">—</p>
+                <div class="appts-cal-card__hero">
+                    <div class="appts-cal-card__hero-main">
+                        <span class="appts-cal-card__hero-day" id="appts-cal-hero-day">—</span>
+                        <div class="appts-cal-card__hero-meta">
+                            <span class="appts-cal-card__hero-weekday" id="appts-cal-hero-weekday"></span>
+                        </div>
+                    </div>
                 </div>
-                <button type="button" class="ds-btn ds-btn--secondary appts-month-day-rail__today-btn" id="appts-rail-today">Today</button>
-            </div>
-            <div class="appts-month-day-rail__scroller" id="appts-rail-scroller">
-                <div class="appts-month-day-rail__days" id="appts-rail-days" role="group" aria-label="Days in month"></div>
+                <div class="appts-cal-card__nav" role="group" aria-label="Change week">
+                    <button type="button" class="appts-cal-card__nav-btn" id="appts-cal-prev-week" aria-label="Previous week">‹</button>
+                    <button type="button" class="ds-btn ds-btn--secondary appts-cal-card__today" id="appts-cal-today">Today</button>
+                    <button type="button" class="appts-cal-card__nav-btn" id="appts-cal-next-week" aria-label="Next week">›</button>
+                </div>
+            </header>
+            <div class="appts-cal-card__strip-wrap" id="appts-cal-strip-wrap">
+                <div class="appts-cal-card__weekday-ribbon" aria-hidden="true">
+                    <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
+                </div>
+                <div class="appts-cal-card__strip" id="appts-cal-strip" role="group" aria-label="Days this week"></div>
             </div>
         </div>
     </aside>
@@ -37,7 +48,7 @@ ob_start();
                 <div class="appts-command-strip__fields">
                     <div class="appts-command-field appts-command-field--date-secondary">
                         <label class="appts-command-field__label" for="calendar-date">Go to date</label>
-                        <input class="ds-input appts-command-field__control" type="date" id="calendar-date" name="date" value="<?= htmlspecialchars($calDate) ?>" required title="Jump to any date (same as left rail)">
+                        <input class="ds-input appts-command-field__control" type="date" id="calendar-date" name="date" value="<?= htmlspecialchars($calDate) ?>" required title="Jump to any date (syncs with week card)">
                     </div>
                     <div class="appts-command-field appts-command-field--grow">
                         <label class="appts-command-field__label" for="calendar-branch">Branch</label>
@@ -69,27 +80,29 @@ ob_start();
 </div>
 
 <?php
-$__apptsMonthSummaryJson = '';
-if (!empty($calendarMonthSummaryBootstrap) && is_array($calendarMonthSummaryBootstrap)) {
-    $__apptsMonthSummaryJson = json_encode($calendarMonthSummaryBootstrap, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    if ($__apptsMonthSummaryJson === false) {
-        $__apptsMonthSummaryJson = '';
+$__apptsWeekSummaryJson = '';
+if (!empty($calendarWeekSummaryBootstrap) && is_array($calendarWeekSummaryBootstrap)) {
+    $__apptsWeekSummaryJson = json_encode($calendarWeekSummaryBootstrap, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($__apptsWeekSummaryJson === false) {
+        $__apptsWeekSummaryJson = '';
     }
 }
 ?>
-<?php if ($__apptsMonthSummaryJson !== ''): ?>
-<script type="application/json" id="appts-calendar-month-summary-bootstrap"><?= $__apptsMonthSummaryJson ?></script>
+<?php if ($__apptsWeekSummaryJson !== ''): ?>
+<script type="application/json" id="appts-calendar-week-summary-bootstrap"><?= $__apptsWeekSummaryJson ?></script>
 <?php endif; ?>
 
 <script>
 (() => {
   const dateEl = document.getElementById('calendar-date');
-  const railScroller = document.getElementById('appts-rail-scroller');
-  const railDays = document.getElementById('appts-rail-days');
-  const railMonthLabel = document.getElementById('appts-rail-month-label');
-  const railPrevMonth = document.getElementById('appts-rail-prev-month');
-  const railNextMonth = document.getElementById('appts-rail-next-month');
-  const railTodayBtn = document.getElementById('appts-rail-today');
+  const calCard = document.getElementById('appts-cal-card');
+  const calStrip = document.getElementById('appts-cal-strip');
+  const calContextMonth = document.getElementById('appts-cal-context-month');
+  const calHeroDay = document.getElementById('appts-cal-hero-day');
+  const calHeroWeekday = document.getElementById('appts-cal-hero-weekday');
+  const calPrevWeek = document.getElementById('appts-cal-prev-week');
+  const calNextWeek = document.getElementById('appts-cal-next-week');
+  const calTodayBtn = document.getElementById('appts-cal-today');
   const branchEl = document.getElementById('calendar-branch');
   const statusEl = document.getElementById('calendar-status');
   const branchHoursIndicatorEl = document.getElementById('calendar-branch-hours-indicator');
@@ -118,10 +131,10 @@ if (!empty($calendarMonthSummaryBootstrap) && is_array($calendarMonthSummaryBoot
   let selectedSlot = null;
   /** AbortController for the in-flight /calendar/day fetch. Cancelled when a newer load() starts. */
   let currentLoadAbort = null;
-  /** AbortController for GET /calendar/month-summary (stale-response safe). */
-  let monthSummaryAbort = null;
-  /** Last applied month summary payload (branch + visible month); null until bootstrap or fetch. */
-  let latestMonthSummary = null;
+  /** AbortController for GET /calendar/week-summary (stale-response safe). */
+  let weekSummaryAbort = null;
+  /** Last applied week summary payload; null until bootstrap or fetch. */
+  let latestWeekSummary = null;
   /** now-line: current grid vm reference; null when no calendar is rendered. */
   let nowLineVm = null;
   /** now-line: setInterval id; cleared whenever the grid is destroyed or re-rendered. */
@@ -165,22 +178,6 @@ if (!empty($calendarMonthSummaryBootstrap) && is_array($calendarMonthSummaryBoot
     }
   }
 
-  function addMonthsIso(isoDate, deltaM) {
-    const parts = String(isoDate || '').split('-');
-    if (parts.length !== 3) return isoDate;
-    const y = parseInt(parts[0], 10);
-    const m = parseInt(parts[1], 10);
-    const d = parseInt(parts[2], 10);
-    if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return isoDate;
-    const first = new Date(y, m - 1 + deltaM, 1);
-    const ny = first.getFullYear();
-    const nm = first.getMonth();
-    const lastD = new Date(ny, nm + 1, 0).getDate();
-    const nd = Math.min(d, lastD);
-    const out = new Date(ny, nm, nd);
-    return out.getFullYear() + '-' + String(out.getMonth() + 1).padStart(2, '0') + '-' + String(out.getDate()).padStart(2, '0');
-  }
-
   function countAppointmentsInPayload(payload) {
     const g = payload && payload.appointments_by_staff;
     if (!g || typeof g !== 'object') return 0;
@@ -192,105 +189,121 @@ if (!empty($calendarMonthSummaryBootstrap) && is_array($calendarMonthSummaryBoot
     return n;
   }
 
-  function scrollRailToSelected() {
-    if (!railScroller || !railDays) return;
-    const sel = railDays.querySelector('.appts-month-day-rail__day--selected');
+  /** Gregorian date-only arithmetic (UTC components) — weekday is global for Y-M-D. */
+  function shiftIsoDate(iso, deltaDays) {
+    const parts = String(iso || '').split('-');
+    if (parts.length !== 3) return iso;
+    const y = parseInt(parts[0], 10);
+    const mo = parseInt(parts[1], 10);
+    const d = parseInt(parts[2], 10);
+    if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(d)) return iso;
+    const t = Date.UTC(y, mo - 1, d) + deltaDays * 86400000;
+    const x = new Date(t);
+    return x.getUTCFullYear() + '-' + String(x.getUTCMonth() + 1).padStart(2, '0') + '-' + String(x.getUTCDate()).padStart(2, '0');
+  }
+
+  /** Monday = 0 … Sunday = 6 (ISO week aligned). */
+  function mondayOffsetFromIso(iso) {
+    const parts = String(iso || '').split('-');
+    if (parts.length !== 3) return 0;
+    const y = parseInt(parts[0], 10);
+    const mo = parseInt(parts[1], 10);
+    const d = parseInt(parts[2], 10);
+    const sun0 = new Date(Date.UTC(y, mo - 1, d)).getUTCDay();
+    return sun0 === 0 ? 6 : sun0 - 1;
+  }
+
+  function weekStartMondayIso(iso) {
+    const off = mondayOffsetFromIso(iso);
+    return shiftIsoDate(iso, -off);
+  }
+
+  function scrollStripToSelected() {
+    if (!calStrip) return;
+    const sel = calStrip.querySelector('.appts-cal-card__dow--selected');
     if (!sel) return;
     let reduced = false;
     try {
       reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     } catch (e) { reduced = false; }
-    sel.scrollIntoView({ block: 'center', inline: 'nearest', behavior: reduced ? 'auto' : 'smooth' });
+    sel.scrollIntoView({ block: 'nearest', inline: 'center', behavior: reduced ? 'auto' : 'smooth' });
   }
 
-  function clearMonthSummaryDecorations() {
-    if (!railDays) return;
-    railDays.querySelectorAll('.appts-month-day-rail__day').forEach((el) => {
+  function clearWeekSummaryDecorations() {
+    if (!calStrip) return;
+    calStrip.querySelectorAll('.appts-cal-card__dow').forEach((el) => {
       el.classList.remove(
-        'appts-month-day-rail__day--closed',
-        'appts-month-day-rail__day--has-appts',
-        'appts-month-day-rail__day--has-blocked',
-        'appts-month-day-rail__day--busy-steady',
-        'appts-month-day-rail__day--busy-heavy',
-        'appts-month-day-rail__day--past',
-        'appts-month-day-rail__day--future'
+        'appts-cal-card__dow--closed',
+        'appts-cal-card__dow--has-appts',
+        'appts-cal-card__dow--has-blocked',
+        'appts-cal-card__dow--busy-steady',
+        'appts-cal-card__dow--busy-heavy',
+        'appts-cal-card__dow--past',
+        'appts-cal-card__dow--future'
       );
-      el.querySelectorAll('.appts-month-day-rail__day-count').forEach((n) => n.remove());
+      el.querySelectorAll('.appts-cal-card__dow-count').forEach((n) => n.remove());
     });
   }
 
-  function visibleMonthFromDateEl() {
-    const cur = String(dateEl && dateEl.value ? dateEl.value : '').trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(cur)) return null;
-    const y = parseInt(cur.slice(0, 4), 10);
-    const m = parseInt(cur.slice(5, 7), 10);
-    if (!Number.isFinite(y) || !Number.isFinite(m)) return null;
-    return { y, m };
-  }
-
-  function applyMonthSummaryPayload(payload) {
-    if (!payload || typeof payload !== 'object' || !payload.month_summary_contract || !railDays || !branchEl) {
+  function applyWeekSummaryPayload(payload) {
+    if (!payload || typeof payload !== 'object' || !payload.week_summary_contract || !calStrip || !branchEl || !dateEl) {
       return;
     }
     const bid = parseInt(String(branchEl.value || '0'), 10) || 0;
     if ((Number(payload.branch_id) || 0) !== bid) {
       return;
     }
-    const vm = visibleMonthFromDateEl();
-    if (!vm || !payload.month) {
+    const cur = String(dateEl.value || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(cur)) return;
+    const wk = payload.week;
+    if (!wk || String(wk.week_start) !== weekStartMondayIso(cur)) {
+      clearWeekSummaryDecorations();
+      latestWeekSummary = null;
       return;
     }
-    const py = Number(payload.month.year);
-    const pm = Number(payload.month.month);
-    if (py !== vm.y || pm !== vm.m) {
-      clearMonthSummaryDecorations();
-      latestMonthSummary = null;
-      return;
-    }
-    latestMonthSummary = payload;
-    clearMonthSummaryDecorations();
+    latestWeekSummary = payload;
+    clearWeekSummaryDecorations();
     const byDate = {};
     const list = Array.isArray(payload.days) ? payload.days : [];
     for (let i = 0; i < list.length; i++) {
       const row = list[i];
       if (row && row.date) byDate[row.date] = row;
     }
-    railDays.querySelectorAll('.appts-month-day-rail__day').forEach((btn) => {
+    calStrip.querySelectorAll('.appts-cal-card__dow').forEach((btn) => {
       const iso = btn.dataset.date;
       const row = byDate[iso];
       if (!row) return;
-      if (row.branch_closed) btn.classList.add('appts-month-day-rail__day--closed');
+      if (row.branch_closed) btn.classList.add('appts-cal-card__dow--closed');
       const ac = Number(row.appointment_count) || 0;
       if (ac > 0) {
-        btn.classList.add('appts-month-day-rail__day--has-appts');
+        btn.classList.add('appts-cal-card__dow--has-appts');
         const span = document.createElement('span');
-        span.className = 'appts-month-day-rail__day-count';
+        span.className = 'appts-cal-card__dow-count';
         span.textContent = ac > 99 ? '99+' : String(ac);
         span.setAttribute('aria-label', ac + ' appointments');
         btn.appendChild(span);
       }
-      if (row.has_blocked) btn.classList.add('appts-month-day-rail__day--has-blocked');
-      if (row.busy_level === 'steady') btn.classList.add('appts-month-day-rail__day--busy-steady');
-      if (row.busy_level === 'heavy') btn.classList.add('appts-month-day-rail__day--busy-heavy');
-      if (row.is_past) btn.classList.add('appts-month-day-rail__day--past');
-      if (row.is_future) btn.classList.add('appts-month-day-rail__day--future');
+      if (row.has_blocked) btn.classList.add('appts-cal-card__dow--has-blocked');
+      if (row.busy_level === 'steady') btn.classList.add('appts-cal-card__dow--busy-steady');
+      if (row.busy_level === 'heavy') btn.classList.add('appts-cal-card__dow--busy-heavy');
+      if (row.is_past) btn.classList.add('appts-cal-card__dow--past');
+      if (row.is_future) btn.classList.add('appts-cal-card__dow--future');
     });
   }
 
-  async function loadMonthSummary() {
-    const vm = visibleMonthFromDateEl();
-    if (!vm || !dateEl) return;
-    if (monthSummaryAbort) monthSummaryAbort.abort();
-    monthSummaryAbort = new AbortController();
+  async function loadWeekSummary() {
+    if (!dateEl) return;
+    const cur = String(dateEl.value || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(cur)) return;
+    if (weekSummaryAbort) weekSummaryAbort.abort();
+    weekSummaryAbort = new AbortController();
     const params = new URLSearchParams();
-    params.set('year', String(vm.y));
-    params.set('month', String(vm.m));
-    params.set('date', String(dateEl.value || '').trim());
+    params.set('date', cur);
     if (branchEl && branchEl.value) params.set('branch_id', branchEl.value);
     try {
-      const res = await fetch('/calendar/month-summary?' + params.toString(), {
+      const res = await fetch('/calendar/week-summary?' + params.toString(), {
         headers: { Accept: 'application/json' },
-        signal: monthSummaryAbort.signal,
+        signal: weekSummaryAbort.signal,
       });
       const payload = await res.json();
       const err = payload && typeof payload === 'object' ? payload.error : undefined;
@@ -298,8 +311,8 @@ if (!empty($calendarMonthSummaryBootstrap) && is_array($calendarMonthSummaryBoot
       if (!res.ok || errMsg) {
         return;
       }
-      if (payload && payload.month_summary_contract) {
-        applyMonthSummaryPayload(payload);
+      if (payload && payload.week_summary_contract) {
+        applyWeekSummaryPayload(payload);
       }
     } catch (e) {
       if (e && e.name === 'AbortError') return;
@@ -307,97 +320,95 @@ if (!empty($calendarMonthSummaryBootstrap) && is_array($calendarMonthSummaryBoot
   }
 
   function updateRailDayMeta(vm, apptCount) {
-    if (latestMonthSummary || !railDays || !vm) return;
-    const sel = railDays.querySelector('.appts-month-day-rail__day--selected');
+    if (latestWeekSummary || !calStrip || !vm) return;
+    const sel = calStrip.querySelector('.appts-cal-card__dow--selected');
     if (!sel) return;
-    sel.classList.remove('appts-month-day-rail__day--closed', 'appts-month-day-rail__day--has-appts');
+    sel.classList.remove('appts-cal-card__dow--closed', 'appts-cal-card__dow--has-appts');
     const closed = (vm.branchHours && vm.branchHours.isClosedDay)
       || (vm.closureDate && vm.closureDate.active);
-    if (closed) sel.classList.add('appts-month-day-rail__day--closed');
-    if (apptCount > 0) sel.classList.add('appts-month-day-rail__day--has-appts');
+    if (closed) sel.classList.add('appts-cal-card__dow--closed');
+    if (apptCount > 0) sel.classList.add('appts-cal-card__dow--has-appts');
   }
 
-  function renderMonthRail() {
-    if (!railDays || !railMonthLabel || !dateEl) return;
+  function renderWeekCard() {
+    if (!calStrip || !dateEl || !calHeroDay || !calHeroWeekday || !calContextMonth) return;
     const cur = String(dateEl.value || '').trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(cur)) return;
+    const todayStr = getBranchNow().dateStr;
     const y = parseInt(cur.slice(0, 4), 10);
     const mo = parseInt(cur.slice(5, 7), 10);
-    if (!Number.isFinite(y) || !Number.isFinite(mo)) return;
-    const first = new Date(y, mo - 1, 1);
-    railMonthLabel.textContent = first.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-    const lastDay = new Date(y, mo, 0).getDate();
-    const todayStr = getBranchNow().dateStr;
-    railDays.innerHTML = '';
-    railDays.setAttribute('aria-label', 'Days in ' + first.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }));
+    const dayNum = parseInt(cur.slice(8, 10), 10);
+    const refUtc = new Date(Date.UTC(y, mo - 1, dayNum));
+    calContextMonth.textContent = refUtc.toLocaleDateString(undefined, { month: 'long', year: 'numeric', timeZone: 'UTC' });
+    calHeroDay.textContent = String(dayNum);
+    calHeroWeekday.textContent = refUtc.toLocaleDateString(undefined, { weekday: 'long', timeZone: 'UTC' });
 
-    for (let d = 1; d <= lastDay; d++) {
-      const iso = y + '-' + String(mo).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-      const dt = new Date(y, mo - 1, d);
-      const narrow = dt.toLocaleDateString(undefined, { weekday: 'narrow' });
+    const ws = weekStartMondayIso(cur);
+    calStrip.innerHTML = '';
+    calStrip.setAttribute('aria-label', 'Week of ' + ws);
+
+    for (let i = 0; i < 7; i++) {
+      const iso = shiftIsoDate(ws, i);
+      const py = parseInt(iso.slice(0, 4), 10);
+      const pm = parseInt(iso.slice(5, 7), 10);
+      const pd = parseInt(iso.slice(8, 10), 10);
+      const cellUtc = new Date(Date.UTC(py, pm - 1, pd));
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'appts-month-day-rail__day';
+      btn.className = 'appts-cal-card__dow';
       btn.dataset.date = iso;
-      const longLabel = dt.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
-      btn.setAttribute('aria-label', longLabel);
+      btn.setAttribute('aria-label', cellUtc.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' }));
       if (iso === cur) {
-        btn.classList.add('appts-month-day-rail__day--selected');
+        btn.classList.add('appts-cal-card__dow--selected');
         btn.setAttribute('aria-current', 'date');
       }
       if (iso === todayStr) {
-        btn.classList.add('appts-month-day-rail__day--today');
+        btn.classList.add('appts-cal-card__dow--today');
       }
-      const wEl = document.createElement('span');
-      wEl.className = 'appts-month-day-rail__day-wd';
-      wEl.textContent = narrow;
-      const nEl = document.createElement('span');
-      nEl.className = 'appts-month-day-rail__day-num';
-      nEl.textContent = String(d);
-      const main = document.createElement('span');
-      main.className = 'appts-month-day-rail__day-main';
-      main.appendChild(wEl);
-      main.appendChild(nEl);
+      const num = document.createElement('span');
+      num.className = 'appts-cal-card__dow-num';
+      num.textContent = String(pd);
       const dot = document.createElement('span');
-      dot.className = 'appts-month-day-rail__day-dot';
+      dot.className = 'appts-cal-card__dow-dot';
       dot.setAttribute('aria-hidden', 'true');
-      btn.appendChild(main);
+      btn.appendChild(num);
       btn.appendChild(dot);
       btn.addEventListener('click', () => {
         if (dateEl.value === iso) return;
         selectedSlot = null;
         nowLineScrolled = false;
         dateEl.value = iso;
-        renderMonthRail();
+        renderWeekCard();
         syncCalendarUrl();
         load();
       });
-      railDays.appendChild(btn);
+      calStrip.appendChild(btn);
     }
-    const bootEl = document.getElementById('appts-calendar-month-summary-bootstrap');
+
+    const bootEl = document.getElementById('appts-calendar-week-summary-bootstrap');
     if (bootEl && bootEl.textContent) {
       try {
         const boot = JSON.parse(bootEl.textContent);
-        if (boot && boot.month_summary_contract) {
-          applyMonthSummaryPayload(boot);
+        if (boot && boot.week_summary_contract) {
+          applyWeekSummaryPayload(boot);
         }
       } catch (e) { /* ignore */ }
       bootEl.remove();
-    } else if (latestMonthSummary) {
-      applyMonthSummaryPayload(latestMonthSummary);
+    } else if (latestWeekSummary) {
+      applyWeekSummaryPayload(latestWeekSummary);
     }
-    requestAnimationFrame(scrollRailToSelected);
-    loadMonthSummary();
+    requestAnimationFrame(scrollStripToSelected);
+    loadWeekSummary();
   }
 
-  function shiftCalendarMonth(deltaM) {
+  function shiftCalendarWeek(deltaWeeks) {
     const cur = dateEl.value;
     if (!cur) return;
-    const next = addMonthsIso(cur, deltaM);
+    const next = shiftIsoDate(cur, deltaWeeks * 7);
     selectedSlot = null;
     nowLineScrolled = false;
     dateEl.value = next;
-    renderMonthRail();
+    renderWeekCard();
     syncCalendarUrl();
     load();
   }
@@ -405,11 +416,14 @@ if (!empty($calendarMonthSummaryBootstrap) && is_array($calendarMonthSummaryBoot
   function goToBranchToday() {
     const t = getBranchNow().dateStr;
     if (!t || !/^\d{4}-\d{2}-\d{2}$/.test(t)) return;
-    if (dateEl.value === t) return;
+    if (dateEl.value === t) {
+      renderWeekCard();
+      return;
+    }
     selectedSlot = null;
     nowLineScrolled = false;
     dateEl.value = t;
-    renderMonthRail();
+    renderWeekCard();
     syncCalendarUrl();
     load();
   }
@@ -1044,8 +1058,8 @@ if (!empty($calendarMonthSummaryBootstrap) && is_array($calendarMonthSummaryBoot
       if (!res.ok || errMsg) {
         statusEl.textContent = errMsg || 'Failed to load calendar.';
         wrap.innerHTML = '';
-        clearMonthSummaryDecorations();
-        latestMonthSummary = null;
+        clearWeekSummaryDecorations();
+        latestWeekSummary = null;
         return;
       }
       statusEl.textContent = '';
@@ -1056,22 +1070,22 @@ if (!empty($calendarMonthSummaryBootstrap) && is_array($calendarMonthSummaryBoot
       }
       statusEl.textContent = 'Could not load calendar data.';
       wrap.innerHTML = '';
-      clearMonthSummaryDecorations();
-      latestMonthSummary = null;
+      clearWeekSummaryDecorations();
+      latestWeekSummary = null;
     }
   }
 
   const filterForm = document.getElementById('calendar-filter-form');
   filterForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    renderMonthRail();
+    renderWeekCard();
     syncCalendarUrl();
     load();
   });
   dateEl.addEventListener('change', () => {
     selectedSlot = null;
     nowLineScrolled = false;
-    renderMonthRail();
+    renderWeekCard();
     syncCalendarUrl();
     load();
   });
@@ -1079,7 +1093,7 @@ if (!empty($calendarMonthSummaryBootstrap) && is_array($calendarMonthSummaryBoot
     selectedSlot = null;
     nowLineScrolled = false;
     syncCalendarUrl();
-    loadMonthSummary();
+    loadWeekSummary();
     load();
   });
 
@@ -1097,21 +1111,44 @@ if (!empty($calendarMonthSummaryBootstrap) && is_array($calendarMonthSummaryBoot
     await openDrawerUrl(buildBlockedTimeUrl());
   });
   window.addEventListener('app:appointments-calendar-refresh', () => {
-    loadMonthSummary();
+    loadWeekSummary();
     load();
   });
 
-  if (railPrevMonth) {
-    railPrevMonth.addEventListener('click', () => shiftCalendarMonth(-1));
+  if (calPrevWeek) {
+    calPrevWeek.addEventListener('click', () => shiftCalendarWeek(-1));
   }
-  if (railNextMonth) {
-    railNextMonth.addEventListener('click', () => shiftCalendarMonth(1));
+  if (calNextWeek) {
+    calNextWeek.addEventListener('click', () => shiftCalendarWeek(1));
   }
-  if (railTodayBtn) {
-    railTodayBtn.addEventListener('click', () => goToBranchToday());
+  if (calTodayBtn) {
+    calTodayBtn.addEventListener('click', () => goToBranchToday());
   }
 
-  renderMonthRail();
+  if (calCard) {
+    calCard.addEventListener('keydown', (e) => {
+      if (!dateEl || !/^\d{4}-\d{2}-\d{2}$/.test(String(dateEl.value || ''))) return;
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        selectedSlot = null;
+        nowLineScrolled = false;
+        dateEl.value = shiftIsoDate(dateEl.value, -1);
+        renderWeekCard();
+        syncCalendarUrl();
+        load();
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        selectedSlot = null;
+        nowLineScrolled = false;
+        dateEl.value = shiftIsoDate(dateEl.value, 1);
+        renderWeekCard();
+        syncCalendarUrl();
+        load();
+      }
+    });
+  }
+
+  renderWeekCard();
   load();
 })();
 </script>

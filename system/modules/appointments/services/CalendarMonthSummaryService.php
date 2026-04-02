@@ -10,7 +10,7 @@ use Modules\Settings\Services\BranchClosureDateService;
 use Modules\Settings\Services\BranchOperatingHoursService;
 
 /**
- * Backend-driven month navigator payload for the appointments day calendar control plane.
+ * Backend-driven calendar navigator payloads (month and week scopes) for the appointments day calendar control plane.
  * Reuses the same appointment overlap semantics as {@see AvailabilityService::listDayAppointmentsGroupedByStaff()}.
  */
 final class CalendarMonthSummaryService
@@ -39,6 +39,19 @@ final class CalendarMonthSummaryService
     /**
      * @return array<string, mixed>
      */
+    public function weekContractEnvelope(): array
+    {
+        return [
+            'week_summary_contract' => [
+                'name' => 'spa.calendar_week_summary',
+                'version' => 1,
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     public function buildPayload(int $branchId, int $year, int $month, string $selectedDate, string $todayDate): array
     {
         if ($year < 1970 || $year > 2100 || $month < 1 || $month > 12) {
@@ -52,17 +65,123 @@ final class CalendarMonthSummaryService
             throw new \InvalidArgumentException('Invalid calendar month.');
         }
 
-        $dates = [];
+        $dates = $this->enumerateDatesInclusive($first, $last);
+        if ($dates === []) {
+            throw new \InvalidArgumentException('Invalid calendar month.');
+        }
+
+        $days = $this->buildDayIntelRows($branchId, $dates, $selectedDate, $todayDate, true);
+        $selectedMeta = $this->pickSelectedMeta($days, $selectedDate);
+
+        return array_merge($this->contractEnvelope(), [
+            'branch_id' => $branchId,
+            'branch_timezone' => ApplicationTimezone::getAppliedIdentifier() ?? 'UTC',
+            'today_date' => $todayDate,
+            'selected_date' => $selectedDate,
+            'month' => [
+                'year' => $year,
+                'month' => $month,
+                'first_date' => $first,
+                'last_date' => $last,
+                'day_count' => count($dates),
+            ],
+            'days' => $days,
+            'selected_day' => $selectedMeta,
+        ]);
+    }
+
+    /**
+     * Monday-start week (ISO weekday 1–7) containing {@see $selectedDate}.
+     *
+     * @return array<string, mixed>
+     */
+    public function buildWeekPayload(int $branchId, string $selectedDate, string $todayDate): array
+    {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $selectedDate) !== 1) {
+            throw new \InvalidArgumentException('date must be YYYY-MM-DD');
+        }
+
+        [$weekStart, $weekEnd] = $this->weekRangeMondayStart($selectedDate);
+        $dates = $this->enumerateDatesInclusive($weekStart, $weekEnd);
+        if (count($dates) !== 7) {
+            throw new \InvalidArgumentException('Invalid week range.');
+        }
+
+        $days = $this->buildDayIntelRows($branchId, $dates, $selectedDate, $todayDate, true);
+        $selectedMeta = $this->pickSelectedMeta($days, $selectedDate);
+
+        try {
+            $sel = new \DateTimeImmutable($selectedDate . ' 00:00:00');
+            $cy = (int) $sel->format('Y');
+            $cm = (int) $sel->format('n');
+        } catch (\Throwable) {
+            throw new \InvalidArgumentException('Invalid selected date.');
+        }
+
+        return array_merge($this->weekContractEnvelope(), [
+            'branch_id' => $branchId,
+            'branch_timezone' => ApplicationTimezone::getAppliedIdentifier() ?? 'UTC',
+            'today_date' => $todayDate,
+            'selected_date' => $selectedDate,
+            'week' => [
+                'week_start' => $weekStart,
+                'week_end' => $weekEnd,
+                'week_rule' => 'monday_start',
+            ],
+            'context_month' => [
+                'year' => $cy,
+                'month' => $cm,
+            ],
+            'days' => $days,
+            'selected_day' => $selectedMeta,
+        ]);
+    }
+
+    /**
+     * @return array{0: string, 1: string}
+     */
+    private function weekRangeMondayStart(string $selectedDate): array
+    {
+        $dt = new \DateTimeImmutable($selectedDate . ' 00:00:00');
+        $n = (int) $dt->format('N');
+        $start = $dt->modify('-' . ($n - 1) . ' days');
+        $end = $start->modify('+6 days');
+
+        return [$start->format('Y-m-d'), $end->format('Y-m-d')];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function enumerateDatesInclusive(string $first, string $last): array
+    {
+        $out = [];
         try {
             $cur = new \DateTimeImmutable($first . ' 00:00:00');
             $end = new \DateTimeImmutable($last . ' 00:00:00');
             while ($cur <= $end) {
-                $dates[] = $cur->format('Y-m-d');
+                $out[] = $cur->format('Y-m-d');
                 $cur = $cur->modify('+1 day');
             }
         } catch (\Throwable) {
-            throw new \InvalidArgumentException('Invalid calendar month.');
+            return [];
         }
+
+        return $out;
+    }
+
+    /**
+     * @param list<string> $dates
+     * @return list<array<string, mixed>>
+     */
+    private function buildDayIntelRows(int $branchId, array $dates, string $selectedDate, string $todayDate, bool $inScope): array
+    {
+        if ($dates === []) {
+            return [];
+        }
+
+        $first = $dates[0];
+        $last = $dates[count($dates) - 1];
 
         $closureSet = [];
         if ($this->branchClosureDates->isStorageReady()) {
@@ -107,7 +226,7 @@ final class CalendarMonthSummaryService
 
             $days[] = [
                 'date' => $d,
-                'in_visible_month' => true,
+                'in_visible_month' => $inScope,
                 'is_today' => $d === $todayDate,
                 'is_past' => $d < $todayDate,
                 'is_future' => $d > $todayDate,
@@ -121,30 +240,24 @@ final class CalendarMonthSummaryService
             ];
         }
 
-        $selectedMeta = null;
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $selectedDate) === 1) {
-            foreach ($days as $entry) {
-                if (($entry['date'] ?? '') === $selectedDate) {
-                    $selectedMeta = $entry;
-                    break;
-                }
+        return $days;
+    }
+
+    /**
+     * @param list<array<string, mixed>> $days
+     * @return array<string, mixed>|null
+     */
+    private function pickSelectedMeta(array $days, string $selectedDate): ?array
+    {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $selectedDate) !== 1) {
+            return null;
+        }
+        foreach ($days as $entry) {
+            if (($entry['date'] ?? '') === $selectedDate) {
+                return $entry;
             }
         }
 
-        return array_merge($this->contractEnvelope(), [
-            'branch_id' => $branchId,
-            'branch_timezone' => ApplicationTimezone::getAppliedIdentifier() ?? 'UTC',
-            'today_date' => $todayDate,
-            'selected_date' => $selectedDate,
-            'month' => [
-                'year' => $year,
-                'month' => $month,
-                'first_date' => $first,
-                'last_date' => $last,
-                'day_count' => count($dates),
-            ],
-            'days' => $days,
-            'selected_day' => $selectedMeta,
-        ]);
+        return null;
     }
 }
