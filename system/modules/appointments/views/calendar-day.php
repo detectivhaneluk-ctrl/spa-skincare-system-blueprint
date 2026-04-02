@@ -16,29 +16,43 @@ ob_start();
 
 <div class="appointments-workspace-page ds-page appts-calendar-page">
 <div class="appts-calendar-body">
-    <aside class="appts-calendar-rail appts-smart-calendar-rail" aria-label="Week calendar control">
+    <aside class="appts-calendar-rail appts-smart-calendar-rail" aria-label="Smart calendar">
         <div class="appts-cal-card" id="appts-cal-card" data-smart-calendar-root tabindex="0">
-            <header class="appts-cal-card__header">
-                <p class="appts-cal-card__context-month" id="appts-cal-context-month" aria-live="polite">—</p>
-                <div class="appts-cal-card__hero">
-                    <div class="appts-cal-card__hero-main">
-                        <span class="appts-cal-card__hero-day" id="appts-cal-hero-day">—</span>
-                        <div class="appts-cal-card__hero-meta">
-                            <span class="appts-cal-card__hero-weekday" id="appts-cal-hero-weekday"></span>
-                        </div>
-                    </div>
+            <div class="appts-cal-card__top">
+                <div class="appts-cal-card__mode" role="group" aria-label="Calendar view mode">
+                    <button type="button" class="appts-cal-card__mode-btn appts-cal-card__mode-btn--active" id="appts-cal-mode-week" aria-pressed="true" data-cal-mode="week">Week</button>
+                    <button type="button" class="appts-cal-card__mode-btn" id="appts-cal-mode-month" aria-pressed="false" data-cal-mode="month">Month</button>
                 </div>
-                <div class="appts-cal-card__nav" role="group" aria-label="Change week">
-                    <button type="button" class="appts-cal-card__nav-btn" id="appts-cal-prev-week" aria-label="Previous week">‹</button>
-                    <button type="button" class="ds-btn ds-btn--secondary appts-cal-card__today" id="appts-cal-today">Today</button>
-                    <button type="button" class="appts-cal-card__nav-btn" id="appts-cal-next-week" aria-label="Next week">›</button>
+                <p class="appts-cal-card__title-month" id="appts-cal-context-month" aria-live="polite">—</p>
+            </div>
+            <div class="appts-cal-card__hero">
+                <p class="appts-cal-card__hero-kicker" id="appts-cal-hero-kicker">Selected</p>
+                <div class="appts-cal-card__hero-line">
+                    <span class="appts-cal-card__hero-day" id="appts-cal-hero-day">—</span>
+                    <span class="appts-cal-card__hero-weekday" id="appts-cal-hero-weekday"></span>
                 </div>
-            </header>
-            <div class="appts-cal-card__strip-wrap" id="appts-cal-strip-wrap">
+            </div>
+            <div class="appts-cal-card__nav appts-cal-card__nav--week" id="appts-cal-nav-week" role="group" aria-label="Change week">
+                <button type="button" class="appts-cal-card__chev" id="appts-cal-prev-week" aria-label="Previous week">‹</button>
+                <button type="button" class="appts-cal-card__today" id="appts-cal-today-week">Today</button>
+                <button type="button" class="appts-cal-card__chev" id="appts-cal-next-week" aria-label="Next week">›</button>
+            </div>
+            <div class="appts-cal-card__nav appts-cal-card__nav--month is-cal-hidden" id="appts-cal-nav-month" role="group" aria-label="Change month">
+                <button type="button" class="appts-cal-card__chev" id="appts-cal-prev-month" aria-label="Previous month">‹</button>
+                <button type="button" class="appts-cal-card__today" id="appts-cal-today-month">Today</button>
+                <button type="button" class="appts-cal-card__chev" id="appts-cal-next-month" aria-label="Next month">›</button>
+            </div>
+            <div class="appts-cal-card__body appts-cal-card__body--week" id="appts-cal-body-week">
                 <div class="appts-cal-card__weekday-ribbon" aria-hidden="true">
                     <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
                 </div>
                 <div class="appts-cal-card__strip" id="appts-cal-strip" role="group" aria-label="Days this week"></div>
+            </div>
+            <div class="appts-cal-card__body appts-cal-card__body--month is-cal-hidden" id="appts-cal-body-month">
+                <div class="appts-cal-month__dow" aria-hidden="true">
+                    <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
+                </div>
+                <div class="appts-cal-month__grid" id="appts-cal-month-grid" role="group" aria-label="Month days"></div>
             </div>
         </div>
     </aside>
@@ -48,7 +62,7 @@ ob_start();
                 <div class="appts-command-strip__fields">
                     <div class="appts-command-field appts-command-field--date-secondary">
                         <label class="appts-command-field__label" for="calendar-date">Go to date</label>
-                        <input class="ds-input appts-command-field__control" type="date" id="calendar-date" name="date" value="<?= htmlspecialchars($calDate) ?>" required title="Jump to any date (syncs with week card)">
+                        <input class="ds-input appts-command-field__control" type="date" id="calendar-date" name="date" value="<?= htmlspecialchars($calDate) ?>" required title="Jump to any date (syncs with calendar card)">
                     </div>
                     <div class="appts-command-field appts-command-field--grow">
                         <label class="appts-command-field__label" for="calendar-branch">Branch</label>
@@ -87,9 +101,19 @@ if (!empty($calendarWeekSummaryBootstrap) && is_array($calendarWeekSummaryBootst
         $__apptsWeekSummaryJson = '';
     }
 }
+$__apptsMonthSummaryJson = '';
+if (!empty($calendarMonthSummaryBootstrap) && is_array($calendarMonthSummaryBootstrap)) {
+    $__apptsMonthSummaryJson = json_encode($calendarMonthSummaryBootstrap, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($__apptsMonthSummaryJson === false) {
+        $__apptsMonthSummaryJson = '';
+    }
+}
 ?>
 <?php if ($__apptsWeekSummaryJson !== ''): ?>
 <script type="application/json" id="appts-calendar-week-summary-bootstrap"><?= $__apptsWeekSummaryJson ?></script>
+<?php endif; ?>
+<?php if ($__apptsMonthSummaryJson !== ''): ?>
+<script type="application/json" id="appts-calendar-month-summary-bootstrap"><?= $__apptsMonthSummaryJson ?></script>
 <?php endif; ?>
 
 <script>
@@ -97,12 +121,23 @@ if (!empty($calendarWeekSummaryBootstrap) && is_array($calendarWeekSummaryBootst
   const dateEl = document.getElementById('calendar-date');
   const calCard = document.getElementById('appts-cal-card');
   const calStrip = document.getElementById('appts-cal-strip');
+  const calMonthGrid = document.getElementById('appts-cal-month-grid');
   const calContextMonth = document.getElementById('appts-cal-context-month');
   const calHeroDay = document.getElementById('appts-cal-hero-day');
   const calHeroWeekday = document.getElementById('appts-cal-hero-weekday');
+  const calHeroKicker = document.getElementById('appts-cal-hero-kicker');
+  const calModeWeek = document.getElementById('appts-cal-mode-week');
+  const calModeMonth = document.getElementById('appts-cal-mode-month');
+  const calNavWeek = document.getElementById('appts-cal-nav-week');
+  const calNavMonth = document.getElementById('appts-cal-nav-month');
+  const calBodyWeek = document.getElementById('appts-cal-body-week');
+  const calBodyMonth = document.getElementById('appts-cal-body-month');
   const calPrevWeek = document.getElementById('appts-cal-prev-week');
   const calNextWeek = document.getElementById('appts-cal-next-week');
-  const calTodayBtn = document.getElementById('appts-cal-today');
+  const calPrevMonth = document.getElementById('appts-cal-prev-month');
+  const calNextMonth = document.getElementById('appts-cal-next-month');
+  const calTodayWeek = document.getElementById('appts-cal-today-week');
+  const calTodayMonth = document.getElementById('appts-cal-today-month');
   const branchEl = document.getElementById('calendar-branch');
   const statusEl = document.getElementById('calendar-status');
   const branchHoursIndicatorEl = document.getElementById('calendar-branch-hours-indicator');
@@ -135,6 +170,44 @@ if (!empty($calendarWeekSummaryBootstrap) && is_array($calendarWeekSummaryBootst
   let weekSummaryAbort = null;
   /** Last applied week summary payload; null until bootstrap or fetch. */
   let latestWeekSummary = null;
+  /** AbortController for GET /calendar/month-summary. */
+  let monthSummaryAbort = null;
+  let latestMonthSummary = null;
+
+  const CAL_MODE_KEY = 'appts_cal_card_mode';
+  let calendarMode = (function () {
+    try {
+      const s = sessionStorage.getItem(CAL_MODE_KEY);
+      return s === 'month' ? 'month' : 'week';
+    } catch (e) {
+      return 'week';
+    }
+  })();
+
+  function setCalendarMode(mode) {
+    if (mode !== 'week' && mode !== 'month') return;
+    calendarMode = mode;
+    try {
+      sessionStorage.setItem(CAL_MODE_KEY, mode);
+    } catch (e) { /* ignore */ }
+    syncModeChrome();
+    renderSmartCard();
+  }
+
+  function syncModeChrome() {
+    const isWeek = calendarMode === 'week';
+    if (calModeWeek && calModeMonth) {
+      calModeWeek.classList.toggle('appts-cal-card__mode-btn--active', isWeek);
+      calModeWeek.setAttribute('aria-pressed', isWeek ? 'true' : 'false');
+      calModeMonth.classList.toggle('appts-cal-card__mode-btn--active', !isWeek);
+      calModeMonth.setAttribute('aria-pressed', isWeek ? 'false' : 'true');
+    }
+    calNavWeek?.classList.toggle('is-cal-hidden', !isWeek);
+    calNavMonth?.classList.toggle('is-cal-hidden', isWeek);
+    calBodyWeek?.classList.toggle('is-cal-hidden', !isWeek);
+    calBodyMonth?.classList.toggle('is-cal-hidden', isWeek);
+  }
+
   /** now-line: current grid vm reference; null when no calendar is rendered. */
   let nowLineVm = null;
   /** now-line: setInterval id; cleared whenever the grid is destroyed or re-rendered. */
@@ -218,6 +291,39 @@ if (!empty($calendarWeekSummaryBootstrap) && is_array($calendarWeekSummaryBootst
     return shiftIsoDate(iso, -off);
   }
 
+  function visibleMonthFromDateEl() {
+    const cur = String(dateEl && dateEl.value ? dateEl.value : '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(cur)) return null;
+    const y = parseInt(cur.slice(0, 4), 10);
+    const m = parseInt(cur.slice(5, 7), 10);
+    if (!Number.isFinite(y) || !Number.isFinite(m)) return null;
+    return { y, m };
+  }
+
+  function addMonthsIso(isoDate, deltaM) {
+    const parts = String(isoDate || '').split('-');
+    if (parts.length !== 3) return isoDate;
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    const d = parseInt(parts[2], 10);
+    if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return isoDate;
+    const first = new Date(Date.UTC(y, m - 1 + deltaM, 1));
+    const ny = first.getUTCFullYear();
+    const nm = first.getUTCMonth();
+    const lastD = new Date(Date.UTC(ny, nm + 1, 0)).getUTCDate();
+    const nd = Math.min(d, lastD);
+    const out = new Date(Date.UTC(ny, nm, nd));
+    return out.getUTCFullYear() + '-' + String(out.getUTCMonth() + 1).padStart(2, '0') + '-' + String(out.getUTCDate()).padStart(2, '0');
+  }
+
+  function daysInMonthUtc(y, m) {
+    return new Date(Date.UTC(y, m, 0)).getUTCDate();
+  }
+
+  function ymFirstIso(y, m) {
+    return y + '-' + String(m).padStart(2, '0') + '-01';
+  }
+
   function scrollStripToSelected() {
     if (!calStrip) return;
     const sel = calStrip.querySelector('.appts-cal-card__dow--selected');
@@ -242,6 +348,22 @@ if (!empty($calendarWeekSummaryBootstrap) && is_array($calendarWeekSummaryBootst
         'appts-cal-card__dow--future'
       );
       el.querySelectorAll('.appts-cal-card__dow-count').forEach((n) => n.remove());
+    });
+  }
+
+  function clearMonthGridDecorations() {
+    if (!calMonthGrid) return;
+    calMonthGrid.querySelectorAll('.appts-cal-month__cell--day').forEach((el) => {
+      el.classList.remove(
+        'appts-cal-month__cell--closed',
+        'appts-cal-month__cell--has-appts',
+        'appts-cal-month__cell--has-blocked',
+        'appts-cal-month__cell--busy-steady',
+        'appts-cal-month__cell--busy-heavy',
+        'appts-cal-month__cell--past',
+        'appts-cal-month__cell--future'
+      );
+      el.querySelectorAll('.appts-cal-month__cell-count').forEach((n) => n.remove());
     });
   }
 
@@ -319,19 +441,101 @@ if (!empty($calendarWeekSummaryBootstrap) && is_array($calendarWeekSummaryBootst
     }
   }
 
-  function updateRailDayMeta(vm, apptCount) {
-    if (latestWeekSummary || !calStrip || !vm) return;
-    const sel = calStrip.querySelector('.appts-cal-card__dow--selected');
-    if (!sel) return;
-    sel.classList.remove('appts-cal-card__dow--closed', 'appts-cal-card__dow--has-appts');
-    const closed = (vm.branchHours && vm.branchHours.isClosedDay)
-      || (vm.closureDate && vm.closureDate.active);
-    if (closed) sel.classList.add('appts-cal-card__dow--closed');
-    if (apptCount > 0) sel.classList.add('appts-cal-card__dow--has-appts');
+  function applyMonthSummaryPayload(payload) {
+    if (!payload || typeof payload !== 'object' || !payload.month_summary_contract || !calMonthGrid || !branchEl || !dateEl) {
+      return;
+    }
+    const bid = parseInt(String(branchEl.value || '0'), 10) || 0;
+    if ((Number(payload.branch_id) || 0) !== bid) {
+      return;
+    }
+    const vm = visibleMonthFromDateEl();
+    if (!vm || !payload.month) return;
+    const py = Number(payload.month.year);
+    const pm = Number(payload.month.month);
+    if (py !== vm.y || pm !== vm.m) {
+      clearMonthGridDecorations();
+      latestMonthSummary = null;
+      return;
+    }
+    latestMonthSummary = payload;
+    clearMonthGridDecorations();
+    const byDate = {};
+    const list = Array.isArray(payload.days) ? payload.days : [];
+    for (let i = 0; i < list.length; i++) {
+      const row = list[i];
+      if (row && row.date) byDate[row.date] = row;
+    }
+    calMonthGrid.querySelectorAll('.appts-cal-month__cell--day').forEach((btn) => {
+      const iso = btn.dataset.date;
+      const row = byDate[iso];
+      if (!row) return;
+      if (row.branch_closed) btn.classList.add('appts-cal-month__cell--closed');
+      const ac = Number(row.appointment_count) || 0;
+      if (ac > 0) {
+        btn.classList.add('appts-cal-month__cell--has-appts');
+        const span = document.createElement('span');
+        span.className = 'appts-cal-month__cell-count';
+        span.textContent = ac > 9 ? '9+' : String(ac);
+        span.setAttribute('aria-label', ac + ' appointments');
+        btn.appendChild(span);
+      }
+      if (row.has_blocked) btn.classList.add('appts-cal-month__cell--has-blocked');
+      if (row.busy_level === 'steady') btn.classList.add('appts-cal-month__cell--busy-steady');
+      if (row.busy_level === 'heavy') btn.classList.add('appts-cal-month__cell--busy-heavy');
+      if (row.is_past) btn.classList.add('appts-cal-month__cell--past');
+      if (row.is_future) btn.classList.add('appts-cal-month__cell--future');
+    });
   }
 
-  function renderWeekCard() {
-    if (!calStrip || !dateEl || !calHeroDay || !calHeroWeekday || !calContextMonth) return;
+  async function loadMonthSummary() {
+    const vm = visibleMonthFromDateEl();
+    if (!vm || !dateEl) return;
+    if (monthSummaryAbort) monthSummaryAbort.abort();
+    monthSummaryAbort = new AbortController();
+    const params = new URLSearchParams();
+    params.set('year', String(vm.y));
+    params.set('month', String(vm.m));
+    params.set('date', String(dateEl.value || '').trim());
+    if (branchEl && branchEl.value) params.set('branch_id', branchEl.value);
+    try {
+      const res = await fetch('/calendar/month-summary?' + params.toString(), {
+        headers: { Accept: 'application/json' },
+        signal: monthSummaryAbort.signal,
+      });
+      const payload = await res.json();
+      const err = payload && typeof payload === 'object' ? payload.error : undefined;
+      const errMsg = typeof err === 'string' ? err : err && typeof err === 'object' && typeof err.message === 'string' ? err.message : null;
+      if (!res.ok || errMsg) {
+        return;
+      }
+      if (payload && payload.month_summary_contract) {
+        applyMonthSummaryPayload(payload);
+      }
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
+    }
+  }
+
+  function updateRailDayMeta(vm, apptCount) {
+    if (!vm) return;
+    if (calendarMode === 'week' && latestWeekSummary) return;
+    if (calendarMode === 'month' && latestMonthSummary) return;
+    const closedCls = calendarMode === 'week' ? 'appts-cal-card__dow--closed' : 'appts-cal-month__cell--closed';
+    const apptCls = calendarMode === 'week' ? 'appts-cal-card__dow--has-appts' : 'appts-cal-month__cell--has-appts';
+    const sel = calendarMode === 'week'
+      ? calStrip?.querySelector('.appts-cal-card__dow--selected')
+      : calMonthGrid?.querySelector('.appts-cal-month__cell--selected');
+    if (!sel) return;
+    sel.classList.remove(closedCls, apptCls);
+    const closed = (vm.branchHours && vm.branchHours.isClosedDay)
+      || (vm.closureDate && vm.closureDate.active);
+    if (closed) sel.classList.add(closedCls);
+    if (apptCount > 0) sel.classList.add(apptCls);
+  }
+
+  function updateHero() {
+    if (!calHeroDay || !calHeroWeekday || !calContextMonth || !dateEl) return;
     const cur = String(dateEl.value || '').trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(cur)) return;
     const todayStr = getBranchNow().dateStr;
@@ -342,11 +546,29 @@ if (!empty($calendarWeekSummaryBootstrap) && is_array($calendarWeekSummaryBootst
     calContextMonth.textContent = refUtc.toLocaleDateString(undefined, { month: 'long', year: 'numeric', timeZone: 'UTC' });
     calHeroDay.textContent = String(dayNum);
     calHeroWeekday.textContent = refUtc.toLocaleDateString(undefined, { weekday: 'long', timeZone: 'UTC' });
+    if (calHeroKicker) {
+      calHeroKicker.textContent = cur === todayStr ? 'Today' : 'Selected';
+    }
+  }
 
+  function pickDateAndReload(iso) {
+    if (!dateEl || dateEl.value === iso) return;
+    selectedSlot = null;
+    nowLineScrolled = false;
+    dateEl.value = iso;
+    renderSmartCard();
+    syncCalendarUrl();
+    load();
+  }
+
+  function renderWeekStrip() {
+    if (!calStrip || !dateEl) return;
+    const cur = String(dateEl.value || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(cur)) return;
+    const todayStr = getBranchNow().dateStr;
     const ws = weekStartMondayIso(cur);
     calStrip.innerHTML = '';
     calStrip.setAttribute('aria-label', 'Week of ' + ws);
-
     for (let i = 0; i < 7; i++) {
       const iso = shiftIsoDate(ws, i);
       const py = parseInt(iso.slice(0, 4), 10);
@@ -362,9 +584,7 @@ if (!empty($calendarWeekSummaryBootstrap) && is_array($calendarWeekSummaryBootst
         btn.classList.add('appts-cal-card__dow--selected');
         btn.setAttribute('aria-current', 'date');
       }
-      if (iso === todayStr) {
-        btn.classList.add('appts-cal-card__dow--today');
-      }
+      if (iso === todayStr) btn.classList.add('appts-cal-card__dow--today');
       const num = document.createElement('span');
       num.className = 'appts-cal-card__dow-num';
       num.textContent = String(pd);
@@ -373,18 +593,9 @@ if (!empty($calendarWeekSummaryBootstrap) && is_array($calendarWeekSummaryBootst
       dot.setAttribute('aria-hidden', 'true');
       btn.appendChild(num);
       btn.appendChild(dot);
-      btn.addEventListener('click', () => {
-        if (dateEl.value === iso) return;
-        selectedSlot = null;
-        nowLineScrolled = false;
-        dateEl.value = iso;
-        renderWeekCard();
-        syncCalendarUrl();
-        load();
-      });
+      btn.addEventListener('click', () => pickDateAndReload(iso));
       calStrip.appendChild(btn);
     }
-
     const bootEl = document.getElementById('appts-calendar-week-summary-bootstrap');
     if (bootEl && bootEl.textContent) {
       try {
@@ -401,14 +612,98 @@ if (!empty($calendarWeekSummaryBootstrap) && is_array($calendarWeekSummaryBootst
     loadWeekSummary();
   }
 
+  function renderMonthGrid() {
+    if (!calMonthGrid || !dateEl) return;
+    const cur = String(dateEl.value || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(cur)) return;
+    const vm = visibleMonthFromDateEl();
+    if (!vm) return;
+    const todayStr = getBranchNow().dateStr;
+    const y = vm.y;
+    const m = vm.m;
+    const last = daysInMonthUtc(y, m);
+    const firstIso = ymFirstIso(y, m);
+    const pad = mondayOffsetFromIso(firstIso);
+    const cells = pad + last;
+    const rows = Math.ceil(cells / 7);
+    const total = rows * 7;
+    calMonthGrid.innerHTML = '';
+    calMonthGrid.setAttribute('aria-label', calContextMonth ? calContextMonth.textContent : 'Month');
+    for (let i = 0; i < total; i++) {
+      const dayIx = i - pad + 1;
+      if (i < pad || dayIx > last) {
+        const padEl = document.createElement('div');
+        padEl.className = 'appts-cal-month__cell appts-cal-month__cell--pad';
+        padEl.setAttribute('aria-hidden', 'true');
+        calMonthGrid.appendChild(padEl);
+        continue;
+      }
+      const iso = y + '-' + String(m).padStart(2, '0') + '-' + String(dayIx).padStart(2, '0');
+      const cellUtc = new Date(Date.UTC(y, m - 1, dayIx));
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'appts-cal-month__cell appts-cal-month__cell--day';
+      btn.dataset.date = iso;
+      btn.setAttribute('aria-label', cellUtc.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' }));
+      if (iso === cur) {
+        btn.classList.add('appts-cal-month__cell--selected');
+        btn.setAttribute('aria-current', 'date');
+      }
+      if (iso === todayStr) btn.classList.add('appts-cal-month__cell--today');
+      const num = document.createElement('span');
+      num.className = 'appts-cal-month__cell-num';
+      num.textContent = String(dayIx);
+      const dot = document.createElement('span');
+      dot.className = 'appts-cal-month__cell-dot';
+      dot.setAttribute('aria-hidden', 'true');
+      btn.appendChild(num);
+      btn.appendChild(dot);
+      btn.addEventListener('click', () => pickDateAndReload(iso));
+      calMonthGrid.appendChild(btn);
+    }
+    const bootM = document.getElementById('appts-calendar-month-summary-bootstrap');
+    if (bootM && bootM.textContent) {
+      try {
+        const boot = JSON.parse(bootM.textContent);
+        if (boot && boot.month_summary_contract) {
+          applyMonthSummaryPayload(boot);
+        }
+      } catch (e) { /* ignore */ }
+      bootM.remove();
+    } else if (latestMonthSummary) {
+      applyMonthSummaryPayload(latestMonthSummary);
+    }
+    loadMonthSummary();
+  }
+
+  function renderSmartCard() {
+    updateHero();
+    syncModeChrome();
+    if (calendarMode === 'week') {
+      renderWeekStrip();
+    } else {
+      renderMonthGrid();
+    }
+  }
+
   function shiftCalendarWeek(deltaWeeks) {
     const cur = dateEl.value;
     if (!cur) return;
-    const next = shiftIsoDate(cur, deltaWeeks * 7);
     selectedSlot = null;
     nowLineScrolled = false;
-    dateEl.value = next;
-    renderWeekCard();
+    dateEl.value = shiftIsoDate(cur, deltaWeeks * 7);
+    renderSmartCard();
+    syncCalendarUrl();
+    load();
+  }
+
+  function shiftCalendarMonth(deltaM) {
+    const cur = dateEl.value;
+    if (!cur) return;
+    selectedSlot = null;
+    nowLineScrolled = false;
+    dateEl.value = addMonthsIso(cur, deltaM);
+    renderSmartCard();
     syncCalendarUrl();
     load();
   }
@@ -417,15 +712,23 @@ if (!empty($calendarWeekSummaryBootstrap) && is_array($calendarWeekSummaryBootst
     const t = getBranchNow().dateStr;
     if (!t || !/^\d{4}-\d{2}-\d{2}$/.test(t)) return;
     if (dateEl.value === t) {
-      renderWeekCard();
+      renderSmartCard();
       return;
     }
     selectedSlot = null;
     nowLineScrolled = false;
     dateEl.value = t;
-    renderWeekCard();
+    renderSmartCard();
     syncCalendarUrl();
     load();
+  }
+
+  function refreshCalendarSummaries() {
+    if (calendarMode === 'week') {
+      loadWeekSummary();
+    } else {
+      loadMonthSummary();
+    }
   }
 
   /** Remove now-line DOM elements and cancel the update timer. */
@@ -1060,6 +1363,8 @@ if (!empty($calendarWeekSummaryBootstrap) && is_array($calendarWeekSummaryBootst
         wrap.innerHTML = '';
         clearWeekSummaryDecorations();
         latestWeekSummary = null;
+        clearMonthGridDecorations();
+        latestMonthSummary = null;
         return;
       }
       statusEl.textContent = '';
@@ -1072,20 +1377,22 @@ if (!empty($calendarWeekSummaryBootstrap) && is_array($calendarWeekSummaryBootst
       wrap.innerHTML = '';
       clearWeekSummaryDecorations();
       latestWeekSummary = null;
+      clearMonthGridDecorations();
+      latestMonthSummary = null;
     }
   }
 
   const filterForm = document.getElementById('calendar-filter-form');
   filterForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    renderWeekCard();
+    renderSmartCard();
     syncCalendarUrl();
     load();
   });
   dateEl.addEventListener('change', () => {
     selectedSlot = null;
     nowLineScrolled = false;
-    renderWeekCard();
+    renderSmartCard();
     syncCalendarUrl();
     load();
   });
@@ -1093,7 +1400,7 @@ if (!empty($calendarWeekSummaryBootstrap) && is_array($calendarWeekSummaryBootst
     selectedSlot = null;
     nowLineScrolled = false;
     syncCalendarUrl();
-    loadWeekSummary();
+    refreshCalendarSummaries();
     load();
   });
 
@@ -1111,18 +1418,33 @@ if (!empty($calendarWeekSummaryBootstrap) && is_array($calendarWeekSummaryBootst
     await openDrawerUrl(buildBlockedTimeUrl());
   });
   window.addEventListener('app:appointments-calendar-refresh', () => {
-    loadWeekSummary();
+    refreshCalendarSummaries();
     load();
   });
 
+  if (calModeWeek) {
+    calModeWeek.addEventListener('click', () => setCalendarMode('week'));
+  }
+  if (calModeMonth) {
+    calModeMonth.addEventListener('click', () => setCalendarMode('month'));
+  }
   if (calPrevWeek) {
     calPrevWeek.addEventListener('click', () => shiftCalendarWeek(-1));
   }
   if (calNextWeek) {
     calNextWeek.addEventListener('click', () => shiftCalendarWeek(1));
   }
-  if (calTodayBtn) {
-    calTodayBtn.addEventListener('click', () => goToBranchToday());
+  if (calPrevMonth) {
+    calPrevMonth.addEventListener('click', () => shiftCalendarMonth(-1));
+  }
+  if (calNextMonth) {
+    calNextMonth.addEventListener('click', () => shiftCalendarMonth(1));
+  }
+  if (calTodayWeek) {
+    calTodayWeek.addEventListener('click', () => goToBranchToday());
+  }
+  if (calTodayMonth) {
+    calTodayMonth.addEventListener('click', () => goToBranchToday());
   }
 
   if (calCard) {
@@ -1133,7 +1455,7 @@ if (!empty($calendarWeekSummaryBootstrap) && is_array($calendarWeekSummaryBootst
         selectedSlot = null;
         nowLineScrolled = false;
         dateEl.value = shiftIsoDate(dateEl.value, -1);
-        renderWeekCard();
+        renderSmartCard();
         syncCalendarUrl();
         load();
       } else if (e.key === 'ArrowRight') {
@@ -1141,14 +1463,14 @@ if (!empty($calendarWeekSummaryBootstrap) && is_array($calendarWeekSummaryBootst
         selectedSlot = null;
         nowLineScrolled = false;
         dateEl.value = shiftIsoDate(dateEl.value, 1);
-        renderWeekCard();
+        renderSmartCard();
         syncCalendarUrl();
         load();
       }
     });
   }
 
-  renderWeekCard();
+  renderSmartCard();
   load();
 })();
 </script>
