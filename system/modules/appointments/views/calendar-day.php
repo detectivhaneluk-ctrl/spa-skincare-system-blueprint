@@ -21,6 +21,7 @@ $sidebarDayNum = $calDt->format('j');
 $isViewingToday = $calDate === $todayDate;
 ob_start();
 ?>
+<div class="calendar-workspace" id="calendar-workspace-root" data-calendar-immersive-root>
 <?php require base_path('modules/appointments/views/partials/workspace-shell.php'); ?>
 <?php if (!empty($flash) && is_array($flash)): $t = array_key_first($flash); ?>
 <div class="flash flash-<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($flash[$t] ?? '') ?></div>
@@ -63,6 +64,7 @@ ob_start();
                 </div>
             </form>
             <div class="appts-command-strip__actions">
+                <button type="button" class="ds-btn ds-btn--secondary appts-immersive-exit" id="calendar-immersive-exit" hidden aria-label="Restore full workspace header and navigation">Show chrome</button>
                 <button type="button" class="ds-btn ds-btn--secondary" id="calendar-blocked-time-btn">Blocked time</button>
             </div>
         </div>
@@ -71,10 +73,11 @@ ob_start();
             <div id="calendar-status" class="appts-calendar-meta__status" role="status" aria-live="polite">Loading day calendar…</div>
         </div>
         <div id="calendar-branch-hours-indicator" class="appts-calendar-hours calendar-branch-hours-indicator" role="status" aria-live="polite"></div>
-        <div class="appts-calendar-grid">
+        <div class="appts-calendar-grid" id="appts-calendar-grid">
             <div id="calendar-day-wrap" class="calendar-day-wrap"></div>
         </div>
     </div>
+</div>
 </div>
 </div>
 
@@ -688,6 +691,7 @@ ob_start();
   load();
 })();
 </script>
+<script src="/assets/js/app-calendar-immersive.js" defer></script>
 <?php
 $content = ob_get_clean();
 require shared_path('layout/base.php');

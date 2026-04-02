@@ -581,7 +581,7 @@ body {
   padding: var(--ds-space-4) var(--ds-shell-pad-x) var(--ds-space-8);
 }
 /* Appointments day calendar: one scroll surface inside the grid (desktop workspace). */
-.app-shell__main:has(.appts-calendar-page) {
+.app-shell__main:has(.calendar-workspace) {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
@@ -589,8 +589,15 @@ body {
   overflow: hidden;
   padding-bottom: var(--ds-space-2);
 }
-.app-shell__main:has(.appts-calendar-page) > .ds-workspace,
-.app-shell__main:has(.appts-calendar-page) > .flash {
+.app-shell__main:has(.calendar-workspace) > .calendar-workspace {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+}
+.app-shell__main:has(.calendar-workspace) > .calendar-workspace > .ds-workspace,
+.app-shell__main:has(.calendar-workspace) > .calendar-workspace > .flash {
   flex-shrink: 0;
 }
 .app-shell__main--auth {
@@ -1206,6 +1213,85 @@ body {
   margin: 1.25rem 1rem;
   font-size: 0.875rem;
   color: #6b7280;
+}
+
+/* --- Immersive calendar workspace (grid scroll threshold; desktop) --- */
+.calendar-workspace .appts-workspace-header__title,
+.calendar-workspace .appts-workspace-header__modes {
+  max-height: 4rem;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.22s ease, max-height 0.28s ease, transform 0.22s ease, margin 0.22s ease;
+}
+.calendar-workspace.is-immersive .appts-workspace-header__title,
+.calendar-workspace.is-immersive .appts-workspace-header__modes {
+  max-height: 0;
+  opacity: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transform: translateY(-4px);
+}
+.calendar-workspace.is-immersive .appts-workspace-header__row {
+  gap: var(--ds-space-2);
+  min-height: 2.5rem;
+  align-items: center;
+}
+.calendar-workspace.is-immersive .appts-workspace-header {
+  margin-bottom: var(--ds-space-2);
+}
+.calendar-workspace.is-immersive .appts-calendar-body {
+  grid-template-columns: 3.5rem minmax(0, 1fr);
+}
+.calendar-workspace.is-immersive .appts-calendar-rail__month,
+.calendar-workspace.is-immersive .appts-calendar-rail__weekday,
+.calendar-workspace.is-immersive .appts-calendar-rail__pill {
+  display: none;
+}
+.calendar-workspace.is-immersive .appts-calendar-rail__daynum {
+  text-align: center;
+  font-size: 1.125rem;
+  margin: 0;
+}
+.calendar-workspace.is-immersive .appts-calendar-rail__nav {
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-top: 0.35rem;
+}
+.calendar-workspace.is-immersive .appts-calendar-rail__nav-btn {
+  padding: 0.2rem 0.15rem;
+  font-size: 0.55rem;
+}
+.calendar-workspace .appts-calendar-meta,
+.calendar-workspace .appts-calendar-hours {
+  transition: opacity 0.2s ease, max-height 0.26s ease, margin 0.2s ease;
+  max-height: 6rem;
+  opacity: 1;
+}
+.calendar-workspace.is-immersive .appts-calendar-meta,
+.calendar-workspace.is-immersive .appts-calendar-hours {
+  max-height: 0;
+  opacity: 0;
+  margin: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.calendar-workspace.is-immersive .appts-command-strip {
+  margin-bottom: 0.3rem;
+  gap: var(--ds-space-1) var(--ds-space-2);
+}
+.calendar-workspace.is-immersive .appts-command-field__label {
+  font-size: 0.5625rem;
+}
+.calendar-workspace.is-immersive-prefers-reduced .appts-workspace-header__title,
+.calendar-workspace.is-immersive-prefers-reduced .appts-workspace-header__modes,
+.calendar-workspace.is-immersive-prefers-reduced .appts-calendar-meta,
+.calendar-workspace.is-immersive-prefers-reduced .appts-calendar-hours {
+  transition: none !important;
+}
+.calendar-workspace.is-immersive-transitioning .appts-calendar-grid {
+  pointer-events: auto;
 }
 
 @media (max-width: 960px) {
