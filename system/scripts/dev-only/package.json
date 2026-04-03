@@ -1,0 +1,8 @@
+{
+  "name": "spa-dev-only-scripts",
+  "private": true,
+  "description": "Optional tooling (Playwright) for calendar_screenshot_once.mjs — run npm install in this folder.",
+  "dependencies": {
+    "playwright": "^1.50.0"
+  }
+}
