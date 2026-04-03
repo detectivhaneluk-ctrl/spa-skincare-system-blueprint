@@ -22,7 +22,10 @@ final class StaffService
 
     public function getDisplayName(array $staff): string
     {
-        return trim($staff['first_name'] . ' ' . $staff['last_name']);
+        if (!empty($staff['display_name'])) {
+            return trim((string) $staff['display_name']);
+        }
+        return trim(($staff['first_name'] ?? '') . ' ' . ($staff['last_name'] ?? ''));
     }
 
     public function create(array $data): int
@@ -33,7 +36,15 @@ final class StaffService
             $userId = $this->currentUserId();
             $data['created_by'] = $userId;
             $data['updated_by'] = $userId;
-            $data['is_active'] = $data['is_active'] ?? true;
+            // Derive is_active from the wizard 'status' field when present; fall back to legacy default.
+            if (array_key_exists('status', $data)) {
+                $data['is_active'] = ($data['status'] === 'active') ? 1 : 0;
+                unset($data['status']);
+            } else {
+                $data['is_active'] = $data['is_active'] ?? 1;
+            }
+            // All staff created through the onboarding wizard start at step 1.
+            $data['onboarding_step'] = 1;
             $id = $this->repo->create($data);
             $this->audit->log('staff_created', 'staff', $id, $userId, $data['branch_id'] ?? null, [
                 'staff' => $data,
@@ -62,6 +73,27 @@ final class StaffService
                 'after' => array_merge($current, $data),
             ]);
         }, 'staff update');
+    }
+
+    public function saveStep2(int $id, array $data): void
+    {
+        $this->transactional(function () use ($id, $data): void {
+            $this->tenantScopeGuard->requireResolvedTenantScope();
+            $current = $this->repo->find($id);
+            if (!$current) {
+                throw new \RuntimeException('Staff not found.');
+            }
+            $branchId = $current['branch_id'] !== null && $current['branch_id'] !== '' ? (int) $current['branch_id'] : null;
+            $this->branchContext->assertBranchMatchOrGlobalEntity($branchId);
+            $userId = $this->currentUserId();
+            $data['updated_by'] = $userId;
+            $data['onboarding_step'] = 2;
+            $this->repo->update($id, $data);
+            $this->audit->log('staff_step2_saved', 'staff', $id, $userId, $branchId, [
+                'step' => 2,
+                'fields_set' => array_keys($data),
+            ]);
+        }, 'staff step2 save');
     }
 
     public function delete(int $id): void

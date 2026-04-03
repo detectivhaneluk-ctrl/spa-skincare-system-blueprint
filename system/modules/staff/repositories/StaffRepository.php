@@ -110,8 +110,20 @@ final class StaffRepository
     private function normalize(array $data): array
     {
         $allowed = [
+            // original columns
             'user_id', 'first_name', 'last_name', 'phone', 'email', 'job_title', 'is_active',
             'branch_id', 'created_by', 'updated_by',
+            // Step 1 onboarding columns (migration 129)
+            'display_name', 'gender', 'staff_type', 'onboarding_step',
+            'employment_end_date', 'create_login_requested', 'max_appointments_per_day',
+            'photo_media_asset_id', 'signature_media_asset_id',
+            'profile_description', 'employee_notes', 'license_number', 'license_expiration_date',
+            'service_type_id', 'street_1', 'street_2', 'city', 'postal_code', 'country',
+            'home_phone', 'mobile_phone', 'preferred_phone', 'sms_opt_in',
+            // Step 2 compensation/benefits columns (migration 130)
+            'primary_group_id', 'pay_type', 'pay_type_classes', 'pay_type_products',
+            'vacation_days', 'sick_days', 'personal_days',
+            'employee_number', 'has_dependents', 'is_exempt',
         ];
         $out = [];
         foreach ($allowed as $k) {

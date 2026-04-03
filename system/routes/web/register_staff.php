@@ -6,9 +6,19 @@ use Core\Middleware\AuthMiddleware;
 use Core\Middleware\GuestMiddleware;
 use Core\Middleware\PermissionMiddleware;
 
+// ── Staff list & wizard entry ──────────────────────────────────────────────────
 $router->get('/staff', [\Modules\Staff\Controllers\StaffController::class, 'index'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.view')]);
 $router->get('/staff/create', [\Modules\Staff\Controllers\StaffController::class, 'create'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.create')]);
 $router->post('/staff', [\Modules\Staff\Controllers\StaffController::class, 'store'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.create')]);
+
+// ── Group HTML admin (must be registered before /{id:\d+} patterns) ───────────
+$router->get('/staff/groups/admin', [\Modules\Staff\Controllers\StaffGroupAdminController::class, 'index'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.view')]);
+$router->get('/staff/groups/admin/create', [\Modules\Staff\Controllers\StaffGroupAdminController::class, 'create'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.create')]);
+$router->post('/staff/groups/admin', [\Modules\Staff\Controllers\StaffGroupAdminController::class, 'store'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.create')]);
+$router->get('/staff/groups/admin/{id:\d+}/edit', [\Modules\Staff\Controllers\StaffGroupAdminController::class, 'edit'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.edit')]);
+$router->post('/staff/groups/admin/{id:\d+}', [\Modules\Staff\Controllers\StaffGroupAdminController::class, 'update'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.edit')]);
+
+// ── Group JSON API (existing — untouched) ─────────────────────────────────────
 $router->get('/staff/groups', [\Modules\Staff\Controllers\StaffGroupController::class, 'index'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.view')]);
 $router->post('/staff/groups', [\Modules\Staff\Controllers\StaffGroupController::class, 'store'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.create')]);
 $router->get('/staff/groups/{id:\d+}', [\Modules\Staff\Controllers\StaffGroupController::class, 'show'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.view')]);
@@ -18,6 +28,13 @@ $router->post('/staff/groups/{id:\d+}/staff/{staffId:\d+}/attach', [\Modules\Sta
 $router->post('/staff/groups/{id:\d+}/staff/{staffId:\d+}/detach', [\Modules\Staff\Controllers\StaffGroupController::class, 'detachStaff'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.edit')]);
 $router->get('/staff/groups/{id:\d+}/permissions', [\Modules\Staff\Controllers\StaffGroupController::class, 'permissions'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.view')]);
 $router->post('/staff/groups/{id:\d+}/permissions', [\Modules\Staff\Controllers\StaffGroupController::class, 'replacePermissions'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.edit')]);
+
+// ── Onboarding wizard steps ────────────────────────────────────────────────────
+$router->get('/staff/{id:\d+}/onboarding/step2', [\Modules\Staff\Controllers\StaffController::class, 'onboardingStep2'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.create')]);
+$router->post('/staff/{id:\d+}/onboarding/step2', [\Modules\Staff\Controllers\StaffController::class, 'saveStep2'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.create')]);
+$router->get('/staff/{id:\d+}/onboarding/step3', [\Modules\Staff\Controllers\StaffController::class, 'onboardingStep3'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.create')]);
+
+// ── Individual staff CRUD ─────────────────────────────────────────────────────
 $router->get('/staff/{id}', [\Modules\Staff\Controllers\StaffController::class, 'show'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.view')]);
 $router->get('/staff/{id}/edit', [\Modules\Staff\Controllers\StaffController::class, 'edit'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.edit')]);
 $router->post('/staff/{id}', [\Modules\Staff\Controllers\StaffController::class, 'update'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.edit')]);

@@ -678,7 +678,7 @@ final class OrganizationRepositoryScope
             . 'SELECT 1 FROM branches b '
             . 'WHERE b.organization_id = ' . $orgSub . ' AND b.deleted_at IS NULL'
             . ')'
-            . ')';
+            . '))';
 
         return [
             'sql' => $sql,
