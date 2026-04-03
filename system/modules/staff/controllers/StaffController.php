@@ -268,8 +268,64 @@ final class StaffController
             return;
         }
         $staff['display_name'] = $this->service->getDisplayName($staff);
-        $flash = flash();
-        require base_path('modules/staff/views/onboarding_step4_placeholder.php');
+        $rawSchedule = $this->scheduleRepo->listByStaff($id);
+        $schedule    = $this->indexScheduleByDay($rawSchedule);
+        $isFirstVisit = empty($rawSchedule);
+        $csrf   = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
+        $errors = [];
+        $flash  = flash();
+        require base_path('modules/staff/views/onboarding_step4_schedule.php');
+    }
+
+    public function saveStep4(int $id): void
+    {
+        $staff = $this->repo->find($id);
+        if (!$staff) {
+            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handle(404);
+            return;
+        }
+        if (!$this->ensureBranchAccess($staff)) {
+            return;
+        }
+
+        $rawDays = $_POST['schedule'] ?? [];
+        if (!is_array($rawDays)) {
+            $rawDays = [];
+        }
+
+        try {
+            $this->scheduleService->saveDefaultWeek($id, $rawDays);
+            $this->service->completeOnboarding($id);
+        } catch (\InvalidArgumentException | \DomainException | \RuntimeException $e) {
+            $staff['display_name'] = $this->service->getDisplayName($staff);
+            $rawSchedule = $this->scheduleRepo->listByStaff($id);
+            $schedule    = $this->indexScheduleByDay($rawSchedule);
+            $isFirstVisit = false;
+            // Re-hydrate submitted values so the operator does not lose their edits
+            foreach ($rawDays as $dowRaw => $day) {
+                $dow = (int) $dowRaw;
+                if (!empty($day['is_working'])) {
+                    $schedule[$dow] = [
+                        'day_of_week'      => $dow,
+                        'start_time'       => $day['start_time'] ?? '',
+                        'end_time'         => $day['end_time'] ?? '',
+                        'lunch_start_time' => $day['lunch_start_time'] ?? null,
+                        'lunch_end_time'   => $day['lunch_end_time'] ?? null,
+                    ];
+                } else {
+                    unset($schedule[$dow]);
+                }
+            }
+            $errors = ['_general' => $e->getMessage()];
+            $csrf   = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
+            $flash  = [];
+            require base_path('modules/staff/views/onboarding_step4_schedule.php');
+            return;
+        }
+
+        $_SESSION['flash']['success'] = 'Employee setup complete.';
+        header('Location: /staff/' . $id);
+        exit;
     }
 
     public function show(int $id): void
@@ -653,6 +709,15 @@ final class StaffController
             return $this->groupRepo->listInTenantScope($any, ['active' => true], 200, 0);
         }
         return $this->groupRepo->list(['active' => true], 200, 0);
+    }
+
+    private function indexScheduleByDay(array $rows): array
+    {
+        $keyed = [];
+        foreach ($rows as $row) {
+            $keyed[(int) $row['day_of_week']] = $row;
+        }
+        return $keyed;
     }
 
     private function loadServicesGrouped(?int $branchId): array

@@ -117,6 +117,26 @@ final class StaffService
         }, "staff onboarding step {$step}");
     }
 
+    /**
+     * Marks onboarding as complete by setting onboarding_step = NULL.
+     * Called after Step 4 (default schedule) is saved successfully.
+     */
+    public function completeOnboarding(int $id): void
+    {
+        $this->transactional(function () use ($id): void {
+            $this->tenantScopeGuard->requireResolvedTenantScope();
+            $current = $this->repo->find($id);
+            if (!$current) {
+                throw new \RuntimeException('Staff not found.');
+            }
+            $branchId = $current['branch_id'] !== null && $current['branch_id'] !== '' ? (int) $current['branch_id'] : null;
+            $this->branchContext->assertBranchMatchOrGlobalEntity($branchId);
+            $userId = $this->currentUserId();
+            $this->repo->update($id, ['onboarding_step' => null, 'updated_by' => $userId]);
+            $this->audit->log('staff_onboarding_complete', 'staff', $id, $userId, $branchId, ['step' => 4]);
+        }, 'staff onboarding complete');
+    }
+
     public function delete(int $id): void
     {
         $this->transactional(function () use ($id): void {

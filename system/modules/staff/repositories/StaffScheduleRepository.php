@@ -48,12 +48,12 @@ final class StaffScheduleRepository
     }
 
     /**
-     * @return list<array{id:int,staff_id:int,day_of_week:int,start_time:string,end_time:string}>
+     * @return list<array{id:int,staff_id:int,day_of_week:int,start_time:string,end_time:string,lunch_start_time:string|null,lunch_end_time:string|null}>
      */
     public function listByStaff(int $staffId): array
     {
         $rows = $this->db->fetchAll(
-            'SELECT id, staff_id, day_of_week, start_time, end_time
+            'SELECT id, staff_id, day_of_week, start_time, end_time, lunch_start_time, lunch_end_time
              FROM staff_schedules
              WHERE staff_id = ?
              ORDER BY day_of_week ASC, start_time ASC',
@@ -62,14 +62,44 @@ final class StaffScheduleRepository
         $out = [];
         foreach ($rows as $r) {
             $out[] = [
-                'id' => (int) $r['id'],
-                'staff_id' => (int) $r['staff_id'],
-                'day_of_week' => (int) $r['day_of_week'],
-                'start_time' => $r['start_time'] !== null ? substr((string) $r['start_time'], 0, 8) : '',
-                'end_time' => $r['end_time'] !== null ? substr((string) $r['end_time'], 0, 8) : '',
+                'id'               => (int) $r['id'],
+                'staff_id'         => (int) $r['staff_id'],
+                'day_of_week'      => (int) $r['day_of_week'],
+                'start_time'       => $r['start_time'] !== null ? substr((string) $r['start_time'], 0, 8) : '',
+                'end_time'         => $r['end_time'] !== null ? substr((string) $r['end_time'], 0, 8) : '',
+                'lunch_start_time' => $r['lunch_start_time'] !== null ? substr((string) $r['lunch_start_time'], 0, 8) : null,
+                'lunch_end_time'   => $r['lunch_end_time'] !== null ? substr((string) $r['lunch_end_time'], 0, 8) : null,
             ];
         }
         return $out;
+    }
+
+    /**
+     * Replaces the entire weekly schedule for a staff member atomically.
+     * Off-days must not be present in $days (no row = no work that day).
+     * Tenant safety is guaranteed by the caller (controller/service must validate staffId belongs
+     * to the resolved tenant before calling this method).
+     *
+     * @param list<array{day_of_week:int,start_time:string,end_time:string,lunch_start_time?:string|null,lunch_end_time?:string|null}> $days
+     */
+    public function replaceWeekForStaff(int $staffId, array $days): void
+    {
+        $this->db->query('DELETE FROM staff_schedules WHERE staff_id = ?', [$staffId]);
+        foreach ($days as $day) {
+            $row = [
+                'staff_id'    => $staffId,
+                'day_of_week' => (int) $day['day_of_week'],
+                'start_time'  => $day['start_time'],
+                'end_time'    => $day['end_time'],
+            ];
+            if (array_key_exists('lunch_start_time', $day) && $day['lunch_start_time'] !== null && $day['lunch_start_time'] !== '') {
+                $row['lunch_start_time'] = $day['lunch_start_time'];
+            }
+            if (array_key_exists('lunch_end_time', $day) && $day['lunch_end_time'] !== null && $day['lunch_end_time'] !== '') {
+                $row['lunch_end_time'] = $day['lunch_end_time'];
+            }
+            $this->db->insert('staff_schedules', $row);
+        }
     }
 
     /**
@@ -89,7 +119,7 @@ final class StaffScheduleRepository
 
     public function create(array $data): int
     {
-        $allowed = ['staff_id', 'day_of_week', 'start_time', 'end_time'];
+        $allowed = ['staff_id', 'day_of_week', 'start_time', 'end_time', 'lunch_start_time', 'lunch_end_time'];
         $payload = array_intersect_key($data, array_flip($allowed));
         $this->db->insert('staff_schedules', $payload);
 
@@ -101,7 +131,7 @@ final class StaffScheduleRepository
      */
     public function update(int $id, array $data): void
     {
-        $allowed = ['day_of_week', 'start_time', 'end_time'];
+        $allowed = ['day_of_week', 'start_time', 'end_time', 'lunch_start_time', 'lunch_end_time'];
         $payload = array_intersect_key($data, array_flip($allowed));
         if (empty($payload)) {
             return;

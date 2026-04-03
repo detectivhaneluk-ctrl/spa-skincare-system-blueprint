@@ -39,6 +39,7 @@ $router->post('/staff/{id:\d+}/onboarding/step2', [\Modules\Staff\Controllers\St
 $router->get('/staff/{id:\d+}/onboarding/step3', [\Modules\Staff\Controllers\StaffController::class, 'onboardingStep3'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.create')]);
 $router->post('/staff/{id:\d+}/onboarding/step3', [\Modules\Staff\Controllers\StaffController::class, 'saveStep3'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.create')]);
 $router->get('/staff/{id:\d+}/onboarding/step4', [\Modules\Staff\Controllers\StaffController::class, 'onboardingStep4'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.create')]);
+$router->post('/staff/{id:\d+}/onboarding/step4', [\Modules\Staff\Controllers\StaffController::class, 'saveStep4'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.create')]);
 
 // ── Individual staff CRUD ─────────────────────────────────────────────────────
 $router->get('/staff/{id}', [\Modules\Staff\Controllers\StaffController::class, 'show'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.view')]);
