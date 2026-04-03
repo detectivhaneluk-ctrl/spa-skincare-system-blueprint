@@ -1790,11 +1790,20 @@ final class AppointmentService
         $this->organizationScopedBranchAssert->assertBranchOwnedByResolvedOrganization($bookingBranchId);
         $userId = $this->currentUserId();
         if ($userId === null || $userId <= 0) {
+            $ctx = $this->contextHolder->get();
+            if ($ctx !== null && $ctx->isAuthenticated()) {
+                $userId = $ctx->actorId;
+            }
+        }
+        if ($userId === null || $userId <= 0) {
             throw new \DomainException('Authentication required.');
         }
         $allowed = $this->tenantBranchAccess->allowedBranchIdsForUser($userId);
         if (!in_array($bookingBranchId, $allowed, true)) {
-            throw new AccessDeniedException('Branch is not allowed for this principal.');
+            throw new AccessDeniedException(
+                'Access denied: branch ' . $bookingBranchId . ' is not in the allowed branches for this user account. '
+                . 'Ensure the user has a branch assignment (users.branch_id) or an active organization membership in the org that owns this branch.'
+            );
         }
     }
 
