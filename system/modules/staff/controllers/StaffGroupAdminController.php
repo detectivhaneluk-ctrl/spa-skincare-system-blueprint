@@ -47,7 +47,7 @@ final class StaffGroupAdminController
         try {
             $this->service->create($data);
             flash('success', 'Staff group created.');
-            header('Location: /staff/groups/admin');
+            header('Location: /staff/groups');
             exit;
         } catch (\InvalidArgumentException | \DomainException $e) {
             $errors = ['name' => $e->getMessage()];
@@ -90,7 +90,7 @@ final class StaffGroupAdminController
         try {
             $this->service->update($id, $data);
             flash('success', 'Staff group updated.');
-            header('Location: /staff/groups/admin');
+            header('Location: /staff/groups');
             exit;
         } catch (\InvalidArgumentException | \DomainException | \RuntimeException $e) {
             $errors = ['name' => $e->getMessage()];

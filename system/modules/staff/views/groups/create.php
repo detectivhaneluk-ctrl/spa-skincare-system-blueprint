@@ -51,7 +51,7 @@ ob_start();
     </div>
 
     <div class="form-actions">
-        <a href="/staff/groups/admin" class="btn btn--secondary">Cancel</a>
+        <a href="/staff/groups" class="btn btn--secondary">Cancel</a>
         <button type="submit" class="btn btn--primary">Create Group</button>
     </div>
 </form>

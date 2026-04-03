@@ -18,8 +18,12 @@ $router->post('/staff/groups/admin', [\Modules\Staff\Controllers\StaffGroupAdmin
 $router->get('/staff/groups/admin/{id:\d+}/edit', [\Modules\Staff\Controllers\StaffGroupAdminController::class, 'edit'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.edit')]);
 $router->post('/staff/groups/admin/{id:\d+}', [\Modules\Staff\Controllers\StaffGroupAdminController::class, 'update'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.edit')]);
 
-// ── Group JSON API (existing — untouched) ─────────────────────────────────────
-$router->get('/staff/groups', [\Modules\Staff\Controllers\StaffGroupController::class, 'index'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.view')]);
+// ── /staff/groups canonical HTML page (operator-facing) ───────────────────────
+$router->get('/staff/groups', [\Modules\Staff\Controllers\StaffGroupAdminController::class, 'index'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.view')]);
+
+// ── Group JSON API ─────────────────────────────────────────────────────────────
+// GET list moved to /staff/groups/list so /staff/groups renders the HTML page.
+$router->get('/staff/groups/list', [\Modules\Staff\Controllers\StaffGroupController::class, 'index'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.view')]);
 $router->post('/staff/groups', [\Modules\Staff\Controllers\StaffGroupController::class, 'store'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.create')]);
 $router->get('/staff/groups/{id:\d+}', [\Modules\Staff\Controllers\StaffGroupController::class, 'show'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.view')]);
 $router->post('/staff/groups/{id:\d+}', [\Modules\Staff\Controllers\StaffGroupController::class, 'update'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('staff.edit')]);
