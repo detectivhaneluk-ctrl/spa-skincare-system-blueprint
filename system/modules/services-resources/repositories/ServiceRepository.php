@@ -147,6 +147,46 @@ final class ServiceRepository
         $this->syncEquipment($serviceId, $mappings['equipment_ids'] ?? []);
     }
 
+    /**
+     * Returns every service id currently linked to $staffId via service_staff.
+     *
+     * @return list<int>
+     */
+    public function listAssignedServiceIdsForStaff(int $staffId): array
+    {
+        $rows = $this->db->fetchAll(
+            'SELECT service_id FROM service_staff WHERE staff_id = ? ORDER BY service_id',
+            [$staffId]
+        );
+
+        return array_map(static fn (array $r): int => (int) $r['service_id'], $rows);
+    }
+
+    /**
+     * Replaces the full set of service assignments for a staff member.
+     *
+     * Only IDs that appear in the tenant-scoped service catalog for $branchId are accepted;
+     * any submitted id not in the valid set is silently skipped (fail-closed, no cross-tenant leak).
+     *
+     * @param list<int> $serviceIds
+     */
+    public function replaceAssignedServicesForStaff(int $staffId, array $serviceIds, ?int $branchId): void
+    {
+        $validRows  = $this->list(null, $branchId);
+        $validIdSet = array_flip(array_column($validRows, 'id'));
+
+        $this->db->query('DELETE FROM service_staff WHERE staff_id = ?', [$staffId]);
+        $seen = [];
+        foreach ($serviceIds as $raw) {
+            $sid = (int) $raw;
+            if ($sid <= 0 || !isset($validIdSet[$sid]) || isset($seen[$sid])) {
+                continue;
+            }
+            $seen[$sid] = true;
+            $this->db->insert('service_staff', ['service_id' => $sid, 'staff_id' => $staffId]);
+        }
+    }
+
     private function syncStaff(int $serviceId, array $ids): void
     {
         $this->db->query('DELETE FROM service_staff WHERE service_id = ?', [$serviceId]);

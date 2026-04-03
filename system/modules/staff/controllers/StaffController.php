@@ -8,6 +8,7 @@ use Core\App\Application;
 use Core\Branch\BranchContext;
 use Core\Organization\OrganizationRepositoryScope;
 use Modules\Media\Services\MediaAssetUploadService;
+use Modules\ServicesResources\Repositories\ServiceRepository;
 use Modules\Staff\Repositories\StaffBreakRepository;
 use Modules\Staff\Repositories\StaffGroupRepository;
 use Modules\Staff\Repositories\StaffRepository;
@@ -41,7 +42,8 @@ final class StaffController
         private MediaAssetUploadService $mediaUpload,
         private StaffGroupRepository $groupRepo,
         private BranchContext $branchContext,
-        private OrganizationRepositoryScope $orgScope
+        private OrganizationRepositoryScope $orgScope,
+        private ServiceRepository $serviceRepo
     ) {
     }
 
@@ -210,8 +212,64 @@ final class StaffController
             return;
         }
         $staff['display_name'] = $this->service->getDisplayName($staff);
+        $branchId = $this->resolveStaffBranchId($staff);
+        $serviceGroups = $this->loadServicesGrouped($branchId);
+        $assignedIds   = array_flip($this->serviceRepo->listAssignedServiceIdsForStaff($id));
+        $csrf  = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
+        $errors = [];
+        $flash  = flash();
+        require base_path('modules/staff/views/onboarding_step3_services.php');
+    }
+
+    public function saveStep3(int $id): void
+    {
+        $staff = $this->repo->find($id);
+        if (!$staff) {
+            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handle(404);
+            return;
+        }
+        if (!$this->ensureBranchAccess($staff)) {
+            return;
+        }
+
+        $rawIds     = $_POST['service_ids'] ?? [];
+        $serviceIds = is_array($rawIds)
+            ? array_values(array_filter(array_map('intval', $rawIds), static fn (int $v): bool => $v > 0))
+            : [];
+
+        $branchId = $this->resolveStaffBranchId($staff);
+
+        try {
+            $this->serviceRepo->replaceAssignedServicesForStaff($id, $serviceIds, $branchId);
+            $this->service->advanceOnboardingStep($id, 3);
+        } catch (\DomainException | \RuntimeException $e) {
+            $staff['display_name'] = $this->service->getDisplayName($staff);
+            $serviceGroups = $this->loadServicesGrouped($branchId);
+            $assignedIds   = array_flip($serviceIds);
+            $errors = ['_general' => $e->getMessage()];
+            $csrf   = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
+            $flash  = [];
+            require base_path('modules/staff/views/onboarding_step3_services.php');
+            return;
+        }
+
+        header('Location: /staff/' . $id . '/onboarding/step4');
+        exit;
+    }
+
+    public function onboardingStep4(int $id): void
+    {
+        $staff = $this->repo->find($id);
+        if (!$staff) {
+            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handle(404);
+            return;
+        }
+        if (!$this->ensureBranchAccess($staff)) {
+            return;
+        }
+        $staff['display_name'] = $this->service->getDisplayName($staff);
         $flash = flash();
-        require base_path('modules/staff/views/onboarding_step3_placeholder.php');
+        require base_path('modules/staff/views/onboarding_step4_placeholder.php');
     }
 
     public function show(int $id): void
@@ -595,6 +653,34 @@ final class StaffController
             return $this->groupRepo->listInTenantScope($any, ['active' => true], 200, 0);
         }
         return $this->groupRepo->list(['active' => true], 200, 0);
+    }
+
+    private function loadServicesGrouped(?int $branchId): array
+    {
+        $services = $this->serviceRepo->list(null, $branchId);
+        $groups   = [];
+        foreach ($services as $svc) {
+            $catName = trim((string) ($svc['category_name'] ?? ''));
+            $key     = $catName !== '' ? $catName : '(Uncategorised)';
+            if (!isset($groups[$key])) {
+                $groups[$key] = ['name' => $key, 'services' => []];
+            }
+            $groups[$key]['services'][] = $svc;
+        }
+        return $groups;
+    }
+
+    private function resolveStaffBranchId(array $staff): ?int
+    {
+        $ctx = $this->branchContext->getCurrentBranchId();
+        if ($ctx !== null && $ctx > 0) {
+            return $ctx;
+        }
+        $sb = $staff['branch_id'] ?? null;
+        if ($sb !== null && $sb !== '') {
+            return (int) $sb;
+        }
+        return $this->orgScope->getAnyLiveBranchIdForResolvedTenantOrganization();
     }
 
     private function ensureBranchAccess(array $entity): bool

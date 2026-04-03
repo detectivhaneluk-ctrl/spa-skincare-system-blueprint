@@ -96,6 +96,27 @@ final class StaffService
         }, 'staff step2 save');
     }
 
+    /**
+     * Advance onboarding_step to $step and audit-log the transition.
+     * Used from controller save paths that handle domain-specific persistence themselves
+     * (e.g. Step 3 service-assignment sync via ServiceRepository before calling this).
+     */
+    public function advanceOnboardingStep(int $id, int $step): void
+    {
+        $this->transactional(function () use ($id, $step): void {
+            $this->tenantScopeGuard->requireResolvedTenantScope();
+            $current = $this->repo->find($id);
+            if (!$current) {
+                throw new \RuntimeException('Staff not found.');
+            }
+            $branchId = $current['branch_id'] !== null && $current['branch_id'] !== '' ? (int) $current['branch_id'] : null;
+            $this->branchContext->assertBranchMatchOrGlobalEntity($branchId);
+            $userId = $this->currentUserId();
+            $this->repo->update($id, ['onboarding_step' => $step, 'updated_by' => $userId]);
+            $this->audit->log('staff_onboarding_step_advanced', 'staff', $id, $userId, $branchId, ['step' => $step]);
+        }, "staff onboarding step {$step}");
+    }
+
     public function delete(int $id): void
     {
         $this->transactional(function () use ($id): void {
