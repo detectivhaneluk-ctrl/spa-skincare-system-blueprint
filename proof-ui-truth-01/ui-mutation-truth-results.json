@@ -1,0 +1,160 @@
+{
+  "scenarios": [
+    {
+      "name": "CREATE multi + parallel + durations",
+      "pass": true
+    },
+    {
+      "name": "CANCEL Davit via status form",
+      "pass": true
+    },
+    {
+      "name": "EDIT notes (+ service if Deluxe available)",
+      "pass": true
+    },
+    {
+      "name": "VISIBILITY notes after edit",
+      "pass": true
+    },
+    {
+      "name": "RESCHEDULE Karen to 17:30",
+      "pass": true
+    },
+    {
+      "name": "RESCHEDULE Elen to Zara (staff change)",
+      "pass": true
+    },
+    {
+      "name": "BLOCK overlap same staff",
+      "pass": true
+    },
+    {
+      "name": "BLOCK booked/blocked window",
+      "pass": true
+    },
+    {
+      "name": "DELETE Lucy — calendar clean",
+      "pass": true
+    }
+  ],
+  "appointments": [
+    {
+      "label": "Anahit_Express30_Sofia_0900_EXISTING_CUSTOMER",
+      "id": 89,
+      "subtitle": "Appointment #89"
+    },
+    {
+      "label": "VIP_Gor_Retreat120_Nina_0900",
+      "id": 90,
+      "subtitle": "Appointment #90"
+    },
+    {
+      "label": "Anahit_Polish45_Zara_1000",
+      "id": 91,
+      "subtitle": "Appointment #91"
+    },
+    {
+      "label": "Davit_Glow45_Mia_1000",
+      "id": 92,
+      "subtitle": "Appointment #92"
+    },
+    {
+      "label": "Mariam_Classic60_Elena_1000",
+      "id": 93,
+      "subtitle": "Appointment #93"
+    },
+    {
+      "label": "Armen_Express30_Sofia_1000",
+      "id": 94,
+      "subtitle": "Appointment #94"
+    },
+    {
+      "label": "Lilit_Glow45_Zara_1115",
+      "id": 95,
+      "subtitle": "Appointment #95"
+    },
+    {
+      "label": "Sona_Glow45_Mia_1115",
+      "id": 96,
+      "subtitle": "Appointment #96"
+    },
+    {
+      "label": "Nare_Glow45_Elena_1115",
+      "id": 97,
+      "subtitle": "Appointment #97"
+    },
+    {
+      "label": "Tigran_Deep90_Nina_1230",
+      "id": 98,
+      "subtitle": "Appointment #98"
+    },
+    {
+      "label": "Hasmik_Express30_Sofia_1400",
+      "id": 99,
+      "subtitle": "Appointment #99"
+    },
+    {
+      "label": "Lucy_Express30_Nina_1500_DELETE_TARGET",
+      "id": 100,
+      "subtitle": "Appointment #100"
+    },
+    {
+      "label": "Elen_Return1_Express30_Elena_1530",
+      "id": 101,
+      "subtitle": "Appointment #101"
+    },
+    {
+      "label": "Karen_Classic60_Mia_1615_EDIT",
+      "id": 102,
+      "subtitle": "Appointment #102"
+    },
+    {
+      "label": "Elen_Return2_Glow45_Sofia_1745",
+      "id": 103,
+      "subtitle": "Appointment #103"
+    }
+  ],
+  "edits": [
+    {
+      "target": "Karen Mkrtchyan",
+      "notes": "EDITED",
+      "serviceChangedToDeluxe": true
+    }
+  ],
+  "reschedules": [
+    {
+      "client": "Karen Mkrtchyan",
+      "newLocal": "2026-05-12T17:30",
+      "staff": "Mia (same)"
+    },
+    {
+      "client": "Elen Beglaryan (visit 2)",
+      "newLocal": "unchanged time",
+      "staff": "Zara (was Sofia)"
+    }
+  ],
+  "deletes": [
+    {
+      "client": "Lucy Martirosyan",
+      "method": "delete"
+    }
+  ],
+  "cancellations": [
+    {
+      "client": "Davit Sargsyan",
+      "status": "cancelled"
+    }
+  ],
+  "conflicts": [
+    {
+      "type": "overlap_same_staff",
+      "pass": true,
+      "message": "Selected slot is no longer available."
+    },
+    {
+      "type": "blocked_time",
+      "pass": true,
+      "message": "Selected slot is no longer available."
+    }
+  ]
+}

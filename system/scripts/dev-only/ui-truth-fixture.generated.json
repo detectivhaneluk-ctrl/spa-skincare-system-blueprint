@@ -1,0 +1,36 @@
+{
+    "branch_id": 11,
+    "branch_code": "SMOKE_A",
+    "test_date": "2026-05-12",
+    "room_id": 3,
+    "staff": {
+        "zara": 43,
+        "mia": 44,
+        "elena": 45,
+        "sofia": 46,
+        "nina": 47
+    },
+    "services": {
+        "express30": 40,
+        "glow45": 41,
+        "classic60": 42,
+        "deep90": 43,
+        "retreat120": 44,
+        "polish45": 46
+    },
+    "clients": {
+        "Anahit_Karapetyan": 204,
+        "Davit_Sargsyan": 205,
+        "Mariam_Hakobyan": 206,
+        "Armen_Petrosyan": 207,
+        "Lilit_Grigoryan": 208,
+        "Gor_Gevorgyan": 209,
+        "Sona_Ter-Mkrtchyan": 210,
+        "Nare_Azatyan": 211,
+        "Tigran_Vardanyan": 212,
+        "Hasmik_Manukyan": 213,
+        "Elen_Beglaryan": 214,
+        "Karen_Mkrtchyan": 215,
+        "Lucy_Martirosyan": 216
+    }
+}
