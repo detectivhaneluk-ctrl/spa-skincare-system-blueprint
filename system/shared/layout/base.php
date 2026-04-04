@@ -19,6 +19,12 @@
         } catch (e) {
             document.documentElement.setAttribute('data-app-nav-layout', 'top');
         }
+        try {
+            if (sessionStorage.getItem('ds-appts-tab-nav')) {
+                document.documentElement.setAttribute('data-ds-appts-tab-nav', '');
+                sessionStorage.removeItem('ds-appts-tab-nav');
+            }
+        } catch (e) {}
     })();
     </script>
     <link rel="stylesheet" href="/assets/css/inter-fonts.css">

@@ -23,21 +23,6 @@ if ($wDate !== null) {
     $createQ['date'] = $wDate;
 }
 $createUrl = '/appointments/create' . ($createQ !== [] ? '?' . http_build_query($createQ) : '');
-$waitlistQ = [];
-if ($wBranch !== null) {
-    $waitlistQ['branch_id'] = $wBranch;
-}
-if ($wDate !== null) {
-    $waitlistQ['date'] = $wDate;
-}
-$waitlistUrl = '/appointments/waitlist' . ($waitlistQ !== [] ? '?' . http_build_query($waitlistQ) : '');
-$workspace['active_tab'] = '';
-$workspace['tabs'] = [
-    ['id' => 'calendar', 'label' => 'Calendar', 'url' => $calendarUrl],
-    ['id' => 'list', 'label' => 'List', 'url' => '/appointments' . $listQ],
-    ['id' => 'new', 'label' => 'New Appointment', 'url' => $createUrl],
-    ['id' => 'waitlist', 'label' => 'Waitlist', 'url' => $waitlistUrl],
-];
 $workspace['shell_modifier'] = 'workspace-shell--edit';
 ob_start();
 ?>

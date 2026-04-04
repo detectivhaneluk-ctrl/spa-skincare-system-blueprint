@@ -25,14 +25,14 @@
   /* —— Tenant main column max width —— */
   --ds-content-max-width: 1320px;
 
-  /* —— Accent: primary CTA + active nav/mode only —— */
-  --ds-color-accent: #0066cc;
-  --ds-color-accent-hover: #0055b3;
-  --ds-color-accent-muted: rgba(0, 102, 204, 0.1);
-  --ds-color-accent-border: rgba(0, 102, 204, 0.28);
-  --ds-color-focus-ring: rgba(0, 102, 204, 0.35);
-  /* UI controls (segmented inset / toolbar double ring) — reference toolbar parity */
-  --ds-color-focus-ring-ui: #6366f1;
+  /* —— Accent: ink black — links, active chrome, primary CTA (Apple-style) —— */
+  --ds-color-accent: #111827;
+  --ds-color-accent-hover: #000000;
+  --ds-color-accent-muted: rgba(17, 24, 39, 0.08);
+  --ds-color-accent-border: rgba(0, 0, 0, 0.2);
+  --ds-color-focus-ring: rgba(0, 0, 0, 0.28);
+  /* UI controls (segmented inset / toolbar double ring) */
+  --ds-color-focus-ring-ui: #111827;
 
   /* —— Semantic (still restrained) —— */
   --ds-color-danger: #b00020;
@@ -75,14 +75,25 @@
   /* —— Radius —— */
   --ds-radius-sm: 6px;
   --ds-radius-md: 10px;
-  --ds-radius-lg: 12px;
+  --ds-radius-lg: 14px;
+  --ds-radius-xl: 20px;
+  --ds-radius-2xl: 24px;
   --ds-radius-pill: 999px;
 
-  /* —— Shadows (soft, rare) —— */
+  /* —— Shadows (soft, Apple-style) —— */
+  /*
+   * Elevation policy: --ds-shadow-md, --ds-shadow-glass, --ds-shadow-drawer and stronger
+   * are for true floating layers (dropdowns, modals, popovers, drawers, tooltips).
+   * Structural cards, rails, and inline controls use borders + xs / control-rest only.
+   */
   --ds-shadow-xs: 0 1px 0 rgba(0, 0, 0, 0.04);
-  --ds-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --ds-shadow-md: 0 4px 14px rgba(0, 0, 0, 0.07);
-  --ds-shadow-drawer: -12px 0 40px rgba(0, 0, 0, 0.1);
+  --ds-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --ds-shadow-md: 0 4px 16px rgba(15, 23, 42, 0.08), 0 1px 4px rgba(15, 23, 42, 0.04);
+  --ds-shadow-glass: 0 8px 32px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.04);
+  --ds-shadow-drawer: -8px 0 32px rgba(15, 23, 42, 0.12);
+  /* Inline buttons: flat at rest, lift on hover */
+  --ds-shadow-control-rest: 0 1px 2px rgba(0, 0, 0, 0.03);
+  --ds-shadow-control-hover: 0 4px 14px rgba(15, 23, 42, 0.1);
   /* Segmented track + sliding thumb (layered shadow, reference parity) */
   --ds-shadow-segmented-active: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
   --ds-shadow-segmented-thumb: var(--ds-shadow-segmented-active);
@@ -91,10 +102,10 @@
   --ds-segmented-track-padding: 4px;
   --ds-segmented-thumb-inset: 2px;
   --ds-segmented-thumb-inset-pill: 4px;
-  /* Dark pill toolbar CTA elevation */
-  --ds-shadow-toolbar-cta: 0 4px 14px rgba(17, 24, 39, 0.15);
-  --ds-shadow-toolbar-cta-hover: 0 8px 24px rgba(17, 24, 39, 0.2);
-  --ds-shadow-toolbar-cta-active: 0 2px 8px rgba(17, 24, 39, 0.15);
+  /* Dark pill toolbar CTA: no “floating card” at rest; depth on hover only */
+  --ds-shadow-toolbar-cta: none;
+  --ds-shadow-toolbar-cta-hover: 0 8px 22px rgba(17, 24, 39, 0.18);
+  --ds-shadow-toolbar-cta-active: 0 2px 8px rgba(17, 24, 39, 0.12);
 
   /* —— Control sizes (desktop) —— */
   --ds-control-height: 2.25rem;
@@ -109,15 +120,20 @@
   --ds-shell-pad-x: var(--ds-space-5);
   --ds-shell-pad-y: var(--ds-space-4);
   --ds-workspace-max-width: none;
-  --ds-z-drawer: 80;
   --ds-z-app-header: 200;
+  /* Above shell chrome (.app-shell__header, mobile bar, sidebar overlays use header + n) */
+  --ds-z-drawer: calc(var(--ds-z-app-header) + 250);
 
   /* —— Motion (functional only) —— */
   --ds-duration-drawer: 180ms;
+  --ds-duration-toolbar-entrance: 350ms;
   --ds-ease-standard: ease;
   /* Segmented thumb slide + workspace CTA (springy, not bouncy) */
   --ds-ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
-  --ds-duration-segmented-thumb: 0.5s;
-  --ds-duration-toolbar-cta: 0.4s;
-  --ds-duration-toolbar-entrance: 0.8s;
+  /* —— Glass / backdrop —— */
+  --ds-glass-bg: rgba(255, 255, 255, 0.72);
+  --ds-glass-bg-strong: rgba(255, 255, 255, 0.88);
+  --ds-glass-border: rgba(255, 255, 255, 0.55);
+  --ds-glass-blur: blur(24px) saturate(140%);
+  --ds-glass-blur-strong: blur(32px) saturate(160%);
 }

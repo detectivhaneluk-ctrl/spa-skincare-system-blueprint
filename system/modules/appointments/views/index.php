@@ -72,10 +72,6 @@ $apptListCalendarHref = '/appointments/calendar/day' . ($apptListCalendarQ !== [
                 </div>
             </div>
         </form>
-        <div class="appt-list-toolbar__actions">
-            <a href="<?= htmlspecialchars($apptListCalendarHref) ?>" class="appt-list-btn appt-list-btn--ghost">Day calendar</a>
-            <a href="<?= htmlspecialchars($workspace['new_appointment_url'] ?? '/appointments/create') ?>" class="appt-list-btn appt-list-btn--solid appt-list-btn--with-icon" title="New appointment"><span class="appt-list-btn__ic" aria-hidden="true">+</span><span>Add Appointment</span></a>
-        </div>
     </div>
 
     <div class="appt-list-main">

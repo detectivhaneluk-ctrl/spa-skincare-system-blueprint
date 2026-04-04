@@ -1,18 +1,28 @@
 (() => {
   const dateEl = document.getElementById('calendar-date');
+  const calendarToolbarDateLabel = document.getElementById('calendar-toolbar-date-label');
+  const calendarToolbarDateFocus = document.getElementById('calendar-toolbar-date-focus');
+  const calendarToolbarPrevDay = document.getElementById('calendar-toolbar-prev-day');
+  const calendarToolbarNextDay = document.getElementById('calendar-toolbar-next-day');
   const calCard = document.getElementById('appts-cal-card');
   const calStrip = document.getElementById('appts-cal-strip');
   const calMonthGrid = document.getElementById('appts-cal-month-grid');
+  const calTwoMonthsGrid1 = document.getElementById('appts-cal-two-months-grid-1');
+  const calTwoMonthsGrid2 = document.getElementById('appts-cal-two-months-grid-2');
+  const calTwoMonthsLabel1 = document.getElementById('appts-cal-two-months-label-1');
+  const calTwoMonthsLabel2 = document.getElementById('appts-cal-two-months-label-2');
   const calContextMonth = document.getElementById('appts-cal-context-month');
   const calHeroDay = document.getElementById('appts-cal-hero-day');
   const calHeroWeekday = document.getElementById('appts-cal-hero-weekday');
   const calHeroKicker = document.getElementById('appts-cal-hero-kicker');
   const calModeWeek = document.getElementById('appts-cal-mode-week');
   const calModeMonth = document.getElementById('appts-cal-mode-month');
+  const calModeTwoMonths = document.getElementById('appts-cal-mode-two-months');
   const calNavWeek = document.getElementById('appts-cal-nav-week');
   const calNavMonth = document.getElementById('appts-cal-nav-month');
   const calBodyWeek = document.getElementById('appts-cal-body-week');
   const calBodyMonth = document.getElementById('appts-cal-body-month');
+  const calBodyTwoMonths = document.getElementById('appts-cal-body-two-months');
   const calPrevWeek = document.getElementById('appts-cal-prev-week');
   const calNextWeek = document.getElementById('appts-cal-next-week');
   const calPrevMonth = document.getElementById('appts-cal-prev-month');
@@ -122,6 +132,8 @@
   let latestMonthSummary = null;
   let weekSummaryErrorText = '';
   let monthSummaryErrorText = '';
+  let twoMonthsSummaryErrorText = '';
+  let twoMonthsSummarySeq = 0;
   /** Frees the browser tab loading indicator if the server never responds. */
   const CALENDAR_FETCH_TIMEOUT_MS = 25000;
   function bindAbortDeadline(abortController, ms) {
@@ -242,7 +254,10 @@
 
   function refreshSummaryRailVisible() {
     if (!summaryRailEl) return;
-    const msg = calendarMode === 'week' ? weekSummaryErrorText : monthSummaryErrorText;
+    let msg = '';
+    if (calendarMode === 'week') msg = weekSummaryErrorText;
+    else if (calendarMode === 'month') msg = monthSummaryErrorText;
+    else msg = twoMonthsSummaryErrorText;
     if (!msg) {
       summaryRailEl.textContent = '';
       summaryRailEl.hidden = true;
@@ -284,14 +299,15 @@
   let calendarMode = (function () {
     try {
       const s = sessionStorage.getItem(CAL_MODE_KEY);
-      return s === 'month' ? 'month' : 'week';
+      if (s === 'month' || s === 'two-months') return s;
+      return 'week';
     } catch (e) {
       return 'week';
     }
   })();
 
   function setCalendarMode(mode) {
-    if (mode !== 'week' && mode !== 'month') return;
+    if (mode !== 'week' && mode !== 'month' && mode !== 'two-months') return;
     calendarMode = mode;
     try {
       sessionStorage.setItem(CAL_MODE_KEY, mode);
@@ -303,16 +319,21 @@
 
   function syncModeChrome() {
     const isWeek = calendarMode === 'week';
-    if (calModeWeek && calModeMonth) {
+    const isMonth = calendarMode === 'month';
+    const isTwoMonths = calendarMode === 'two-months';
+    if (calModeWeek && calModeMonth && calModeTwoMonths) {
       calModeWeek.classList.toggle('appts-cal-card__mode-btn--active', isWeek);
       calModeWeek.setAttribute('aria-pressed', isWeek ? 'true' : 'false');
-      calModeMonth.classList.toggle('appts-cal-card__mode-btn--active', !isWeek);
-      calModeMonth.setAttribute('aria-pressed', isWeek ? 'false' : 'true');
+      calModeMonth.classList.toggle('appts-cal-card__mode-btn--active', isMonth);
+      calModeMonth.setAttribute('aria-pressed', isMonth ? 'true' : 'false');
+      calModeTwoMonths.classList.toggle('appts-cal-card__mode-btn--active', isTwoMonths);
+      calModeTwoMonths.setAttribute('aria-pressed', isTwoMonths ? 'true' : 'false');
     }
     calNavWeek?.classList.toggle('is-cal-hidden', !isWeek);
     calNavMonth?.classList.toggle('is-cal-hidden', isWeek);
     calBodyWeek?.classList.toggle('is-cal-hidden', !isWeek);
-    calBodyMonth?.classList.toggle('is-cal-hidden', isWeek);
+    calBodyMonth?.classList.toggle('is-cal-hidden', !isMonth);
+    calBodyTwoMonths?.classList.toggle('is-cal-hidden', !isTwoMonths);
   }
 
   /** now-line: current grid vm reference; null when no calendar is rendered. */
@@ -507,8 +528,26 @@
   }
 
   function clearMonthGridDecorations() {
-    if (!calMonthGrid) return;
-    calMonthGrid.querySelectorAll('.appts-cal-month__cell--day').forEach((el) => {
+    [calMonthGrid, calTwoMonthsGrid1, calTwoMonthsGrid2].forEach((grid) => {
+      if (!grid) return;
+      grid.querySelectorAll('.appts-cal-month__cell--day').forEach((el) => {
+        el.classList.remove(
+          'appts-cal-month__cell--closed',
+          'appts-cal-month__cell--has-appts',
+          'appts-cal-month__cell--has-blocked',
+          'appts-cal-month__cell--busy-steady',
+          'appts-cal-month__cell--busy-heavy',
+          'appts-cal-month__cell--past',
+          'appts-cal-month__cell--future'
+        );
+        el.querySelectorAll('.appts-cal-month__cell-count').forEach((n) => n.remove());
+      });
+    });
+  }
+
+  function clearMonthGridDecorationsFor(grid) {
+    if (!grid) return;
+    grid.querySelectorAll('.appts-cal-month__cell--day').forEach((el) => {
       el.classList.remove(
         'appts-cal-month__cell--closed',
         'appts-cal-month__cell--has-appts',
@@ -631,15 +670,16 @@
     }
   }
 
-  function applyMonthSummaryPayload(payload) {
-    if (!payload || typeof payload !== 'object' || !payload.month_summary_contract || !calMonthGrid || !branchEl || !dateEl) {
+  function applyMonthSummaryPayload(payload, targetGrid, targetMonth) {
+    const grid = targetGrid || calMonthGrid;
+    if (!payload || typeof payload !== 'object' || !payload.month_summary_contract || !grid || !branchEl || !dateEl) {
       return;
     }
     const bid = parseInt(String(branchEl.value || '0'), 10) || 0;
     if ((Number(payload.branch_id) || 0) !== bid) {
       return;
     }
-    const vm = visibleMonthFromDateEl();
+    const vm = targetMonth || visibleMonthFromDateEl();
     if (!vm || !payload.month) return;
     const py = Number(payload.month.year);
     const pm = Number(payload.month.month);
@@ -648,15 +688,15 @@
       latestMonthSummary = null;
       return;
     }
-    latestMonthSummary = payload;
-    clearMonthGridDecorations();
+    if (!targetGrid) latestMonthSummary = payload;
+    clearMonthGridDecorationsFor(grid);
     const byDate = {};
     const list = Array.isArray(payload.days) ? payload.days : [];
     for (let i = 0; i < list.length; i++) {
       const row = list[i];
       if (row && row.date) byDate[row.date] = row;
     }
-    calMonthGrid.querySelectorAll('.appts-cal-month__cell--day').forEach((btn) => {
+    grid.querySelectorAll('.appts-cal-month__cell--day').forEach((btn) => {
       const iso = btn.dataset.date;
       const row = byDate[iso];
       if (!row) return;
@@ -717,7 +757,7 @@
       if (payload && payload.month_summary_contract) {
         monthSummaryErrorText = '';
         refreshSummaryRailVisible();
-        applyMonthSummaryPayload(payload);
+        applyMonthSummaryPayload(payload, calMonthGrid, vm);
       } else {
         monthSummaryErrorText = 'Month summary: unexpected response.';
         clearMonthGridDecorations();
@@ -742,10 +782,75 @@
     }
   }
 
+  async function fetchMonthSummaryPayloadFor(year, month) {
+    const ctrl = new AbortController();
+    const deadline = bindAbortDeadline(ctrl, CALENDAR_FETCH_TIMEOUT_MS);
+    try {
+      const params = new URLSearchParams();
+      params.set('year', String(year));
+      params.set('month', String(month));
+      params.set('date', String(dateEl.value || '').trim());
+      if (branchEl && branchEl.value) params.set('branch_id', branchEl.value);
+      const res = await fetch('/calendar/month-summary?' + params.toString(), {
+        headers: { Accept: 'application/json' },
+        signal: ctrl.signal,
+      });
+      let payload = null;
+      try {
+        payload = await res.json();
+      } catch (_e) {
+        return { payload: null, error: 'invalid response' };
+      }
+      const err = payload && typeof payload === 'object' ? payload.error : undefined;
+      const errMsg = typeof err === 'string' ? err : err && typeof err === 'object' && typeof err.message === 'string' ? err.message : null;
+      if (!res.ok || errMsg) {
+        return { payload: null, error: errMsg || 'could not load' };
+      }
+      if (!payload || !payload.month_summary_contract) {
+        return { payload: null, error: 'unexpected response' };
+      }
+      return { payload, error: '' };
+    } catch (e) {
+      if (e && e.name === 'AbortError') {
+        return { payload: null, error: 'timed out' };
+      }
+      return { payload: null, error: 'network error' };
+    } finally {
+      clearTimeout(deadline);
+    }
+  }
+
+  async function loadTwoMonthsSummary() {
+    const vm = visibleMonthFromDateEl();
+    if (!vm || !dateEl) return;
+    const first = { y: vm.y, m: vm.m };
+    const secondDate = new Date(Date.UTC(vm.y, vm.m, 1));
+    const second = { y: secondDate.getUTCFullYear(), m: secondDate.getUTCMonth() + 1 };
+    twoMonthsSummarySeq += 1;
+    const seq = twoMonthsSummarySeq;
+    const [r1, r2] = await Promise.all([
+      fetchMonthSummaryPayloadFor(first.y, first.m),
+      fetchMonthSummaryPayloadFor(second.y, second.m),
+    ]);
+    if (seq !== twoMonthsSummarySeq) return;
+    twoMonthsSummaryErrorText = '';
+    clearMonthGridDecorationsFor(calTwoMonthsGrid1);
+    clearMonthGridDecorationsFor(calTwoMonthsGrid2);
+    if (r1.payload) applyMonthSummaryPayload(r1.payload, calTwoMonthsGrid1, first);
+    if (r2.payload) applyMonthSummaryPayload(r2.payload, calTwoMonthsGrid2, second);
+    if (r1.error || r2.error) {
+      const err1 = r1.error ? 'Current month: ' + r1.error : '';
+      const err2 = r2.error ? 'Next month: ' + r2.error : '';
+      twoMonthsSummaryErrorText = [err1, err2].filter(Boolean).join(' · ');
+    }
+    refreshSummaryRailVisible();
+  }
+
   function updateRailDayMeta(vm, apptCount) {
     if (!vm) return;
     if (calendarMode === 'week' && latestWeekSummary) return;
     if (calendarMode === 'month' && latestMonthSummary) return;
+    if (calendarMode === 'two-months') return;
     const closedCls = calendarMode === 'week' ? 'appts-cal-card__dow--closed' : 'appts-cal-month__cell--closed';
     const apptCls = calendarMode === 'week' ? 'appts-cal-card__dow--has-appts' : 'appts-cal-month__cell--has-appts';
     const sel = calendarMode === 'week'
@@ -768,18 +873,62 @@
     const mo = parseInt(cur.slice(5, 7), 10);
     const dayNum = parseInt(cur.slice(8, 10), 10);
     const refUtc = new Date(Date.UTC(y, mo - 1, dayNum));
-    calContextMonth.textContent = refUtc.toLocaleDateString(undefined, { month: 'long', year: 'numeric', timeZone: 'UTC' });
+    if (calendarMode === 'week') {
+      const ws = weekStartMondayIso(cur);
+      const we = shiftIsoDate(ws, 6);
+      const wsY = parseInt(ws.slice(0, 4), 10), wsM = parseInt(ws.slice(5, 7), 10), wsD = parseInt(ws.slice(8, 10), 10);
+      const weY = parseInt(we.slice(0, 4), 10), weM = parseInt(we.slice(5, 7), 10), weD = parseInt(we.slice(8, 10), 10);
+      const startDate = new Date(Date.UTC(wsY, wsM - 1, wsD));
+      const endDate = new Date(Date.UTC(weY, weM - 1, weD));
+      if (wsM === weM && wsY === weY) {
+        const monthStr = startDate.toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' });
+        calContextMonth.textContent = monthStr + ' ' + wsD + ' \u2013 ' + weD + ', ' + wsY;
+      } else {
+        const s = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+        const e = endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+        calContextMonth.textContent = s + ' \u2013 ' + e + ', ' + weY;
+      }
+    } else if (calendarMode === 'two-months') {
+      const next = new Date(Date.UTC(y, mo, 1));
+      const left = refUtc.toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+      const right = next.toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
+      calContextMonth.textContent = left + ' \u2013 ' + right;
+    } else {
+      calContextMonth.textContent = refUtc.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+    }
     calHeroDay.textContent = String(dayNum);
-    calHeroWeekday.textContent = refUtc.toLocaleDateString(undefined, { weekday: 'long', timeZone: 'UTC' });
+    calHeroWeekday.textContent = refUtc.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
     if (calHeroKicker) {
       calHeroKicker.textContent = cur === todayStr ? 'Today' : 'Selected';
     }
+  }
+
+  function formatIsoDateForToolbarDisplay(iso) {
+    const s = String(iso || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '';
+    return s.slice(8, 10) + '.' + s.slice(5, 7) + '.' + s.slice(0, 4);
+  }
+
+  function syncCalendarToolbarDateLabel() {
+    if (!calendarToolbarDateLabel || !dateEl) return;
+    calendarToolbarDateLabel.textContent = formatIsoDateForToolbarDisplay(dateEl.value);
+  }
+
+  function shiftCalendarDayBy(deltaDays) {
+    if (!dateEl || !/^\d{4}-\d{2}-\d{2}$/.test(String(dateEl.value || ''))) return;
+    selectedSlot = null;
+    dateEl.value = shiftIsoDate(dateEl.value, deltaDays);
+    syncCalendarToolbarDateLabel();
+    renderSmartCard();
+    pushCalendarHistoryIfChanged();
+    load();
   }
 
   function pickDateAndReload(iso) {
     if (!dateEl || dateEl.value === iso) return;
     selectedSlot = null;
     dateEl.value = iso;
+    syncCalendarToolbarDateLabel();
     renderSmartCard();
     pushCalendarHistoryIfChanged();
     load();
@@ -803,7 +952,7 @@
       btn.type = 'button';
       btn.className = 'appts-cal-card__dow';
       btn.dataset.date = iso;
-      btn.setAttribute('aria-label', cellUtc.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' }));
+      btn.setAttribute('aria-label', cellUtc.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' }));
       if (iso === cur) {
         btn.classList.add('appts-cal-card__dow--selected');
         btn.setAttribute('aria-current', 'date');
@@ -848,30 +997,23 @@
     loadWeekSummary();
   }
 
-  function renderMonthGrid() {
-    if (!calMonthGrid || !dateEl) return;
-    const cur = String(dateEl.value || '').trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(cur)) return;
-    const vm = visibleMonthFromDateEl();
-    if (!vm) return;
-    const todayStr = getBranchNow().dateStr;
-    const y = vm.y;
-    const m = vm.m;
+  function renderMonthGridCells(grid, y, m, selectedIso, todayStr) {
+    if (!grid) return;
     const last = daysInMonthUtc(y, m);
     const firstIso = ymFirstIso(y, m);
     const pad = mondayOffsetFromIso(firstIso);
     const cells = pad + last;
     const rows = Math.ceil(cells / 7);
     const total = rows * 7;
-    calMonthGrid.innerHTML = '';
-    calMonthGrid.setAttribute('aria-label', calContextMonth ? calContextMonth.textContent : 'Month');
+    grid.innerHTML = '';
+    grid.setAttribute('aria-label', new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }));
     for (let i = 0; i < total; i++) {
       const dayIx = i - pad + 1;
       if (i < pad || dayIx > last) {
         const padEl = document.createElement('div');
         padEl.className = 'appts-cal-month__cell appts-cal-month__cell--pad';
         padEl.setAttribute('aria-hidden', 'true');
-        calMonthGrid.appendChild(padEl);
+        grid.appendChild(padEl);
         continue;
       }
       const iso = y + '-' + String(m).padStart(2, '0') + '-' + String(dayIx).padStart(2, '0');
@@ -880,8 +1022,8 @@
       btn.type = 'button';
       btn.className = 'appts-cal-month__cell appts-cal-month__cell--day';
       btn.dataset.date = iso;
-      btn.setAttribute('aria-label', cellUtc.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' }));
-      if (iso === cur) {
+      btn.setAttribute('aria-label', cellUtc.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' }));
+      if (iso === selectedIso) {
         btn.classList.add('appts-cal-month__cell--selected');
         btn.setAttribute('aria-current', 'date');
       }
@@ -895,8 +1037,20 @@
       btn.appendChild(num);
       btn.appendChild(dot);
       btn.addEventListener('click', () => pickDateAndReload(iso));
-      calMonthGrid.appendChild(btn);
+      grid.appendChild(btn);
     }
+  }
+
+  function renderMonthGrid() {
+    if (!calMonthGrid || !dateEl) return;
+    const cur = String(dateEl.value || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(cur)) return;
+    const vm = visibleMonthFromDateEl();
+    if (!vm) return;
+    const todayStr = getBranchNow().dateStr;
+    const y = vm.y;
+    const m = vm.m;
+    renderMonthGridCells(calMonthGrid, y, m, cur, todayStr);
     const bootM = document.getElementById('appts-calendar-month-summary-bootstrap');
     if (bootM && bootM.textContent) {
       try {
@@ -904,7 +1058,7 @@
         if (boot && boot.month_summary_contract) {
           monthSummaryErrorText = '';
           refreshSummaryRailVisible();
-          applyMonthSummaryPayload(boot);
+          applyMonthSummaryPayload(boot, calMonthGrid, vm);
         } else {
           monthSummaryErrorText = 'Month summary: incomplete data from server.';
           clearMonthGridDecorations();
@@ -924,13 +1078,36 @@
     loadMonthSummary();
   }
 
+  function renderTwoMonthsGrid() {
+    if (!calTwoMonthsGrid1 || !calTwoMonthsGrid2 || !dateEl) return;
+    const cur = String(dateEl.value || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(cur)) return;
+    const vm = visibleMonthFromDateEl();
+    if (!vm) return;
+    const todayStr = getBranchNow().dateStr;
+    const first = { y: vm.y, m: vm.m };
+    const secondDate = new Date(Date.UTC(vm.y, vm.m, 1));
+    const second = { y: secondDate.getUTCFullYear(), m: secondDate.getUTCMonth() + 1 };
+    if (calTwoMonthsLabel1) {
+      calTwoMonthsLabel1.textContent = new Date(Date.UTC(first.y, first.m - 1, 1)).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+    }
+    if (calTwoMonthsLabel2) {
+      calTwoMonthsLabel2.textContent = new Date(Date.UTC(second.y, second.m - 1, 1)).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+    }
+    renderMonthGridCells(calTwoMonthsGrid1, first.y, first.m, cur, todayStr);
+    renderMonthGridCells(calTwoMonthsGrid2, second.y, second.m, cur, todayStr);
+    loadTwoMonthsSummary();
+  }
+
   function renderSmartCard() {
     updateHero();
     syncModeChrome();
     if (calendarMode === 'week') {
       renderWeekStrip();
-    } else {
+    } else if (calendarMode === 'month') {
       renderMonthGrid();
+    } else {
+      renderTwoMonthsGrid();
     }
   }
 
@@ -939,6 +1116,7 @@
     if (!cur) return;
     selectedSlot = null;
     dateEl.value = shiftIsoDate(cur, deltaWeeks * 7);
+    syncCalendarToolbarDateLabel();
     renderSmartCard();
     pushCalendarHistoryIfChanged();
     load();
@@ -949,6 +1127,7 @@
     if (!cur) return;
     selectedSlot = null;
     dateEl.value = addMonthsIso(cur, deltaM);
+    syncCalendarToolbarDateLabel();
     renderSmartCard();
     pushCalendarHistoryIfChanged();
     load();
@@ -959,6 +1138,7 @@
     if (!t || !/^\d{4}-\d{2}-\d{2}$/.test(t)) return;
     if (dateEl.value === t) {
       calendarViewportManualScrollLock = false;
+      syncCalendarToolbarDateLabel();
       renderSmartCard();
       scheduleNowLineViewportAnchor({ behavior: 'smooth' });
       updateNowButtonState();
@@ -966,6 +1146,7 @@
     }
     selectedSlot = null;
     dateEl.value = t;
+    syncCalendarToolbarDateLabel();
     renderSmartCard();
     pushCalendarHistoryIfChanged();
     load();
@@ -974,8 +1155,10 @@
   function refreshCalendarSummaries() {
     if (calendarMode === 'week') {
       loadWeekSummary();
-    } else {
+    } else if (calendarMode === 'month') {
       loadMonthSummary();
+    } else {
+      loadTwoMonthsSummary();
     }
   }
 
@@ -1006,6 +1189,8 @@
     label.textContent = fmtTime(nowMinutes);
     line.hidden  = false;
     label.hidden = false;
+    // Keep the now-line centered as real time advances (respects manual scroll lock).
+    scheduleNowLineViewportAnchor();
   }
 
   /**
@@ -1103,8 +1288,29 @@
   function closeAllStaffMenus() {
     document.querySelectorAll('.ops-staff-menu:not([hidden])').forEach((m) => {
       m.hidden = true;
-      m.closest('.ops-staff-head')?.classList.remove('ops-staff-head--open');
+      const head = m.closest('.ops-staff-head');
+      if (head) {
+        head.classList.remove('ops-staff-head--open');
+        head.setAttribute('aria-expanded', 'false');
+      }
     });
+  }
+
+  function appendStaffMenuItemIcon(btn, symbolId) {
+    const wrap = document.createElement('span');
+    wrap.className = 'ops-staff-menu__ic';
+    wrap.setAttribute('aria-hidden', 'true');
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'ops-staff-menu__icon-svg');
+    svg.setAttribute('width', '16');
+    svg.setAttribute('height', '16');
+    svg.setAttribute('viewBox', '0 0 16 16');
+    svg.setAttribute('fill', 'currentColor');
+    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    use.setAttribute('href', '#' + symbolId);
+    svg.appendChild(use);
+    wrap.appendChild(svg);
+    btn.appendChild(wrap);
   }
 
   function toggleStaffMenu(header, menu) {
@@ -2079,8 +2285,8 @@
     const viewportBottom = gridRect.bottom;
     if (viewportBottom <= viewportTop + 4) return;
     const bandH = viewportBottom - viewportTop;
-    /** Target: ~30% into visible band (25–35% contract). */
-    const targetY = viewportTop + bandH * 0.3;
+    /** Target: 50% — now-line centered in the visible band. */
+    const targetY = viewportTop + bandH * 0.5;
     const lineMidY = lineRect.top + lineRect.height / 2;
     const delta = lineMidY - targetY;
     if (Math.abs(delta) < 3) return;
@@ -2093,7 +2299,7 @@
       behavior = 'smooth';
     }
     if (options.behavior === 'auto') {
-      behavior = prefersReducedMotion ? 'instant' : 'instant';
+      behavior = prefersReducedMotion ? 'instant' : 'smooth';
     }
     scrollViewportProgrammatic(scrollEl, nextTop, behavior);
   }
@@ -2439,7 +2645,7 @@
       h.setAttribute('tabindex', '0');
       h.setAttribute('aria-haspopup', 'true');
       h.setAttribute('aria-expanded', 'false');
-      h.title = 'Options for ' + col.label;
+      h.setAttribute('aria-label', col.label + ', open options menu');
       const inner = document.createElement('div');
       inner.className = 'ops-staff-head-inner';
       const name = document.createElement('div');
@@ -2456,12 +2662,12 @@
       menu.hidden = true;
 
       [
-        { label: 'Block Out Time', action: 'block' },
-        { label: 'Edit Schedule',  action: 'schedule' },
-        { label: 'Edit Services',  action: 'services' },
-        { label: 'View Profile',   action: 'profile' },
+        { label: 'Block Out Time', action: 'block', icon: 'bi-lock' },
+        { label: 'Edit Schedule', action: 'schedule', icon: 'bi-calendar-week' },
+        { label: 'Edit Services', action: 'services', icon: 'bi-sliders2' },
+        { label: 'View Profile', action: 'profile', icon: 'bi-person-vcard' },
         null,
-        { label: 'Hide Column',    action: 'hide', mod: 'danger' },
+        { label: 'Hide Column', action: 'hide', mod: 'danger', icon: 'bi-eye-slash' },
       ].forEach((def) => {
         if (def === null) {
           const sep = document.createElement('div');
@@ -2476,8 +2682,12 @@
         btn.dataset.action = def.action;
         btn.dataset.staffId = String(col.id);
         btn.dataset.staffLabel = col.label;
-        btn.textContent = def.label;
         btn.setAttribute('role', 'menuitem');
+        appendStaffMenuItemIcon(btn, def.icon);
+        const lbl = document.createElement('span');
+        lbl.className = 'ops-staff-menu__label';
+        lbl.textContent = def.label;
+        btn.appendChild(lbl);
         menu.appendChild(btn);
       });
 
@@ -2911,12 +3121,21 @@
       branchHoursIndicatorEl.className = 'appts-calendar-hours calendar-branch-hours-indicator calendar-branch-hours-indicator--closed';
       return;
     }
-    const base = (openTime && closeTime)
-      ? ('Branch hours: ' + openTime + '-' + closeTime)
-      : 'Opening hours not configured for this branch/day.';
-    const suffix = anomalies > 0 ? (' | ' + anomalies + ' appointment(s) outside branch hours.') : '';
-    branchHoursIndicatorEl.textContent = base + suffix;
-    branchHoursIndicatorEl.className = 'appts-calendar-hours calendar-branch-hours-indicator calendar-branch-hours-indicator--open';
+    if (openTime && closeTime) {
+      if (anomalies > 0) {
+        branchHoursIndicatorEl.textContent =
+          anomalies + ' appointment(s) fall outside opening hours (' + openTime + '–' + closeTime + ').';
+        branchHoursIndicatorEl.className =
+          'appts-calendar-hours calendar-branch-hours-indicator calendar-branch-hours-indicator--anomaly';
+      } else {
+        branchHoursIndicatorEl.textContent = '';
+        branchHoursIndicatorEl.className = 'appts-calendar-hours calendar-branch-hours-indicator';
+      }
+    } else {
+      branchHoursIndicatorEl.textContent = 'Opening hours not configured for this branch/day.';
+      branchHoursIndicatorEl.className =
+        'appts-calendar-hours calendar-branch-hours-indicator calendar-branch-hours-indicator--missing';
+    }
   }
 
   function branchEnvelopeForLane(meta, dayStart, dayEnd) {
@@ -3193,6 +3412,16 @@
     return () => container.removeEventListener('keydown', keyHandler);
   }
 
+  /** Milk-glass contextual anchor: active while Tools panel or any in-anchor popover is open. */
+  function syncCalendarContextAnchorActiveState() {
+    const anchor = document.getElementById('cal-toolbar-context-anchor');
+    if (!anchor) return;
+    const panel = document.getElementById('cal-toolbar-tools-panel');
+    const panelOpen = !!(panel && !panel.hidden);
+    const nestedOpen = !!anchor.querySelector('.appts-cal-toolbar__popover[aria-hidden="false"]');
+    anchor.classList.toggle('appts-cal-context-anchor--active', panelOpen || nestedOpen);
+  }
+
   function closeCalendarToolbarPopovers(restoreFocus = false) {
     document.querySelectorAll('.appts-cal-toolbar__popover[aria-hidden="false"]').forEach((p) => {
       p.setAttribute('aria-hidden', 'true');
@@ -3213,6 +3442,7 @@
       calendarToolbarSaveTimer = null;
       void persistCalendarPrefs();
     }
+    syncCalendarContextAnchorActiveState();
   }
 
   function closeToolsDropdownIfOpen() {
@@ -3226,6 +3456,7 @@
       calendarToolbarSaveTimer = null;
       void persistCalendarPrefs();
     }
+    syncCalendarContextAnchorActiveState();
   }
 
   function hideToolbarDialog(restoreFocus = false) {
@@ -3332,14 +3563,15 @@
     } catch (_e) { /* ignore */ }
   }
 
-  /** Highlight the "Now" toolbar button when viewing today's date (mirrors Google Calendar behaviour). */
+  /** Borderless "Today" in the command strip: accent when the grid is already on today's date. */
   function updateNowButtonState() {
-    const btn = document.getElementById('cal-toolbar-now');
+    const btn = document.getElementById('calendar-toolbar-today-btn');
     if (!btn) return;
     const todayStr = getBranchNow().dateStr;
     const isToday = dateEl && dateEl.value === todayStr;
-    btn.classList.toggle('appts-cal-toolbar__btn--today', isToday);
-    btn.title = isToday ? 'Recenter on current time' : 'Jump to today';
+    btn.classList.toggle('appts-cal-toolbar-today-btn--today', isToday);
+    btn.removeAttribute('title');
+    btn.setAttribute('aria-label', isToday ? 'Recenter on current time' : 'Jump to today');
   }
 
   function initCalendarToolbar() {
@@ -3357,6 +3589,7 @@
         }
         toolsPanel.hidden = !opening;
         toolsToggle.setAttribute('aria-expanded', opening ? 'true' : 'false');
+        syncCalendarContextAnchorActiveState();
       });
     }
 
@@ -3368,17 +3601,14 @@
       });
     }
 
-    // "Now" button — jump to today and center the red now-line in the viewport
-    const nowBtn = document.getElementById('cal-toolbar-now');
-    if (nowBtn) {
-      nowBtn.addEventListener('click', () => {
-        closeCalendarToolbarPopovers();
+    const todayBarBtn = document.getElementById('calendar-toolbar-today-btn');
+    if (todayBarBtn) {
+      todayBarBtn.addEventListener('click', () => {
         const todayStr = getBranchNow().dateStr;
         if (dateEl && dateEl.value === todayStr) {
           calendarViewportManualScrollLock = false;
           scheduleNowLineViewportAnchor({ behavior: 'smooth' });
         } else {
-          // Navigate to today; after load, scheduleWorkdayViewportFit auto-centers
           goToBranchToday();
         }
         updateNowButtonState();
@@ -3387,41 +3617,135 @@
 
     const zoomBtn = document.getElementById('cal-toolbar-zoom');
     const zoomPop = document.getElementById('cal-toolbar-zoom-pop');
-    const bindToggle = (btn, pop) => {
-      if (!btn || !pop) return;
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const open = pop.getAttribute('aria-hidden') === 'false';
-        closeCalendarToolbarPopovers(false);
-        if (!open) {
-          pop.hidden = false;
-          pop.setAttribute('aria-hidden', 'false');
-          btn.setAttribute('aria-expanded', 'true');
-          openToolbarPopover = pop;
-          openToolbarTrigger = btn;
-          const autofocusTarget = pop.querySelector('input, button, a[href], [tabindex]:not([tabindex="-1"])');
-          if (autofocusTarget && typeof autofocusTarget.focus === 'function') autofocusTarget.focus();
-          releasePopoverFocusTrap = installFocusTrap(pop, () => closeCalendarToolbarPopovers(true));
-        }
-      });
-    };
-    bindToggle(zoomBtn, zoomPop);
-
     const staffBtn = document.getElementById('cal-toolbar-staff');
     const staffPop = document.getElementById('cal-toolbar-staff-pop');
-    bindToggle(staffBtn, staffPop);
-
     const viewBtn = document.getElementById('cal-toolbar-views');
     const viewPop = document.getElementById('cal-toolbar-views-pop');
-    bindToggle(viewBtn, viewPop);
-    viewBtn?.addEventListener('click', () => {
-      setToolbarViewsInlineError('');
-      void refreshViewsListInToolbar();
-    });
-
     const printBtn = document.getElementById('cal-toolbar-print');
     const printPop = document.getElementById('cal-toolbar-print-pop');
-    bindToggle(printBtn, printPop);
+
+    const prefersHoverSubmenus =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+    /**
+     * Tools column flyouts: hover-open on fine pointers (with gap-tolerant delays),
+     * click-toggle on touch / coarse pointers. Keyboard: Enter/Space toggles + focus trap when open.
+     */
+    function bindToolsMenuFlyout(btn, pop, options = {}) {
+      const onBeforeOpen = options.onBeforeOpen;
+      if (!btn || !pop) return;
+
+      let openTimer = null;
+      let closeTimer = null;
+      const OPEN_DELAY_MS = 70;
+      const CLOSE_DELAY_MS = 220;
+
+      function clearFlyoutTimers() {
+        if (openTimer) {
+          clearTimeout(openTimer);
+          openTimer = null;
+        }
+        if (closeTimer) {
+          clearTimeout(closeTimer);
+          closeTimer = null;
+        }
+      }
+
+      function openFlyout() {
+        clearFlyoutTimers();
+        closeCalendarToolbarPopovers(false);
+        if (typeof onBeforeOpen === 'function') onBeforeOpen();
+        pop.hidden = false;
+        pop.setAttribute('aria-hidden', 'false');
+        btn.setAttribute('aria-expanded', 'true');
+        openToolbarPopover = pop;
+        openToolbarTrigger = btn;
+        if (typeof releasePopoverFocusTrap === 'function') releasePopoverFocusTrap();
+        releasePopoverFocusTrap = null;
+        syncCalendarContextAnchorActiveState();
+      }
+
+      function scheduleOpenFlyout() {
+        clearFlyoutTimers();
+        openTimer = setTimeout(() => {
+          openTimer = null;
+          openFlyout();
+        }, OPEN_DELAY_MS);
+      }
+
+      function scheduleCloseFlyout() {
+        clearFlyoutTimers();
+        closeTimer = setTimeout(() => {
+          closeTimer = null;
+          if (pop.getAttribute('aria-hidden') === 'false') {
+            closeCalendarToolbarPopovers(false);
+          }
+        }, CLOSE_DELAY_MS);
+      }
+
+      if (prefersHoverSubmenus) {
+        btn.addEventListener('mouseenter', () => scheduleOpenFlyout());
+        btn.addEventListener('mouseleave', () => scheduleCloseFlyout());
+        pop.addEventListener('mouseenter', clearFlyoutTimers);
+        pop.addEventListener('mouseleave', () => scheduleCloseFlyout());
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        });
+      } else {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const wasOpen = pop.getAttribute('aria-hidden') === 'false';
+          closeCalendarToolbarPopovers(false);
+          if (!wasOpen) {
+            if (typeof onBeforeOpen === 'function') onBeforeOpen();
+            pop.hidden = false;
+            pop.setAttribute('aria-hidden', 'false');
+            btn.setAttribute('aria-expanded', 'true');
+            openToolbarPopover = pop;
+            openToolbarTrigger = btn;
+            const autofocusTarget = pop.querySelector('input, button, a[href], [tabindex]:not([tabindex="-1"])');
+            if (autofocusTarget && typeof autofocusTarget.focus === 'function') autofocusTarget.focus();
+            releasePopoverFocusTrap = installFocusTrap(pop, () => closeCalendarToolbarPopovers(true));
+          }
+          syncCalendarContextAnchorActiveState();
+        });
+      }
+
+      btn.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        const wasOpen = pop.getAttribute('aria-hidden') === 'false';
+        if (wasOpen) {
+          closeCalendarToolbarPopovers(true);
+          if (typeof btn.focus === 'function') btn.focus();
+          return;
+        }
+        closeCalendarToolbarPopovers(false);
+        if (typeof onBeforeOpen === 'function') onBeforeOpen();
+        pop.hidden = false;
+        pop.setAttribute('aria-hidden', 'false');
+        btn.setAttribute('aria-expanded', 'true');
+        openToolbarPopover = pop;
+        openToolbarTrigger = btn;
+        const autofocusTarget = pop.querySelector('input, button, a[href], [tabindex]:not([tabindex="-1"])');
+        if (autofocusTarget && typeof autofocusTarget.focus === 'function') autofocusTarget.focus();
+        if (typeof releasePopoverFocusTrap === 'function') releasePopoverFocusTrap();
+        releasePopoverFocusTrap = installFocusTrap(pop, () => closeCalendarToolbarPopovers(true));
+        syncCalendarContextAnchorActiveState();
+      });
+    }
+
+    bindToolsMenuFlyout(zoomBtn, zoomPop);
+    bindToolsMenuFlyout(staffBtn, staffPop, { onBeforeOpen: populateStaffFilterModal });
+    bindToolsMenuFlyout(viewBtn, viewPop, {
+      onBeforeOpen: () => {
+        setToolbarViewsInlineError('');
+        void refreshViewsListInToolbar();
+      },
+    });
+    bindToolsMenuFlyout(printBtn, printPop);
 
     const folderBtn = document.getElementById('cal-toolbar-folder');
     if (folderBtn) {
@@ -3705,20 +4029,23 @@
     document.addEventListener('click', (ev) => {
       if (openDialog) return;
       closeCalendarToolbarPopovers();
-      const toolsCluster = document.getElementById('cal-toolbar-tools-cluster');
+      const contextAnchor = document.getElementById('cal-toolbar-context-anchor');
       const toolsPanel = document.getElementById('cal-toolbar-tools-panel');
       const toolsToggle = document.getElementById('cal-toolbar-tools-toggle');
       if (
-        toolsCluster &&
+        contextAnchor &&
         toolsPanel &&
         toolsToggle &&
         !toolsPanel.hidden &&
-        (!(ev.target instanceof Node) || !toolsCluster.contains(ev.target))
+        (!(ev.target instanceof Node) || !contextAnchor.contains(ev.target))
       ) {
         toolsPanel.hidden = true;
         toolsToggle.setAttribute('aria-expanded', 'false');
+        syncCalendarContextAnchorActiveState();
       }
     });
+
+    syncCalendarContextAnchorActiveState();
 
     function populateStaffFilterModal() {
       const box = document.getElementById('cal-toolbar-staff-fields');
@@ -3761,10 +4088,6 @@
       box.appendChild(sched);
       box.appendChild(fr);
     }
-
-    staffBtn?.addEventListener('click', () => {
-      populateStaffFilterModal();
-    });
   }
 
   async function load() {
@@ -3935,6 +4258,7 @@
   });
   dateEl.addEventListener('change', () => {
     selectedSlot = null;
+    syncCalendarToolbarDateLabel();
     renderSmartCard();
     pushCalendarHistoryIfChanged();
     load();
@@ -4063,6 +4387,9 @@
   if (calModeMonth) {
     calModeMonth.addEventListener('click', () => setCalendarMode('month'));
   }
+  if (calModeTwoMonths) {
+    calModeTwoMonths.addEventListener('click', () => setCalendarMode('two-months'));
+  }
   if (calPrevWeek) {
     calPrevWeek.addEventListener('click', () => shiftCalendarWeek(-1));
   }
@@ -4082,6 +4409,27 @@
     calTodayMonth.addEventListener('click', () => goToBranchToday());
   }
 
+  if (calendarToolbarPrevDay) {
+    calendarToolbarPrevDay.addEventListener('click', () => shiftCalendarDayBy(-1));
+  }
+  if (calendarToolbarNextDay) {
+    calendarToolbarNextDay.addEventListener('click', () => shiftCalendarDayBy(1));
+  }
+  if (calendarToolbarDateFocus && calCard) {
+    calendarToolbarDateFocus.addEventListener('click', () => {
+      try {
+        calCard.focus({ preventScroll: false });
+      } catch (_e) {
+        calCard.focus();
+      }
+      try {
+        calCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+      } catch (_e2) {
+        calCard.scrollIntoView();
+      }
+    });
+  }
+
   if (calCard) {
     calCard.addEventListener('keydown', (e) => {
       if (!dateEl || !/^\d{4}-\d{2}-\d{2}$/.test(String(dateEl.value || ''))) return;
@@ -4089,6 +4437,7 @@
         e.preventDefault();
         selectedSlot = null;
         dateEl.value = shiftIsoDate(dateEl.value, -1);
+        syncCalendarToolbarDateLabel();
         renderSmartCard();
         pushCalendarHistoryIfChanged();
         load();
@@ -4096,6 +4445,7 @@
         e.preventDefault();
         selectedSlot = null;
         dateEl.value = shiftIsoDate(dateEl.value, 1);
+        syncCalendarToolbarDateLabel();
         renderSmartCard();
         pushCalendarHistoryIfChanged();
         load();
@@ -4117,6 +4467,7 @@
     const b = q.get('branch_id');
     if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
       dateEl.value = d;
+      syncCalendarToolbarDateLabel();
     }
     if (b != null && b !== '') {
       const bs = String(b);
@@ -4150,6 +4501,7 @@
 
   replaceCalendarHistoryCanonical();
 
+  syncCalendarToolbarDateLabel();
   renderSmartCard();
   load();
 })();

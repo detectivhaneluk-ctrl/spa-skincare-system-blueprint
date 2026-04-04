@@ -11,9 +11,6 @@ ob_start();
 <?php endif; ?>
 <?php
 $waitlistCreateUrl = '/appointments/waitlist/create' . ((!empty($branchId) || !empty($date)) ? '?' . http_build_query(array_filter(['branch_id' => $branchId, 'date' => $date])) : '');
-$waitlistCalQ = array_filter(['branch_id' => $branchId ?? null, 'date' => $date ?? null], static fn ($v) => $v !== null && $v !== '');
-$waitlistCalendarUrl = '/appointments/calendar/day' . ($waitlistCalQ !== [] ? '?' . http_build_query($waitlistCalQ) : '');
-$waitlistListQ = !empty($branchId) ? '?' . http_build_query(['branch_id' => (int) $branchId]) : '';
 ?>
 
 <div class="appointments-waitlist-page">
@@ -23,13 +20,6 @@ $waitlistListQ = !empty($branchId) ? '?' . http_build_query(['branch_id' => (int
             <h2 class="appt-waitlist-page-title">Waitlist queue</h2>
             <p class="appt-waitlist-page-sub">Filter and work the queue without leaving the appointments workspace.</p>
         </div>
-        <nav class="appt-waitlist-secondary-nav" aria-label="Related pages">
-            <a href="<?= htmlspecialchars($waitlistCalendarUrl) ?>" class="appt-waitlist-nav-link">Day calendar</a>
-            <span class="appt-waitlist-nav-sep" aria-hidden="true">·</span>
-            <a href="<?= htmlspecialchars('/appointments' . $waitlistListQ, ENT_QUOTES, 'UTF-8') ?>" class="appt-waitlist-nav-link">Appointments list</a>
-            <span class="appt-waitlist-nav-sep" aria-hidden="true">·</span>
-            <a href="<?= htmlspecialchars((string) ($workspace['new_appointment_url'] ?? '/appointments/create')) ?>" class="appt-waitlist-nav-link">New appointment</a>
-        </nav>
     </div>
 
     <p class="appt-waitlist-context appt-waitlist-lede"><strong>Waitlist desk</strong> — filter the queue, then work rows: update status, link an appointment, or <strong>convert</strong> straight to a booking. Add entries when the calendar can’t take them yet.</p>

@@ -32,7 +32,9 @@
   flex-direction: column;
   width: min(100vw, 760px);
   height: 100vh;
-  background: var(--ds-color-bg-page);
+  background: rgba(248, 248, 250, 0.96);
+  backdrop-filter: var(--ds-glass-blur);
+  -webkit-backdrop-filter: var(--ds-glass-blur);
   box-shadow: var(--ds-shadow-drawer);
   transform: translateX(100%);
   transition: transform var(--ds-duration-drawer) var(--ds-ease-standard);
@@ -60,8 +62,8 @@
   align-items: center;
   gap: var(--ds-space-3);
   padding: var(--ds-space-4) var(--ds-space-5);
-  background: var(--ds-color-bg-canvas);
-  border-bottom: 1px solid var(--ds-color-border-light);
+  background: rgba(255, 255, 255, 0.82);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .app-drawer__footer {
@@ -98,9 +100,9 @@
 }
 
 .app-drawer__close {
-  border: 1px solid var(--ds-color-border-light);
-  border-radius: var(--ds-radius-sm);
-  background: var(--ds-color-bg-canvas);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: var(--ds-radius-md);
+  background: rgba(255, 255, 255, 0.75);
   color: var(--ds-color-text-secondary);
   width: 2.25rem;
   height: 2.25rem;
@@ -110,8 +112,9 @@
 }
 
 .app-drawer__close:hover {
-  background: var(--ds-color-bg-subtle);
+  background: #fff;
   color: var(--ds-color-text);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .app-drawer__status {
@@ -404,6 +407,8 @@
   cursor: crosshair;
 }
 
+/* Above .ops-calendar-head (z-index 5) / .ops-time-head (6) so the pill label
+   (negative top offset) is not painted under sticky staff names. */
 .ops-slot-preview {
   position: absolute;
   left: 0.35rem;
@@ -412,7 +417,7 @@
   background: var(--ds-color-accent);
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.55);
   pointer-events: none;
-  z-index: 2;
+  z-index: 8;
 }
 
 .ops-slot-preview__label {
@@ -461,8 +466,8 @@ body {
   gap: var(--ds-space-2) var(--ds-space-4);
   padding: var(--ds-space-3) var(--ds-shell-pad-x);
   background: var(--ds-color-bg-canvas);
-  border-bottom: 1px solid var(--ds-color-border-light);
-  box-shadow: var(--ds-shadow-xs);
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.75) inset, 0 2px 8px rgba(15, 23, 42, 0.04);
 }
 @media (max-width: 900px) {
   .app-shell__header:not(.app-shell__header--mobile) {
@@ -583,11 +588,11 @@ body {
   padding-bottom: 0;
   padding-left: var(--ds-space-6);
   padding-right: var(--ds-space-6);
-  border-bottom: 1px solid #f3f4f6;
-  box-shadow: none;
-  background: rgba(255, 255, 255, 0.78);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 4px 14px rgba(15, 23, 42, 0.05);
+  background: rgba(245, 245, 247, 0.85);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  backdrop-filter: saturate(180%) blur(24px);
 }
 @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
   .app-shell__header--top:not(.app-shell__header--founder) {
@@ -641,12 +646,12 @@ body {
 }
 .app-shell__header--top:not(.app-shell__header--founder) .app-shell__nav-link:hover {
   color: #111827;
-  background: rgba(243, 244, 246, 0.45);
+  background: rgba(17, 24, 39, 0.06);
 }
 .app-shell__header--top:not(.app-shell__header--founder) .app-shell__nav-link.is-active {
-  color: #111827;
-  font-weight: var(--ds-font-medium);
-  background: rgba(243, 244, 246, 0.6);
+  color: var(--ds-color-accent);
+  font-weight: var(--ds-font-semibold);
+  background: rgba(17, 24, 39, 0.08);
 }
 .app-shell__header--top:not(.app-shell__header--founder) .app-shell__nav-link:focus-visible {
   outline: 2px solid var(--ds-color-focus-ring);
@@ -834,8 +839,8 @@ html[data-app-sidebar-collapsed="true"] {
   gap: var(--ds-space-2);
   padding: var(--ds-space-2) var(--ds-shell-pad-x);
   background: rgba(255, 255, 255, 0.92);
-  border-bottom: 1px solid var(--ds-color-border-light);
-  box-shadow: var(--ds-shadow-xs);
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.75) inset, 0 2px 8px rgba(15, 23, 42, 0.04);
   position: sticky;
   top: 0;
   z-index: var(--ds-z-app-header);
@@ -900,10 +905,12 @@ html[data-app-sidebar-collapsed="true"] {
   min-height: 0;
   margin: var(--ds-space-3);
   padding: var(--ds-space-3);
-  background: var(--ds-color-bg-canvas);
-  border-radius: var(--ds-radius-lg);
-  border: 1px solid var(--ds-color-border-light);
-  box-shadow: var(--ds-shadow-sm);
+  background: var(--ds-glass-bg-strong);
+  border-radius: var(--ds-radius-xl);
+  border: 1px solid var(--ds-glass-border);
+  box-shadow: var(--ds-shadow-glass);
+  backdrop-filter: var(--ds-glass-blur-strong);
+  -webkit-backdrop-filter: var(--ds-glass-blur-strong);
   box-sizing: border-box;
 }
 
@@ -969,9 +976,9 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-collapse-btn svg {
   box-sizing: border-box;
   padding: 0.45rem 0.65rem 0.45rem 2.25rem;
   font-size: var(--ds-text-sm);
-  border: 1px solid var(--ds-color-border-light);
-  border-radius: var(--ds-radius-md);
-  background: var(--ds-color-bg-subtle);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.7);
   color: var(--ds-color-text-tertiary);
 }
 
@@ -1006,13 +1013,13 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-collapse-btn svg {
 }
 
 .app-shell__side-nav-link:hover {
-  background: var(--ds-color-bg-subtle);
-  color: var(--ds-color-text);
+  background: rgba(17, 24, 39, 0.06);
+  color: #1f2937;
 }
 
 .app-shell__side-nav-link.is-active {
-  background: var(--ds-color-bg-muted);
-  color: var(--ds-color-text);
+  background: rgba(17, 24, 39, 0.1);
+  color: var(--ds-color-accent);
   font-weight: var(--ds-font-semibold);
 }
 
@@ -1258,6 +1265,15 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   margin: 0;
   padding: var(--ds-space-4) var(--ds-shell-pad-x) var(--ds-space-8);
 }
+/* Calendar workspace: html+body must be bounded to exactly the viewport so the flex chain
+   collapses correctly and only #appts-calendar-grid scrolls — not the document. Without this,
+   body { min-height: 100vh } grows to fit content, syncCalendarViewportHeight() measures an
+   unbounded clientHeight, and the grid gets a height that eliminates internal scroll. */
+html:has(.calendar-workspace),
+body:has(.calendar-workspace) {
+  height: 100%;
+  overflow: hidden;
+}
 /* Appointments day calendar: one scroll surface inside the grid (desktop workspace). */
 .app-shell__main:has(.calendar-workspace),
 .app-shell__main.app-shell__main--calendar-workspace {
@@ -1281,6 +1297,27 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
 .app-shell__main.app-shell__main--calendar-workspace > .calendar-workspace > .ds-workspace,
 .app-shell__main.app-shell__main--calendar-workspace > .calendar-workspace > .flash {
   flex-shrink: 0;
+}
+/* Day calendar: tighten gap between “Appointments” title block and main grid (was ~2× generic ds-workspace rhythm) */
+.calendar-workspace > .ds-workspace.workspace-shell--calendar {
+  margin-bottom: var(--ds-space-2);
+}
+.calendar-workspace .appts-workspace-header {
+  margin-bottom: var(--ds-space-2);
+}
+.calendar-workspace .appts-workspace-header.ds-page-subheader {
+  margin-bottom: var(--ds-space-2);
+}
+.calendar-workspace .appts-workspace-header__controls {
+  padding: 6px 0 10px;
+  margin-top: 4px;
+}
+.calendar-workspace .appts-workspace-header__subtitle {
+  margin-top: 0.15rem;
+}
+.calendar-workspace .appointments-workspace-page.appts-calendar-page.ds-page {
+  margin-top: 0;
+  gap: var(--ds-space-2);
 }
 .app-shell__main--auth {
   display: flex;
@@ -1306,16 +1343,91 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   margin-left: 0;
   margin-right: 0;
 }
-.auth-card { max-width: 400px; margin: 4rem auto; padding: 2rem; border: 1px solid #ddd; border-radius: 8px; }
+.auth-card {
+  max-width: 420px;
+  margin: 5rem auto 2rem;
+  padding: 2.25rem 2rem;
+  border-radius: var(--ds-radius-2xl);
+  border: 1px solid var(--ds-glass-border);
+  background:
+    radial-gradient(circle at 20% 10%, rgba(227, 230, 252, 0.32) 0%, transparent 40%),
+    radial-gradient(circle at 80% 85%, rgba(253, 228, 235, 0.22) 0%, transparent 38%),
+    var(--ds-glass-bg);
+  box-shadow: var(--ds-shadow-glass);
+  backdrop-filter: var(--ds-glass-blur);
+  -webkit-backdrop-filter: var(--ds-glass-blur);
+}
+.auth-card h1 {
+  margin: 0 0 1.4rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.022em;
+  color: var(--ds-color-text);
+}
 .auth-form div { margin-bottom: 1rem; }
-.auth-form label { display: block; margin-bottom: 0.25rem; }
-.auth-form input { width: 100%; padding: 0.5rem; }
-.auth-form button { padding: 0.5rem 1rem; }
-.auth-hint { font-size: 0.875rem; color: #666; margin-top: 1rem; }
-.flash { padding: 0.75rem; margin-bottom: 1rem; border-radius: 4px; }
-.flash-error { background: #fee; color: #c00; }
-.flash-success { background: #efe; color: #060; }
-.flash-warning { background: #ffc; color: #650; }
+.auth-form label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: var(--ds-text-xs);
+  font-weight: var(--ds-font-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ds-color-text-secondary);
+}
+.auth-form input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.55rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.9);
+  font-size: var(--ds-text-sm);
+  font-family: var(--ds-font-sans);
+  color: var(--ds-color-text);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.auth-form input:focus {
+  outline: none;
+  border-color: #71717a;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.12), inset 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+.auth-form button {
+  width: 100%;
+  padding: 0.65rem 1rem;
+  margin-top: 0.5rem;
+  border-radius: 10px;
+  border: 1px solid #0a0a0a;
+  background: linear-gradient(180deg, #374151 0%, #111827 100%);
+  color: #fff;
+  font-size: var(--ds-text-sm);
+  font-weight: var(--ds-font-semibold);
+  font-family: var(--ds-font-sans);
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.auth-form button:hover {
+  background: linear-gradient(180deg, #4b5563 0%, #1f2937 100%);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+  transform: translateY(-1px);
+}
+.auth-hint {
+  font-size: var(--ds-text-sm);
+  color: var(--ds-color-text-secondary);
+  margin-top: 1rem;
+  text-align: center;
+}
+.auth-hint a {
+  color: var(--ds-color-accent);
+  text-decoration: none;
+  font-weight: var(--ds-font-medium);
+}
+.auth-hint a:hover { text-decoration: underline; }
+.flash { padding: 0.75rem 1rem; margin-bottom: 1rem; border-radius: 10px; font-size: var(--ds-text-sm); }
+.flash-error { background: rgba(176, 0, 32, 0.07); color: #b00020; border: 1px solid rgba(176, 0, 32, 0.15); }
+.flash-success { background: rgba(27, 127, 58, 0.08); color: #1b7f3a; border: 1px solid rgba(27, 127, 58, 0.18); }
+.flash-warning { background: #fff8e6; color: #6b5a1a; border: 1px solid rgba(107, 90, 26, 0.18); }
 .settings-page__header {
   margin-bottom: 1rem;
 }
@@ -1369,10 +1481,13 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   top: 1rem;
   max-height: calc(100vh - 2rem);
   overflow: auto;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  background: var(--ds-glass-bg);
+  border: 1px solid var(--ds-glass-border);
+  border-radius: var(--ds-radius-xl);
   padding: 0.95rem;
+  box-shadow: var(--ds-shadow-glass);
+  backdrop-filter: var(--ds-glass-blur);
+  -webkit-backdrop-filter: var(--ds-glass-blur);
 }
 .settings-sidebar__title {
   margin: 0 0 0.75rem;
@@ -1404,18 +1519,19 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   display: block;
   padding: 0.35rem 0.45rem;
   margin: 0.08rem 0;
-  border-radius: 7px;
+  border-radius: 9px;
   color: #334155;
   text-decoration: none;
   font-size: 0.86rem;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 .settings-tree > a:hover {
-  background: #f1f5f9;
-  color: #0f172a;
+  background: rgba(17, 24, 39, 0.06);
+  color: #1f2937;
 }
 .settings-tree > a.is-active {
-  background: #e2e8f0;
-  color: #0f172a;
+  background: rgba(17, 24, 39, 0.1);
+  color: var(--ds-color-accent);
   font-weight: 600;
 }
 .settings-workspace {
@@ -1427,9 +1543,12 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
 .settings-card {
   margin-bottom: 0.95rem;
   padding: 1rem;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  background: var(--ds-glass-bg);
+  border: 1px solid var(--ds-glass-border);
+  border-radius: var(--ds-radius-xl);
+  box-shadow: var(--ds-shadow-glass);
+  backdrop-filter: var(--ds-glass-blur);
+  -webkit-backdrop-filter: var(--ds-glass-blur);
 }
 .settings-card h2 {
   margin: 0;
@@ -1747,13 +1866,14 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   align-items: center;
   gap: var(--ds-space-6);
   margin-left: auto;
+  min-width: 0;
   overflow: visible;
   /* Vertical gutter: box-shadow blur extends above/below; avoid clip vs flex line height */
   padding: 14px 0 22px;
   opacity: 0;
   margin-top: 8px;
   /* Avoid transform on this wrapper: it can create a compositor layer that clips descendant shadows */
-  animation: ds-toolbar-fade-up-in var(--ds-duration-toolbar-entrance) var(--ds-ease-spring) forwards;
+  animation: ds-toolbar-fade-up-in var(--ds-duration-toolbar-entrance, 350ms) var(--ds-ease-spring, ease) forwards;
 }
 .appts-workspace-header__action {
   margin-left: 0;
@@ -1764,6 +1884,55 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
 }
 .appts-workspace-header__new.ds-btn--toolbar {
   white-space: nowrap;
+}
+
+/* Calendar | List | Waitlist: real <a href> pages + stable slot widths (thumb/labels don’t jump between routes) */
+.appts-workspace-header__segmented-track.ds-segmented--ios.ds-segmented--pill-track {
+  overflow-x: visible;
+  -webkit-overflow-scrolling: auto;
+  flex-shrink: 0;
+}
+.appts-workspace-header__segmented-track.ds-segmented--ios .ds-segmented__link {
+  flex: 1 1 0;
+  min-width: 0;
+  box-sizing: border-box;
+  /* Column direction stacks phantom ::after below the visible text at height:0;
+     the link is always as wide as its semibold text — no layout shift ever */
+  flex-direction: column;
+}
+/* Bold-width reservation: invisible ::after always holds the bold width so
+   the active-tab font-weight switch never shifts any dimension. */
+.appts-workspace-header__segmented-track.ds-segmented--ios .ds-segmented__link::after {
+  content: attr(data-max-tab-text);
+  display: block;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  font-weight: var(--ds-font-semibold);
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  flex-shrink: 0;
+}
+/* Entrance-animation bypass: navigating between Calendar / List / Waitlist
+   shows controls instantly — no slide/fade on every tab click */
+[data-ds-appts-tab-nav] .appts-workspace-header__controls {
+  animation: none;
+  opacity: 1;
+  margin-top: 0;
+}
+@media (min-width: 720px) {
+  .appts-workspace-header__controls {
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+}
+/* Responsive: on narrow viewports the track fills the full row width */
+@media (max-width: 959px) {
+  .appts-workspace-header__segmented-track.ds-segmented--ios {
+    flex-shrink: 1;
+    width: 100%;
+  }
 }
 
 @keyframes ds-toolbar-fade-up-in {
@@ -1796,7 +1965,7 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
 }
 .appts-calendar-body {
   display: grid;
-  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+  grid-template-columns: minmax(244px, 278px) minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   gap: var(--ds-space-3);
   align-items: stretch;
@@ -1907,7 +2076,7 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
 .cal-tools-count {
   font-size: var(--ds-text-sm, 0.875rem);
   font-weight: 600;
-  color: #4f46e5;
+  color: var(--ds-color-accent);
   text-align: center;
   padding: 0.5rem 0;
 }
@@ -1915,7 +2084,7 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   display: block;
   text-align: center;
   font-size: var(--ds-text-xs, 0.75rem);
-  color: #6366f1;
+  color: var(--ds-color-accent);
   text-decoration: none;
   padding: 0.35rem 0.5rem;
   border-radius: 0.35rem;
@@ -1923,11 +2092,11 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
 }
 .cal-tools-link:hover { background: #f1f5f9; }
 .cal-tools-link--primary {
-  background: #eef2ff;
-  color: #4338ca;
+  background: #f4f4f5;
+  color: var(--ds-color-accent);
   font-weight: 600;
 }
-.cal-tools-link--primary:hover { background: #e0e7ff; }
+.cal-tools-link--primary:hover { background: #e4e4e7; }
 .cal-tools-entries { display: flex; flex-direction: column; gap: 1px; }
 .cal-tools-entry {
   display: flex;
@@ -1941,7 +2110,7 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   transition: background 0.1s;
 }
 .cal-tools-entry:hover { background: #f1f5f9; border-color: #e2e8f0; }
-.cal-tools-entry__time { font-size: 10px; font-weight: 700; color: #6366f1; }
+.cal-tools-entry__time { font-size: 10px; font-weight: 700; color: var(--ds-color-accent); }
 .cal-tools-entry__name { font-size: 0.75rem; font-weight: 600; }
 .cal-tools-entry__svc  { font-size: 0.7rem; color: #64748b; }
 
@@ -1960,7 +2129,7 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0;
 }
 .cal-legend-dot--scheduled  { background: rgba(96,165,250,.7); }
-.cal-legend-dot--confirmed  { background: #6366f1; }
+.cal-legend-dot--confirmed  { background: var(--ds-color-accent); }
 .cal-legend-dot--in-progress { background: #f59e0b; }
 .cal-legend-dot--completed  { background: #10b981; }
 .cal-legend-dot--cancelled  { background: rgba(248,113,113,.8); }
@@ -2023,7 +2192,7 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
 .cal-ctx-item--danger { color: #b91c1c; }
 .cal-ctx-item--danger:hover,
 .cal-ctx-item--danger:focus { background: #fee2e2; color: #991b1b; }
-.cal-ctx-item--clip { color: #7c3aed; }
+.cal-ctx-item--clip { color: #111827; }
 .cal-ctx-item--clip:hover,
 .cal-ctx-item--clip:focus { background: #f5f3ff; color: #6d28d9; }
 .cal-ctx-item--disabled {
@@ -2087,7 +2256,7 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   gap: 0.45rem;
   padding: 0.5rem 0.45rem;
   border: 1px solid rgba(226, 232, 240, 0.8);
-  border-left: 4px solid #7c3aed;
+  border-left: 4px solid #111827;
   border-radius: 0.5rem;
   background: rgba(250, 245, 255, 0.85);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
@@ -2100,7 +2269,7 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   border-color: #d8b4fe;
 }
 .cal-clipboard-item__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.cal-clipboard-item__time { font-size: 11px; font-weight: 700; color: #7c3aed; letter-spacing: 0.02em; }
+.cal-clipboard-item__time { font-size: 11px; font-weight: 700; color: #111827; letter-spacing: 0.02em; }
 .cal-clipboard-item__name { font-size: 0.78rem; font-weight: 600; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cal-clipboard-item__svc  { font-size: 0.7rem; color: #64748b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 .cal-clipboard-item__actions { display: flex; gap: 2px; flex-shrink: 0; }
@@ -2112,8 +2281,8 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   padding: 0;
 }
 .cal-clipboard-btn:hover { background: #e2e8f0; color: #1e293b; }
-.cal-clipboard-btn--reschedule { color: #4f46e5; }
-.cal-clipboard-btn--reschedule:hover { background: #eef2ff; }
+.cal-clipboard-btn--reschedule { color: var(--ds-color-accent); }
+.cal-clipboard-btn--reschedule:hover { background: #f4f4f5; }
 .cal-clipboard-btn--remove:hover { background: #fee2e2; color: #b91c1c; }
 .cal-clipboard-clear-btn {
   display: block;
@@ -2137,7 +2306,7 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   left: 4px;
   right: 4px;
   height: 3px;
-  background: #7c3aed;
+  background: #111827;
   border-radius: 2px;
   pointer-events: none;
   z-index: 20;
@@ -2146,7 +2315,7 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   position: absolute;
   top: -22px;
   left: 0;
-  background: #7c3aed;
+  background: #111827;
   color: #fff;
   font-size: 10px;
   font-weight: 700;
@@ -2181,20 +2350,20 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
 /* ── Drag-and-drop: clipboard panel ─────────────────────────────────────── */
 .cal-clipboard-item--dragging { opacity: 0.4; cursor: grabbing; }
 .cal-clipboard-drag-over {
-  outline: 2px dashed #7c3aed;
+  outline: 2px dashed #111827;
   outline-offset: -2px;
   background: #f5f3ff !important;
 }
-.cal-clipboard-item:focus-visible { outline: 2px solid #6366f1; outline-offset: 1px; border-radius: 4px; }
+.cal-clipboard-item:focus-visible { outline: 2px solid var(--ds-color-accent); outline-offset: 1px; border-radius: 4px; }
 .appts-cal-card {
   display: flex;
   flex-direction: column;
   gap: var(--ds-space-2);
   border-radius: 16px;
-  border: 1px solid rgba(226, 232, 240, 0.8);
+  border: 1px solid #e5e7eb;
   background: var(--ds-color-bg-canvas);
   padding: var(--ds-space-3) var(--ds-space-2);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.02);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 .appts-cal-card:focus-visible {
   outline: 2px solid var(--ds-color-accent);
@@ -2237,13 +2406,13 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   color: #0f172a;
 }
 .appts-cal-card__mode-btn:focus-visible {
-  outline: 2px solid #6366f1;
+  outline: 2px solid var(--ds-color-accent);
   outline-offset: 1px;
 }
 .appts-cal-card__mode-btn--active {
   background: #fff;
   color: #0f172a;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--ds-shadow-segmented-active);
 }
 .appts-cal-card__title-month {
   margin: 0;
@@ -2267,10 +2436,10 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
 }
 .appts-cal-card__hero {
   border-radius: 12px;
-  border: 1px solid rgba(226, 232, 240, 0.6);
+  border: 1px solid #e5e7eb;
   background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
   padding: 0.65rem var(--ds-space-2) 0.75rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.01);
+  box-shadow: none;
 }
 .appts-cal-card__hero-kicker {
   margin: 0 0 0.4rem;
@@ -2337,7 +2506,7 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
 }
 .appts-cal-card__chev:focus-visible {
-  outline: 2px solid #6366f1;
+  outline: 2px solid var(--ds-color-accent);
   outline-offset: 2px;
 }
 .appts-cal-card__today {
@@ -2363,7 +2532,7 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
 }
 .appts-cal-card__today:focus-visible {
-  outline: 2px solid #6366f1;
+  outline: 2px solid var(--ds-color-accent);
   outline-offset: 2px;
 }
 .appts-cal-card__body {
@@ -2424,7 +2593,7 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 .appts-cal-month__cell--day:focus-visible {
-  outline: 2px solid #6366f1;
+  outline: 2px solid var(--ds-color-accent);
   outline-offset: 1px;
 }
 .appts-cal-month__cell-num {
@@ -2441,11 +2610,11 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   transition: opacity 0.2s ease;
 }
 .appts-cal-month__cell--today:not(.appts-cal-month__cell--selected) {
-  box-shadow: inset 0 0 0 2px #6366f1;
-  background: #eef2ff;
+  box-shadow: inset 0 0 0 2px var(--ds-color-accent);
+  background: #f4f4f5;
 }
 .appts-cal-month__cell--today .appts-cal-month__cell-num {
-  color: #4f46e5;
+  color: var(--ds-color-accent);
 }
 .appts-cal-month__cell--selected {
   border-color: var(--ds-color-accent);
@@ -2481,15 +2650,15 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   font-weight: 700;
   line-height: 12px;
   text-align: center;
-  background: #eff6ff;
-  color: #3b82f6;
+  background: var(--ds-color-accent-muted);
+  color: var(--ds-color-accent);
   border: 1px solid rgba(255, 255, 255, 0.9);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 .appts-cal-month__cell--selected .appts-cal-month__cell-count {
   background: #fff;
-  color: #4f46e5;
-  border-color: #4f46e5;
+  color: var(--ds-color-accent);
+  border-color: var(--ds-color-accent);
 }
 .appts-cal-month__cell--has-blocked .appts-cal-month__cell-dot {
   box-shadow: 2px 0 0 0 var(--ds-color-text-tertiary);
@@ -2573,17 +2742,17 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   margin-top: 2px;
 }
 .appts-cal-card__dow--today:not(.appts-cal-card__dow--selected) {
-  box-shadow: inset 0 0 0 2px #6366f1;
-  background: #eef2ff;
+  box-shadow: inset 0 0 0 2px var(--ds-color-accent);
+  background: #f4f4f5;
 }
 .appts-cal-card__dow--today .appts-cal-card__dow-num {
-  color: #4f46e5;
+  color: var(--ds-color-accent);
 }
 .appts-cal-card__dow--selected {
   border-color: var(--ds-color-accent);
   background: var(--ds-color-accent);
   color: #fff;
-  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.22);
 }
 .appts-cal-card__dow--selected .appts-cal-card__dow-num {
   color: #fff;
@@ -2613,15 +2782,15 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   font-weight: 700;
   line-height: 14px;
   text-align: center;
-  background: #eff6ff;
-  color: #3b82f6;
+  background: var(--ds-color-accent-muted);
+  color: var(--ds-color-accent);
   border: 1px solid rgba(255, 255, 255, 0.9);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 .appts-cal-card__dow--selected .appts-cal-card__dow-count {
   background: #fff;
-  color: #4f46e5;
-  border-color: #4f46e5;
+  color: var(--ds-color-accent);
+  border-color: var(--ds-color-accent);
 }
 .appts-cal-card__dow--has-blocked .appts-cal-card__dow-dot {
   box-shadow: 2px 0 0 0 var(--ds-color-text-tertiary);
@@ -2676,6 +2845,325 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   min-width: 0;
   width: 100%;
 }
+
+/* Premium day toolbar: typographic date, day steppers, branch pill, ghost actions */
+.appts-cal-filter-sync-form {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.appts-calendar-control-surface--premium {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  margin-bottom: var(--ds-space-3);
+  padding: var(--ds-space-2) 0 var(--ds-space-1);
+}
+
+.appts-command-strip--premium.appts-command-strip {
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--ds-space-4) var(--ds-space-3);
+  padding-bottom: var(--ds-space-4);
+  border-bottom: 1px solid #f3f4f6;
+  margin-bottom: 0;
+  width: 100%;
+}
+
+.appts-command-strip__lead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--ds-space-3) var(--ds-space-4);
+  min-width: 0;
+}
+
+.appts-command-strip__trail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: var(--ds-space-2);
+  margin-left: auto;
+}
+
+.appts-cal-toolbar-date-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  margin: 0;
+  padding: 0.15rem 0.2rem;
+  border: none;
+  background: none;
+  font-family: var(--ds-font-sans);
+  font-size: clamp(1.5rem, 2.2vw, 1.875rem);
+  font-weight: var(--ds-font-bold);
+  letter-spacing: var(--ds-tracking-tight);
+  color: var(--ds-color-text);
+  cursor: pointer;
+  border-radius: var(--ds-radius-sm);
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.appts-cal-toolbar-date-heading:hover {
+  color: #111827;
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.appts-cal-toolbar-date-heading:focus-visible {
+  outline: 2px solid var(--ds-color-focus-ring);
+  outline-offset: 2px;
+}
+
+.appts-cal-toolbar-day-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: var(--ds-radius-lg);
+  background: #f9fafb;
+}
+
+.appts-cal-toolbar-day-nav__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: var(--ds-radius-md);
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.appts-cal-toolbar-day-nav__btn:hover {
+  background: #fff;
+  color: #111827;
+}
+
+.appts-cal-toolbar-day-nav__btn:focus-visible {
+  outline: 2px solid var(--ds-color-focus-ring);
+  outline-offset: 1px;
+}
+
+.appts-cal-toolbar-today-btn {
+  margin: 0;
+  padding: 0 0.35rem;
+  border: none;
+  border-radius: var(--ds-radius-md);
+  background: transparent;
+  font-family: var(--ds-font-sans);
+  font-size: var(--ds-text-sm);
+  font-weight: var(--ds-font-semibold);
+  line-height: 2rem;
+  color: #6b7280;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.appts-cal-toolbar-today-btn:hover {
+  color: #111827;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.appts-cal-toolbar-today-btn:focus-visible {
+  outline: 2px solid var(--ds-color-focus-ring);
+  outline-offset: 1px;
+}
+
+.appts-cal-toolbar-today-btn--today {
+  color: #dc2626;
+}
+
+.appts-cal-toolbar-today-btn--today:hover {
+  color: #b91c1c;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.appts-cal-toolbar-today-btn--today::after {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-left: 0.35rem;
+  border-radius: 50%;
+  background: #ef4444;
+  vertical-align: 0.15em;
+}
+
+.appts-cal-toolbar-divider {
+  align-self: stretch;
+  width: 1px;
+  min-height: 2rem;
+  background: #e5e7eb;
+  margin: 0 0.15rem;
+}
+
+.appts-cal-toolbar-branch-pill-wrap {
+  display: flex;
+  align-items: flex-end;
+  min-width: 0;
+}
+
+.appts-cal-toolbar-branch-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  padding-right: 2.25rem;
+  border-radius: var(--ds-radius-pill);
+  background: #f9fafb;
+  border: 1px solid #f3f4f6;
+  min-width: 0;
+}
+
+.appts-cal-toolbar-branch-pill--static {
+  padding-right: 1rem;
+}
+
+.appts-cal-toolbar-branch-pill__name {
+  font-size: var(--ds-text-sm);
+  font-weight: var(--ds-font-medium);
+  color: var(--ds-color-text);
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.appts-cal-toolbar-branch-pill__dot {
+  position: relative;
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+}
+
+.appts-cal-toolbar-branch-pill__dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: #22c55e;
+  animation: appts-cal-live-ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes appts-cal-live-ping {
+  75%,
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .appts-cal-toolbar-branch-pill__dot::after {
+    animation: none;
+  }
+}
+
+.appts-cal-toolbar-branch-select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  background: transparent;
+  font-family: var(--ds-font-sans);
+  font-size: var(--ds-text-sm);
+  font-weight: var(--ds-font-medium);
+  color: var(--ds-color-text);
+  padding: 0;
+  margin: 0;
+  max-width: 12rem;
+  cursor: pointer;
+}
+
+.appts-cal-toolbar-branch-select:focus {
+  outline: none;
+}
+
+.appts-cal-toolbar-branch-pill:focus-within {
+  outline: 2px solid var(--ds-color-focus-ring);
+  outline-offset: 2px;
+}
+
+.appts-cal-toolbar-branch-pill__chev {
+  position: absolute;
+  right: 0.65rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+/* Calendar Tools cluster — menu chrome tuned for clarity + calm motion (HIG-adjacent) */
+.appts-cal-toolbar-ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ds-space-2);
+  min-height: var(--ds-control-height-lg);
+  padding: 0 var(--ds-space-3);
+  border: 1px solid transparent;
+  border-radius: var(--ds-radius-lg);
+  background: transparent;
+  font-family: var(--ds-font-sans);
+  font-size: var(--ds-text-sm);
+  font-weight: var(--ds-font-medium);
+  letter-spacing: var(--ds-tracking-tight);
+  color: var(--ds-color-text-secondary);
+  cursor: pointer;
+  transition:
+    background 0.2s cubic-bezier(0.25, 0.1, 0.25, 1),
+    color 0.2s cubic-bezier(0.25, 0.1, 0.25, 1),
+    border-color 0.2s cubic-bezier(0.25, 0.1, 0.25, 1),
+    box-shadow 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+  box-shadow: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.appts-cal-toolbar-ghost-btn:hover {
+  background: var(--ds-color-bg-subtle);
+  color: var(--ds-color-text);
+  border-color: var(--ds-color-border-light);
+}
+
+.appts-cal-toolbar-ghost-btn:active {
+  background: var(--ds-color-bg-muted);
+}
+
+.appts-cal-toolbar-ghost-btn:focus-visible {
+  outline: 2px solid var(--ds-color-focus-ring);
+  outline-offset: 2px;
+}
+
+.appts-cal-tools-toggle.appts-cal-toolbar-ghost-btn[aria-expanded="true"] {
+  background: var(--ds-color-accent-muted);
+  color: var(--ds-color-accent);
+  border-color: var(--ds-color-accent-border);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.04);
+}
+
+.appts-command-strip__actions--premium {
+  margin-left: 0;
+}
+
 .appts-command-strip {
   display: flex;
   flex-wrap: nowrap;
@@ -2743,6 +3231,59 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   flex-shrink: 0;
 }
 
+.appts-cal-context-anchor {
+  position: relative;
+  /* Sit above .appts-calendar-grid (DOM after toolbar): overlapping dropdown must not paint under sticky .ops-calendar-head */
+  z-index: 50;
+  display: inline-flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: var(--ds-space-2);
+  border-radius: var(--ds-radius-lg);
+  /* Always show a calm tray so Blocked time + summary + Tools read as one strip (not only when a menu is open) */
+  padding: 0.2rem 0.4rem 0.28rem;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.03),
+    0 1px 4px rgba(15, 23, 42, 0.035);
+  backdrop-filter: blur(10px) saturate(160%);
+  -webkit-backdrop-filter: blur(10px) saturate(160%);
+  transition: background 0.2s ease, box-shadow 0.2s ease, backdrop-filter 0.2s ease, border-color 0.2s ease;
+}
+
+.appts-cal-context-anchor--active {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(0, 0, 0, 0.07);
+  backdrop-filter: blur(18px) saturate(185%);
+  -webkit-backdrop-filter: blur(18px) saturate(185%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 4px 16px rgba(15, 23, 42, 0.055),
+    0 1px 3px rgba(15, 23, 42, 0.04);
+  padding: 0.22rem 0.42rem 0.32rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .appts-cal-context-anchor {
+    transition: none;
+  }
+  .appts-cal-toolbar-ghost-btn,
+  .appts-cal-tools-menu__item,
+  .appts-cal-zoom__preset,
+  .appts-cal-toolbar__menu-item,
+  .appts-cal-toolbar__views-link,
+  .appts-cal-staff-modal__row {
+    transition: none;
+  }
+  .appts-cal-zoom__range::-webkit-slider-thumb {
+    transition: none;
+  }
+  .appts-cal-zoom__range:hover::-webkit-slider-thumb {
+    transform: none;
+  }
+}
+
 .appts-cal-tools-cluster {
   display: inline-flex;
   flex-wrap: nowrap;
@@ -2777,7 +3318,7 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   border-color: var(--ds-color-accent-border);
   background: var(--ds-color-accent-muted);
   color: var(--ds-color-accent);
-  box-shadow: 0 0 0 1px var(--ds-color-accent-border);
+  box-shadow: none;
 }
 .appts-cal-tools-panel {
   min-width: 0;
@@ -2788,43 +3329,118 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   top: 100%;
   right: 0;
   left: auto;
-  z-index: 70;
-  display: flex;
-  align-items: center;
-  margin-top: var(--ds-space-1);
-  padding: var(--ds-space-2);
-  min-width: 100%;
+  z-index: 100;
+  display: block;
+  margin-top: 0.45rem;
+  padding: 0.28rem 0 0.32rem;
+  min-width: 13.75rem;
   width: max-content;
-  max-width: min(100vw - 1.5rem, 28rem);
-  background: var(--ds-color-bg-canvas);
-  border: 1px solid var(--ds-color-border);
-  border-radius: var(--ds-radius-lg);
-  box-shadow: var(--ds-shadow-md);
+  max-width: min(100vw - 1.5rem, 20rem);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: var(--ds-radius-xl);
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.04),
+    0 24px 48px rgba(15, 23, 42, 0.12),
+    0 8px 16px rgba(15, 23, 42, 0.06);
+  backdrop-filter: saturate(200%) blur(24px);
+  -webkit-backdrop-filter: saturate(200%) blur(24px);
 }
 .appts-cal-tools-panel[hidden] {
   display: none !important;
 }
 
-.appts-calendar-toolbar {
+/* Tools flyout: single-column menu (inset rows, optical icon column) */
+.appts-cal-tools-menu.appts-calendar-toolbar {
   display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: var(--ds-space-2);
-  width: auto;
-  max-width: 100%;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
   margin: 0;
-  padding: 0;
+  padding: 0.12rem 0.32rem 0.18rem;
+  gap: 0;
 }
-.appts-cal-toolbar__track {
-  display: inline-flex;
-  flex-wrap: wrap;
+.appts-cal-tools-menu__group {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+}
+.appts-cal-tools-menu__header {
+  padding: 0.45rem 0.65rem 0.35rem;
+  font-size: var(--ds-text-xs);
+  font-weight: var(--ds-font-semibold);
+  color: var(--ds-color-text-tertiary);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: var(--ds-leading-tight);
+}
+.appts-cal-tools-menu__sep {
+  margin: 0.28rem 0.5rem;
+  border: none;
+  border-top: 1px solid var(--ds-color-divider);
+  opacity: 0.92;
+}
+.appts-cal-tools-menu__ic {
+  display: flex;
   align-items: center;
-  gap: 0.25rem;
-  max-width: 100%;
-  padding: 0.2rem 0.35rem;
-  background: var(--ds-color-bg-subtle);
-  border: 1px solid var(--ds-color-border-light);
-  border-radius: var(--ds-radius-pill);
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.25rem;
+  text-align: center;
+  color: var(--ds-color-text-secondary);
+  opacity: 0.92;
+}
+.appts-cal-tools-menu__ic .appts-cal-toolbar__icon {
+  display: block;
+}
+.appts-cal-tools-menu__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+  font-size: var(--ds-text-md);
+  font-weight: var(--ds-font-medium);
+  color: var(--ds-color-text);
+  letter-spacing: var(--ds-tracking-tight);
+  line-height: var(--ds-leading-tight);
+}
+.appts-cal-tools-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0.0625rem 0;
+  padding: 0.5rem 0.65rem;
+  min-height: 2.25rem;
+  border: none;
+  border-radius: var(--ds-radius-md);
+  background: transparent;
+  font-family: var(--ds-font-sans);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background-color 0.18s cubic-bezier(0.25, 0.1, 0.25, 1),
+    color 0.18s cubic-bezier(0.25, 0.1, 0.25, 1),
+    opacity 0.18s cubic-bezier(0.25, 0.1, 0.25, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+.appts-cal-tools-menu__item:hover {
+  background: rgba(0, 0, 0, 0.045);
+}
+.appts-cal-tools-menu__item:focus-visible {
+  outline: 2px solid var(--ds-color-focus-ring);
+  outline-offset: 0;
+  background: rgba(0, 0, 0, 0.045);
+}
+.appts-cal-tools-menu__item:hover .appts-cal-tools-menu__label,
+.appts-cal-tools-menu__item:focus-visible .appts-cal-tools-menu__label {
+  color: var(--ds-color-text);
+}
+.appts-cal-tools-menu__item:hover .appts-cal-tools-menu__ic,
+.appts-cal-tools-menu__item:focus-visible .appts-cal-tools-menu__ic {
+  color: var(--ds-color-text-secondary);
+  opacity: 1;
 }
 .appts-cal-toolbar__flex-spacer {
   flex: 1 1 auto;
@@ -2844,8 +3460,17 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   min-height: var(--ds-control-height);
 }
 @media (max-width: 720px) {
-  .appts-command-strip {
+  .appts-command-strip:not(.appts-command-strip--premium) {
     flex-wrap: nowrap;
+    justify-content: flex-start;
+  }
+  .appts-command-strip--premium.appts-command-strip {
+    flex-direction: column;
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+  .appts-command-strip__trail {
+    margin-left: 0;
     justify-content: flex-start;
   }
   .appts-command-strip__form {
@@ -2865,9 +3490,8 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
     margin-left: 0;
     justify-content: flex-end;
   }
-  .appts-calendar-toolbar {
-    flex-wrap: wrap;
-    align-items: flex-start;
+  .appts-cal-tools-menu.appts-calendar-toolbar {
+    flex-direction: column;
   }
   .appts-cal-toolbar__flex-spacer {
     display: none;
@@ -2880,9 +3504,13 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
     justify-content: flex-end;
     min-height: 0;
   }
-  .appts-cal-tools-panel .appts-cal-toolbar__popover {
+  .appts-cal-toolbar__slot--tools-menu .appts-cal-toolbar__popover {
+    /* Narrow screens: stack below row (avoid clipping off-screen left) */
     left: 0;
-    right: auto;
+    right: 0;
+    top: calc(100% + 4px);
+    margin-right: 0;
+    min-width: min(280px, calc(100vw - 2rem));
   }
 }
 .appts-cal-toolbar__slot {
@@ -2918,44 +3546,91 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   color: var(--ds-color-accent);
   box-shadow: 0 0 0 1px var(--ds-color-accent-border);
 }
-/* "Now" button — highlighted with a red dot when viewing today */
-.appts-cal-toolbar__btn--today {
-  color: #ef4444;
-}
-.appts-cal-toolbar__btn--today .appts-cal-toolbar__icon {
-  color: #ef4444;
-}
-/* Tiny live dot on the clock icon when viewing today */
-#cal-toolbar-now.appts-cal-toolbar__btn--today::after {
-  content: '';
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #ef4444;
-  box-shadow: 0 0 0 2px var(--ds-color-bg-surface, #fff);
-}
-/* Labeled toolbar controls inside Tools dropdown only */
-.appts-cal-tools-panel .appts-cal-toolbar__btn {
-  width: auto;
-  min-width: 2.25rem;
-  height: auto;
+/* Toolbar buttons that are also Tools menu rows */
+.appts-cal-tools-panel .appts-cal-tools-menu__item.appts-cal-toolbar__btn {
+  position: relative;
+  width: 100%;
+  min-width: 0;
   min-height: 2.25rem;
-  padding: 0.35rem 0.55rem;
+  height: auto;
+  padding: 0.5rem 0.65rem;
   justify-content: flex-start;
-  gap: var(--ds-space-2);
+  gap: 0.65rem;
+  border: none;
+  box-shadow: none;
+}
+/* Submenu affordance (HIG-style chevron; color follows row state) */
+.appts-cal-tools-panel .appts-cal-tools-menu__item.appts-cal-toolbar__btn[aria-haspopup="dialog"]::after {
+  content: "";
+  width: 0.3125rem;
+  height: 0.3125rem;
+  margin-left: auto;
+  flex-shrink: 0;
+  border-right: 1.5px solid currentColor;
+  border-top: 1.5px solid currentColor;
+  transform: rotate(-135deg);
+  opacity: 0.4;
+}
+.appts-cal-tools-panel .appts-cal-tools-menu__item.appts-cal-toolbar__btn[aria-expanded="true"]::after {
+  opacity: 0.95;
+}
+.appts-cal-tools-panel .appts-cal-tools-menu__item.appts-cal-toolbar__btn:hover {
+  border-color: transparent;
+  background: rgba(0, 0, 0, 0.045);
+  color: var(--ds-color-text);
+  box-shadow: none;
+}
+/* Apple-style inverted selection for the row that owns an open submenu */
+.appts-cal-tools-panel .appts-cal-tools-menu__item.appts-cal-toolbar__btn[aria-expanded="true"] {
+  background: var(--ds-color-accent);
+  color: #fff;
+  box-shadow: none;
+  transition:
+    background-color 0.2s cubic-bezier(0.25, 0.1, 0.25, 1),
+    color 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+.appts-cal-tools-panel .appts-cal-tools-menu__item.appts-cal-toolbar__btn[aria-expanded="true"] .appts-cal-tools-menu__label {
+  color: #fff;
+  font-weight: var(--ds-font-semibold);
+}
+.appts-cal-tools-panel .appts-cal-tools-menu__item.appts-cal-toolbar__btn[aria-expanded="true"] .appts-cal-tools-menu__ic {
+  color: rgba(255, 255, 255, 0.9);
+}
+.appts-cal-tools-panel .appts-cal-tools-menu__item.appts-cal-toolbar__btn[aria-expanded="true"]:hover {
+  background: var(--ds-color-accent-hover);
+  color: #fff;
+}
+.appts-cal-tools-panel .appts-cal-tools-menu__item.appts-cal-toolbar__btn[aria-expanded="true"]:hover .appts-cal-tools-menu__label {
+  color: #fff;
+}
+.appts-cal-tools-panel .appts-cal-tools-menu__item.appts-cal-toolbar__btn[aria-expanded="true"]:hover .appts-cal-tools-menu__ic {
+  color: rgba(255, 255, 255, 0.95);
 }
 .appts-cal-tools-panel .appts-cal-toolbar__btn-text {
-  font-size: var(--ds-text-sm);
-  font-weight: var(--ds-font-medium);
+  font-size: inherit;
+  font-weight: inherit;
   white-space: nowrap;
 }
-.appts-cal-tools-panel .appts-cal-toolbar__track {
-  border-radius: var(--ds-radius-md);
-  padding: var(--ds-space-2);
-  gap: var(--ds-space-1);
+.appts-cal-toolbar__slot--tools-menu {
+  display: block;
+  width: 100%;
+}
+/* Flyouts open to the LEFT of the Tools column (macOS-style), aligned with the row */
+.appts-cal-toolbar__slot--tools-menu .appts-cal-toolbar__popover {
+  left: auto;
+  right: 100%;
+  top: 0;
+  margin-right: 0.5rem;
+  min-width: 14rem;
+  width: max-content;
+}
+.appts-cal-toolbar__slot--tools-menu .appts-cal-toolbar__popover--wide {
+  left: auto;
+  right: 100%;
+  top: 0;
+  margin-right: 0.5rem;
+  min-width: min(320px, calc(100vw - 2rem));
+  max-width: min(520px, calc(100vw - 2rem));
 }
 .appts-cal-toolbar__icon--bi {
   fill: currentColor;
@@ -2964,24 +3639,39 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  z-index: 60;
+  z-index: 110;
   min-width: 220px;
   padding: var(--ds-space-3) var(--ds-space-4);
-  background: var(--ds-color-bg-canvas);
-  border: 1px solid var(--ds-color-border);
-  border-radius: var(--ds-radius-md);
-  box-shadow: var(--ds-shadow-md);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: var(--ds-radius-xl);
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.04),
+    0 20px 44px rgba(15, 23, 42, 0.11),
+    0 6px 14px rgba(15, 23, 42, 0.05);
+  backdrop-filter: saturate(200%) blur(22px);
+  -webkit-backdrop-filter: saturate(200%) blur(22px);
+}
+/* Compact list panels (Views, Print): tighter canvas, rows carry their own radius */
+.appts-cal-toolbar__slot--tools-menu .appts-cal-toolbar__popover:not(.appts-cal-toolbar__popover--zoom):not(.appts-cal-toolbar__popover--wide) {
+  padding: 0.35rem 0.3rem;
 }
 .appts-cal-toolbar__popover--wide {
   min-width: 320px;
   max-width: min(520px, 92vw);
+  padding: var(--ds-space-4);
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 /* Zoom popover — professional panel */
 .appts-cal-toolbar__popover--zoom {
   min-width: 17.5rem;
   padding: var(--ds-space-4);
-  border-radius: var(--ds-radius-lg);
-  box-shadow: var(--ds-shadow-md), 0 0 0 1px var(--ds-color-border-light);
+  border-radius: var(--ds-radius-xl);
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.04),
+    0 20px 44px rgba(15, 23, 42, 0.11),
+    0 6px 14px rgba(15, 23, 42, 0.05);
 }
 .appts-cal-zoom__group {
   margin: 0;
@@ -2994,58 +3684,59 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   align-items: center;
   justify-content: space-between;
   gap: var(--ds-space-2);
-  margin-bottom: var(--ds-space-2);
+  margin-bottom: 0.45rem;
 }
 .appts-cal-zoom__value-row {
   display: flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.2rem;
 }
 .appts-cal-zoom__label {
   margin: 0;
-  font-size: var(--ds-text-xs);
-  font-weight: var(--ds-font-semibold);
-  letter-spacing: 0.04em;
+  font-size: 0.625rem;
+  font-weight: var(--ds-font-medium);
+  letter-spacing: 0.11em;
   text-transform: uppercase;
-  color: var(--ds-color-text-secondary);
+  color: var(--ds-color-text-tertiary);
   line-height: var(--ds-leading-tight);
 }
 .appts-cal-zoom__value {
-  font-size: var(--ds-text-sm);
-  font-weight: var(--ds-font-semibold);
+  font-size: var(--ds-text-xs);
+  font-weight: var(--ds-font-medium);
   font-variant-numeric: tabular-nums;
   color: var(--ds-color-text);
-  letter-spacing: var(--ds-tracking-tight);
-  min-width: 2.8rem;
+  letter-spacing: 0.02em;
+  min-width: 2.6rem;
   text-align: right;
 }
 .appts-cal-zoom__reset {
   background: none;
   border: none;
   cursor: pointer;
-  color: var(--ds-color-text-secondary);
-  font-size: 0.95rem;
-  padding: 0.1rem 0.25rem;
+  color: var(--ds-color-text-tertiary);
+  font-size: 0.8125rem;
+  padding: 0.12rem 0.22rem;
   border-radius: var(--ds-radius-sm);
   line-height: 1;
-  opacity: 0.55;
-  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+  opacity: 0.65;
+  transition: opacity 0.18s ease, color 0.18s ease, background 0.18s ease;
 }
 .appts-cal-zoom__reset:hover {
   opacity: 1;
-  color: var(--ds-color-accent);
-  background: var(--ds-color-accent-muted);
+  color: var(--ds-color-text-secondary);
+  background: rgba(0, 0, 0, 0.04);
 }
 .appts-cal-zoom__sep {
   height: 1px;
   margin: var(--ds-space-3) 0;
-  background: var(--ds-color-divider);
+  background: linear-gradient(90deg, transparent, var(--ds-color-divider) 8%, var(--ds-color-divider) 92%, transparent);
   border: none;
+  opacity: 0.85;
 }
 .appts-cal-zoom__range {
   display: block;
   width: 100%;
-  height: 1.5rem;
+  height: 1.125rem;
   margin: 0;
   padding: 0;
   background: transparent;
@@ -3059,110 +3750,134 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
 }
 .appts-cal-zoom__range:focus-visible {
   outline: 2px solid var(--ds-color-focus-ring);
-  outline-offset: 2px;
-  border-radius: var(--ds-radius-sm);
+  outline-offset: 3px;
+  border-radius: var(--ds-radius-pill);
 }
+/* Delicate track + small thumb (modern / airy) */
 .appts-cal-zoom__range::-webkit-slider-runnable-track {
-  height: 0.375rem;
+  height: 0.25rem;
   border-radius: var(--ds-radius-pill);
   background: linear-gradient(
     to right,
-    var(--ds-color-accent) var(--track-fill, 50%),
-    var(--ds-color-bg-muted) var(--track-fill, 50%)
+    rgba(17, 24, 39, 0.38) var(--track-fill, 50%),
+    rgba(0, 0, 0, 0.07) var(--track-fill, 50%)
   );
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.65);
 }
 .appts-cal-zoom__range::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 1.125rem;
-  height: 1.125rem;
-  margin-top: -0.375rem;
+  width: 0.8125rem;
+  height: 0.8125rem;
+  margin-top: calc((0.25rem - 0.8125rem) / 2);
   border-radius: 50%;
-  background: var(--ds-color-bg-canvas);
-  border: 2px solid var(--ds-color-accent);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.14), 0 1px 2px rgba(0,0,0,0.06);
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  box-shadow:
+    0 0 0 0.5px rgba(255, 255, 255, 0.9) inset,
+    0 1px 2px rgba(0, 0, 0, 0.06),
+    0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1), box-shadow 0.2s cubic-bezier(0.25, 0.1, 0.25, 1), border-color 0.2s ease;
 }
 .appts-cal-zoom__range:hover::-webkit-slider-thumb {
-  transform: scale(1.15);
-  box-shadow: 0 2px 8px rgba(99,102,241,0.22), 0 1px 3px rgba(0,0,0,0.1);
+  transform: scale(1.06);
+  border-color: rgba(0, 0, 0, 0.2);
+  box-shadow:
+    0 0 0 0.5px rgba(255, 255, 255, 0.95) inset,
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    0 2px 6px rgba(0, 0, 0, 0.05);
 }
 .appts-cal-zoom__range:active::-webkit-slider-thumb {
-  transform: scale(0.96);
-  box-shadow: 0 0 0 3px rgba(99,102,241,0.18);
+  transform: scale(0.98);
+  box-shadow:
+    0 0 0 0.5px rgba(255, 255, 255, 0.85) inset,
+    0 0 0 2px rgba(17, 24, 39, 0.06);
 }
 .appts-cal-zoom__range::-moz-range-track {
-  height: 0.375rem;
+  height: 0.25rem;
   border-radius: var(--ds-radius-pill);
-  background: var(--ds-color-bg-muted);
+  background: rgba(0, 0, 0, 0.07);
   border: none;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.65);
 }
 .appts-cal-zoom__range::-moz-range-progress {
-  height: 0.375rem;
+  height: 0.25rem;
   border-radius: var(--ds-radius-pill);
-  background: var(--ds-color-accent);
+  background: rgba(17, 24, 39, 0.38);
 }
 .appts-cal-zoom__range::-moz-range-thumb {
-  width: 1.125rem;
-  height: 1.125rem;
+  width: 0.8125rem;
+  height: 0.8125rem;
   border-radius: 50%;
-  background: var(--ds-color-bg-canvas);
-  border: 2px solid var(--ds-color-accent);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.14);
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 .appts-cal-zoom__hints {
   display: flex;
   justify-content: space-between;
-  font-size: 0.625rem;
-  color: var(--ds-color-text-secondary, #94a3b8);
-  letter-spacing: 0.02em;
-  margin-top: 0.2rem;
-  opacity: 0.7;
+  font-size: 0.5625rem;
+  font-weight: var(--ds-font-medium);
+  color: var(--ds-color-text-tertiary);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-top: 0.28rem;
+  opacity: 0.85;
 }
 .appts-cal-zoom__presets {
   display: flex;
-  gap: 0.3rem;
-  margin-top: 0.6rem;
+  gap: 0.2rem;
+  margin-top: 0.55rem;
+  padding: 0.18rem;
+  border-radius: var(--ds-radius-md);
+  background: rgba(0, 0, 0, 0.035);
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
 .appts-cal-zoom__preset {
   flex: 1;
-  padding: 0.28rem 0.4rem;
-  font-size: 0.7rem;
-  font-weight: 600;
-  background: var(--ds-color-bg-subtle);
-  border: 1px solid var(--ds-color-border-light);
+  padding: 0.32rem 0.35rem;
+  font-size: var(--ds-text-xs);
+  font-weight: var(--ds-font-semibold);
+  background: transparent;
+  border: 1px solid transparent;
   border-radius: var(--ds-radius-sm);
   cursor: pointer;
   color: var(--ds-color-text-secondary);
   white-space: nowrap;
-  line-height: 1.4;
-  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+  line-height: 1.35;
+  transition:
+    background 0.18s cubic-bezier(0.25, 0.1, 0.25, 1),
+    border-color 0.18s cubic-bezier(0.25, 0.1, 0.25, 1),
+    color 0.18s cubic-bezier(0.25, 0.1, 0.25, 1),
+    box-shadow 0.18s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 .appts-cal-zoom__preset:hover {
-  background: var(--ds-color-accent-muted);
-  border-color: var(--ds-color-accent-border);
-  color: var(--ds-color-accent);
+  background: rgba(255, 255, 255, 0.65);
+  border-color: rgba(0, 0, 0, 0.06);
+  color: var(--ds-color-text);
 }
 .appts-cal-zoom__preset--active {
-  background: var(--ds-color-accent-muted);
-  border-color: var(--ds-color-accent-border);
+  background: var(--ds-color-bg-canvas);
+  border-color: rgba(0, 0, 0, 0.08);
   color: var(--ds-color-accent);
-  font-weight: 700;
+  font-weight: var(--ds-font-semibold);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 .appts-cal-zoom__check {
   display: flex;
   align-items: flex-start;
-  gap: var(--ds-space-3);
+  gap: var(--ds-space-2);
   margin: 0;
-  padding: var(--ds-space-3) var(--ds-space-3);
+  padding: 0.55rem 0.65rem;
   border-radius: var(--ds-radius-md);
-  background: var(--ds-color-bg-subtle);
-  border: 1px solid var(--ds-color-border-light);
-  font-size: var(--ds-text-sm);
+  background: rgba(0, 0, 0, 0.025);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  font-size: var(--ds-text-xs);
+  font-weight: var(--ds-font-medium);
   line-height: var(--ds-leading-normal);
-  color: var(--ds-color-text);
+  color: var(--ds-color-text-secondary);
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: background 0.18s ease, border-color 0.18s ease;
 }
 .appts-cal-zoom__check:hover {
   background: var(--ds-color-bg-muted);
@@ -3214,16 +3929,28 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
 .appts-cal-toolbar__footer {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-top: 0.5rem;
-  padding-top: 0.5rem;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.25rem 0.35rem;
+  margin-top: var(--ds-space-3);
+  padding-top: var(--ds-space-3);
   border-top: 1px solid var(--ds-color-divider);
+}
+.appts-cal-toolbar__footer #cal-toolbar-staff-cancel {
+  margin-left: auto;
+}
+.appts-cal-toolbar__footer #cal-toolbar-staff-apply {
+  min-width: 5.25rem;
 }
 .appts-cal-staff-modal__grid {
   display: block;
   gap: 0.5rem 1rem;
-  max-height: 320px;
-  overflow: auto;
+  max-height: none;
+  overflow-x: hidden;
+  overflow-y: visible;
+  padding: 0.1rem 0 0.15rem;
+  min-width: 0;
+  box-sizing: border-box;
 }
 .appts-cal-staff-modal__col + .appts-cal-staff-modal__col {
   margin-top: 0.75rem;
@@ -3232,63 +3959,103 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.35rem 0.6rem;
+  min-width: 0;
+  width: 100%;
 }
 .appts-cal-staff-modal__rows--single {
   grid-template-columns: 1fr;
 }
 .appts-cal-staff-modal__subhead {
-  margin: 0 0 0.25rem;
-  font-size: 0.75rem;
-  font-weight: 700;
+  margin: 0 0 0.35rem;
+  font-size: var(--ds-text-xs);
+  font-weight: var(--ds-font-semibold);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--ds-color-text-secondary);
+  letter-spacing: 0.08em;
+  color: var(--ds-color-text-tertiary);
+  line-height: var(--ds-leading-tight);
 }
 .appts-cal-staff-modal__row {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 0.35rem;
-  font-size: var(--ds-text-sm, 0.875rem);
+  gap: 0.45rem;
+  min-width: 0;
+  max-width: 100%;
+  font-size: var(--ds-text-sm);
+  letter-spacing: var(--ds-tracking-tight);
+  line-height: var(--ds-leading-tight);
+  padding: 0.2rem 0.1rem;
+  margin: 0;
+  border-radius: var(--ds-radius-sm);
   cursor: pointer;
+  transition: background 0.15s cubic-bezier(0.25, 0.1, 0.25, 1);
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+.appts-cal-staff-modal__row:hover {
+  background: rgba(0, 0, 0, 0.035);
+}
+.appts-cal-staff-modal__row input[type="checkbox"] {
+  accent-color: var(--ds-color-accent);
+  width: 1rem;
+  height: 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.appts-cal-toolbar__footer .ds-btn--ghost {
+  color: var(--ds-color-text);
+  font-weight: var(--ds-font-medium);
+}
+.appts-cal-toolbar__footer .ds-btn--ghost:hover {
+  color: var(--ds-color-accent);
+  background: var(--ds-color-accent-muted);
 }
 .appts-cal-toolbar__views-list {
   list-style: none;
-  margin: 0 0 0.35rem;
+  margin: 0 0 0.4rem;
   padding: 0;
-  max-height: 160px;
+  max-height: 11rem;
   overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
 }
 .appts-cal-toolbar__views-list li {
-  margin: 0.15rem 0;
+  margin: 0.08rem 0;
 }
 .appts-cal-toolbar__views-link {
   display: block;
   color: var(--ds-color-text);
   text-decoration: none;
   font-size: var(--ds-text-sm);
-  padding: 0.35rem var(--ds-space-2);
-  margin: 0 calc(-1 * var(--ds-space-2));
-  border-radius: var(--ds-radius-sm);
+  font-weight: var(--ds-font-medium);
+  letter-spacing: var(--ds-tracking-tight);
+  padding: 0.45rem 0.5rem;
+  margin: 0;
+  border-radius: var(--ds-radius-md);
+  transition: background 0.15s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 .appts-cal-toolbar__views-link:hover {
-  background: var(--ds-color-bg-muted);
+  background: rgba(0, 0, 0, 0.045);
   text-decoration: none;
 }
 .appts-cal-toolbar__menu-item {
   display: block;
   width: 100%;
   text-align: left;
-  padding: 0.4rem var(--ds-space-2);
-  margin: 0 calc(-1 * var(--ds-space-2));
+  padding: 0.45rem 0.5rem;
+  margin: 0.06rem 0.15rem;
   border: none;
-  border-radius: var(--ds-radius-sm);
+  border-radius: var(--ds-radius-md);
   background: none;
   font-size: var(--ds-text-sm);
+  font-weight: var(--ds-font-medium);
+  letter-spacing: var(--ds-tracking-tight);
   color: var(--ds-color-text);
   cursor: pointer;
+  transition: background 0.15s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 .appts-cal-toolbar__menu-item:hover {
-  background: var(--ds-color-bg-muted);
+  background: rgba(0, 0, 0, 0.045);
   text-decoration: none;
 }
 a.appts-cal-toolbar__menu-item {
@@ -3299,6 +4066,7 @@ a.appts-cal-toolbar__menu-item:hover {
 }
 .appts-cal-toolbar__menu-item--danger {
   color: var(--ds-color-danger);
+  font-weight: var(--ds-font-medium);
 }
 .appts-cal-toolbar__menu-item--danger:hover {
   background: var(--ds-color-danger-bg);
@@ -3430,15 +4198,11 @@ a.appts-cal-toolbar__menu-item:hover {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: var(--ds-space-2) var(--ds-space-3);
-  margin-bottom: 0.4rem;
+  margin-bottom: 0;
   flex-shrink: 0;
-}
-.appts-calendar-meta__hint {
-  margin: 0;
-  font-size: var(--ds-text-xs);
-  color: var(--ds-color-text-secondary);
+  min-height: 0;
 }
 .appts-calendar-meta__status {
   min-height: 1.15rem;
@@ -3447,8 +4211,12 @@ a.appts-cal-toolbar__menu-item:hover {
   font-weight: var(--ds-font-semibold);
   color: var(--ds-color-text-secondary);
 }
+.appts-calendar-meta__status:empty {
+  display: none;
+  min-height: 0;
+}
 .appts-calendar-hours {
-  margin: 0.2rem 0 0.45rem;
+  margin: 0;
   flex-shrink: 0;
 }
 .appts-calendar-grid {
@@ -3463,9 +4231,33 @@ a.appts-cal-toolbar__menu-item:hover {
   overscroll-behavior: contain;
   /* Reserve gutter so toggling the vertical scrollbar does not change clientWidth (column reflow / “shrink”). */
   scrollbar-gutter: stable;
+  /* Firefox: slim system scrollbar + subtle thumb */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.4) transparent;
   background: #f8fafc;
   -webkit-overflow-scrolling: touch;
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+/* Chromium / Safari / Edge: slim rounded scrollbar (matches grid chrome) */
+.appts-calendar-grid::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.appts-calendar-grid::-webkit-scrollbar-track {
+  background: transparent;
+}
+.appts-calendar-grid::-webkit-scrollbar-thumb {
+  background-clip: padding-box;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-color: rgba(100, 116, 139, 0.32);
+}
+.appts-calendar-grid::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(71, 85, 105, 0.48);
+}
+.appts-calendar-grid::-webkit-scrollbar-corner {
+  background: transparent;
 }
 .calendar-day-wrap {
   margin: 0;
@@ -3501,8 +4293,8 @@ a.appts-cal-toolbar__menu-item:hover {
   transform: translateY(0);
   transition: opacity 0.22s ease, max-height 0.28s ease, transform 0.22s ease, margin 0.22s ease;
 }
-.calendar-workspace.is-immersive .appts-workspace-header__intro,
-.calendar-workspace.is-immersive .appts-workspace-header__controls {
+/* Immersive: collapse title/subtitle only; keep mode switch + New appointment (parity with list/waitlist). */
+.calendar-workspace.is-immersive .appts-workspace-header__intro {
   max-height: 0;
   opacity: 0;
   margin: 0;
@@ -3510,14 +4302,29 @@ a.appts-cal-toolbar__menu-item:hover {
   overflow: hidden;
   pointer-events: none;
   transform: translateY(-4px);
+  min-width: 0 !important;
+  flex: 0 0 0;
+  width: 0;
+  border: 0;
+}
+.calendar-workspace.is-immersive .appts-workspace-header__controls {
+  max-height: none;
+  opacity: 1 !important;
+  margin-top: 0;
+  margin-left: auto;
+  padding: 6px 0 10px;
+  overflow: visible;
+  pointer-events: auto;
+  transform: none;
+  animation: none;
 }
 .calendar-workspace.is-immersive .appts-workspace-header {
-  max-height: 0;
-  opacity: 0;
-  overflow: hidden;
-  margin: 0;
+  max-height: none;
+  opacity: 1;
+  overflow: visible;
+  margin: 0 0 var(--ds-space-2);
   padding: 0;
-  pointer-events: none;
+  pointer-events: auto;
 }
 .calendar-workspace.is-immersive .appts-calendar-body {
   grid-template-columns: minmax(11rem, 13.5rem) minmax(0, 1fr);
@@ -3637,12 +4444,9 @@ a.appts-cal-toolbar__menu-item:hover {
   padding-top: var(--ds-space-2);
   padding-bottom: var(--ds-space-1);
 }
-/* Command strip "New appointment" — hidden in normal mode, promoted in immersive */
+/* Command strip "New appointment" — duplicate of workspace header; keep hidden (header stays visible in immersive). */
 .appts-command-strip__new-appt {
   display: none !important;
-}
-.calendar-workspace.is-immersive .appts-command-strip__new-appt {
-  display: inline-flex !important;
 }
 
 @media (max-width: 960px) {
@@ -3743,59 +4547,112 @@ a.appts-cal-toolbar__menu-item:hover {
 .ops-staff-head { cursor: pointer; user-select: none; position: relative; transition: background 0.2s ease, color 0.2s ease; }
 .ops-staff-head:hover { background: #f8fafc; color: #0f172a; }
 .ops-staff-head--open { background: #f8fafc; }
-.ops-staff-head--open::after { transform: rotate(180deg); border-top-color: #6366f1; }
-.ops-staff-head:focus-visible { outline: 2px solid #6366f1; outline-offset: -2px; }
+.ops-staff-head--open::after { transform: rotate(180deg); border-top-color: var(--ds-color-accent); }
+.ops-staff-head:focus-visible { outline: 2px solid var(--ds-color-accent); outline-offset: -2px; }
 
 .ops-staff-menu {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  min-width: 200px;
-  background: rgba(255, 255, 255, 0.98);
-  border: 1px solid rgba(226, 232, 240, 0.8);
-  border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0,0,0,.08), 0 4px 6px rgba(0,0,0,.04);
-  z-index: 40;
-  padding: 0.4rem 0;
-  backdrop-filter: blur(12px);
+  min-width: 208px;
+  background: var(--ds-color-bg-canvas);
+  border: 1px solid #f3f4f6;
+  border-radius: var(--ds-radius-lg);
+  box-shadow:
+    0 24px 48px rgba(15, 23, 42, 0.14),
+    0 12px 24px rgba(15, 23, 42, 0.1),
+    0 4px 8px rgba(15, 23, 42, 0.06);
+  z-index: 60;
+  padding: 0.25rem 0;
+  backdrop-filter: saturate(180%) blur(12px);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
 }
 .ops-staff-menu__item {
-  display: block;
-  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-sizing: border-box;
+  width: calc(100% - 0.5rem);
+  margin: 0 0.25rem;
   text-align: left;
   background: none;
   border: none;
-  padding: 0.6rem 1.2rem;
-  font-size: var(--ds-text-sm, 0.875rem);
+  padding: 0.375rem 0.65rem;
+  font-size: 0.8125rem;
+  font-weight: var(--ds-font-medium);
   color: var(--ds-color-text, #1e293b);
   cursor: pointer;
-  line-height: 1.4;
+  line-height: 1.35;
   white-space: nowrap;
-  transition: background 0.15s ease, color 0.15s ease;
+  border-radius: var(--ds-radius-sm);
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.ops-staff-menu__ic {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  color: #64748b;
+}
+.ops-staff-menu__icon-svg {
+  display: block;
+}
+.ops-staff-menu__label {
+  min-width: 0;
+  flex: 1;
 }
 .ops-staff-menu__item:hover,
-.ops-staff-menu__item:focus { background: #f1f5f9; outline: none; color: #0f172a; }
-.ops-staff-menu__item--danger { color: #b91c1c; }
+.ops-staff-menu__item:focus {
+  background: #f9fafb;
+  outline: none;
+  color: #0f172a;
+}
+.ops-staff-menu__item:hover .ops-staff-menu__ic,
+.ops-staff-menu__item:focus .ops-staff-menu__ic {
+  color: #475569;
+}
+.ops-staff-menu__item--danger {
+  color: #ef4444;
+}
+.ops-staff-menu__item--danger .ops-staff-menu__ic {
+  color: #ef4444;
+}
 .ops-staff-menu__item--danger:hover,
-.ops-staff-menu__item--danger:focus { background: #fee2e2; color: #991b1b; }
-.ops-staff-menu__sep { height: 1px; background: #e2e8f0; margin: 0.3rem 0; }
+.ops-staff-menu__item--danger:focus {
+  background: #fef2f2;
+  color: #dc2626;
+}
+.ops-staff-menu__item--danger:hover .ops-staff-menu__ic,
+.ops-staff-menu__item--danger:focus .ops-staff-menu__ic {
+  color: #dc2626;
+}
+.ops-staff-menu__sep {
+  height: 1px;
+  background: #f3f4f6;
+  margin: 0.2rem 0.5rem;
+}
 
 .calendar-hidden-cols-pill {
   font-size: var(--ds-text-xs);
   font-weight: var(--ds-font-semibold);
   padding: 0.35rem 0.65rem;
-  border: 1px solid var(--ds-color-border);
+  border: 1px solid rgba(0, 0, 0, 0.07);
   color: var(--ds-color-text-secondary);
-  background: var(--ds-color-accent-muted);
+  background: rgba(0, 0, 0, 0.035);
   border-radius: var(--ds-radius-pill);
   cursor: pointer;
   white-space: nowrap;
+  box-shadow: none;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 .calendar-hidden-cols-pill:hover {
-  background: var(--ds-color-bg-muted);
-  border-color: var(--ds-color-accent-border);
+  background: rgba(0, 0, 0, 0.055);
+  border-color: rgba(0, 0, 0, 0.1);
   color: var(--ds-color-text);
+  box-shadow: none;
+  transform: none;
 }
 .ops-staff-head:last-child, .ops-lane:last-child { border-right: none; }
 .ops-calendar-body { position: relative; display: grid; grid-template-columns: 84px 1fr; }
@@ -3875,13 +4732,14 @@ a.appts-cal-toolbar__menu-item:hover {
   border-top: 1px solid rgba(226, 232, 240, 0.7);
   border-top-style: dashed;
 }
+/* Same stacking as .ops-slot-preview: stay visible along the top band under sticky header. */
 .ops-now-line {
   position: absolute;
   left: 84px;
   right: 0;
   height: 2px;
   background: #ef4444;
-  z-index: 4;
+  z-index: 8;
   pointer-events: none;
 }
 .ops-now-line::before {
@@ -3916,13 +4774,21 @@ a.appts-cal-toolbar__menu-item:hover {
   line-height: 1.5;
 }
 .calendar-branch-hours-indicator {
-  margin: 0.2rem 0 0.45rem;
+  margin: 0.35rem 0 0.35rem;
   font-size: 0.72rem;
   font-weight: 600;
   color: #334155;
 }
+.calendar-branch-hours-indicator:empty {
+  display: none;
+  margin: 0;
+  min-height: 0;
+}
 .calendar-branch-hours-indicator--open {
   color: #0f766e;
+}
+.calendar-branch-hours-indicator--anomaly {
+  color: #b45309;
 }
 .calendar-branch-hours-indicator--closed {
   color: #b45309;
@@ -3961,7 +4827,8 @@ a.appts-cal-toolbar__menu-item:hover {
   border: 1px solid rgba(191, 219, 254, 0.65);
   border-left: 1px solid rgba(191, 219, 254, 0.65);
   background: rgba(255, 255, 255, 0.96);
-  z-index: 3;
+  /* Above .ops-slot-preview (8) so hover slot UI does not paint over appointments. */
+  z-index: 10;
   color: var(--ds-color-text, #0f172a);
 }
 @supports (color: color-mix(in srgb, red, blue)) {
@@ -4019,7 +4886,7 @@ a.appts-cal-toolbar__menu-item:hover {
 .ops-block-appt:hover {
   border-color: rgba(45, 212, 191, 0.55);
   box-shadow: 0 8px 20px rgba(13, 148, 136, 0.09), 0 2px 8px rgba(15, 23, 42, 0.04);
-  z-index: 4;
+  z-index: 11;
 }
 @media (prefers-reduced-motion: no-preference) {
   .ops-block-appt:hover {
@@ -4111,7 +4978,7 @@ a.appts-cal-toolbar__menu-item:hover {
   border-left: 1px solid rgba(231, 213, 206, 0.75);
   background: rgba(250, 246, 244, 0.94);
   color: var(--ds-color-text, #44403c);
-  z-index: 2;
+  z-index: 10;
 }
 .ops-block-blocked::before {
   content: '';
@@ -6087,14 +6954,22 @@ a.appts-cal-toolbar__menu-item:hover {
   gap: 0.75rem;
 }
 .dashboard-summary__card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: var(--ds-radius-xl);
   padding: 0.85rem 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
   min-height: 4.5rem;
+  box-shadow: var(--ds-shadow-glass);
+  backdrop-filter: var(--ds-glass-blur);
+  -webkit-backdrop-filter: var(--ds-glass-blur);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.dashboard-summary__card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 36px rgba(15, 23, 42, 0.1);
 }
 .dashboard-summary__label {
   font-size: 0.75rem;
@@ -6106,8 +6981,9 @@ a.appts-cal-toolbar__menu-item:hover {
 .dashboard-summary__value {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--ds-color-accent);
   line-height: 1.2;
+  letter-spacing: -0.03em;
 }
 .dashboard-summary__hint {
   font-size: 0.75rem;
@@ -6143,14 +7019,16 @@ a.appts-cal-toolbar__menu-item:hover {
   margin-top: 1rem;
 }
 .tenant-dash-panel {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  background: var(--ds-glass-bg);
+  border: 1px solid var(--ds-glass-border);
+  border-radius: var(--ds-radius-xl);
   padding: 1rem 1.1rem;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  box-shadow: var(--ds-shadow-glass);
+  backdrop-filter: var(--ds-glass-blur);
+  -webkit-backdrop-filter: var(--ds-glass-blur);
 }
 .tenant-dash-panel--header {
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 .tenant-dash-head {
   margin-top: 0.1rem;
@@ -6207,8 +7085,8 @@ a.appts-cal-toolbar__menu-item:hover {
 .tenant-dash-attention {
   margin-top: 0;
   padding: 1rem 1.1rem;
-  background: #fffcf2;
-  border-color: #f2dc95;
+  background: rgba(255, 249, 230, 0.85);
+  border-color: rgba(245, 158, 11, 0.3);
 }
 .tenant-dash-attention__heading {
   margin: 0 0 0.55rem;
@@ -6257,9 +7135,11 @@ a.appts-cal-toolbar__menu-item:hover {
 }
 .tenant-dash-table-wrap {
   overflow-x: auto;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: var(--ds-radius-xl);
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: var(--ds-glass-blur);
+  -webkit-backdrop-filter: var(--ds-glass-blur);
 }
 .tenant-dash-table {
   width: 100%;
@@ -6287,12 +7167,12 @@ a.appts-cal-toolbar__menu-item:hover {
 }
 .tenant-dash-table__link {
   font-weight: 600;
-  color: #0d9488;
+  color: var(--ds-color-accent);
   text-decoration: none;
 }
 .tenant-dash-table__link:hover {
   text-decoration: underline;
-  color: #0f766e;
+  color: var(--ds-color-accent);
 }
 .tenant-dash-table__row--warn td {
   background: rgba(251, 191, 36, 0.14);
@@ -6409,7 +7289,7 @@ a.appts-cal-toolbar__menu-item:hover {
 .app-shell__guide-link {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #4338ca;
+  color: var(--ds-color-accent);
   text-decoration: none;
   white-space: nowrap;
 }
@@ -6912,7 +7792,7 @@ a.appts-cal-toolbar__menu-item:hover {
 }
 .platform-guided-wizard__cta {
   border-color: #c7d2fe;
-  background: #eef2ff;
+  background: #f4f4f5;
 }
 .platform-guided-wizard__advanced {
   margin-top: 0.75rem;
@@ -7007,8 +7887,8 @@ a.appts-cal-toolbar__menu-item:hover {
   margin: 0 0 1rem;
   padding: 0.65rem 0.85rem;
   border-radius: 0.35rem;
-  border-left: 4px solid #6366f1;
-  background: #eef2ff;
+  border-left: 4px solid var(--ds-color-accent);
+  background: #f4f4f5;
   font-size: 0.8125rem;
   color: #312e81;
   line-height: 1.45;
@@ -7035,7 +7915,7 @@ a.appts-cal-toolbar__menu-item:hover {
 .platform-incident-center__route-hint {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #4338ca;
+  color: var(--ds-color-accent);
 }
 .platform-impact-panel--advanced {
   border-style: dashed;
@@ -11640,3 +12520,271 @@ details.cashier-totals-summary:not([open]) {
    modules/clients/views/partials/client-ref-shell-styles.php under .client-ref--appointments-page */
 /* Client dedicated details page: scoped under .client-ref--details-page in the same partial */
 /* Client secondary tabs (sales, billing, photos, mail marketing, documents): .client-ref--client-tab in client-ref-shell-styles.php */
+
+/* ── Smart Calendar Rail: Apple-style refresh ──────────────────────────── */
+
+/* Base layout for the new __header-row element (title + nav inline) */
+.appts-cal-card__header-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.appts-cal-card__header-row .appts-cal-card__title-month {
+  flex: 1;
+  min-width: 0;
+}
+.appts-cal-card__header-row .appts-cal-card__nav {
+  flex: 0 0 auto;
+}
+
+/* Rail card: structural panel (not a floating popover) */
+.appts-smart-calendar-rail .appts-cal-card {
+  border-radius: var(--ds-radius-xl);
+  border: 1px solid #e5e7eb;
+  background: var(--ds-color-bg-subtle);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  padding: 0.75rem 0.7rem 0.85rem;
+  gap: 0.45rem;
+  min-width: 0;
+  overflow: visible;
+}
+
+/* Segmented control */
+.appts-smart-calendar-rail .appts-cal-card__top {
+  gap: 0;
+}
+.appts-smart-calendar-rail .appts-cal-card__mode {
+  width: 100%;
+  align-self: stretch;
+  background: rgba(15, 23, 42, 0.06);
+  border-radius: 11px;
+  padding: 3px;
+  gap: 2px;
+}
+.appts-smart-calendar-rail .appts-cal-card__mode-btn {
+  flex: 1 1 0;
+  min-height: 28px;
+  border-radius: 9px;
+  font-size: 0.75rem;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+  color: #6b7280;
+  padding: 0.28rem 0.2rem;
+}
+.appts-smart-calendar-rail .appts-cal-card__mode-btn--active {
+  background: #fff;
+  color: #111827;
+  box-shadow: var(--ds-shadow-segmented-active);
+  font-weight: 600;
+}
+
+/* Header row: title left, arrows right */
+.appts-smart-calendar-rail .appts-cal-card__header-row .appts-cal-card__title-month {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-transform: none;
+  color: #111827;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.appts-smart-calendar-rail .appts-cal-card__header-row .appts-cal-card__nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+}
+.appts-smart-calendar-rail .appts-cal-card__header-row .appts-cal-card__today {
+  display: none !important;
+}
+.appts-smart-calendar-rail .appts-cal-card__header-row .appts-cal-card__chev {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  border-radius: 50%;
+  background: var(--ds-color-bg-canvas);
+  border: 1px solid #e5e7eb;
+  box-shadow: none;
+  color: #374151;
+  font-size: 1rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.appts-smart-calendar-rail .appts-cal-card__header-row .appts-cal-card__chev:hover {
+  background: var(--ds-color-bg-subtle);
+  border-color: #d1d5db;
+  box-shadow: var(--ds-shadow-control-hover);
+}
+.appts-smart-calendar-rail .appts-cal-card__header-row .appts-cal-card__chev:focus-visible {
+  outline: 2px solid var(--ds-color-accent);
+  outline-offset: 1px;
+}
+
+/* Hero: hidden in rail – kept in DOM for JS compatibility */
+.appts-smart-calendar-rail .appts-cal-card__hero {
+  display: none !important;
+}
+
+/* Weekday labels */
+.appts-smart-calendar-rail .appts-cal-month__dow,
+.appts-smart-calendar-rail .appts-cal-card__weekday-ribbon {
+  font-size: 0.57rem;
+  font-weight: 600;
+  color: #9ca3af;
+  letter-spacing: 0.02em;
+  gap: 0.18rem;
+}
+
+/* Grid gap — smaller gap so 7 columns breathe in the rail */
+.appts-smart-calendar-rail .appts-cal-month__grid,
+.appts-smart-calendar-rail .appts-cal-card__strip {
+  gap: 0.18rem;
+  overflow: visible;
+  overflow-x: visible;
+}
+
+/* Day cells: auto-responsive circles — fills the 1fr column, never overflows */
+.appts-smart-calendar-rail .appts-cal-card__dow,
+.appts-smart-calendar-rail .appts-cal-month__cell--day {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  min-height: 0;
+  justify-self: stretch;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #111827;
+  box-shadow: none;
+  padding: 0;
+  position: relative;
+  overflow: visible;
+}
+.appts-smart-calendar-rail .appts-cal-card__dow-num,
+.appts-smart-calendar-rail .appts-cal-month__cell-num {
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+/* Pad cells same size so alignment matches */
+.appts-smart-calendar-rail .appts-cal-month__cell--pad {
+  aspect-ratio: 1;
+  min-height: 0;
+}
+
+/* Today: subtle ink ring */
+.appts-smart-calendar-rail .appts-cal-month__cell--today:not(.appts-cal-month__cell--selected),
+.appts-smart-calendar-rail .appts-cal-card__dow--today:not(.appts-cal-card__dow--selected) {
+  background: rgba(17, 24, 39, 0.08);
+  box-shadow: inset 0 0 0 1.5px rgba(17, 24, 39, 0.35);
+}
+.appts-smart-calendar-rail .appts-cal-month__cell--today .appts-cal-month__cell-num,
+.appts-smart-calendar-rail .appts-cal-card__dow--today .appts-cal-card__dow-num {
+  color: var(--ds-color-accent);
+}
+
+/* Hover */
+.appts-smart-calendar-rail .appts-cal-card__dow:hover:not(.appts-cal-card__dow--selected),
+.appts-smart-calendar-rail .appts-cal-month__cell--day:hover:not(.appts-cal-month__cell--selected) {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(255, 255, 255, 0.9);
+}
+
+/* Selected: black circle */
+.appts-smart-calendar-rail .appts-cal-card__dow--selected,
+.appts-smart-calendar-rail .appts-cal-month__cell--selected {
+  background: #111827;
+  color: #fff;
+  border-color: #111827;
+  box-shadow: none;
+}
+.appts-smart-calendar-rail .appts-cal-card__dow--selected .appts-cal-card__dow-num,
+.appts-smart-calendar-rail .appts-cal-month__cell--selected .appts-cal-month__cell-num {
+  color: #fff;
+}
+
+/* Past/closed dim */
+.appts-smart-calendar-rail .appts-cal-month__cell--past:not(.appts-cal-month__cell--selected),
+.appts-smart-calendar-rail .appts-cal-card__dow--past:not(.appts-cal-card__dow--selected) {
+  opacity: 0.42;
+}
+
+/* Activity dots — absolute inside the circle, centred horizontally */
+.appts-smart-calendar-rail .appts-cal-card__dow-dot,
+.appts-smart-calendar-rail .appts-cal-month__cell-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  margin: 0;
+}
+.appts-smart-calendar-rail .appts-cal-card__dow--has-appts .appts-cal-card__dow-dot,
+.appts-smart-calendar-rail .appts-cal-month__cell--has-appts .appts-cal-month__cell-dot {
+  opacity: 1;
+  background: #34c759;
+}
+.appts-smart-calendar-rail .appts-cal-card__dow--busy-heavy.appts-cal-card__dow--has-appts .appts-cal-card__dow-dot,
+.appts-smart-calendar-rail .appts-cal-month__cell--busy-heavy.appts-cal-month__cell--has-appts .appts-cal-month__cell-dot {
+  background: #ff3b30;
+  box-shadow: none;
+}
+.appts-smart-calendar-rail .appts-cal-card__dow--selected .appts-cal-card__dow-dot,
+.appts-smart-calendar-rail .appts-cal-month__cell--selected .appts-cal-month__cell-dot {
+  display: none;
+}
+
+/* Hide appointment count badges */
+.appts-smart-calendar-rail .appts-cal-month__cell-count,
+.appts-smart-calendar-rail .appts-cal-card__dow-count {
+  display: none;
+}
+
+/* 2-months: no scroll — both months fully visible, cells auto-size to fit */
+.appts-smart-calendar-rail .appts-cal-two-months {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: visible;
+}
+.appts-smart-calendar-rail .appts-cal-two-months__month {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding-bottom: 0.6rem;
+}
+.appts-smart-calendar-rail .appts-cal-two-months__month + .appts-cal-two-months__month {
+  border-top: 1px solid rgba(15, 23, 42, 0.07);
+  padding-top: 0.4rem;
+  padding-bottom: 0;
+}
+.appts-smart-calendar-rail .appts-cal-two-months__label {
+  margin: 0;
+  padding: 0.25rem 0.1rem 0.15rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #1f2937;
+  letter-spacing: -0.01em;
+}
+.appts-smart-calendar-rail .appts-cal-month__grid--two {
+  padding-top: 0.05rem;
+}

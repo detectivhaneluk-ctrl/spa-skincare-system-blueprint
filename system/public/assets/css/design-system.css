@@ -38,10 +38,12 @@
   justify-content: space-between;
   gap: var(--ds-space-3) var(--ds-space-4);
   padding: var(--ds-space-3) var(--ds-space-4);
-  background: var(--ds-color-bg-subtle);
-  border: 1px solid var(--ds-color-border-light);
-  border-radius: var(--ds-radius-md);
-  box-shadow: var(--ds-shadow-xs);
+  background: var(--ds-glass-bg);
+  border: 1px solid var(--ds-glass-border);
+  border-radius: var(--ds-radius-lg);
+  box-shadow: var(--ds-shadow-glass);
+  backdrop-filter: var(--ds-glass-blur);
+  -webkit-backdrop-filter: var(--ds-glass-blur);
 }
 
 .ds-toolbar__filters {
@@ -94,11 +96,13 @@
 }
 
 .ds-workspace-frame {
-  background: var(--ds-color-bg-canvas);
-  border: 1px solid var(--ds-color-border-light);
-  border-radius: var(--ds-radius-lg);
+  background: var(--ds-glass-bg);
+  border: 1px solid var(--ds-glass-border);
+  border-radius: var(--ds-radius-xl);
   padding: var(--ds-space-4) var(--ds-space-4) var(--ds-space-5);
-  box-shadow: var(--ds-shadow-sm);
+  box-shadow: var(--ds-shadow-glass);
+  backdrop-filter: var(--ds-glass-blur);
+  -webkit-backdrop-filter: var(--ds-glass-blur);
 }
 
 /* —— Buttons —— */
@@ -113,20 +117,20 @@
   font-size: var(--ds-text-sm);
   font-weight: var(--ds-font-semibold);
   line-height: 1.2;
-  border-radius: 8px;
-  border: 1px solid var(--ds-color-border);
-  background: var(--ds-color-bg-canvas);
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.09);
+  background: rgba(255, 255, 255, 0.9);
   color: var(--ds-color-text);
   cursor: pointer;
   text-decoration: none;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--ds-shadow-control-rest);
 }
 
 .ds-btn:hover {
-  border-color: var(--ds-color-text-tertiary);
-  background: var(--ds-color-bg-subtle);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.14);
+  background: #ffffff;
+  box-shadow: var(--ds-shadow-control-hover);
   transform: translateY(-1px);
 }
 
@@ -136,17 +140,17 @@
 }
 
 .ds-btn--primary {
-  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
-  border-color: #1d4ed8;
+  background: var(--ds-color-accent);
+  border-color: var(--ds-color-accent);
   color: #fff;
-  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  box-shadow: none;
 }
 
 .ds-btn--primary:hover {
-  background: linear-gradient(180deg, #60a5fa 0%, #3b82f6 100%);
-  border-color: #2563eb;
+  background: var(--ds-color-accent-hover);
+  border-color: var(--ds-color-accent-hover);
   color: #fff;
-  box-shadow: 0 4px 8px rgba(37, 99, 235, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.14);
 }
 
 /* Dark pill CTA for workspace toolbars (does not replace global .ds-btn--primary) */
@@ -167,28 +171,27 @@
   border-color: #111827;
   color: #fff;
   box-shadow: var(--ds-shadow-toolbar-cta);
-  transition: transform var(--ds-duration-toolbar-cta) var(--ds-ease-spring),
-    background var(--ds-duration-toolbar-cta) var(--ds-ease-spring),
-    border-color var(--ds-duration-toolbar-cta) var(--ds-ease-spring),
-    box-shadow var(--ds-duration-toolbar-cta) var(--ds-ease-spring),
-    opacity var(--ds-duration-toolbar-cta) var(--ds-ease-spring);
+  /* No background/opacity transitions: hover keeps the same solid ink (avoids “fading” feel). */
+  transition: transform var(--ds-duration-toolbar-cta, 0.2s) var(--ds-ease-spring),
+    box-shadow var(--ds-duration-toolbar-cta, 0.2s) var(--ds-ease-spring);
 }
 
 .ds-btn--toolbar svg {
   flex-shrink: 0;
-  transition: transform var(--ds-duration-toolbar-cta) var(--ds-ease-spring);
+  transform-origin: 50% 50%;
+  transition: transform 0.48s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .ds-btn--toolbar:hover {
-  background: #1f2937;
-  border-color: #1f2937;
+  background: #111827;
+  border-color: #111827;
   color: #fff;
   box-shadow: var(--ds-shadow-toolbar-cta-hover);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 .ds-btn--toolbar:hover svg {
-  transform: rotate(90deg) scale(1.1);
+  transform: rotate(90deg);
 }
 
 .ds-btn--toolbar:active {
@@ -264,19 +267,19 @@
   padding: 0.45rem 0.65rem;
   font-family: var(--ds-font-sans);
   font-size: var(--ds-text-sm);
-  border: 1px solid rgba(203, 213, 225, 0.8);
-  border-radius: 8px;
-  background: var(--ds-color-bg-canvas);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.88);
   color: var(--ds-color-text);
   transition: all 0.2s ease;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
 .ds-input:focus,
 .ds-select:focus {
   outline: none;
-  border-color: #60a5fa;
-  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2), inset 0 1px 2px rgba(0, 0, 0, 0.02);
+  border-color: #71717a;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.12), inset 0 1px 2px rgba(0, 0, 0, 0.02);
   background: #fff;
 }
 
@@ -508,25 +511,31 @@
 /* —— Cards / panels —— */
 .ds-card {
   padding: var(--ds-space-4);
-  background: var(--ds-color-bg-canvas);
-  border: 1px solid var(--ds-color-border-light);
-  border-radius: var(--ds-radius-lg);
+  background: var(--ds-glass-bg);
+  border: 1px solid var(--ds-glass-border);
+  border-radius: var(--ds-radius-xl);
+  box-shadow: var(--ds-shadow-glass);
+  backdrop-filter: var(--ds-glass-blur);
+  -webkit-backdrop-filter: var(--ds-glass-blur);
 }
 
 .ds-panel {
   padding: var(--ds-space-4);
-  background: var(--ds-color-bg-subtle);
+  background: rgba(250, 250, 250, 0.9);
   border: 1px solid var(--ds-color-border-light);
-  border-radius: var(--ds-radius-lg);
+  border-radius: var(--ds-radius-xl);
 }
 
 /* —— Tables (shared index pattern) —— */
 .ds-table-wrap {
   width: 100%;
   overflow-x: auto;
-  border: 1px solid var(--ds-color-border-light);
-  border-radius: var(--ds-radius-md);
-  background: var(--ds-color-bg-canvas);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: var(--ds-radius-xl);
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: var(--ds-glass-blur);
+  -webkit-backdrop-filter: var(--ds-glass-blur);
+  box-shadow: var(--ds-shadow-glass);
 }
 
 .ds-table {
@@ -539,7 +548,7 @@
 .ds-table td {
   padding: var(--ds-space-3) var(--ds-space-4);
   text-align: left;
-  border-bottom: 1px solid var(--ds-color-divider);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
   vertical-align: top;
 }
 
@@ -549,11 +558,11 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--ds-color-text-secondary);
-  background: var(--ds-color-bg-subtle);
+  background: rgba(249, 250, 251, 0.7);
 }
 
 .ds-table tbody tr:hover td {
-  background: var(--ds-color-bg-muted);
+  background: rgba(0, 0, 0, 0.035);
 }
 
 .ds-table tr:last-child td {
@@ -564,10 +573,12 @@
 .ds-dropdown {
   min-width: 10rem;
   padding: var(--ds-space-2);
-  background: var(--ds-color-bg-canvas);
-  border: 1px solid var(--ds-color-border-light);
-  border-radius: var(--ds-radius-md);
-  box-shadow: var(--ds-shadow-md);
+  background: var(--ds-glass-bg-strong);
+  border: 1px solid var(--ds-glass-border);
+  border-radius: var(--ds-radius-lg);
+  box-shadow: var(--ds-shadow-glass);
+  backdrop-filter: var(--ds-glass-blur-strong);
+  -webkit-backdrop-filter: var(--ds-glass-blur-strong);
 }
 
 /* —— Empty / loading / error —— */
@@ -622,12 +633,12 @@
   --cal-badge-invoice-partial: #ca8a04;
   --cal-badge-checked-in: #059669;
   --cal-badge-completed: #047857;
-  --cal-badge-new-client: #7c3aed;
+  --cal-badge-new-client: #475569;
   --cal-badge-same-day: #2563eb;
-  --cal-badge-prebooked: #4f46e5;
+  --cal-badge-prebooked: #334155;
   --cal-badge-locked: #475569;
   --cal-badge-series: #0d9488;
-  --cal-badge-booking-group: #6366f1;
+  --cal-badge-booking-group: #1e293b;
   --cal-badge-booking-couple: #db2777;
   --cal-badge-src-phone: #334155;
   --cal-badge-src-walk-in: #78716c;
@@ -637,7 +648,7 @@
   --cal-badge-src-twitter: #0ea5e9;
   --cal-badge-src-referral: #16a34a;
   --cal-badge-src-other: #64748b;
-  --cal-badge-pref: #8b5cf6;
+  --cal-badge-pref: #52525b;
   --cal-badge-notes: #0369a1;
   --cal-badge-buffer: #ca8a04;
   --cal-badge-invoice-paid: #15803d;

@@ -367,6 +367,7 @@ final class AppointmentController
         $packageConsumptions = $this->packageConsumption->listAppointmentConsumptions((int) $appointment['id']);
         $flash = flash();
         $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
+        $workspace = $this->workspaceContextForAppointmentShell($appointment);
         if ($this->isDrawerRequest()) {
             require base_path('modules/appointments/views/drawer/show.php');
             return;
@@ -746,6 +747,7 @@ final class AppointmentController
         $branches = $this->getBranches();
         $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
         $errors = [];
+        $workspace = $this->workspaceContextForAppointmentShell($appointment);
         if ($this->isDrawerRequest()) {
             require base_path('modules/appointments/views/drawer/edit.php');
             return;
@@ -2366,6 +2368,7 @@ final class AppointmentController
         $branches = $this->getBranches();
         $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
         $appointment = $this->addFormDatetimeFields($appointment);
+        $workspace = $this->workspaceContextForAppointmentShell($appointment);
         if ($this->wantsJsonRequest()) {
             $html = $this->renderPartialToString('modules/appointments/views/drawer/edit.php', get_defined_vars());
             $this->respondJson([
@@ -2545,6 +2548,31 @@ final class AppointmentController
             return null;
         }
         return preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw) === 1 ? $raw : null;
+    }
+
+    /**
+     * Appointments workspace header (Calendar | List | Waitlist) on detail/edit: preserve branch/date in links; no tab active.
+     *
+     * @param array<string, mixed> $appointment
+     *
+     * @return array<string, mixed>
+     */
+    private function workspaceContextForAppointmentShell(array $appointment): array
+    {
+        $branchId = isset($appointment['branch_id']) && $appointment['branch_id'] !== '' && $appointment['branch_id'] !== null
+            ? (int) $appointment['branch_id']
+            : null;
+        $date = null;
+        if (!empty($appointment['date']) && is_string($appointment['date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $appointment['date']) === 1) {
+            $date = $appointment['date'];
+        } elseif (!empty($appointment['start_at'])) {
+            $t = strtotime((string) $appointment['start_at']);
+            if ($t !== false) {
+                $date = date('Y-m-d', $t);
+            }
+        }
+
+        return $this->workspaceContext('', $branchId, $date);
     }
 
     private function workspaceContext(string $activeTab, ?int $branchId = null, ?string $date = null): array

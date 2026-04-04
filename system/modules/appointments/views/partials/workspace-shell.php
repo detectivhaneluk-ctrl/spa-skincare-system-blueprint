@@ -5,8 +5,19 @@ $tabs = isset($workspace['tabs']) && is_array($workspace['tabs']) ? $workspace['
 $shellModifier = (string) ($workspace['shell_modifier'] ?? '');
 $shellClass = 'workspace-shell' . ($shellModifier !== '' ? ' ' . htmlspecialchars($shellModifier, ENT_QUOTES, 'UTF-8') : '');
 $newAppointmentUrl = (string) ($workspace['new_appointment_url'] ?? '/appointments/create');
-$useCalendarNewAppointmentBtn = ($activeTab === 'calendar');
+$useCalendarNewAppointmentBtn = ($shellModifier === 'workspace-shell--calendar');
 $canCreate = (bool) ($workspace['can_create'] ?? false);
+$hasApptsModeNav = $tabs !== [];
+/* Find the visually widest label so every tab's phantom reserves the same space.
+   This keeps the track width identical across all three pages. */
+$maxTabLabel = '';
+foreach ($tabs as $_t) {
+    $_lbl = (string) ($_t['label'] ?? '');
+    if (mb_strlen($_lbl, 'UTF-8') > mb_strlen($maxTabLabel, 'UTF-8')) {
+        $maxTabLabel = $_lbl;
+    }
+}
+$maxTabLabelAttr = htmlspecialchars($maxTabLabel, ENT_QUOTES, 'UTF-8');
 ?>
 <div class="ds-workspace <?= $shellClass ?>">
     <header class="appts-workspace-header ds-page-subheader">
@@ -15,7 +26,9 @@ $canCreate = (bool) ($workspace['can_create'] ?? false);
                 <h1 class="appts-workspace-header__title ds-page-subheader__title">Appointments</h1>
                 <p class="appts-workspace-header__subtitle ds-page-subheader__subtitle">Manage your salon's daily schedule.</p>
             </div>
+            <?php if ($hasApptsModeNav || $canCreate): ?>
             <div class="appts-workspace-header__controls ds-page-subheader__controls">
+                <?php if ($hasApptsModeNav): ?>
                 <nav class="appts-workspace-header__modes appts-workspace-header__segmented-track ds-segmented ds-segmented--ios ds-segmented--pill-track ds-segmented--thumb" aria-label="Appointments sections" data-ds-segmented-thumb>
                     <span class="ds-segmented__thumb" aria-hidden="true"></span>
                     <?php foreach ($tabs as $tab): ?>
@@ -25,11 +38,14 @@ $canCreate = (bool) ($workspace['can_create'] ?? false);
                     $tabUrl = (string) ($tab['url'] ?? '/appointments');
                     ?>
                     <a href="<?= htmlspecialchars($tabUrl) ?>"
-                       class="ds-segmented__link appts-workspace-header__mode-link<?= $isActive ? ' is-active' : '' ?>"<?= $isActive ? ' aria-current="page"' : '' ?>>
+                       class="ds-segmented__link appts-workspace-header__mode-link<?= $isActive ? ' is-active' : '' ?>"<?= $isActive ? ' aria-current="page"' : '' ?>
+                       data-text="<?= htmlspecialchars((string) ($tab['label'] ?? 'Tab')) ?>"
+                       data-max-tab-text="<?= $maxTabLabelAttr ?>">
                         <?= htmlspecialchars((string) ($tab['label'] ?? 'Tab')) ?>
                     </a>
                     <?php endforeach; ?>
                 </nav>
+                <?php endif; ?>
                 <?php if ($canCreate): ?>
                 <div class="appts-workspace-header__action">
                     <?php if ($useCalendarNewAppointmentBtn): ?>
@@ -40,6 +56,7 @@ $canCreate = (bool) ($workspace['can_create'] ?? false);
                 </div>
                 <?php endif; ?>
             </div>
+            <?php endif; ?>
         </div>
     </header>
 </div>
