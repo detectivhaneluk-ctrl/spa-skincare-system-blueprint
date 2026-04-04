@@ -314,6 +314,15 @@
   let nowLineVm = null;
   /** now-line: setInterval id; cleared whenever the grid is destroyed or re-rendered. */
   let nowLineTimer = null;
+  /**
+   * Internal grid scroll (#appts-calendar-grid): after user scrolls manually, do not auto-anchor
+   * viewport to the now-line until branch/date session changes or explicit Today/Now/recenter.
+   */
+  let calendarViewportManualScrollLock = false;
+  /** `branchId|YYYY-MM-DD` — lock resets when this changes. */
+  let calendarViewportScrollSessionKey = '';
+  /** > 0 while JS performs programmatic scroll on the grid (ignore scroll events for lock). */
+  let calendarGridProgrammaticScrollDepth = 0;
   function currentCalendarQuery() {
     const params = new URLSearchParams();
     params.set('date', dateEl.value);
@@ -903,7 +912,10 @@
     const t = getBranchNow().dateStr;
     if (!t || !/^\d{4}-\d{2}-\d{2}$/.test(t)) return;
     if (dateEl.value === t) {
+      calendarViewportManualScrollLock = false;
       renderSmartCard();
+      scheduleNowLineViewportAnchor({ behavior: 'smooth' });
+      updateNowButtonState();
       return;
     }
     selectedSlot = null;
@@ -952,7 +964,8 @@
 
   /**
    * Create now-line and now-label DOM elements, position them, and start the 30-second update timer.
-   * Vertical centering in the grid runs from {@link scheduleWorkdayViewportFit} (after viewport fit).
+   * Viewport anchoring to the line is separate: {@link scheduleNowLineViewportAnchor} (load / fit / Now);
+   * {@link positionNowLine} only moves the line — it never scrolls the grid.
    */
   function initNowLine(vm) {
     destroyNowLine();
@@ -1923,7 +1936,7 @@
       requestAnimationFrame(() => {
         if (performance.now() < implicitWorkdayFitSuppressedUntil) return;
         tryFitWorkdayToViewport();
-        scheduleNowLineCenterScroll();
+        scheduleNowLineViewportAnchor({ behavior: 'auto' });
       });
     });
   }
@@ -1965,9 +1978,55 @@
     return clamped;
   }
 
-  /** Scroll so the red "now" line is vertically centered in the time area below the sticky staff header. */
-  function scrollNowLineToVerticalCenter() {
-    const gridEl = document.getElementById('appts-calendar-grid');
+  /**
+   * Vertical scroll owner for the day grid (internal calendar viewport).
+   * Sticky staff header + time labels use this element as their scrollport.
+   */
+  function getCalendarDayScrollViewportEl() {
+    return document.getElementById('appts-calendar-grid');
+  }
+
+  function scrollCalendarGridProgrammatic(top, behavior) {
+    const gridEl = getCalendarDayScrollViewportEl();
+    if (!gridEl) return;
+    const b = behavior || 'instant';
+    calendarGridProgrammaticScrollDepth++;
+    const release = () => {
+      calendarGridProgrammaticScrollDepth = Math.max(0, calendarGridProgrammaticScrollDepth - 1);
+    };
+    gridEl.scrollTo({ top, behavior: b });
+    if (b === 'smooth') {
+      let settled = false;
+      const done = () => {
+        if (settled) return;
+        settled = true;
+        try {
+          gridEl.removeEventListener('scrollend', done);
+        } catch (_e) { /* ignore */ }
+        clearTimeout(fallback);
+        release();
+      };
+      const fallback = window.setTimeout(done, 500);
+      try {
+        gridEl.addEventListener('scrollend', done, { passive: true });
+      } catch (_e) {
+        /* scrollend unsupported */
+      }
+    } else {
+      queueMicrotask(release);
+    }
+  }
+
+  /**
+   * Scroll the internal grid viewport so the red now-line sits ~30% down the visible band
+   * (below sticky header) — upcoming time remains visible below the line.
+   * Does not run when manual-scroll lock is active (unless opts.ignoreLock).
+   * Timer-driven {@link positionNowLine} updates never call this — only explicit / load / fit paths.
+   */
+  function scrollNowLineToViewportBand(opts) {
+    const options = opts && typeof opts === 'object' ? opts : {};
+    if (!options.ignoreLock && calendarViewportManualScrollLock) return;
+    const gridEl = getCalendarDayScrollViewportEl();
     const line = document.getElementById('ops-now-line-indicator');
     const head = wrap && wrap.querySelector('.ops-calendar-head');
     if (!gridEl || !line || line.hidden || !head || !dateEl) return;
@@ -1979,20 +2038,32 @@
     const viewportTop = headRect.bottom;
     const viewportBottom = gridRect.bottom;
     if (viewportBottom <= viewportTop + 4) return;
-    const viewportMidY = (viewportTop + viewportBottom) / 2;
+    const bandH = viewportBottom - viewportTop;
+    /** Target: ~30% into visible band (25–35% contract). */
+    const targetY = viewportTop + bandH * 0.3;
     const lineMidY = lineRect.top + lineRect.height / 2;
-    const delta = lineMidY - viewportMidY;
+    const delta = lineMidY - targetY;
     if (Math.abs(delta) < 3) return;
     const maxScroll = Math.max(0, gridEl.scrollHeight - gridEl.clientHeight);
     const nextTop = Math.max(0, Math.min(maxScroll, gridEl.scrollTop + delta));
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    gridEl.scrollTo({ top: nextTop, behavior: prefersReducedMotion ? 'instant' : 'smooth' });
+    let behavior = 'instant';
+    if (options.behavior === 'smooth' && !prefersReducedMotion) {
+      behavior = 'smooth';
+    }
+    if (options.behavior === 'auto') {
+      behavior = prefersReducedMotion ? 'instant' : 'instant';
+    }
+    scrollCalendarGridProgrammatic(nextTop, behavior);
   }
 
-  function scheduleNowLineCenterScroll() {
+  /**
+   * @param {{ behavior?: 'auto' | 'smooth', ignoreLock?: boolean }} [opts]
+   */
+  function scheduleNowLineViewportAnchor(opts) {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        scrollNowLineToVerticalCenter();
+        scrollNowLineToViewportBand(opts);
       });
     });
   }
@@ -3227,7 +3298,7 @@
     const todayStr = getBranchNow().dateStr;
     const isToday = dateEl && dateEl.value === todayStr;
     btn.classList.toggle('appts-cal-toolbar__btn--today', isToday);
-    btn.title = isToday ? 'Center on current time' : 'Jump to today';
+    btn.title = isToday ? 'Recenter on current time' : 'Jump to today';
   }
 
   function initCalendarToolbar() {
@@ -3263,8 +3334,8 @@
         closeCalendarToolbarPopovers();
         const todayStr = getBranchNow().dateStr;
         if (dateEl && dateEl.value === todayStr) {
-          // Already on today — just scroll to center the now-line
-          scheduleNowLineCenterScroll();
+          calendarViewportManualScrollLock = false;
+          scheduleNowLineViewportAnchor({ behavior: 'smooth' });
         } else {
           // Navigate to today; after load, scheduleWorkdayViewportFit auto-centers
           goToBranchToday();
@@ -3670,6 +3741,11 @@
     const abortCtrl = new AbortController();
     currentLoadAbort = abortCtrl;
     const branchIdNow = branchEl.value ? (parseInt(String(branchEl.value), 10) || 0) : 0;
+    const viewportSessionKey = String(branchIdNow) + '|' + date;
+    if (viewportSessionKey !== calendarViewportScrollSessionKey) {
+      calendarViewportManualScrollLock = false;
+      calendarViewportScrollSessionKey = viewportSessionKey;
+    }
     if (lastUiPrefsBranchId !== branchIdNow) {
       calendarPrefsPersistedFromServer = false;
     }
@@ -3905,6 +3981,20 @@
       }, 100);
     });
     ro.observe(gridEl);
+  })();
+
+  (function initCalendarGridManualScrollLock() {
+    const gridEl = document.getElementById('appts-calendar-grid');
+    if (!gridEl || gridEl.dataset.calManualScrollLockBound === '1') return;
+    gridEl.dataset.calManualScrollLockBound = '1';
+    gridEl.addEventListener(
+      'scroll',
+      () => {
+        if (calendarGridProgrammaticScrollDepth > 0) return;
+        calendarViewportManualScrollLock = true;
+      },
+      { passive: true }
+    );
   })();
 
   initToolsPanel();

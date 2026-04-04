@@ -1788,6 +1788,12 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   display: flex;
   flex-direction: column;
 }
+/* Day calendar: fill shell height; only #appts-calendar-grid scrolls — not the document body. */
+.calendar-workspace .appointments-workspace-page.appts-calendar-page {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
 .appts-calendar-body {
   display: grid;
   grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
@@ -2644,6 +2650,7 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 .appts-calendar-control-surface {
   display: flex;
