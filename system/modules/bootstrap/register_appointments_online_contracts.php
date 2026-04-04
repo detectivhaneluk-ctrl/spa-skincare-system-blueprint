@@ -70,7 +70,8 @@ $container->singleton(
         $c->get(\Core\Contracts\ServiceListProvider::class),
         $c->get(\Core\Contracts\StaffListProvider::class),
         $c->get(\Core\Contracts\RoomListProvider::class),
-        $c->get(\Modules\ServicesResources\Repositories\ServiceCategoryRepository::class)
+        $c->get(\Modules\ServicesResources\Repositories\ServiceCategoryRepository::class),
+        $c->get(\Core\App\Database::class)
     )
 );
 $container->singleton(

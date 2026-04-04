@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modules\Appointments\Services;
 
+use Core\App\Database;
 use Core\Contracts\ClientListProvider;
 use Core\Contracts\RoomListProvider;
 use Core\Contracts\ServiceListProvider;
@@ -18,9 +19,12 @@ use Modules\ServicesResources\Repositories\ServiceCategoryRepository;
  * - Package mode is explicitly fail-closed (returns validation error instead of silently returning empty)
  * - Linked-chain mode: buildServiceLine now carries predecessor_index and price_snapshot
  * - Payment step: validateStep4Payment(), buildPaymentState(), getPaymentTotals()
- * - runSearch() respects continuation_from context for linked-chain continuation searches
- * - revalidateForCommit() verifies payment state is not the null placeholder
- * - resolveServicePrice() snapshots price at selection time
+ *
+ * Phase 3 (chain DB + payment domain closure):
+ * - commit() is now wrapped in Database::transaction() — fully atomic for all chain lines
+ * - booking_chains row created per commit; each appointment is linked via booking_chain_id + order
+ * - booking_payment_summaries row persists payment decision + totals durably after commit
+ * - Database $db added to constructor (9th param)
  *
  * This service is ONLY used by the full-page wizard flow.
  * Quick drawer and blocked-time flows do not touch this service.
@@ -72,6 +76,7 @@ final class AppointmentWizardService
         private StaffListProvider $staffList,
         private RoomListProvider $roomList,
         private ServiceCategoryRepository $categoryRepo,
+        private Database $db,
     ) {
     }
 
@@ -670,7 +675,20 @@ final class AppointmentWizardService
     }
 
     /**
-     * Commit the wizard state: create client if new draft, then create appointment(s).
+     * Atomically commit the wizard state.
+     *
+     * All writes run inside a single Database::transaction() boundary:
+     *   1. Resolve or create client.
+     *   2. INSERT booking_chains — one row per wizard booking session.
+     *   3. For each service_line: createFromSlot() then UPDATE the appointment
+     *      with booking_chain_id + booking_chain_order within the same transaction.
+     *      (insertNewSlotAppointmentWithLocks detects inTransaction()=true and skips
+     *      its own begin/commit, so the outer transaction owns all lines atomically.)
+     *   4. INSERT booking_payment_summaries — durable payment decision record.
+     *
+     * On any Throwable the outer transaction rolls back: no partial chain, no
+     * dangling client, no orphaned payment summary ever reaches the DB.
+     *
      * Returns the ID of the first (primary) appointment created.
      *
      * @param array<string, mixed> $state
@@ -678,45 +696,85 @@ final class AppointmentWizardService
      */
     public function commit(array $state, int $userId): int
     {
-        $branchId     = (int) ($state['branch_id'] ?? 0);
+        $branchId    = (int) ($state['branch_id'] ?? 0);
         $serviceLines = $state['service_lines'] ?? [];
         $client       = $state['client'] ?? [];
+        $bookingMode  = (string) ($state['booking_mode'] ?? 'standalone');
+        $payment      = $state['payment'] ?? [];
 
-        $clientId = $this->resolveClientId($client, $branchId, $userId);
+        return $this->db->transaction(function () use (
+            $branchId,
+            $serviceLines,
+            $client,
+            $bookingMode,
+            $payment,
+            $state,
+            $userId
+        ): int {
+            // ── 1. Resolve / create client ────────────────────────────────────
+            $clientId = $this->resolveClientId($client, $branchId, $userId);
 
-        $firstAppointmentId = null;
-        foreach ($serviceLines as $line) {
-            $serviceId = (int) ($line['service_id'] ?? 0);
-            $staffId   = (int) ($line['staff_id'] ?? 0);
-            $date      = (string) ($line['date'] ?? '');
-            $time      = (string) ($line['start_time'] ?? '');
-            $roomId    = isset($line['room_id']) && (int) $line['room_id'] > 0
-                ? (int) $line['room_id']
-                : null;
+            // ── 2. Create booking chain record ────────────────────────────────
+            $chainId = $this->db->insert('booking_chains', $this->buildBookingChainPayload(
+                $branchId,
+                $bookingMode,
+                count($serviceLines),
+                $userId
+            ));
 
-            $payload = [
-                'client_id'  => $clientId,
-                'service_id' => $serviceId,
-                'staff_id'   => $staffId,
-                'start_time' => $date . ' ' . $time,
-                'branch_id'  => $branchId,
-            ];
-            if ($roomId !== null) {
-                $payload['room_id'] = $roomId;
+            // ── 3. Create appointments and link each to the chain ─────────────
+            $firstApptId = null;
+            foreach ($serviceLines as $order => $line) {
+                $serviceId = (int) ($line['service_id'] ?? 0);
+                $staffId   = (int) ($line['staff_id'] ?? 0);
+                $date      = (string) ($line['date'] ?? '');
+                $time      = (string) ($line['start_time'] ?? '');
+                $roomId    = isset($line['room_id']) && (int) $line['room_id'] > 0
+                    ? (int) $line['room_id']
+                    : null;
+
+                $payload = [
+                    'client_id'  => $clientId,
+                    'service_id' => $serviceId,
+                    'staff_id'   => $staffId,
+                    'start_time' => $date . ' ' . $time,
+                    'branch_id'  => $branchId,
+                ];
+                if ($roomId !== null) {
+                    $payload['room_id'] = $roomId;
+                }
+
+                $apptId = $this->appointmentService->createFromSlot($payload);
+
+                // Link appointment to chain within the outer transaction.
+                // This UPDATE is atomic with the INSERT above; if anything later
+                // throws, the whole transaction rolls back.
+                $this->db->query(
+                    'UPDATE appointments SET booking_chain_id = ?, booking_chain_order = ? WHERE id = ?',
+                    [$chainId, (int) $order, $apptId]
+                );
+
+                if ($firstApptId === null) {
+                    $firstApptId = $apptId;
+                }
             }
 
-            $apptId = $this->appointmentService->createFromSlot($payload);
-
-            if ($firstAppointmentId === null) {
-                $firstAppointmentId = $apptId;
+            if ($firstApptId === null) {
+                throw new \DomainException('No appointment was created. Please try again.');
             }
-        }
 
-        if ($firstAppointmentId === null) {
-            throw new \DomainException('No appointment was created. Please try again.');
-        }
+            // ── 4. Persist payment decision + totals snapshot ─────────────────
+            $totals = $this->getPaymentTotals($state);
+            $this->db->insert('booking_payment_summaries', $this->buildPaymentSummaryPayload(
+                $chainId,
+                $firstApptId,
+                $branchId,
+                $payment,
+                $totals
+            ));
 
-        return $firstAppointmentId;
+            return $firstApptId;
+        });
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -927,5 +985,56 @@ final class AppointmentWizardService
         }
 
         throw new \DomainException('Invalid client mode in wizard state.');
+    }
+
+    /**
+     * Build the data array for inserting a booking_chains row.
+     *
+     * @return array<string, mixed>
+     */
+    private function buildBookingChainPayload(
+        int $branchId,
+        string $bookingMode,
+        int $chainOrderCount,
+        int $userId
+    ): array {
+        return [
+            'branch_id'         => $branchId,
+            'booking_mode'      => $bookingMode,
+            'chain_order_count' => $chainOrderCount,
+            'created_by'        => $userId,
+        ];
+    }
+
+    /**
+     * Build the data array for inserting a booking_payment_summaries row.
+     *
+     * @param array<string, mixed> $payment  Wizard payment state (mode, skip_reason, hold_reservation).
+     * @param array<string, mixed> $totals   From getPaymentTotals() (subtotal, tax, total, currency, line_count).
+     * @return array<string, mixed>
+     */
+    private function buildPaymentSummaryPayload(
+        int $chainId,
+        int $primaryApptId,
+        int $branchId,
+        array $payment,
+        array $totals
+    ): array {
+        $skipReason = trim((string) ($payment['skip_reason'] ?? ''));
+
+        return [
+            'booking_chain_id'       => $chainId,
+            'primary_appointment_id' => $primaryApptId,
+            'branch_id'              => $branchId,
+            'payment_mode'           => (string) ($payment['mode'] ?? 'skip_payment'),
+            'skip_reason'            => $skipReason !== '' ? $skipReason : null,
+            'hold_reservation'       => (int) (!empty($payment['hold_reservation'])),
+            'subtotal'               => $totals['subtotal'],
+            'tax_amount'             => $totals['tax'],
+            'total_amount'           => $totals['total'],
+            'currency'               => strtoupper((string) ($totals['currency'] ?? 'GBP')),
+            'line_count'             => (int) ($totals['line_count'] ?? 1),
+            'tax_basis'              => 'zero_tax_v1',
+        ];
     }
 }
