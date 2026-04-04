@@ -2645,12 +2645,15 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   font-weight: var(--ds-font-medium);
 }
 
+/* Day grid: internal scroll viewport is row 5 — not document, not flex-grow content column. */
 .appts-calendar-main {
   min-width: 0;
   min-height: 0;
   flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto auto auto minmax(0, 1fr);
+  align-content: start;
   overflow: hidden;
 }
 .appts-calendar-control-surface {
@@ -3451,9 +3454,13 @@ a.appts-cal-toolbar__menu-item:hover {
 .appts-calendar-grid {
   border: 1px solid rgba(226, 232, 240, 0.8);
   border-radius: 12px;
-  flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  /* Fills grid row 5; --appts-day-grid-viewport-h is set by syncCalendarViewportHeight() for a bounded box. */
+  height: var(--appts-day-grid-viewport-h, 100%);
+  max-height: var(--appts-day-grid-viewport-h, 100%);
+  overflow-y: auto;
+  overflow-x: auto;
+  overscroll-behavior: contain;
   /* Reserve gutter so toggling the vertical scrollbar does not change clientWidth (column reflow / “shrink”). */
   scrollbar-gutter: stable;
   background: #f8fafc;

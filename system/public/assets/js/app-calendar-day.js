@@ -31,12 +31,9 @@
   const MIN_TIME_ZOOM_PERCENT = 25;
   const MAX_TIME_ZOOM_PERCENT = 200;
   /**
-   * Implicit auto-fit must leave the day body **taller** than the visible slot below the sticky
-   * header so #appts-calendar-grid has scrollHeight > clientHeight. Fitting exactly
-   * (bodyH <= available) yields maxScroll 0 — now-anchor cannot move scrollTop and the wheel
-   * scrolls the document (CALENDAR-LIVE-SCROLL-OWNER-AND-NOW-ANCHOR-TRUTH-CLOSURE-02).
-   * We bump time zoom up until bodyH first exceeds `available`, capped at MAX_TIME_ZOOM_PERCENT.
-   * Tools ▸ Fit (explicit) skips the bump and may still use document scroll fallback for anchor.
+   * Vertical scroll for the day grid is owned only by #appts-calendar-grid (bounded viewport via
+   * layout + syncCalendarViewportHeight). Implicit fit may shrink time zoom to fit the workday but
+   * must not use zoom bumps to manufacture overflow; Tools ▸ Fit is explicit zoom only.
    */
   let timeZoomPercent = 100;
   let columnWidthPx = 160;
@@ -331,6 +328,47 @@
   let calendarViewportScrollSessionKey = '';
   /** > 0 while JS performs programmatic scroll on the grid (ignore scroll events for lock). */
   let calendarGridProgrammaticScrollDepth = 0;
+  let calendarViewportHeightSyncRaf = null;
+
+  /**
+   * Bounded height for #appts-calendar-grid: subtract fixed rows inside .appts-calendar-main from
+   * its client height, set --appts-day-grid-viewport-h on the page host (CSS consumes it).
+   */
+  function syncCalendarViewportHeight() {
+    const host = document.querySelector('.appointments-workspace-page.appts-calendar-page');
+    const mainCol = document.querySelector('.appts-calendar-main');
+    const grid = document.getElementById('appts-calendar-grid');
+    if (!host || !mainCol || !grid) return;
+
+    const mainH = mainCol.clientHeight;
+    if (mainH < 8) return;
+
+    const kids = Array.from(mainCol.children);
+    let fixed = 0;
+    for (const el of kids) {
+      if (el === grid) continue;
+      if (!(el instanceof HTMLElement)) continue;
+      if (el.hidden) continue;
+      const st = window.getComputedStyle(el);
+      if (st.display === 'none') continue;
+      fixed += el.offsetHeight;
+    }
+    const cs = window.getComputedStyle(mainCol);
+    const gap = parseFloat(cs.rowGap) || 0;
+    const nGaps = Math.max(0, kids.length - 1);
+    const gridH = Math.max(120, Math.floor(mainH - fixed - gap * nGaps));
+    host.style.setProperty('--appts-day-grid-viewport-h', gridH + 'px');
+  }
+
+  function scheduleSyncCalendarViewportHeight() {
+    if (calendarViewportHeightSyncRaf != null) return;
+    calendarViewportHeightSyncRaf = window.requestAnimationFrame(() => {
+      calendarViewportHeightSyncRaf = null;
+      window.requestAnimationFrame(() => {
+        syncCalendarViewportHeight();
+      });
+    });
+  }
   function currentCalendarQuery() {
     const params = new URLSearchParams();
     params.set('date', dateEl.value);
@@ -1876,23 +1914,6 @@
   }
 
   /**
-   * After a zoom level that fits the body in `available` px, increase zoom until the body is
-   * strictly taller than `available` so the grid scrollport gains overflow (implicit paths only).
-   */
-  function bumpTimeZoomForImplicitVerticalOverflow(clamped, range, available) {
-    let c = Math.max(MIN_TIME_ZOOM_PERCENT, Math.min(MAX_TIME_ZOOM_PERCENT, clamped));
-    while (c < MAX_TIME_ZOOM_PERCENT) {
-      const next = c + 1;
-      const nextBody = range * BASE_PIXELS_PER_MINUTE * (next / 100) + GRID_TOP_INSET_PX;
-      if (nextBody > available + 1) {
-        return next;
-      }
-      c = next;
-    }
-    return c;
-  }
-
-  /**
    * Scale time zoom so the full day range fits in the calendar grid viewport (no vertical scroll for the workday).
    * Does not run during slider-driven re-renders; triggered after load + grid resize only.
    * @param {{ explicitUserFit?: boolean }} [opts] explicitUserFit: Tools > Fit (suppress follow-up implicit fits briefly).
@@ -1905,6 +1926,7 @@
     if (!explicitUserFit && calendarPrefsPersistedFromServer) return;
     if (!explicitUserFit && appliedDefaultViewConfigFromBootstrap) return;
     if (!explicitUserFit && isCalendarAutofitTimeZoomLocked()) return;
+    if (!explicitUserFit && dateEl && dateEl.value === getBranchNow().dateStr) return;
     const pl = lastCalendarPayload;
     const gridEl = document.getElementById('appts-calendar-grid');
     if (!pl || !gridEl || !wrap) return;
@@ -1932,11 +1954,6 @@
       if (bodyH <= available + 1) break;
       clamped -= 1;
     }
-    if (!explicitUserFit) {
-      clamped = bumpTimeZoomForImplicitVerticalOverflow(clamped, range, available);
-    }
-    // Exact match only: implicit bump often changes zoom by 1; a "< 2" fudge would skip the render
-    // and leave maxScroll 0 (now-anchor no-op). Explicit Fit still shows "already fits" when unchanged.
     if (clamped === timeZoomPercent) {
       if (explicitUserFit) {
         implicitWorkdayFitSuppressedUntil = performance.now() + 450;
@@ -1981,6 +1998,7 @@
     if (calendarPrefsPersistedFromServer) return null;
     if (appliedDefaultViewConfigFromBootstrap) return null;
     if (isCalendarAutofitTimeZoomLocked()) return null;
+    if (dateEl && dateEl.value === getBranchNow().dateStr) return null;
     const r = computePayloadDayRangeMinutes(payload);
     if (!r) return null;
     const { range } = r;
@@ -2005,21 +2023,7 @@
       if (bodyH <= available + 1) break;
       clamped -= 1;
     }
-    return bumpTimeZoomForImplicitVerticalOverflow(clamped, range, available);
-  }
-
-  /**
-   * Element that actually owns vertical scroll for the day view: prefer #appts-calendar-grid when
-   * it overflows; else document.scrollingElement when the page scrolls (e.g. after explicit Fit).
-   */
-  function resolveCalendarVerticalScrollOwner() {
-    const gridEl = document.getElementById('appts-calendar-grid');
-    if (!gridEl) return null;
-    const gridOverflow = gridEl.scrollHeight - gridEl.clientHeight;
-    if (gridOverflow > 2) return gridEl;
-    const se = document.scrollingElement;
-    if (se && se.scrollHeight - se.clientHeight > 2) return se;
-    return gridEl;
+    return clamped;
   }
 
   function scrollViewportProgrammatic(scrollEl, top, behavior) {
@@ -2062,7 +2066,7 @@
     const options = opts && typeof opts === 'object' ? opts : {};
     if (!options.ignoreLock && calendarViewportManualScrollLock) return;
     const gridEl = document.getElementById('appts-calendar-grid');
-    const scrollEl = resolveCalendarVerticalScrollOwner();
+    const scrollEl = gridEl;
     const line = document.getElementById('ops-now-line-indicator');
     const head = wrap && wrap.querySelector('.ops-calendar-head');
     if (!gridEl || !scrollEl || !line || line.hidden || !head || !dateEl) return;
@@ -3872,6 +3876,7 @@
       }
       clearCalendarPrefsAlert();
       statusEl.textContent = '';
+      scheduleSyncCalendarViewportHeight();
       // Pre-compute auto-fit zoom before first renderCalendar so the calendar renders
       // once at the correct zoom level (single-pass first paint — no post-render reflow).
       const preRenderFit = computeFitZoomForLoad(payload);
@@ -3880,6 +3885,7 @@
         syncCalendarToolbarControls();
       }
       renderCalendar(payload);
+      scheduleSyncCalendarViewportHeight();
       {
         const gh = document.getElementById('appts-calendar-grid');
         if (gh) void gh.getBoundingClientRect();
@@ -4030,9 +4036,20 @@
       gridEl.dataset.calManualScrollLockBound = '1';
       gridEl.addEventListener('scroll', onMaybeUserScroll, { passive: true });
     }
-    if (document.documentElement.dataset.calViewportWinScrollLock !== '1') {
-      document.documentElement.dataset.calViewportWinScrollLock = '1';
-      window.addEventListener('scroll', onMaybeUserScroll, { passive: true });
+  })();
+
+  (function initCalendarViewportHeightSync() {
+    scheduleSyncCalendarViewportHeight();
+    window.addEventListener('resize', scheduleSyncCalendarViewportHeight, { passive: true });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', scheduleSyncCalendarViewportHeight, { passive: true });
+    }
+    const mainCol = document.querySelector('.appts-calendar-main');
+    if (mainCol && typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(() => {
+        scheduleSyncCalendarViewportHeight();
+      });
+      ro.observe(mainCol);
     }
   })();
 
