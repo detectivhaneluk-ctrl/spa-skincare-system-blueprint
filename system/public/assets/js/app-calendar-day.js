@@ -49,10 +49,15 @@
   let calendarPrefsPersistedFromServer = false;
   /** When true, POST /calendar/ui-preferences is disabled (migration missing or PERSISTENCE_UNAVAILABLE) — no save/retry churn. */
   let calendarPersistenceWriteDisabled = false;
-  /** Avoid repeating the same Tools-only migration hint on every load(). */
-  let calendarPrefsMigrationAlertShown = false;
   /** After a successful GET /calendar/ui-preferences for this branch_id; used to avoid carrying persisted flag across branches. */
   let lastUiPrefsBranchId = null;
+  /**
+   * True when last bootstrap apply used `default_view_config` (no per-branch prefs row).
+   * Implicit viewport try-fit must not override that authoritative layout on the same load.
+   */
+  let appliedDefaultViewConfigFromBootstrap = false;
+  /** Hidden staff ids deferred until /calendar/day staff[] exists (same-branch validation). */
+  let pendingDeferredHiddenStaffIds = null;
   /**
    * Per-tab: user moved time zoom (or applied a saved view) for this branch — block auto-fit until DB row exists.
    * Survives refresh within the session; keyed by branch in sessionStorage.
@@ -151,6 +156,35 @@
 
   if (!dateEl || !branchEl || !wrap || !statusEl) {
     return;
+  }
+
+  function readCalendarUiPageBootstrapScript() {
+    const el = document.getElementById('appts-calendar-ui-bootstrap');
+    if (!el || !el.textContent) return null;
+    try {
+      const d = JSON.parse(el.textContent);
+      return d && typeof d === 'object' ? d : null;
+    } catch (_e) {
+      return null;
+    }
+  }
+
+  /** Apply server-first-paint bundle (HTML) before any fetch; GET /calendar/ui-preferences reconciles later. */
+  function applyCalendarUiPageBootstrapIfPresent() {
+    const data = readCalendarUiPageBootstrapScript();
+    if (!data) return;
+    const st = data.calendar_ui_storage;
+    if (st && st.preferences_table_ready === false) {
+      calendarPersistenceWriteDisabled = true;
+    } else {
+      calendarPersistenceWriteDisabled = false;
+    }
+    calendarPrefsPersistedFromServer = Boolean(data.preferences_persisted);
+    applyCalendarUiBootstrap(data);
+    if (pendingDeferredHiddenStaffIds !== null) {
+      setHiddenStaffIds(new Set(pendingDeferredHiddenStaffIds));
+      pendingDeferredHiddenStaffIds = null;
+    }
   }
 
   function clearCalendarPrefsAlert() {
@@ -1831,6 +1865,7 @@
     if (!explicitUserFit && performance.now() < implicitWorkdayFitSuppressedUntil) return;
     if (inWorkdayFitRender) return;
     if (!explicitUserFit && calendarPrefsPersistedFromServer) return;
+    if (!explicitUserFit && appliedDefaultViewConfigFromBootstrap) return;
     if (!explicitUserFit && isCalendarAutofitTimeZoomLocked()) return;
     const pl = lastCalendarPayload;
     const gridEl = document.getElementById('appts-calendar-grid');
@@ -1860,7 +1895,17 @@
       clamped -= 1;
     }
     if (Math.abs(clamped - timeZoomPercent) < 2) {
-      if (explicitUserFit) implicitWorkdayFitSuppressedUntil = performance.now() + 450;
+      if (explicitUserFit) {
+        implicitWorkdayFitSuppressedUntil = performance.now() + 450;
+        if (statusEl) {
+          statusEl.textContent = 'Time zoom already fits the workday in this view.';
+          window.setTimeout(() => {
+            if (statusEl && statusEl.textContent === 'Time zoom already fits the workday in this view.') {
+              statusEl.textContent = '';
+            }
+          }, 3200);
+        }
+      }
       return;
     }
     inWorkdayFitRender = true;
@@ -1881,6 +1926,43 @@
         scheduleNowLineCenterScroll();
       });
     });
+  }
+
+  /**
+   * Compute the auto-fit time zoom for a payload without rendering.
+   * Used in load() to pre-apply zoom before the first renderCalendar call
+   * so the calendar renders once at the correct zoom (no post-render reflow).
+   * Returns null if auto-fit should not run for this load (persisted prefs, locked, etc.).
+   */
+  function computeFitZoomForLoad(payload) {
+    if (calendarPrefsPersistedFromServer) return null;
+    if (appliedDefaultViewConfigFromBootstrap) return null;
+    if (isCalendarAutofitTimeZoomLocked()) return null;
+    const r = computePayloadDayRangeMinutes(payload);
+    if (!r) return null;
+    const { range } = r;
+    const gridEl = document.getElementById('appts-calendar-grid');
+    if (!gridEl) return null;
+    const gridH = gridEl.clientHeight;
+    if (gridH < 100) return null;
+    // ops-calendar-head is not yet rendered at this point; use the same 48px fallback
+    // that tryFitWorkdayToViewport uses as its fallback — close enough for single-pass render.
+    const headH = 48;
+    const vFitPad = 8;
+    const available = gridH - headH - vFitPad;
+    if (available < 80) return null;
+    const targetPxPerMin = (available - GRID_TOP_INSET_PX) / range;
+    if (!Number.isFinite(targetPxPerMin) || targetPxPerMin <= 0.05) return null;
+    let clamped = Math.max(
+      MIN_TIME_ZOOM_PERCENT,
+      Math.min(MAX_TIME_ZOOM_PERCENT, Math.floor((targetPxPerMin / BASE_PIXELS_PER_MINUTE) * 100))
+    );
+    while (clamped > MIN_TIME_ZOOM_PERCENT) {
+      const bodyH = range * BASE_PIXELS_PER_MINUTE * (clamped / 100) + GRID_TOP_INSET_PX;
+      if (bodyH <= available + 1) break;
+      clamped -= 1;
+    }
+    return clamped;
   }
 
   /** Scroll so the red "now" line is vertically centered in the time area below the sticky staff header. */
@@ -2199,6 +2281,7 @@
 
   function renderCalendar(payload) {
     lastCalendarPayload = payload && typeof payload === 'object' ? payload : null;
+    flushDeferredHiddenStaffIdsIfReady();
     const gridHost = document.getElementById('appts-calendar-grid');
     const cw = Math.max(96, Math.min(420, Number(columnWidthPx) || 160));
     if (gridHost) {
@@ -2763,15 +2846,26 @@
     if (!Array.isArray(ids)) return;
     const valid = getCurrentBranchStaffIdSet();
     if (valid.size === 0) {
-      setHiddenStaffIds(new Set());
+      pendingDeferredHiddenStaffIds = ids.map(String);
       return;
     }
+    pendingDeferredHiddenStaffIds = null;
     const next = new Set();
     ids.forEach((x) => {
       const id = String(x);
       if (valid.has(id)) next.add(id);
     });
     setHiddenStaffIds(next);
+  }
+
+  function flushDeferredHiddenStaffIdsIfReady() {
+    if (pendingDeferredHiddenStaffIds === null) return;
+    const ids = pendingDeferredHiddenStaffIds;
+    if (!lastCalendarPayload || !Array.isArray(lastCalendarPayload.staff) || lastCalendarPayload.staff.length === 0) {
+      return;
+    }
+    pendingDeferredHiddenStaffIds = null;
+    applyHiddenStaffIdsFromSavedConfig(ids);
   }
 
   function applyViewConfigFields(cfg) {
@@ -2792,12 +2886,14 @@
 
   function applyCalendarUiBootstrap(data) {
     if (!data || typeof data !== 'object') return;
+    appliedDefaultViewConfigFromBootstrap = false;
     const persisted = Boolean(data.preferences_persisted);
     // DB row for this branch → always use server preferences (authoritative).
     if (persisted && data.preferences && typeof data.preferences === 'object') {
       applyViewConfigFields(data.preferences);
     } else if (!persisted && data.default_view_config && typeof data.default_view_config === 'object') {
       // No per-branch row yet: apply default saved view config if the user has one (GET still sends generic defaults in `preferences`).
+      appliedDefaultViewConfigFromBootstrap = true;
       applyViewConfigFields(data.default_view_config);
     } else if (data.preferences && typeof data.preferences === 'object') {
       applyViewConfigFields(data.preferences);
@@ -3285,6 +3381,7 @@
     document.getElementById('cal-toolbar-zoom-fit')?.addEventListener('click', () => {
       clearCalendarAutofitTimeZoomLock();
       calendarPrefsPersistedFromServer = false;
+      appliedDefaultViewConfigFromBootstrap = false;
       tryFitWorkdayToViewport({ explicitUserFit: true });
       syncCalendarToolbarControls();
       commitCalendarPrefsToServerImmediate();
@@ -3559,6 +3656,7 @@
   }
 
   async function load() {
+    pendingDeferredHiddenStaffIds = null;
     const date = dateEl.value;
     if (!date) return;
     const params = new URLSearchParams();
@@ -3633,6 +3731,7 @@
         refreshSummaryRailVisible();
         return;
       }
+      lastCalendarPayload = payload;
       try {
         const prefsRes = await fetch('/calendar/ui-preferences?' + params.toString(), {
           headers: {
@@ -3648,12 +3747,6 @@
             const st = pj.data.calendar_ui_storage;
             if (st && st.preferences_table_ready === false) {
               calendarPersistenceWriteDisabled = true;
-              if (!calendarPrefsMigrationAlertShown) {
-                calendarPrefsMigrationAlertShown = true;
-                showCalendarPrefsAlert(
-                  'Calendar tools cannot save preferences until migration 134 is applied (calendar_user_preferences).'
-                );
-              }
             } else {
               calendarPersistenceWriteDisabled = false;
             }
@@ -3666,13 +3759,22 @@
       }
       clearCalendarPrefsAlert();
       statusEl.textContent = '';
+      // Pre-compute auto-fit zoom before first renderCalendar so the calendar renders
+      // once at the correct zoom level (single-pass first paint — no post-render reflow).
+      const preRenderFit = computeFitZoomForLoad(payload);
+      if (preRenderFit !== null && Math.abs(preRenderFit - timeZoomPercent) >= 2) {
+        timeZoomPercent = preRenderFit;
+        syncCalendarToolbarControls();
+      }
       renderCalendar(payload);
       {
         const gh = document.getElementById('appts-calendar-grid');
         if (gh) void gh.getBoundingClientRect();
       }
+      // scheduleWorkdayViewportFit is retained for ResizeObserver-triggered reflows
+      // (e.g. panel open/close after render). With pre-compute above, the diff is
+      // typically < 2 on initial load so tryFitWorkdayToViewport returns early.
       scheduleWorkdayViewportFit();
-      window.setTimeout(() => scheduleWorkdayViewportFit(), 220);
       updateNowButtonState();
       loadSidePanelData();
     } catch (e) {
@@ -3783,6 +3885,9 @@
       );
     });
   }
+
+  applyCalendarUiPageBootstrapIfPresent();
+  syncCalendarToolbarControls();
 
   initCalendarToolbar();
   updateNowButtonState();

@@ -31,6 +31,8 @@
   --ds-color-accent-muted: rgba(0, 102, 204, 0.1);
   --ds-color-accent-border: rgba(0, 102, 204, 0.28);
   --ds-color-focus-ring: rgba(0, 102, 204, 0.35);
+  /* UI controls (segmented inset / toolbar double ring) — reference toolbar parity */
+  --ds-color-focus-ring-ui: #6366f1;
 
   /* —— Semantic (still restrained) —— */
   --ds-color-danger: #b00020;
@@ -81,10 +83,18 @@
   --ds-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --ds-shadow-md: 0 4px 14px rgba(0, 0, 0, 0.07);
   --ds-shadow-drawer: -12px 0 40px rgba(0, 0, 0, 0.1);
-  /* iOS-style segmented “thumb” */
-  /* Segmented “thumb”: Tailwind shadow-sm equivalent */
-  --ds-shadow-segmented-active: 0 1px 2px rgba(0, 0, 0, 0.05);
+  /* Segmented track + sliding thumb (layered shadow, reference parity) */
+  --ds-shadow-segmented-active: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --ds-shadow-segmented-thumb: var(--ds-shadow-segmented-active);
   --ds-color-segmented-track: #f3f4f6;
+  --ds-color-segmented-track-strong: #e5e7eb;
+  --ds-segmented-track-padding: 4px;
+  --ds-segmented-thumb-inset: 2px;
+  --ds-segmented-thumb-inset-pill: 4px;
+  /* Dark pill toolbar CTA elevation */
+  --ds-shadow-toolbar-cta: 0 4px 14px rgba(17, 24, 39, 0.15);
+  --ds-shadow-toolbar-cta-hover: 0 8px 24px rgba(17, 24, 39, 0.2);
+  --ds-shadow-toolbar-cta-active: 0 2px 8px rgba(17, 24, 39, 0.15);
 
   /* —— Control sizes (desktop) —— */
   --ds-control-height: 2.25rem;
@@ -105,4 +115,9 @@
   /* —— Motion (functional only) —— */
   --ds-duration-drawer: 180ms;
   --ds-ease-standard: ease;
+  /* Segmented thumb slide + workspace CTA (springy, not bouncy) */
+  --ds-ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ds-duration-segmented-thumb: 0.5s;
+  --ds-duration-toolbar-cta: 0.4s;
+  --ds-duration-toolbar-entrance: 0.8s;
 }

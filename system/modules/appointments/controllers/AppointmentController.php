@@ -1381,6 +1381,26 @@ final class AppointmentController
     }
 
     /**
+     * Same identity as {@see resolveCalendarUiActor()} for HTML pages — never emits JSON.
+     *
+     * @return array{org_id:int,user_id:int}|null
+     */
+    private function tryResolveCalendarUiActorForHtmlPage(): ?array
+    {
+        $orgId = $this->organizationContext->getCurrentOrganizationId();
+        if ($orgId === null || (int) $orgId <= 0) {
+            return null;
+        }
+        $auth = Application::container()->get(\Core\Auth\SessionAuth::class);
+        $uid = $auth->id();
+        if ($uid === null || (int) $uid <= 0) {
+            return null;
+        }
+
+        return ['org_id' => (int) $orgId, 'user_id' => (int) $uid];
+    }
+
+    /**
      * JSON month summary for the appointments calendar control plane (per-day counts, closed-day truth, branch-local today).
      * Query: branch_id (resolved same as day calendar), year, month (optional — default from date=YYYY-MM-DD), date (selected day).
      */
@@ -1610,6 +1630,22 @@ final class AppointmentController
                 );
             } catch (\Throwable) {
                 $calendarMonthSummaryBootstrap = null;
+            }
+        }
+        /** First-paint toolbar truth (same contract shape as GET /calendar/ui-preferences `data`, minus views list). */
+        $calendarUiPageBootstrap = null;
+        $actor = $this->tryResolveCalendarUiActorForHtmlPage();
+        if ($actor !== null) {
+            try {
+                $bundle = $this->calendarToolbarUi->fetchUiPreferencesBundle($actor['org_id'], $actor['user_id'], $branchId);
+                $calendarUiPageBootstrap = [
+                    'preferences' => $bundle['preferences'],
+                    'preferences_persisted' => $bundle['preferences_persisted'],
+                    'default_view_config' => $bundle['default_view_config'],
+                    'calendar_ui_storage' => $bundle['calendar_ui_storage'],
+                ];
+            } catch (\Throwable) {
+                $calendarUiPageBootstrap = null;
             }
         }
         require base_path('modules/appointments/views/calendar-day.php');

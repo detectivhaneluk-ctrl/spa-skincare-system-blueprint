@@ -27,6 +27,7 @@
     <link rel="stylesheet" href="/assets/css/app.css">
     <script src="/assets/js/app-drawer.js" defer></script>
     <script src="/assets/js/app-shell-nav.js" defer></script>
+    <script src="/assets/js/ds-segmented-thumb.js" defer></script>
 </head>
 <body>
     <?php

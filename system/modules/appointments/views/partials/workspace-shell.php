@@ -16,7 +16,8 @@ $canCreate = (bool) ($workspace['can_create'] ?? false);
                 <p class="appts-workspace-header__subtitle ds-page-subheader__subtitle">Manage your salon's daily schedule.</p>
             </div>
             <div class="appts-workspace-header__controls ds-page-subheader__controls">
-                <nav class="appts-workspace-header__modes appts-workspace-header__segmented-track ds-segmented ds-segmented--ios" aria-label="Appointments sections">
+                <nav class="appts-workspace-header__modes appts-workspace-header__segmented-track ds-segmented ds-segmented--ios ds-segmented--pill-track ds-segmented--thumb" aria-label="Appointments sections" data-ds-segmented-thumb>
+                    <span class="ds-segmented__thumb" aria-hidden="true"></span>
                     <?php foreach ($tabs as $tab): ?>
                     <?php
                     $tabId = (string) ($tab['id'] ?? '');
@@ -32,9 +33,9 @@ $canCreate = (bool) ($workspace['can_create'] ?? false);
                 <?php if ($canCreate): ?>
                 <div class="appts-workspace-header__action">
                     <?php if ($useCalendarNewAppointmentBtn): ?>
-                    <button type="button" class="ds-btn ds-btn--primary appts-workspace-header__new" id="calendar-new-appointment-btn" data-calendar-new-appt>+ New appointment</button>
+                    <button type="button" class="ds-btn ds-btn--toolbar appts-workspace-header__new" id="calendar-new-appointment-btn" data-calendar-new-appt><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg><span class="appts-workspace-header__new-label">New appointment</span></button>
                     <?php else: ?>
-                    <a class="ds-btn ds-btn--primary appts-workspace-header__new" href="<?= htmlspecialchars($newAppointmentUrl) ?>">+ New appointment</a>
+                    <a class="ds-btn ds-btn--toolbar appts-workspace-header__new" href="<?= htmlspecialchars($newAppointmentUrl) ?>"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg><span class="appts-workspace-header__new-label">New appointment</span></a>
                     <?php endif; ?>
                 </div>
                 <?php endif; ?>

@@ -149,6 +149,71 @@
   box-shadow: 0 4px 8px rgba(37, 99, 235, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
+/* Dark pill CTA for workspace toolbars (does not replace global .ds-btn--primary) */
+.ds-btn--toolbar {
+  border-radius: var(--ds-radius-pill);
+  /* Outer height = .ds-segmented--ios pill track (final toolbar reference) */
+  min-height: var(--ds-workspace-control-height);
+  height: var(--ds-workspace-control-height);
+  max-height: var(--ds-workspace-control-height);
+  /* Reference parity: generous horizontal padding (~24px) */
+  padding: 0 var(--ds-space-6);
+  flex-shrink: 0;
+  font-weight: var(--ds-font-semibold);
+  letter-spacing: -0.01em;
+  line-height: 1;
+  gap: var(--ds-space-2);
+  background: #111827;
+  border-color: #111827;
+  color: #fff;
+  box-shadow: var(--ds-shadow-toolbar-cta);
+  transition: transform var(--ds-duration-toolbar-cta) var(--ds-ease-spring),
+    background var(--ds-duration-toolbar-cta) var(--ds-ease-spring),
+    border-color var(--ds-duration-toolbar-cta) var(--ds-ease-spring),
+    box-shadow var(--ds-duration-toolbar-cta) var(--ds-ease-spring),
+    opacity var(--ds-duration-toolbar-cta) var(--ds-ease-spring);
+}
+
+.ds-btn--toolbar svg {
+  flex-shrink: 0;
+  transition: transform var(--ds-duration-toolbar-cta) var(--ds-ease-spring);
+}
+
+.ds-btn--toolbar:hover {
+  background: #1f2937;
+  border-color: #1f2937;
+  color: #fff;
+  box-shadow: var(--ds-shadow-toolbar-cta-hover);
+  transform: translateY(-2px);
+}
+
+.ds-btn--toolbar:hover svg {
+  transform: rotate(90deg) scale(1.1);
+}
+
+.ds-btn--toolbar:active {
+  transform: translateY(1px);
+  box-shadow: var(--ds-shadow-toolbar-cta-active);
+}
+
+.ds-btn--toolbar:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--ds-color-bg-page), 0 0 0 4px var(--ds-color-focus-ring-ui);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-btn--toolbar,
+  .ds-btn--toolbar:hover,
+  .ds-btn--toolbar:active {
+    transition-duration: 0.01ms;
+    transform: none;
+  }
+
+  .ds-btn--toolbar:hover svg {
+    transform: none;
+  }
+}
+
 .ds-btn--secondary {
   background: var(--ds-color-bg-canvas);
   color: var(--ds-color-text);
@@ -322,9 +387,79 @@
 .ds-segmented--ios .ds-segmented__link.is-active,
 .ds-segmented--ios .ds-segmented__link[aria-current="page"] {
   color: #111827;
-  font-weight: var(--ds-font-medium);
+  font-weight: var(--ds-font-semibold);
   background: #ffffff;
   box-shadow: var(--ds-shadow-segmented-active);
+}
+
+/* Full pill track + stronger gray (reference toolbar) */
+.ds-segmented--ios.ds-segmented--pill-track {
+  padding: var(--ds-segmented-track-padding);
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-color-segmented-track-strong);
+  --ds-segmented-thumb-inset: var(--ds-segmented-thumb-inset-pill);
+}
+
+.ds-segmented--ios.ds-segmented--pill-track .ds-segmented__link {
+  border-radius: var(--ds-radius-pill);
+  transition: color 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Flat hover: color only (no white wash) when pill + thumb */
+.ds-segmented--ios.ds-segmented--pill-track.ds-segmented--thumb .ds-segmented__link:hover {
+  color: #111827;
+  background: transparent;
+}
+
+/* Sliding thumb (JS positions .ds-segmented__thumb); links stay <a href> for server nav */
+.ds-segmented--ios.ds-segmented--thumb {
+  position: relative;
+}
+
+.ds-segmented__thumb {
+  position: absolute;
+  top: var(--ds-segmented-thumb-inset);
+  bottom: var(--ds-segmented-thumb-inset);
+  left: 0;
+  width: 0;
+  border-radius: var(--ds-radius-pill);
+  background: #ffffff;
+  box-shadow: var(--ds-shadow-segmented-thumb);
+  z-index: 0;
+  pointer-events: none;
+  transform: translateX(0);
+  transition: transform var(--ds-duration-segmented-thumb) var(--ds-ease-spring),
+    width var(--ds-duration-segmented-thumb) var(--ds-ease-spring);
+  will-change: transform, width;
+}
+
+.ds-segmented--ios.ds-segmented--thumb .ds-segmented__link {
+  position: relative;
+  z-index: 1;
+}
+
+.ds-segmented--thumb.ds-segmented--ios .ds-segmented__link:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--ds-color-focus-ring-ui);
+}
+
+/* After JS syncs thumb, drop per-link white fill to avoid double “pill” */
+.ds-segmented--thumb.is-ds-thumb-ready .ds-segmented__link.is-active,
+.ds-segmented--thumb.is-ds-thumb-ready .ds-segmented__link[aria-current="page"] {
+  background: transparent;
+  box-shadow: none;
+  font-weight: var(--ds-font-semibold);
+}
+
+.ds-segmented--thumb.is-ds-thumb-ready .ds-segmented__link:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--ds-color-focus-ring-ui);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-segmented__thumb {
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* —— Page sub-header (module title + actions; reuse on any workspace) —— */

@@ -8,9 +8,10 @@ $layoutStorageReady = $layoutStorageReady ?? true;
 require base_path('modules/clients/views/partials/clients-workspace-data.php');
 ?>
 <?php require base_path('modules/clients/views/partials/clients-workspace-shell.php'); ?>
-<nav class="workspace-subnav client-fields-subtabs" aria-label="Client fields admin" style="margin:0 0 1rem">
-    <a href="/clients/custom-fields" class="workspace-subnav__link<?= ($clientFieldsSubtab ?? '') === 'fields' ? ' workspace-subnav__link--active' : '' ?>"<?= ($clientFieldsSubtab ?? '') === 'fields' ? ' aria-current="page"' : '' ?>>Fields</a>
-    <a href="/clients/custom-fields/layouts" class="workspace-subnav__link<?= ($clientFieldsSubtab ?? '') === 'layouts' ? ' workspace-subnav__link--active' : '' ?>"<?= ($clientFieldsSubtab ?? '') === 'layouts' ? ' aria-current="page"' : '' ?>>Page Layouts</a>
+<nav class="ds-segmented ds-segmented--ios ds-segmented--pill-track ds-segmented--thumb client-fields-subtabs" aria-label="Client fields admin" data-ds-segmented-thumb style="margin:0 0 1rem">
+    <span class="ds-segmented__thumb" aria-hidden="true"></span>
+    <a href="/clients/custom-fields" class="ds-segmented__link<?= ($clientFieldsSubtab ?? '') === 'fields' ? ' is-active' : '' ?>"<?= ($clientFieldsSubtab ?? '') === 'fields' ? ' aria-current="page"' : '' ?>>Fields</a>
+    <a href="/clients/custom-fields/layouts" class="ds-segmented__link<?= ($clientFieldsSubtab ?? '') === 'layouts' ? ' is-active' : '' ?>"<?= ($clientFieldsSubtab ?? '') === 'layouts' ? ' aria-current="page"' : '' ?>>Page Layouts</a>
 </nav>
 <?php if ($layoutStorageReady === false): ?>
 <div class="flash flash-error" role="alert">

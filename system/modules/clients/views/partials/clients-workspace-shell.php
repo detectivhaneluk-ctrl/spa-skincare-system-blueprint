@@ -10,14 +10,15 @@ $tabs = isset($workspace['tabs']) && is_array($workspace['tabs']) ? $workspace['
             <p class="workspace-module-head__sub">Search the directory, open client records, and use registrations, merge, and custom fields from one workspace.</p>
         </div>
     </header>
-    <nav class="workspace-subnav" aria-label="Clients workspace">
+    <nav class="ds-segmented ds-segmented--ios ds-segmented--pill-track ds-segmented--thumb" aria-label="Clients workspace" data-ds-segmented-thumb>
+        <span class="ds-segmented__thumb" aria-hidden="true"></span>
         <?php foreach ($tabs as $tab): ?>
         <?php
         $tabId = (string) ($tab['id'] ?? '');
         $isActive = $tabId !== '' && $tabId === $activeTab;
         ?>
         <a href="<?= htmlspecialchars((string) ($tab['url'] ?? '/clients')) ?>"
-           class="workspace-subnav__link workspace-tab<?= $isActive ? ' workspace-subnav__link--active workspace-tab--active' : '' ?>"<?= $isActive ? ' aria-current="page"' : '' ?>>
+           class="ds-segmented__link<?= $isActive ? ' is-active' : '' ?>"<?= $isActive ? ' aria-current="page"' : '' ?>>
             <?= htmlspecialchars((string) ($tab['label'] ?? 'Tab')) ?>
         </a>
         <?php endforeach; ?>

@@ -337,6 +337,18 @@ if (!empty($calendarMonthSummaryBootstrap) && is_array($calendarMonthSummaryBoot
 <?php if ($__apptsMonthSummaryJson !== ''): ?>
 <script type="application/json" id="appts-calendar-month-summary-bootstrap"><?= $__apptsMonthSummaryJson ?></script>
 <?php endif; ?>
+<?php
+$__calUiBootstrapJson = '';
+if (!empty($calendarUiPageBootstrap) && is_array($calendarUiPageBootstrap)) {
+    $__calUiBootstrapJson = json_encode($calendarUiPageBootstrap, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($__calUiBootstrapJson === false) {
+        $__calUiBootstrapJson = '';
+    }
+}
+?>
+<?php if ($__calUiBootstrapJson !== ''): ?>
+<script type="application/json" id="appts-calendar-ui-bootstrap"><?= $__calUiBootstrapJson ?></script>
+<?php endif; ?>
 
 <script src="/assets/js/app-calendar-day.js" defer></script>
 <?php
