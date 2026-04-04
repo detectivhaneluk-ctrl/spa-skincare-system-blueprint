@@ -60,6 +60,14 @@ final class CalendarUserPreferencesRepository
         bool $showInProgress,
         array $hiddenStaffIds
     ): void {
+        $columnWidthPx = max(
+            CalendarToolbarUiService::MIN_COLUMN_WIDTH,
+            min(CalendarToolbarUiService::MAX_COLUMN_WIDTH, $columnWidthPx)
+        );
+        $timeZoomPercent = max(
+            CalendarToolbarUiService::MIN_TIME_ZOOM_PERCENT,
+            min(CalendarToolbarUiService::MAX_TIME_ZOOM_PERCENT, $timeZoomPercent)
+        );
         $json = json_encode(array_values($hiddenStaffIds), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
         $this->db->query(
             'INSERT INTO calendar_user_preferences
@@ -108,8 +116,8 @@ final class CalendarUserPreferencesRepository
         $col = (int) ($row['column_width_px'] ?? 160);
         $col = max(CalendarToolbarUiService::MIN_COLUMN_WIDTH, min(CalendarToolbarUiService::MAX_COLUMN_WIDTH, $col));
         $zoom = (int) ($row['time_zoom_percent'] ?? 100);
-        // Clamp to UI min (25) so old rows that stored sub-25 values are silently upgraded on read.
-        $zoom = max(CalendarToolbarUiService::AUTO_FIT_MIN_TIME_ZOOM_PERCENT, min(CalendarToolbarUiService::MAX_TIME_ZOOM_PERCENT, $zoom));
+        // Clamp so legacy sub-min values upgrade on read (canonical min matches slider + PATCH validation).
+        $zoom = max(CalendarToolbarUiService::MIN_TIME_ZOOM_PERCENT, min(CalendarToolbarUiService::MAX_TIME_ZOOM_PERCENT, $zoom));
 
         return [
             'column_width_px' => $col,

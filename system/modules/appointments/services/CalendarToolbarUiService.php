@@ -20,10 +20,8 @@ final class CalendarToolbarUiService
 
     public const MAX_COLUMN_WIDTH = 420;
 
-    public const MIN_TIME_ZOOM_PERCENT = 8;
-
-    /** Minimum zoom applied when reading from DB / serving to client — prevents unusably compressed calendars. */
-    public const AUTO_FIT_MIN_TIME_ZOOM_PERCENT = 25;
+    /** Canonical minimum time zoom (matches day calendar slider and DB normalization). */
+    public const MIN_TIME_ZOOM_PERCENT = 25;
 
     public const MAX_TIME_ZOOM_PERCENT = 200;
 
@@ -131,10 +129,85 @@ final class CalendarToolbarUiService
         if ($cfg === null) {
             return ['ok' => false, 'error' => 'Invalid config_json', 'code' => 'SERVER_ERROR'];
         }
-        $v['config'] = $cfg;
         unset($v['config_json']);
+        $v['config'] = $this->sanitizeViewConfigForClient($cfg);
 
         return ['ok' => true, 'view' => $v];
+    }
+
+    /**
+     * Full GET /calendar/ui-preferences payload: never throws; marks which storage shards are usable.
+     *
+     * @return array{
+     *   preferences: array{column_width_px:int,time_zoom_percent:int,show_in_progress:bool,hidden_staff_ids:list<string>},
+     *   preferences_persisted: bool,
+     *   default_view_config: array<string,mixed>|null,
+     *   views: list<array<string,mixed>>,
+     *   calendar_ui_storage: array{preferences_table_ready:bool,saved_views_table_ready:bool}
+     * }
+     */
+    public function fetchUiPreferencesBundle(int $organizationId, int $userId, int $branchId): array
+    {
+        $defaults = [
+            'column_width_px' => 160,
+            'time_zoom_percent' => 100,
+            'show_in_progress' => true,
+            'hidden_staff_ids' => [],
+        ];
+        $preferences = $defaults;
+        $preferencesPersisted = false;
+        $preferencesTableReady = true;
+
+        try {
+            $preferences = $this->getPreferencesOrDefaults($organizationId, $userId, $branchId);
+            $preferencesPersisted = $this->preferencesRowExists($organizationId, $userId, $branchId);
+        } catch (\Throwable) {
+            $preferencesTableReady = false;
+        }
+
+        $savedViewsTableReady = true;
+        $defaultViewConfig = null;
+        $views = [];
+
+        try {
+            $defaultViewConfig = $this->getDefaultViewConfig($organizationId, $userId);
+            $list = $this->listViews($organizationId, $userId);
+            $views = $list['ok'] ? $list['views'] : [];
+        } catch (\Throwable) {
+            $savedViewsTableReady = false;
+            $defaultViewConfig = null;
+            $views = [];
+        }
+
+        return [
+            'preferences' => $preferences,
+            'preferences_persisted' => $preferencesPersisted,
+            'default_view_config' => $defaultViewConfig,
+            'views' => $views,
+            'calendar_ui_storage' => [
+                'preferences_table_ready' => $preferencesTableReady,
+                'saved_views_table_ready' => $savedViewsTableReady,
+            ],
+        ];
+    }
+
+    public static function isCalendarUiPersistenceFailure(\Throwable $e): bool
+    {
+        if ($e instanceof \PDOException) {
+            $sqlState = is_array($e->errorInfo ?? null) ? (string) ($e->errorInfo[0] ?? '') : '';
+            if ($sqlState === '42S02') {
+                return true;
+            }
+            $m = strtolower($e->getMessage());
+
+            return str_contains($m, 'calendar_user_preferences')
+                || str_contains($m, 'calendar_saved_views');
+        }
+
+        $m = strtolower($e->getMessage());
+
+        return str_contains($m, 'calendar_user_preferences')
+            || str_contains($m, 'calendar_saved_views');
     }
 
     /**
@@ -201,8 +274,9 @@ final class CalendarToolbarUiService
         if ($row === null) {
             return null;
         }
+        $decoded = $this->decodeConfig($row['config_json']);
 
-        return $this->decodeConfig($row['config_json']);
+        return $this->sanitizeViewConfigForClient($decoded);
     }
 
     /**
@@ -228,12 +302,7 @@ final class CalendarToolbarUiService
     private function normalizeViewConfig(array $config): ?array
     {
         $out = [];
-        if (isset($config['branch_id'])) {
-            $bid = (int) $config['branch_id'];
-            if ($bid > 0) {
-                $out['branch_id'] = $bid;
-            }
-        }
+        // Same-branch-only contract: do not persist branch_id (views apply in current branch context only).
         if (isset($config['column_width_px'])) {
             $c = (int) $config['column_width_px'];
             if ($c >= self::MIN_COLUMN_WIDTH && $c <= self::MAX_COLUMN_WIDTH) {
@@ -258,5 +327,21 @@ final class CalendarToolbarUiService
         }
 
         return $out;
+    }
+
+    /**
+     * Strip keys the client must not act on (legacy rows may still contain branch_id in JSON).
+     *
+     * @param array<string, mixed>|null $cfg
+     * @return array<string, mixed>|null
+     */
+    private function sanitizeViewConfigForClient(?array $cfg): ?array
+    {
+        if ($cfg === null) {
+            return null;
+        }
+        unset($cfg['branch_id']);
+
+        return $cfg;
     }
 }

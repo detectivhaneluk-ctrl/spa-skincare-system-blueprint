@@ -977,16 +977,15 @@ final class AppointmentController
         if ($actor === null) {
             return;
         }
-        $prefs = $this->calendarToolbarUi->getPreferencesOrDefaults($actor['org_id'], $actor['user_id'], $branchId);
-        $defaultConfig = $this->calendarToolbarUi->getDefaultViewConfig($actor['org_id'], $actor['user_id']);
-        $viewsList = $this->calendarToolbarUi->listViews($actor['org_id'], $actor['user_id']);
+        $bundle = $this->calendarToolbarUi->fetchUiPreferencesBundle($actor['org_id'], $actor['user_id'], $branchId);
         $this->respondJson([
             'success' => true,
             'data' => [
-                'preferences' => $prefs,
-                'preferences_persisted' => $this->calendarToolbarUi->preferencesRowExists($actor['org_id'], $actor['user_id'], $branchId),
-                'default_view_config' => $defaultConfig,
-                'views' => $viewsList['ok'] ? $viewsList['views'] : [],
+                'preferences' => $bundle['preferences'],
+                'preferences_persisted' => $bundle['preferences_persisted'],
+                'default_view_config' => $bundle['default_view_config'],
+                'views' => $bundle['views'],
+                'calendar_ui_storage' => $bundle['calendar_ui_storage'],
             ],
         ]);
     }
@@ -1017,24 +1016,26 @@ final class AppointmentController
         try {
             $result = $this->calendarToolbarUi->patchPreferences($actor['org_id'], $actor['user_id'], $branchId, $patch);
         } catch (\Throwable $e) {
+            if (CalendarToolbarUiService::isCalendarUiPersistenceFailure($e)) {
+                error_log(
+                    'calendarUiPreferencesSave persistence unavailable: ' . $e->getMessage()
+                    . ' @ ' . $e->getFile() . ':' . $e->getLine()
+                );
+                $this->respondJson([
+                    'success' => false,
+                    'error' => [
+                        'code' => 'PERSISTENCE_UNAVAILABLE',
+                        'message' => 'Calendar preferences storage is not available. Run migration 134_calendar_user_ui_foundation.sql (tables calendar_user_preferences, calendar_saved_views) or contact an administrator.',
+                    ],
+                ], 422);
+
+                return;
+            }
             error_log(
                 'calendarUiPreferencesSave failed: ' . $e->getMessage()
                 . ' @ ' . $e->getFile() . ':' . $e->getLine()
             );
-            $env = (string) config('app.env', 'production');
-            $debug = (bool) config('app.debug', false);
-            $isDevHint = $env !== 'production' || $debug;
-            $code = 'INTERNAL_ERROR';
-            $message = 'Unable to save calendar preferences.';
-            if ($e instanceof \PDOException) {
-                $sqlState = is_array($e->errorInfo ?? null) ? (string) ($e->errorInfo[0] ?? '') : '';
-                $em = $e->getMessage();
-                if ($isDevHint && ($sqlState === '42S02' || str_contains($em, 'calendar_user_preferences'))) {
-                    $code = 'DB_SCHEMA';
-                    $message = 'Database table missing or schema mismatch. Run migration 134_calendar_user_ui_foundation.sql (table calendar_user_preferences).';
-                }
-            }
-            $this->respondJson(['success' => false, 'error' => ['code' => $code, 'message' => $message]], 500);
+            $this->respondJson(['success' => false, 'error' => ['code' => 'INTERNAL_ERROR', 'message' => 'Unable to save calendar preferences.']], 500);
 
             return;
         }
@@ -1059,7 +1060,32 @@ final class AppointmentController
         if ($actor === null) {
             return;
         }
-        $r = $this->calendarToolbarUi->getView($actor['org_id'], $actor['user_id'], $id);
+        try {
+            $r = $this->calendarToolbarUi->getView($actor['org_id'], $actor['user_id'], $id);
+        } catch (\Throwable $e) {
+            if (CalendarToolbarUiService::isCalendarUiPersistenceFailure($e)) {
+                error_log(
+                    'calendarSavedViewDetail persistence unavailable: ' . $e->getMessage()
+                    . ' @ ' . $e->getFile() . ':' . $e->getLine()
+                );
+                $this->respondJson([
+                    'success' => false,
+                    'error' => [
+                        'code' => 'PERSISTENCE_UNAVAILABLE',
+                        'message' => 'Saved views storage is not available. Run migration 134 or contact an administrator.',
+                    ],
+                ], 422);
+
+                return;
+            }
+            error_log(
+                'calendarSavedViewDetail failed: ' . $e->getMessage()
+                . ' @ ' . $e->getFile() . ':' . $e->getLine()
+            );
+            $this->respondJson(['success' => false, 'error' => ['code' => 'INTERNAL_ERROR', 'message' => 'Unable to load view.']], 500);
+
+            return;
+        }
         if (!$r['ok']) {
             $this->respondJson(['success' => false, 'error' => ['code' => 'NOT_FOUND', 'message' => 'View not found.']], 404);
 
@@ -1086,6 +1112,25 @@ final class AppointmentController
         try {
             $result = $this->calendarToolbarUi->createView($actor['org_id'], $actor['user_id'], $name, $config, $setDefault);
         } catch (\Throwable $e) {
+            if (CalendarToolbarUiService::isCalendarUiPersistenceFailure($e)) {
+                error_log(
+                    'calendarSavedViewsCreate persistence unavailable: ' . $e->getMessage()
+                    . ' @ ' . $e->getFile() . ':' . $e->getLine()
+                );
+                $this->respondJson([
+                    'success' => false,
+                    'error' => [
+                        'code' => 'PERSISTENCE_UNAVAILABLE',
+                        'message' => 'Saved views storage is not available. Run migration 134 or contact an administrator.',
+                    ],
+                ], 422);
+
+                return;
+            }
+            error_log(
+                'calendarSavedViewsCreate failed: ' . $e->getMessage()
+                . ' @ ' . $e->getFile() . ':' . $e->getLine()
+            );
             $this->respondJson(['success' => false, 'error' => ['code' => 'INTERNAL_ERROR', 'message' => 'Unable to save view.']], 500);
 
             return;
@@ -1114,6 +1159,25 @@ final class AppointmentController
         try {
             $result = $this->calendarToolbarUi->deleteView($actor['org_id'], $actor['user_id'], $id);
         } catch (\Throwable $e) {
+            if (CalendarToolbarUiService::isCalendarUiPersistenceFailure($e)) {
+                error_log(
+                    'calendarSavedViewsDelete persistence unavailable: ' . $e->getMessage()
+                    . ' @ ' . $e->getFile() . ':' . $e->getLine()
+                );
+                $this->respondJson([
+                    'success' => false,
+                    'error' => [
+                        'code' => 'PERSISTENCE_UNAVAILABLE',
+                        'message' => 'Saved views storage is not available. Run migration 134 or contact an administrator.',
+                    ],
+                ], 422);
+
+                return;
+            }
+            error_log(
+                'calendarSavedViewsDelete failed: ' . $e->getMessage()
+                . ' @ ' . $e->getFile() . ':' . $e->getLine()
+            );
             $this->respondJson(['success' => false, 'error' => ['code' => 'INTERNAL_ERROR', 'message' => 'Unable to delete view.']], 500);
 
             return;
@@ -1140,6 +1204,25 @@ final class AppointmentController
         try {
             $result = $this->calendarToolbarUi->setDefaultView($actor['org_id'], $actor['user_id'], $id);
         } catch (\Throwable $e) {
+            if (CalendarToolbarUiService::isCalendarUiPersistenceFailure($e)) {
+                error_log(
+                    'calendarSavedViewsSetDefault persistence unavailable: ' . $e->getMessage()
+                    . ' @ ' . $e->getFile() . ':' . $e->getLine()
+                );
+                $this->respondJson([
+                    'success' => false,
+                    'error' => [
+                        'code' => 'PERSISTENCE_UNAVAILABLE',
+                        'message' => 'Saved views storage is not available. Run migration 134 or contact an administrator.',
+                    ],
+                ], 422);
+
+                return;
+            }
+            error_log(
+                'calendarSavedViewsSetDefault failed: ' . $e->getMessage()
+                . ' @ ' . $e->getFile() . ':' . $e->getLine()
+            );
             $this->respondJson(['success' => false, 'error' => ['code' => 'INTERNAL_ERROR', 'message' => 'Unable to set default view.']], 500);
 
             return;

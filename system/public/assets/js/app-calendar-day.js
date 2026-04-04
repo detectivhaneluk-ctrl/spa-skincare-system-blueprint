@@ -27,11 +27,9 @@
   const blockedTimeBtn = document.getElementById('calendar-blocked-time-btn');
   const summaryRailEl = document.getElementById('appts-cal-summary-status');
   const BASE_PIXELS_PER_MINUTE = 1.4;
-  /** Matches toolbar slider and CalendarToolbarUiService::MIN/MAX_TIME_ZOOM_PERCENT. */
-  const MIN_TIME_ZOOM_PERCENT = 8;
+  /** Canonical min/max time zoom — must match CalendarToolbarUiService + calendar-day.php range input. */
+  const MIN_TIME_ZOOM_PERCENT = 25;
   const MAX_TIME_ZOOM_PERCENT = 200;
-  /** Used only for automatic first-visit viewport fit (not when user/DB owns zoom). */
-  const AUTO_FIT_MIN_TIME_ZOOM_PERCENT = 25;
   let timeZoomPercent = 100;
   let columnWidthPx = 160;
   let showInProgressAppointments = true;
@@ -47,6 +45,10 @@
    * Prevents load/resize from overwriting the user's chosen column width / time zoom.
    */
   let calendarPrefsPersistedFromServer = false;
+  /** When true, POST /calendar/ui-preferences is disabled (migration missing or PERSISTENCE_UNAVAILABLE) — no save/retry churn. */
+  let calendarPersistenceWriteDisabled = false;
+  /** Avoid repeating the same Tools-only migration hint on every load(). */
+  let calendarPrefsMigrationAlertShown = false;
   /** After a successful GET /calendar/ui-preferences for this branch_id; used to avoid carrying persisted flag across branches. */
   let lastUiPrefsBranchId = null;
   /**
@@ -982,12 +984,15 @@
     return '/appointments/blocked-slots/panel?' + q.toString();
   }
 
-  // ── Staff column context menu ──────────────────────────────────────────────
-  const HIDDEN_STAFF_KEY = 'appts_cal_hidden_staff';
+  // ── Staff column context menu (per-branch sessionStorage — avoids wrong-branch column hiding) ──
+  function hiddenStaffStorageKey() {
+    const b = branchEl && branchEl.value ? String(branchEl.value) : '0';
+    return 'appts_cal_hidden_staff_' + b;
+  }
 
   function getHiddenStaffIds() {
     try {
-      const raw = sessionStorage.getItem(HIDDEN_STAFF_KEY);
+      const raw = sessionStorage.getItem(hiddenStaffStorageKey());
       if (!raw) return new Set();
       const parsed = JSON.parse(raw);
       return Array.isArray(parsed) ? new Set(parsed.map(String)) : new Set();
@@ -996,7 +1001,7 @@
 
   function setHiddenStaffIds(set) {
     try {
-      sessionStorage.setItem(HIDDEN_STAFF_KEY, JSON.stringify([...set]));
+      sessionStorage.setItem(hiddenStaffStorageKey(), JSON.stringify([...set]));
     } catch (e) { /* ignore */ }
   }
 
@@ -1837,7 +1842,7 @@
     if (available < 80) return;
     const targetPxPerMin = (available - GRID_TOP_INSET_PX) / range;
     if (!Number.isFinite(targetPxPerMin) || targetPxPerMin <= 0.05) return;
-    const fitFloor = AUTO_FIT_MIN_TIME_ZOOM_PERCENT;
+    const fitFloor = MIN_TIME_ZOOM_PERCENT;
     // Floor so rounded zoom never exceeds viewport; cap how far we shrink on auto-fit so the grid stays readable.
     let clamped = Math.max(
       fitFloor,
@@ -2731,21 +2736,45 @@
     };
   }
 
+  function getCurrentBranchStaffIdSet() {
+    const s = new Set();
+    if (lastCalendarPayload && Array.isArray(lastCalendarPayload.staff)) {
+      lastCalendarPayload.staff.forEach((x) => {
+        if (x != null && x.id != null) s.add(String(x.id));
+      });
+    }
+    return s;
+  }
+
+  /** Apply hidden_staff_ids only for staff that exist on the current branch grid (same-branch saved-view contract). */
+  function applyHiddenStaffIdsFromSavedConfig(ids) {
+    if (!Array.isArray(ids)) return;
+    const valid = getCurrentBranchStaffIdSet();
+    if (valid.size === 0) {
+      setHiddenStaffIds(new Set());
+      return;
+    }
+    const next = new Set();
+    ids.forEach((x) => {
+      const id = String(x);
+      if (valid.has(id)) next.add(id);
+    });
+    setHiddenStaffIds(next);
+  }
+
   function applyViewConfigFields(cfg) {
     if (!cfg || typeof cfg !== 'object') return;
     if (cfg.column_width_px != null && Number.isFinite(Number(cfg.column_width_px))) {
       columnWidthPx = Math.max(96, Math.min(420, Number(cfg.column_width_px)));
     }
     if (cfg.time_zoom_percent != null && Number.isFinite(Number(cfg.time_zoom_percent))) {
-      // Never apply a zoom lower than AUTO_FIT_MIN_TIME_ZOOM_PERCENT (25) from persisted prefs —
-      // old rows may have stored sub-25 values; clamp them up for usability.
-      timeZoomPercent = Math.max(AUTO_FIT_MIN_TIME_ZOOM_PERCENT, Math.min(MAX_TIME_ZOOM_PERCENT, Number(cfg.time_zoom_percent)));
+      timeZoomPercent = Math.max(MIN_TIME_ZOOM_PERCENT, Math.min(MAX_TIME_ZOOM_PERCENT, Number(cfg.time_zoom_percent)));
     }
     if (typeof cfg.show_in_progress === 'boolean') {
       showInProgressAppointments = cfg.show_in_progress;
     }
     if (Array.isArray(cfg.hidden_staff_ids)) {
-      setHiddenStaffIds(new Set(cfg.hidden_staff_ids.map((x) => String(x))));
+      applyHiddenStaffIdsFromSavedConfig(cfg.hidden_staff_ids);
     }
   }
 
@@ -2779,6 +2808,7 @@
    */
   function sendCalendarPrefsKeepalive() {
     try {
+      if (calendarPersistenceWriteDisabled) return;
       if (!dateEl || !dateEl.value) return;
       const token = getCsrfToken();
       if (!token) return;
@@ -2799,18 +2829,16 @@
   }
 
   function buildCurrentViewConfig() {
-    const branch = branchEl && branchEl.value ? parseInt(String(branchEl.value), 10) : 0;
-    const o = {
+    return {
       column_width_px: columnWidthPx,
       time_zoom_percent: timeZoomPercent,
       show_in_progress: showInProgressAppointments,
       hidden_staff_ids: [...getHiddenStaffIds()],
     };
-    if (branch > 0) o.branch_id = branch;
-    return o;
   }
 
   function schedulePersistCalendarPrefs() {
+    if (calendarPersistenceWriteDisabled) return;
     if (calendarToolbarSaveTimer) clearTimeout(calendarToolbarSaveTimer);
     calendarToolbarSaveTimer = setTimeout(() => {
       void persistCalendarPrefs();
@@ -2818,6 +2846,7 @@
   }
 
   async function persistCalendarPrefs() {
+    if (calendarPersistenceWriteDisabled) return;
     const params = currentCalendarQuery();
     const url = '/calendar/ui-preferences?' + params.toString();
     try {
@@ -2849,15 +2878,22 @@
         return;
       }
       if (!res.ok || !(j && j.success)) {
+        const errCode = j && j.error && typeof j.error.code === 'string' ? j.error.code : '';
+        if (errCode === 'PERSISTENCE_UNAVAILABLE') {
+          calendarPersistenceWriteDisabled = true;
+          calendarPrefsSaveFailCount = 0;
+          const msg = j && j.error && typeof j.error.message === 'string'
+            ? j.error.message
+            : 'Calendar preferences storage is not available.';
+          showCalendarPrefsAlert(msg);
+          return;
+        }
         calendarPrefsSaveFailCount++;
         if (calendarPrefsSaveFailCount < 2) {
-          // First failure: silent retry after 3 s (Google-style)
           calendarToolbarSaveTimer = setTimeout(() => { void persistCalendarPrefs(); }, 3000);
           return;
         }
-        // Second consecutive failure: surface the error
         calendarPrefsSaveFailCount = 0;
-        const errCode = j && j.error && typeof j.error.code === 'string' ? j.error.code : '';
         let msg = j && j.error && typeof j.error.message === 'string'
           ? j.error.message
           : 'Unable to save calendar preferences.';
@@ -3172,7 +3208,7 @@
     if (zSl) {
       zSl.addEventListener('input', () => {
         setCalendarAutofitTimeZoomLocked();
-        timeZoomPercent = Math.max(AUTO_FIT_MIN_TIME_ZOOM_PERCENT, Math.min(MAX_TIME_ZOOM_PERCENT, parseInt(String(zSl.value), 10) || 100));
+        timeZoomPercent = Math.max(MIN_TIME_ZOOM_PERCENT, Math.min(MAX_TIME_ZOOM_PERCENT, parseInt(String(zSl.value), 10) || 100));
         schedulePersistCalendarPrefs();
         if (lastCalendarPayload) renderCalendar(lastCalendarPayload);
         syncCalendarToolbarControls();
@@ -3217,7 +3253,7 @@
       btn.addEventListener('click', () => {
         const v = parseInt(btn.dataset.zoomPreset, 10);
         if (!Number.isFinite(v)) return;
-        timeZoomPercent = Math.max(AUTO_FIT_MIN_TIME_ZOOM_PERCENT, Math.min(MAX_TIME_ZOOM_PERCENT, v));
+        timeZoomPercent = Math.max(MIN_TIME_ZOOM_PERCENT, Math.min(MAX_TIME_ZOOM_PERCENT, v));
         setCalendarAutofitTimeZoomLocked();
         syncCalendarToolbarControls();
         schedulePersistCalendarPrefs();
@@ -3589,6 +3625,18 @@
           const pj = await prefsRes.json().catch(() => null);
           if (pj && pj.success && pj.data && typeof pj.data === 'object') {
             lastUiPrefsBranchId = branchIdNow;
+            const st = pj.data.calendar_ui_storage;
+            if (st && st.preferences_table_ready === false) {
+              calendarPersistenceWriteDisabled = true;
+              if (!calendarPrefsMigrationAlertShown) {
+                calendarPrefsMigrationAlertShown = true;
+                showCalendarPrefsAlert(
+                  'Calendar tools cannot save preferences until migration 134 is applied (calendar_user_preferences).'
+                );
+              }
+            } else {
+              calendarPersistenceWriteDisabled = false;
+            }
             calendarPrefsPersistedFromServer = Boolean(pj.data.preferences_persisted);
             applyCalendarUiBootstrap(pj.data);
           }
@@ -3654,6 +3702,7 @@
   });
   branchEl.addEventListener('change', () => {
     selectedSlot = null;
+    activeSavedViewId = null;
     pushCalendarHistoryIfChanged();
     renderSmartCard();
     renderClipboardPane(); // refresh clipboard to show items scoped to the new branch

@@ -5,12 +5,12 @@ declare(strict_types=1);
 /**
  * Read-only: asserts calendar toolbar UI routes + migration file exist.
  */
-$root = dirname(__DIR__, 3);
+$systemRoot = dirname(__DIR__, 2);
 $fail = false;
 
-$routes = @file_get_contents($root . '/routes/web/register_appointments_calendar.php') ?: '';
-$mig = @file_get_contents($root . '/data/migrations/134_calendar_user_ui_foundation.sql') ?: '';
-$ctl = @file_get_contents($root . '/modules/appointments/controllers/AppointmentController.php') ?: '';
+$routes = @file_get_contents($systemRoot . '/routes/web/register_appointments_calendar.php') ?: '';
+$mig = @file_get_contents($systemRoot . '/data/migrations/134_calendar_user_ui_foundation.sql') ?: '';
+$ctl = @file_get_contents($systemRoot . '/modules/appointments/controllers/AppointmentController.php') ?: '';
 
 $assert = static function (string $label, bool $ok) use (&$fail): void {
     if (!$ok) {
@@ -28,5 +28,6 @@ $assert('POST /calendar/saved-views', str_contains($routes, 'calendarSavedViewsC
 $assert('print day calendar route', str_contains($routes, '/appointments/calendar/day/print/calendar') && str_contains($routes, 'printDayCalendarPage'));
 $assert('print itineraries route', str_contains($routes, 'printDayClientItinerariesPage'));
 $assert('controller has resolveCalendarUiActor', str_contains($ctl, 'resolveCalendarUiActor'));
+$assert('controller uses fetchUiPreferencesBundle', str_contains($ctl, 'fetchUiPreferencesBundle'));
 
 exit($fail ? 1 : 0);
