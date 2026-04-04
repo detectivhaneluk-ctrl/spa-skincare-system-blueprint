@@ -1797,6 +1797,7 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
 .appts-calendar-body {
   display: grid;
   grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: var(--ds-space-3);
   align-items: stretch;
   flex: 1 1 auto;

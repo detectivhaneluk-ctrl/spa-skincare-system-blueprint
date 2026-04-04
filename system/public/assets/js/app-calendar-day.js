@@ -30,6 +30,14 @@
   /** Canonical min/max time zoom — must match CalendarToolbarUiService + calendar-day.php range input. */
   const MIN_TIME_ZOOM_PERCENT = 25;
   const MAX_TIME_ZOOM_PERCENT = 200;
+  /**
+   * Implicit auto-fit must leave the day body **taller** than the visible slot below the sticky
+   * header so #appts-calendar-grid has scrollHeight > clientHeight. Fitting exactly
+   * (bodyH <= available) yields maxScroll 0 — now-anchor cannot move scrollTop and the wheel
+   * scrolls the document (CALENDAR-LIVE-SCROLL-OWNER-AND-NOW-ANCHOR-TRUTH-CLOSURE-02).
+   * We bump time zoom up until bodyH first exceeds `available`, capped at MAX_TIME_ZOOM_PERCENT.
+   * Tools ▸ Fit (explicit) skips the bump and may still use document scroll fallback for anchor.
+   */
   let timeZoomPercent = 100;
   let columnWidthPx = 160;
   let showInProgressAppointments = true;
@@ -1868,6 +1876,23 @@
   }
 
   /**
+   * After a zoom level that fits the body in `available` px, increase zoom until the body is
+   * strictly taller than `available` so the grid scrollport gains overflow (implicit paths only).
+   */
+  function bumpTimeZoomForImplicitVerticalOverflow(clamped, range, available) {
+    let c = Math.max(MIN_TIME_ZOOM_PERCENT, Math.min(MAX_TIME_ZOOM_PERCENT, clamped));
+    while (c < MAX_TIME_ZOOM_PERCENT) {
+      const next = c + 1;
+      const nextBody = range * BASE_PIXELS_PER_MINUTE * (next / 100) + GRID_TOP_INSET_PX;
+      if (nextBody > available + 1) {
+        return next;
+      }
+      c = next;
+    }
+    return c;
+  }
+
+  /**
    * Scale time zoom so the full day range fits in the calendar grid viewport (no vertical scroll for the workday).
    * Does not run during slider-driven re-renders; triggered after load + grid resize only.
    * @param {{ explicitUserFit?: boolean }} [opts] explicitUserFit: Tools > Fit (suppress follow-up implicit fits briefly).
@@ -1907,7 +1932,12 @@
       if (bodyH <= available + 1) break;
       clamped -= 1;
     }
-    if (Math.abs(clamped - timeZoomPercent) < 2) {
+    if (!explicitUserFit) {
+      clamped = bumpTimeZoomForImplicitVerticalOverflow(clamped, range, available);
+    }
+    // Exact match only: implicit bump often changes zoom by 1; a "< 2" fudge would skip the render
+    // and leave maxScroll 0 (now-anchor no-op). Explicit Fit still shows "already fits" when unchanged.
+    if (clamped === timeZoomPercent) {
       if (explicitUserFit) {
         implicitWorkdayFitSuppressedUntil = performance.now() + 450;
         if (statusEl) {
@@ -1975,40 +2005,45 @@
       if (bodyH <= available + 1) break;
       clamped -= 1;
     }
-    return clamped;
+    return bumpTimeZoomForImplicitVerticalOverflow(clamped, range, available);
   }
 
   /**
-   * Vertical scroll owner for the day grid (internal calendar viewport).
-   * Sticky staff header + time labels use this element as their scrollport.
+   * Element that actually owns vertical scroll for the day view: prefer #appts-calendar-grid when
+   * it overflows; else document.scrollingElement when the page scrolls (e.g. after explicit Fit).
    */
-  function getCalendarDayScrollViewportEl() {
-    return document.getElementById('appts-calendar-grid');
+  function resolveCalendarVerticalScrollOwner() {
+    const gridEl = document.getElementById('appts-calendar-grid');
+    if (!gridEl) return null;
+    const gridOverflow = gridEl.scrollHeight - gridEl.clientHeight;
+    if (gridOverflow > 2) return gridEl;
+    const se = document.scrollingElement;
+    if (se && se.scrollHeight - se.clientHeight > 2) return se;
+    return gridEl;
   }
 
-  function scrollCalendarGridProgrammatic(top, behavior) {
-    const gridEl = getCalendarDayScrollViewportEl();
-    if (!gridEl) return;
+  function scrollViewportProgrammatic(scrollEl, top, behavior) {
+    if (!scrollEl) return;
     const b = behavior || 'instant';
     calendarGridProgrammaticScrollDepth++;
     const release = () => {
       calendarGridProgrammaticScrollDepth = Math.max(0, calendarGridProgrammaticScrollDepth - 1);
     };
-    gridEl.scrollTo({ top, behavior: b });
+    scrollEl.scrollTo({ top, behavior: b });
     if (b === 'smooth') {
       let settled = false;
       const done = () => {
         if (settled) return;
         settled = true;
         try {
-          gridEl.removeEventListener('scrollend', done);
+          scrollEl.removeEventListener('scrollend', done);
         } catch (_e) { /* ignore */ }
         clearTimeout(fallback);
         release();
       };
       const fallback = window.setTimeout(done, 500);
       try {
-        gridEl.addEventListener('scrollend', done, { passive: true });
+        scrollEl.addEventListener('scrollend', done, { passive: true });
       } catch (_e) {
         /* scrollend unsupported */
       }
@@ -2026,10 +2061,11 @@
   function scrollNowLineToViewportBand(opts) {
     const options = opts && typeof opts === 'object' ? opts : {};
     if (!options.ignoreLock && calendarViewportManualScrollLock) return;
-    const gridEl = getCalendarDayScrollViewportEl();
+    const gridEl = document.getElementById('appts-calendar-grid');
+    const scrollEl = resolveCalendarVerticalScrollOwner();
     const line = document.getElementById('ops-now-line-indicator');
     const head = wrap && wrap.querySelector('.ops-calendar-head');
-    if (!gridEl || !line || line.hidden || !head || !dateEl) return;
+    if (!gridEl || !scrollEl || !line || line.hidden || !head || !dateEl) return;
     const { dateStr: nowDate } = getBranchNow();
     if (dateEl.value !== nowDate) return;
     const gridRect = gridEl.getBoundingClientRect();
@@ -2044,8 +2080,9 @@
     const lineMidY = lineRect.top + lineRect.height / 2;
     const delta = lineMidY - targetY;
     if (Math.abs(delta) < 3) return;
-    const maxScroll = Math.max(0, gridEl.scrollHeight - gridEl.clientHeight);
-    const nextTop = Math.max(0, Math.min(maxScroll, gridEl.scrollTop + delta));
+    const maxScroll = Math.max(0, scrollEl.scrollHeight - scrollEl.clientHeight);
+    if (maxScroll < 1) return;
+    const nextTop = Math.max(0, Math.min(maxScroll, scrollEl.scrollTop + delta));
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let behavior = 'instant';
     if (options.behavior === 'smooth' && !prefersReducedMotion) {
@@ -2054,7 +2091,7 @@
     if (options.behavior === 'auto') {
       behavior = prefersReducedMotion ? 'instant' : 'instant';
     }
-    scrollCalendarGridProgrammatic(nextTop, behavior);
+    scrollViewportProgrammatic(scrollEl, nextTop, behavior);
   }
 
   /**
@@ -3838,7 +3875,7 @@
       // Pre-compute auto-fit zoom before first renderCalendar so the calendar renders
       // once at the correct zoom level (single-pass first paint — no post-render reflow).
       const preRenderFit = computeFitZoomForLoad(payload);
-      if (preRenderFit !== null && Math.abs(preRenderFit - timeZoomPercent) >= 2) {
+      if (preRenderFit !== null && preRenderFit !== timeZoomPercent) {
         timeZoomPercent = preRenderFit;
         syncCalendarToolbarControls();
       }
@@ -3983,18 +4020,20 @@
     ro.observe(gridEl);
   })();
 
-  (function initCalendarGridManualScrollLock() {
+  (function initCalendarViewportManualScrollLock() {
+    function onMaybeUserScroll() {
+      if (calendarGridProgrammaticScrollDepth > 0) return;
+      calendarViewportManualScrollLock = true;
+    }
     const gridEl = document.getElementById('appts-calendar-grid');
-    if (!gridEl || gridEl.dataset.calManualScrollLockBound === '1') return;
-    gridEl.dataset.calManualScrollLockBound = '1';
-    gridEl.addEventListener(
-      'scroll',
-      () => {
-        if (calendarGridProgrammaticScrollDepth > 0) return;
-        calendarViewportManualScrollLock = true;
-      },
-      { passive: true }
-    );
+    if (gridEl && gridEl.dataset.calManualScrollLockBound !== '1') {
+      gridEl.dataset.calManualScrollLockBound = '1';
+      gridEl.addEventListener('scroll', onMaybeUserScroll, { passive: true });
+    }
+    if (document.documentElement.dataset.calViewportWinScrollLock !== '1') {
+      document.documentElement.dataset.calViewportWinScrollLock = '1';
+      window.addEventListener('scroll', onMaybeUserScroll, { passive: true });
+    }
   })();
 
   initToolsPanel();
