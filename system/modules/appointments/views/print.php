@@ -18,6 +18,8 @@ $showPackageSection = !empty($vis['package_detail']);
 $showProductPurchaseSection = !empty($vis['client_product_purchase_history']);
 $histShowStaff = array_filter($serviceHistory, static fn ($r) => array_key_exists('staff_name', $r) && $r['staff_name'] !== null && $r['staff_name'] !== '');
 $histShowRoom = array_filter($serviceHistory, static fn ($r) => array_key_exists('room_name', $r) && $r['room_name'] !== null && $r['room_name'] !== '');
+$printLayout = (string) ($print['print_layout'] ?? 'full');
+$isItinerary = ($printLayout === 'itinerary');
 ?>
 <link rel="stylesheet" href="/assets/css/appointment-print.css">
 <div class="appt-print" id="appt-print-root">
@@ -27,6 +29,16 @@ $histShowRoom = array_filter($serviceHistory, static fn ($r) => array_key_exists
     </header>
 
     <section class="appt-print__section" aria-labelledby="appt-print-h1">
+        <?php if ($isItinerary): ?>
+        <h1 class="appt-print__h1" id="appt-print-h1">Customer itinerary</h1>
+        <p class="appt-print__scope" id="appt-print-h1-context">
+            Anchor visit — #<?= (int) ($a['id'] ?? 0) ?> · <?= htmlspecialchars((string) ($a['display_date_only'] ?? '—')) ?>
+            <?= htmlspecialchars((string) ($a['display_time_range'] ?? '')) ?>
+            · <?= htmlspecialchars((string) ($a['service_name'] ?? '—')) ?>
+            · <?= htmlspecialchars($staffLabel !== '' ? $staffLabel : '—') ?>
+            · <?= htmlspecialchars((string) ($a['status_label'] ?? '—')) ?>
+        </p>
+        <?php else: ?>
         <h1 class="appt-print__h1" id="appt-print-h1">Appointment summary</h1>
         <dl class="appt-print__dl">
             <div class="appt-print__row"><dt>Reference</dt><dd>#<?= (int) ($a['id'] ?? 0) ?></dd></div>
@@ -39,6 +51,7 @@ $histShowRoom = array_filter($serviceHistory, static fn ($r) => array_key_exists
             <div class="appt-print__row"><dt>Status</dt><dd><?= htmlspecialchars((string) ($a['status_label'] ?? '—')) ?></dd></div>
             <div class="appt-print__row appt-print__row--block"><dt>Appointment notes</dt><dd><?= nl2br(htmlspecialchars((string) ($a['notes'] ?? ''))) ?: '—' ?></dd></div>
         </dl>
+        <?php endif; ?>
     </section>
 
     <section class="appt-print__section" aria-labelledby="appt-print-client">
@@ -89,8 +102,12 @@ $histShowRoom = array_filter($serviceHistory, static fn ($r) => array_key_exists
 
     <?php if ($showHistorySection): ?>
     <section class="appt-print__section" aria-labelledby="appt-print-history">
-        <h2 class="appt-print__h2" id="appt-print-history">Recent client appointments</h2>
+        <h2 class="appt-print__h2" id="appt-print-history"><?= $isItinerary ? 'Recent appointments for this client' : 'Recent client appointments' ?></h2>
+        <?php if ($isItinerary): ?>
+        <p class="appt-print__scope">Same source as the full appointment print summary (branch-scoped client profile).</p>
+        <?php else: ?>
         <p class="appt-print__scope">Source: <code>ClientAppointmentProfileProvider::listRecent</code> (staff/space columns follow itinerary display settings).</p>
+        <?php endif; ?>
         <?php if ($serviceHistory !== []): ?>
         <table class="appt-print__table">
             <thead>

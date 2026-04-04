@@ -29,6 +29,9 @@ declare(strict_types=1);
  * Usage (from system/):
  *   php scripts/dev-only/verify_appointments_calendar_smoke_01.php
  *   php scripts/dev-only/verify_appointments_calendar_smoke_01.php --branch-code=SMOKE_A --day-offset=28
+ *
+ * Prerequisite: migration 133 (appointment_calendar_meta). Quick check from repo root:
+ *   php system/scripts/read-only/verify_calendar_day_db_schema_133_01.php
  */
 
 require dirname(__DIR__, 2) . '/bootstrap.php';

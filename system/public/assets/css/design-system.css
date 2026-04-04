@@ -113,35 +113,40 @@
   font-size: var(--ds-text-sm);
   font-weight: var(--ds-font-semibold);
   line-height: 1.2;
-  border-radius: var(--ds-radius-sm);
+  border-radius: 8px;
   border: 1px solid var(--ds-color-border);
   background: var(--ds-color-bg-canvas);
   color: var(--ds-color-text);
   cursor: pointer;
   text-decoration: none;
-  transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .ds-btn:hover {
   border-color: var(--ds-color-text-tertiary);
   background: var(--ds-color-bg-subtle);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
+  transform: translateY(-1px);
 }
 
 .ds-btn:focus-visible {
   outline: 2px solid var(--ds-color-focus-ring);
-  outline-offset: 1px;
+  outline-offset: 2px;
 }
 
 .ds-btn--primary {
-  background: var(--ds-color-accent);
-  border-color: var(--ds-color-accent-hover);
+  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+  border-color: #1d4ed8;
   color: #fff;
+  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .ds-btn--primary:hover {
-  background: var(--ds-color-accent-hover);
-  border-color: var(--ds-color-accent-hover);
+  background: linear-gradient(180deg, #60a5fa 0%, #3b82f6 100%);
+  border-color: #2563eb;
   color: #fff;
+  box-shadow: 0 4px 8px rgba(37, 99, 235, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .ds-btn--secondary {
@@ -191,21 +196,23 @@
 .ds-input,
 .ds-select {
   min-height: var(--ds-control-height);
-  padding: 0.35rem 0.55rem;
+  padding: 0.45rem 0.65rem;
   font-family: var(--ds-font-sans);
   font-size: var(--ds-text-sm);
-  border: 1px solid var(--ds-color-border);
-  border-radius: var(--ds-radius-sm);
+  border: 1px solid rgba(203, 213, 225, 0.8);
+  border-radius: 8px;
   background: var(--ds-color-bg-canvas);
   color: var(--ds-color-text);
-  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+  transition: all 0.2s ease;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
 }
 
 .ds-input:focus,
 .ds-select:focus {
   outline: none;
-  border-color: var(--ds-color-accent);
-  box-shadow: 0 0 0 2px var(--ds-color-focus-ring);
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2), inset 0 1px 2px rgba(0, 0, 0, 0.02);
+  background: #fff;
 }
 
 .ds-field-row {
@@ -256,6 +263,111 @@
   border-color: var(--ds-color-accent-border);
   background: var(--ds-color-accent-muted);
   box-shadow: var(--ds-shadow-xs);
+}
+
+/* iOS / macOS-style segmented control (compact track + white thumb) */
+.ds-segmented--ios {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0;
+  box-sizing: border-box;
+  height: var(--ds-workspace-control-height);
+  padding: 2px;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  background: var(--ds-color-segmented-track);
+  border-radius: var(--ds-radius-lg);
+  border: none;
+  box-shadow: none;
+}
+
+.ds-segmented--ios::-webkit-scrollbar {
+  display: none;
+}
+
+.ds-segmented--ios .ds-segmented__link {
+  display: inline-flex;
+  flex: 1 1 auto;
+  justify-content: center;
+  align-items: center;
+  min-width: min-content;
+  min-height: 0;
+  height: 100%;
+  margin: 0;
+  border: none;
+  border-radius: var(--ds-radius-md);
+  background: transparent;
+  box-shadow: none;
+  padding: 0 var(--ds-space-3);
+  font-size: var(--ds-text-sm);
+  font-weight: var(--ds-font-medium);
+  letter-spacing: -0.012em;
+  line-height: 1;
+  color: #6b7280;
+  white-space: nowrap;
+  transition: color 0.2s cubic-bezier(0.25, 0.1, 0.25, 1),
+    background 0.2s cubic-bezier(0.25, 0.1, 0.25, 1),
+    box-shadow 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.ds-segmented--ios .ds-segmented__link:hover {
+  color: #374151;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.ds-segmented--ios .ds-segmented__link.is-active,
+.ds-segmented--ios .ds-segmented__link[aria-current="page"] {
+  color: #111827;
+  font-weight: var(--ds-font-medium);
+  background: #ffffff;
+  box-shadow: var(--ds-shadow-segmented-active);
+}
+
+/* —— Page sub-header (module title + actions; reuse on any workspace) —— */
+.ds-page-subheader {
+  margin-bottom: var(--ds-space-4);
+}
+
+.ds-page-subheader__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-3) var(--ds-space-4);
+}
+
+.ds-page-subheader__intro {
+  min-width: min(100%, 14rem);
+}
+
+.ds-page-subheader__title {
+  margin: 0;
+  font-size: var(--ds-text-page-title);
+  font-weight: var(--ds-font-semibold);
+  letter-spacing: -0.022em;
+  color: var(--ds-color-text);
+  line-height: 1.2;
+}
+
+.ds-page-subheader__subtitle {
+  margin: 0.2rem 0 0;
+  font-size: var(--ds-text-sm);
+  font-weight: var(--ds-font-normal);
+  color: var(--ds-color-text-secondary);
+  line-height: var(--ds-leading-normal);
+  max-width: 28rem;
+}
+
+.ds-page-subheader__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ds-space-4);
+  margin-left: auto;
 }
 
 /* —— Cards / panels —— */
@@ -364,4 +476,34 @@
   color: var(--ds-color-danger);
   border-color: var(--ds-color-danger-bg);
   background: var(--ds-color-danger-bg);
+}
+
+/* —— Calendar day: appointment badge tokens (legend + grid strip) —— */
+:root {
+  --cal-badge-cancelled: #dc2626;
+  --cal-badge-no-show: #64748b;
+  --cal-badge-in-progress: #d97706;
+  --cal-badge-invoice-open: #b45309;
+  --cal-badge-invoice-partial: #ca8a04;
+  --cal-badge-checked-in: #059669;
+  --cal-badge-completed: #047857;
+  --cal-badge-new-client: #7c3aed;
+  --cal-badge-same-day: #2563eb;
+  --cal-badge-prebooked: #4f46e5;
+  --cal-badge-locked: #475569;
+  --cal-badge-series: #0d9488;
+  --cal-badge-booking-group: #6366f1;
+  --cal-badge-booking-couple: #db2777;
+  --cal-badge-src-phone: #334155;
+  --cal-badge-src-walk-in: #78716c;
+  --cal-badge-src-website: #0284c7;
+  --cal-badge-src-facebook: #1877f2;
+  --cal-badge-src-instagram: #c026d3;
+  --cal-badge-src-twitter: #0ea5e9;
+  --cal-badge-src-referral: #16a34a;
+  --cal-badge-src-other: #64748b;
+  --cal-badge-pref: #8b5cf6;
+  --cal-badge-notes: #0369a1;
+  --cal-badge-buffer: #ca8a04;
+  --cal-badge-invoice-paid: #15803d;
 }

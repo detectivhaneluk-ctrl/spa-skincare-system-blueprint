@@ -45,6 +45,19 @@
   const footerEl = host.querySelector('#app-drawer-footer');
   const headerActionsEl = host.querySelector('#app-drawer-header-actions');
 
+  const DRAWER_FETCH_TIMEOUT_MS = 25000;
+  function bindAbortDeadline(abortController, ms) {
+    const id = setTimeout(() => {
+      try {
+        abortController.abort(new DOMException('Request timed out.', 'TimeoutError'));
+      } catch (_) {
+        abortController.abort();
+      }
+    }, ms);
+    abortController.signal.addEventListener('abort', () => clearTimeout(id));
+    return id;
+  }
+
   function lockBody(lock) {
     document.documentElement.classList.toggle('app-drawer-lock', lock);
     document.body.classList.toggle('app-drawer-lock', lock);
@@ -145,19 +158,31 @@
   }
 
   async function fetchHtml(url) {
-    const separator = url.includes('?') ? '&' : '?';
-    const res = await fetch(url + separator + 'drawer=1', {
-      headers: {
-        'X-App-Drawer': '1',
-        'X-Requested-With': 'XMLHttpRequest',
-      },
-      credentials: 'same-origin',
-    });
-    const html = await res.text();
-    if (!res.ok) {
-      throw new Error('Failed to load drawer content.');
+    const ac = new AbortController();
+    const tid = bindAbortDeadline(ac, DRAWER_FETCH_TIMEOUT_MS);
+    try {
+      const separator = url.includes('?') ? '&' : '?';
+      const res = await fetch(url + separator + 'drawer=1', {
+        headers: {
+          'X-App-Drawer': '1',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        credentials: 'same-origin',
+        signal: ac.signal,
+      });
+      const html = await res.text();
+      if (!res.ok) {
+        throw new Error('Failed to load drawer content.');
+      }
+      return html;
+    } catch (e) {
+      if (e && e.name === 'AbortError') {
+        throw new Error('Request timed out.');
+      }
+      throw e;
+    } finally {
+      clearTimeout(tid);
     }
-    return html;
   }
 
   function refreshCalendarIfPresent() {
@@ -247,16 +272,29 @@
 
   async function submitDrawerForm(form) {
     const formData = new FormData(form);
-    const res = await fetch(form.action, {
-      method: (form.method || 'POST').toUpperCase(),
-      body: formData,
-      headers: {
-        'Accept': 'application/json',
-        'X-App-Drawer': '1',
-        'X-Requested-With': 'XMLHttpRequest',
-      },
-      credentials: 'same-origin',
-    });
+    const ac = new AbortController();
+    const tid = bindAbortDeadline(ac, DRAWER_FETCH_TIMEOUT_MS);
+    let res;
+    try {
+      res = await fetch(form.action, {
+        method: (form.method || 'POST').toUpperCase(),
+        body: formData,
+        headers: {
+          'Accept': 'application/json',
+          'X-App-Drawer': '1',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        credentials: 'same-origin',
+        signal: ac.signal,
+      });
+    } catch (e) {
+      if (e && e.name === 'AbortError') {
+        throw new Error('Request timed out.');
+      }
+      throw e;
+    } finally {
+      clearTimeout(tid);
+    }
     const payload = await res.json();
     if (!res.ok && (!payload || payload.success !== false)) {
       throw new Error('Request failed.');
@@ -433,6 +471,8 @@
       if (staffEl.value) params.set('staff_id', staffEl.value);
       if (branchEl.value) params.set('branch_id', branchEl.value);
       if (roomEl && roomEl.value) params.set('room_id', roomEl.value);
+      const slotAc = new AbortController();
+      const slotTid = bindAbortDeadline(slotAc, DRAWER_FETCH_TIMEOUT_MS);
       try {
         const res = await fetch('/appointments/slots?' + params.toString(), {
           headers: {
@@ -440,6 +480,7 @@
             'X-Requested-With': 'XMLHttpRequest',
           },
           credentials: 'same-origin',
+          signal: slotAc.signal,
         });
         const payload = await res.json();
         if (!res.ok || !payload.success) {
@@ -480,7 +521,13 @@
           slotsWrap.appendChild(btn);
         });
       } catch (error) {
-        statusHintEl.textContent = 'Could not load slots.';
+        if (error && error.name === 'AbortError') {
+          statusHintEl.textContent = 'Slots request timed out.';
+        } else {
+          statusHintEl.textContent = 'Could not load slots.';
+        }
+      } finally {
+        clearTimeout(slotTid);
       }
     }
 

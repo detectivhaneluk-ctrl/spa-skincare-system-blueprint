@@ -1,0 +1,41 @@
+Calendar context menu — QA report (generated with implementation of static verification plan)
+===============================================================================================
+
+Date note: Run bundle locally after pull; this file summarizes automated static results.
+
+AUTOMATED STATIC SUITE (executed via WSL PHP in CI/agent)
+---------------------------------------------------------
+Command:
+  php scripts/read-only/verify_calendar_context_menu_qa_bundle_01.php
+(from system/ directory; or: wsl php /mnt/c/.../verify_calendar_context_menu_qa_bundle_01.php)
+
+Bundle contents:
+  1. verify_calendar_context_menu_backend_routes_01.php
+  2. verify_wave06_hot_path_cache_effectiveness_01.php
+  3. verify_appointment_print_consumer_foundation_01.php
+
+Result: ALL PASS (exit code 0).
+
+Summary table — static coverage
+-------------------------------
+| Area                         | Checks | Outcome   |
+|-----------------------------|--------|-----------|
+| Appointment POST routes      | 7      | PASS      |
+| Appointment GET print/edit/show | 4   | PASS      |
+| Sales GET create/show/pay    | 3      | PASS      |
+| Controller→Service buffer/lock | 2    | PASS      |
+| Drawer appt-notes element    | 1      | PASS      |
+| JS handler per menu action   | 25     | PASS      |
+| Menu build action strings    | 25     | PASS      |
+| WAVE-06 cache proof          | 44     | PASS      |
+| Appointment print foundation | 19     | PASS      |
+
+ANNEX A — Full output of verify_calendar_context_menu_backend_routes_01.php
+----------------------------------------------------------------------------
+(Re-run the script to capture fresh output; last run matched all [PASS] lines listed in bundle output above:
+ 16 route/PHP wiring + 25 JS handlers + 25 menu action definitions = 66 lines PASS.)
+
+RUNTIME (manual)
+----------------
+See CALENDAR_CONTEXT_MENU_RUNTIME_SMOKE_CHECKLIST.txt for sections A–F.
+Full "10/10" product proof requires completing that checklist in a real tenant session.

@@ -126,8 +126,8 @@ assert_wave06(
 );
 
 assert_wave06(
-    'W6-B.3 AvailabilityService uses cal_v1:day_apts cache key prefix',
-    str_contains($availContent, "'cal_v1:day_apts'"),
+    'W6-B.3 AvailabilityService uses cal_v4:day_apts cache key prefix',
+    str_contains($availContent, "'cal_v4:day_apts'"),
     $results, $pass
 );
 

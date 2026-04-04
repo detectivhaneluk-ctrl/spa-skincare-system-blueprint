@@ -26,7 +26,58 @@
   const newAppointmentBtns = document.querySelectorAll('[data-calendar-new-appt]');
   const blockedTimeBtn = document.getElementById('calendar-blocked-time-btn');
   const summaryRailEl = document.getElementById('appts-cal-summary-status');
-  const PIXELS_PER_MINUTE = 1.4;
+  const BASE_PIXELS_PER_MINUTE = 1.4;
+  /** Matches toolbar slider and CalendarToolbarUiService::MIN/MAX_TIME_ZOOM_PERCENT. */
+  const MIN_TIME_ZOOM_PERCENT = 8;
+  const MAX_TIME_ZOOM_PERCENT = 200;
+  /** Used only for automatic first-visit viewport fit (not when user/DB owns zoom). */
+  const AUTO_FIT_MIN_TIME_ZOOM_PERCENT = 25;
+  let timeZoomPercent = 100;
+  let columnWidthPx = 160;
+  let showInProgressAppointments = true;
+  let lastCalendarPayload = null;
+  let activeSavedViewId = null;
+  let calendarToolbarSaveTimer = null;
+  /** Counts consecutive save failures for the silent-retry logic. */
+  let calendarPrefsSaveFailCount = 0;
+  /** True while re-rendering after auto viewport time-zoom fit (avoids nested fit). */
+  let inWorkdayFitRender = false;
+  /**
+   * When true, skip auto "fit workday" zoom — either a DB prefs row exists or we just saved successfully.
+   * Prevents load/resize from overwriting the user's chosen column width / time zoom.
+   */
+  let calendarPrefsPersistedFromServer = false;
+  /** After a successful GET /calendar/ui-preferences for this branch_id; used to avoid carrying persisted flag across branches. */
+  let lastUiPrefsBranchId = null;
+  /**
+   * Per-tab: user moved time zoom (or applied a saved view) for this branch — block auto-fit until DB row exists.
+   * Survives refresh within the session; keyed by branch in sessionStorage.
+   */
+  function calendarAutofitTimeZoomLockStorageKey() {
+    const b = branchEl && branchEl.value ? String(branchEl.value) : '0';
+    return 'appts_cal_autofit_time_zoom_lock_' + b;
+  }
+  function isCalendarAutofitTimeZoomLocked() {
+    try {
+      return sessionStorage.getItem(calendarAutofitTimeZoomLockStorageKey()) === '1';
+    } catch (_e) {
+      return false;
+    }
+  }
+  function setCalendarAutofitTimeZoomLocked() {
+    try {
+      sessionStorage.setItem(calendarAutofitTimeZoomLockStorageKey(), '1');
+    } catch (_e) { /* private mode / quota */ }
+  }
+  function clearCalendarAutofitTimeZoomLock() {
+    try {
+      sessionStorage.removeItem(calendarAutofitTimeZoomLockStorageKey());
+    } catch (_e) { /* ignore */ }
+  }
+
+  function getPixelsPerMinute() {
+    return BASE_PIXELS_PER_MINUTE * (timeZoomPercent / 100);
+  }
   const MIN_BLOCK_HEIGHT = 20;
   const MAX_TITLE_LENGTH = 48;
   const MAX_META_LENGTH = 56;
@@ -57,9 +108,93 @@
   let latestMonthSummary = null;
   let weekSummaryErrorText = '';
   let monthSummaryErrorText = '';
+  /** Frees the browser tab loading indicator if the server never responds. */
+  const CALENDAR_FETCH_TIMEOUT_MS = 25000;
+  function bindAbortDeadline(abortController, ms) {
+    const id = setTimeout(() => {
+      try {
+        abortController.abort(new DOMException('Request timed out.', 'TimeoutError'));
+      } catch (_) {
+        abortController.abort();
+      }
+    }, ms);
+    abortController.signal.addEventListener('abort', () => clearTimeout(id));
+    return id;
+  }
+
+  function normalizeCalendarCapabilities(raw) {
+    const r = raw && typeof raw === 'object' ? raw : {};
+    return {
+      move_preview: !!r.move_preview,
+      sales_create: !!r.sales_create,
+      sales_pay: !!r.sales_pay,
+      sales_view: !!r.sales_view,
+      appointments_create: !!r.appointments_create,
+    };
+  }
+
+  function readBootstrapCalendarCapabilities() {
+    const grid = document.getElementById('appts-calendar-grid');
+    return normalizeCalendarCapabilities({
+      sales_create: grid?.dataset.calCapSalesCreate === '1',
+      sales_pay: grid?.dataset.calCapSalesPay === '1',
+      sales_view: grid?.dataset.calCapSalesView === '1',
+      appointments_create: grid?.dataset.calCapAppointmentsCreate === '1',
+    });
+  }
+
+  let calendarCapabilities = readBootstrapCalendarCapabilities();
 
   if (!dateEl || !branchEl || !wrap || !statusEl) {
     return;
+  }
+
+  function clearCalendarPrefsAlert() {
+    const el = document.getElementById('calendar-prefs-alert');
+    if (!el) return;
+    if (el._prefsDismissTimer) { clearTimeout(el._prefsDismissTimer); el._prefsDismissTimer = null; }
+    el.innerHTML = '';
+    el.hidden = true;
+  }
+
+  function showCalendarPrefsAlert(message) {
+    const el = document.getElementById('calendar-prefs-alert');
+    if (!el) return;
+    const t = String(message || '').trim();
+    const msg = t !== '' ? t : 'Unable to save calendar preferences.';
+    const isSessionExpired = msg.toLowerCase().includes('session expired');
+    el.innerHTML = '';
+
+    const span = document.createElement('span');
+    span.className = 'appts-calendar-prefs-alert__msg';
+    span.textContent = msg;
+    el.appendChild(span);
+
+    if (!isSessionExpired) {
+      // Retry button — Google-style recovery action
+      const retryBtn = document.createElement('button');
+      retryBtn.type = 'button';
+      retryBtn.className = 'appts-calendar-prefs-alert__retry';
+      retryBtn.textContent = 'Retry';
+      retryBtn.addEventListener('click', () => {
+        calendarPrefsSaveFailCount = 0;
+        clearCalendarPrefsAlert();
+        void persistCalendarPrefs();
+      });
+      el.appendChild(retryBtn);
+    }
+
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'appts-calendar-prefs-alert__close';
+    closeBtn.setAttribute('aria-label', 'Dismiss');
+    closeBtn.textContent = '\u00d7';
+    closeBtn.addEventListener('click', clearCalendarPrefsAlert);
+    el.appendChild(closeBtn);
+
+    el.hidden = false;
+    if (el._prefsDismissTimer) clearTimeout(el._prefsDismissTimer);
+    el._prefsDismissTimer = setTimeout(clearCalendarPrefsAlert, 10000);
   }
 
   function refreshSummaryRailVisible() {
@@ -141,8 +276,6 @@
   let nowLineVm = null;
   /** now-line: setInterval id; cleared whenever the grid is destroyed or re-rendered. */
   let nowLineTimer = null;
-  /** now-line: true after first auto-scroll on today; reset when date or branch changes explicitly. */
-  let nowLineScrolled = false;
   function currentCalendarQuery() {
     const params = new URLSearchParams();
     params.set('date', dateEl.value);
@@ -348,13 +481,15 @@
     if (!/^\d{4}-\d{2}-\d{2}$/.test(cur)) return;
     if (weekSummaryAbort) weekSummaryAbort.abort();
     weekSummaryAbort = new AbortController();
+    const weekCtrl = weekSummaryAbort;
+    const weekDeadline = bindAbortDeadline(weekCtrl, CALENDAR_FETCH_TIMEOUT_MS);
     const params = new URLSearchParams();
     params.set('date', cur);
     if (branchEl && branchEl.value) params.set('branch_id', branchEl.value);
     try {
       const res = await fetch('/calendar/week-summary?' + params.toString(), {
         headers: { Accept: 'application/json' },
-        signal: weekSummaryAbort.signal,
+        signal: weekCtrl.signal,
       });
       let payload;
       try {
@@ -386,11 +521,20 @@
         refreshSummaryRailVisible();
       }
     } catch (e) {
-      if (e && e.name === 'AbortError') return;
+      if (e && e.name === 'AbortError') {
+        if (weekSummaryAbort !== weekCtrl) return;
+        weekSummaryErrorText = 'Week summary: timed out.';
+        clearWeekSummaryDecorations();
+        latestWeekSummary = null;
+        refreshSummaryRailVisible();
+        return;
+      }
       weekSummaryErrorText = 'Week summary: network error.';
       clearWeekSummaryDecorations();
       latestWeekSummary = null;
       refreshSummaryRailVisible();
+    } finally {
+      clearTimeout(weekDeadline);
     }
   }
 
@@ -446,6 +590,8 @@
     if (!vm || !dateEl) return;
     if (monthSummaryAbort) monthSummaryAbort.abort();
     monthSummaryAbort = new AbortController();
+    const monthCtrl = monthSummaryAbort;
+    const monthDeadline = bindAbortDeadline(monthCtrl, CALENDAR_FETCH_TIMEOUT_MS);
     const params = new URLSearchParams();
     params.set('year', String(vm.y));
     params.set('month', String(vm.m));
@@ -454,7 +600,7 @@
     try {
       const res = await fetch('/calendar/month-summary?' + params.toString(), {
         headers: { Accept: 'application/json' },
-        signal: monthSummaryAbort.signal,
+        signal: monthCtrl.signal,
       });
       let payload;
       try {
@@ -486,11 +632,20 @@
         refreshSummaryRailVisible();
       }
     } catch (e) {
-      if (e && e.name === 'AbortError') return;
+      if (e && e.name === 'AbortError') {
+        if (monthSummaryAbort !== monthCtrl) return;
+        monthSummaryErrorText = 'Month summary: timed out.';
+        clearMonthGridDecorations();
+        latestMonthSummary = null;
+        refreshSummaryRailVisible();
+        return;
+      }
       monthSummaryErrorText = 'Month summary: network error.';
       clearMonthGridDecorations();
       latestMonthSummary = null;
       refreshSummaryRailVisible();
+    } finally {
+      clearTimeout(monthDeadline);
     }
   }
 
@@ -531,7 +686,6 @@
   function pickDateAndReload(iso) {
     if (!dateEl || dateEl.value === iso) return;
     selectedSlot = null;
-    nowLineScrolled = false;
     dateEl.value = iso;
     renderSmartCard();
     pushCalendarHistoryIfChanged();
@@ -691,7 +845,6 @@
     const cur = dateEl.value;
     if (!cur) return;
     selectedSlot = null;
-    nowLineScrolled = false;
     dateEl.value = shiftIsoDate(cur, deltaWeeks * 7);
     renderSmartCard();
     pushCalendarHistoryIfChanged();
@@ -702,7 +855,6 @@
     const cur = dateEl.value;
     if (!cur) return;
     selectedSlot = null;
-    nowLineScrolled = false;
     dateEl.value = addMonthsIso(cur, deltaM);
     renderSmartCard();
     pushCalendarHistoryIfChanged();
@@ -717,7 +869,6 @@
       return;
     }
     selectedSlot = null;
-    nowLineScrolled = false;
     dateEl.value = t;
     renderSmartCard();
     pushCalendarHistoryIfChanged();
@@ -753,7 +904,7 @@
       label.hidden = true;
       return;
     }
-    const topPx = (nowMinutes - nowLineVm.start) * PIXELS_PER_MINUTE + GRID_TOP_INSET_PX;
+    const topPx = (nowMinutes - nowLineVm.start) * getPixelsPerMinute() + GRID_TOP_INSET_PX;
     line.style.top  = topPx + 'px';
     label.style.top = topPx + 'px';
     label.textContent = fmtTime(nowMinutes);
@@ -763,7 +914,7 @@
 
   /**
    * Create now-line and now-label DOM elements, position them, and start the 30-second update timer.
-   * Also performs one-time auto-scroll near current time if today and not yet scrolled.
+   * Vertical centering in the grid runs from {@link scheduleWorkdayViewportFit} (after viewport fit).
    */
   function initNowLine(vm) {
     destroyNowLine();
@@ -778,27 +929,17 @@
     line.setAttribute('aria-hidden', 'true');
     calBody.appendChild(line);
 
-    // Label placed in .ops-calendar-body so it covers the time-axis column with its own background,
-    // replacing the nearby time label instead of competing with it.
+    // Label placed inside the sticky .ops-time-labels column so it remains
+    // visible when the user scrolls the appointment lanes horizontally.
     const label = document.createElement('div');
     label.id = 'ops-now-label-indicator';
     label.className = 'ops-now-label';
     label.hidden = true;
     label.setAttribute('aria-hidden', 'true');
-    calBody.appendChild(label);
+    const labelsCol = calBody.querySelector('.ops-time-labels');
+    (labelsCol || calBody).appendChild(label);
 
     positionNowLine();
-
-    if (!nowLineScrolled) {
-      const { minutes: nowMinutes, dateStr: nowDate } = getBranchNow();
-      const gridEl = document.getElementById('appts-calendar-grid');
-      if (dateEl.value === nowDate && nowMinutes >= vm.start && nowMinutes <= vm.end && gridEl) {
-        const topPx = (nowMinutes - vm.start) * PIXELS_PER_MINUTE + GRID_TOP_INSET_PX;
-        const scrollTarget = Math.max(0, topPx - gridEl.clientHeight * 0.25);
-        nowLineScrolled = true;
-        setTimeout(() => gridEl.scrollTo({ top: scrollTarget, behavior: 'smooth' }), 100);
-      }
-    }
 
     nowLineTimer = setInterval(positionNowLine, 30_000);
   }
@@ -835,10 +976,813 @@
     return '/appointments/blocked-slots/panel?' + currentCalendarQuery().toString();
   }
 
-  function snapTimeFromTop(offsetPx, dayStart, step) {
-    const rawMinutes = dayStart + Math.max(0, Math.round((offsetPx - GRID_TOP_INSET_PX) / PIXELS_PER_MINUTE));
+  function buildBlockedTimeUrlForStaff(staffId) {
+    const q = currentCalendarQuery();
+    if (staffId) q.set('staff_id', String(staffId));
+    return '/appointments/blocked-slots/panel?' + q.toString();
+  }
+
+  // ── Staff column context menu ──────────────────────────────────────────────
+  const HIDDEN_STAFF_KEY = 'appts_cal_hidden_staff';
+
+  function getHiddenStaffIds() {
+    try {
+      const raw = sessionStorage.getItem(HIDDEN_STAFF_KEY);
+      if (!raw) return new Set();
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? new Set(parsed.map(String)) : new Set();
+    } catch (e) { return new Set(); }
+  }
+
+  function setHiddenStaffIds(set) {
+    try {
+      sessionStorage.setItem(HIDDEN_STAFF_KEY, JSON.stringify([...set]));
+    } catch (e) { /* ignore */ }
+  }
+
+  function closeAllStaffMenus() {
+    document.querySelectorAll('.ops-staff-menu:not([hidden])').forEach((m) => {
+      m.hidden = true;
+      m.closest('.ops-staff-head')?.classList.remove('ops-staff-head--open');
+    });
+  }
+
+  function toggleStaffMenu(header, menu) {
+    const wasOpen = !menu.hidden;
+    closeAllStaffMenus();
+    if (!wasOpen) {
+      menu.hidden = false;
+      header.classList.add('ops-staff-head--open');
+      const first = menu.querySelector('[role="menuitem"]');
+      if (first) requestAnimationFrame(() => first.focus());
+    }
+  }
+
+  async function handleStaffMenuAction(action, staffId, staffLabel) {
+    if (action === 'block') {
+      await openDrawerUrl(buildBlockedTimeUrlForStaff(staffId));
+    } else if (action === 'schedule') {
+      window.location.href = '/staff/' + encodeURIComponent(staffId) + '/edit?tab=schedule';
+    } else if (action === 'services') {
+      window.location.href = '/staff/' + encodeURIComponent(staffId) + '/edit?tab=services';
+    } else if (action === 'profile') {
+      window.location.href = '/staff/' + encodeURIComponent(staffId);
+    } else if (action === 'hide') {
+      const hidden = getHiddenStaffIds();
+      hidden.add(String(staffId));
+      setHiddenStaffIds(hidden);
+      schedulePersistCalendarPrefs();
+      load();
+    }
+  }
+
+  function updateHiddenColumnsIndicator() {
+    const slot =
+      document.getElementById('calendar-toolbar-context') ||
+      document.getElementById('appts-calendar-toolbar');
+    if (!slot) return;
+    const existing = document.getElementById('calendar-hidden-cols-restore');
+    const hidden = getHiddenStaffIds();
+    if (hidden.size === 0) {
+      if (existing) existing.remove();
+      return;
+    }
+    const label = hidden.size === 1 ? '1 column hidden' : hidden.size + ' columns hidden';
+    if (!existing) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.id = 'calendar-hidden-cols-restore';
+      btn.className = 'ds-btn calendar-hidden-cols-pill';
+      btn.title = 'Click to restore all hidden staff columns';
+      btn.setAttribute('aria-label', 'Restore hidden staff columns');
+      btn.textContent = label;
+      btn.addEventListener('click', () => {
+        setHiddenStaffIds(new Set());
+        schedulePersistCalendarPrefs();
+        load();
+      });
+      slot.appendChild(btn);
+    } else {
+      existing.textContent = label;
+      if (existing.parentElement !== slot) {
+        slot.appendChild(existing);
+      }
+    }
+  }
+
+  // ── Appointment right-click context menu ────────────────────────────────────
+  let ctxMenuEl = null;
+  // Tracks where the current drag originated: 'calendar' = from a calendar block, 'clipboard' = from the clipboard panel
+  let currentDragSource = null;
+
+  function getCsrfToken() {
+    const el = document.getElementById('appts-calendar-grid');
+    if (el && el.dataset.csrf) return el.dataset.csrf;
+    return document.querySelector('meta[name="csrf-token"]')?.content || '';
+  }
+
+  function getCsrfName() {
+    const el = document.getElementById('appts-calendar-grid');
+    if (el && el.dataset.csrfName) return el.dataset.csrfName;
+    return document.querySelector('meta[name="csrf-name"]')?.content || 'csrf_token';
+  }
+
+  async function apptQuickFetch(url, extraBody = {}) {
+    const fd = new FormData();
+    fd.append(getCsrfName(), getCsrfToken());
+    for (const [k, v] of Object.entries(extraBody)) fd.append(k, String(v));
+    const ac = new AbortController();
+    const qDeadline = bindAbortDeadline(ac, CALENDAR_FETCH_TIMEOUT_MS);
+    let res;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: fd,
+        signal: ac.signal,
+      });
+    } finally {
+      clearTimeout(qDeadline);
+    }
+    let payload;
+    try { payload = await res.json(); } catch (e) { payload = null; }
+    return { ok: res.ok, status: res.status, payload };
+  }
+
+  function closeApptContextMenu() {
+    if (ctxMenuEl) { ctxMenuEl.remove(); ctxMenuEl = null; }
+  }
+
+  /**
+   * @param {{ linkedInvoiceId?: number, clientId?: number, capabilities?: object }} [ctx]
+   */
+  function buildApptContextMenuItems(status, staffLocked, ctx) {
+    const linkedInvoiceId = ctx && Number(ctx.linkedInvoiceId) > 0 ? Number(ctx.linkedInvoiceId) : 0;
+    const clientId = ctx && Number(ctx.clientId) > 0 ? Number(ctx.clientId) : 0;
+    const caps = normalizeCalendarCapabilities(ctx?.capabilities);
+    const salesCreate = caps.sales_create;
+    const salesPay = caps.sales_pay;
+    const salesView = caps.sales_view;
+    const appointmentsCreate = caps.appointments_create;
+
+    const s = String(status || 'scheduled');
+    const terminal = ['cancelled', 'no_show', 'completed'].includes(s);
+    const canEdit = !terminal;
+    const canCheckin = ['scheduled', 'confirmed', 'in_progress'].includes(s);
+    const canConfirm = s === 'scheduled';
+    const canUnconfirm = s === 'confirmed';
+    const canProgress = ['scheduled', 'confirmed'].includes(s);
+    const canComplete = !terminal && s !== 'completed';
+    const canCancel = s !== 'cancelled' && s !== 'completed';
+    const canNoShow = ['scheduled', 'confirmed'].includes(s);
+    const locked = !!staffLocked;
+    const canCleanup = !terminal;
+    const canBilling = s !== 'cancelled';
+
+    /** @type {Array<null|object>} */
+    const items = [];
+    // PMS reference order: Complete → Confirm → Check-in → Payment → Deposit → Cancel → Lock → (extra workflow) → divider → …
+
+    if (canComplete) {
+      items.push({ label: 'Complete Appointment', action: 'complete' });
+    } else {
+      items.push({
+        type: 'disabled',
+        label: 'Complete Appointment',
+        title:
+          s === 'completed'
+            ? 'This appointment is already completed.'
+            : 'Not available for cancelled or no-show appointments.',
+      });
+    }
+
+    if (canConfirm) items.push({ label: 'Confirm', action: 'confirm' });
+    else items.push({ type: 'disabled', label: 'Confirm', title: 'Only scheduled appointments can be confirmed here.' });
+    if (canUnconfirm) items.push({ label: 'Unconfirm', action: 'unconfirm' });
+
+    if (canCheckin) items.push({ label: 'Check-in Guest', action: 'checkin' });
+    else {
+      items.push({
+        type: 'disabled',
+        label: 'Check-in Guest',
+        title: 'Check-in is available for scheduled, confirmed, or in-progress appointments.',
+      });
+    }
+
+    if (!canBilling) {
+      items.push({ type: 'disabled', label: 'Take Payment/Check-Out', title: 'Cancelled appointments cannot be checked out here.' });
+    } else if (linkedInvoiceId > 0 && salesPay) {
+      items.push({ label: 'Take Payment/Check-Out', action: 'take_payment_invoice' });
+    } else if (linkedInvoiceId > 0 && salesView) {
+      items.push({
+        label: 'Take Payment/Check-Out',
+        action: 'view_invoice',
+        title: 'Opens the linked invoice. Use Sales → Pay if you have permission to record a payment.',
+      });
+    } else if (linkedInvoiceId > 0) {
+      items.push({ type: 'disabled', label: 'Take Payment/Check-Out', title: 'You need sales.view to open the linked invoice.' });
+    } else if (salesCreate) {
+      items.push({ label: 'Take Payment/Check-Out', action: 'checkout_new_sale' });
+    } else {
+      items.push({ type: 'disabled', label: 'Take Payment/Check-Out', title: 'You need sales.create to open checkout without a linked invoice.' });
+    }
+
+    if (!canBilling) {
+      items.push({ type: 'disabled', label: 'Take Deposit', title: 'Cancelled appointments cannot take a deposit here.' });
+    } else if (salesCreate) {
+      items.push({ label: 'Take Deposit', action: 'take_deposit_sale' });
+    } else {
+      items.push({ type: 'disabled', label: 'Take Deposit', title: 'You need sales.create to record a deposit in Sales.' });
+    }
+
+    if (canCancel) items.push({ label: 'Cancel Appointment', action: 'cancel' });
+    else items.push({ type: 'disabled', label: 'Cancel Appointment', title: 'Already cancelled or completed.' });
+
+    if (locked) items.push({ label: 'Unlock Technician', action: 'staff_unlock' });
+    else items.push({ label: 'Lock to Technician', action: 'staff_lock' });
+
+    if (canProgress) items.push({ label: 'Start service', action: 'in_progress' });
+    if (canNoShow) items.push({ label: 'No show', action: 'no_show' });
+    items.push(null);
+
+    items.push({ label: 'Move to Clipboard', action: 'clipboard', mod: 'clip' });
+    items.push(null);
+    if (canEdit) items.push({ label: 'Edit', action: 'edit' });
+
+    const viewChildren = [
+      { label: 'View Appointment', action: 'view' },
+      linkedInvoiceId > 0
+        ? { label: 'View Invoice', action: 'view_invoice' }
+        : { type: 'disabled', label: 'View Invoice', title: 'No invoice is linked to this appointment.' },
+    ];
+    items.push({ submenu: 'View', title: 'Appointment details and linked sale.', children: viewChildren });
+
+    const printChildren = [
+      { label: 'Print Appointment', action: 'print_appointment' },
+      clientId > 0
+        ? { label: 'Print Customer Itinerary', action: 'print_itinerary' }
+        : { type: 'disabled', label: 'Print Customer Itinerary', title: 'No client on this appointment.' },
+      linkedInvoiceId > 0
+        ? { label: 'Print Invoice', action: 'print_invoice' }
+        : { type: 'disabled', label: 'Print Invoice', title: 'No invoice linked. Create one from Sales for this appointment.' },
+    ];
+    items.push({ submenu: 'Print', children: printChildren });
+
+    items.push({ label: 'Send Appointment Info', action: 'send_confirmation' });
+    if (appointmentsCreate && clientId > 0) {
+      items.push({
+        label: 'Add to Group',
+        action: 'add_companion_booking',
+        title: 'New appointment for the same client (book a companion / party member).',
+      });
+    } else {
+      items.push({
+        type: 'disabled',
+        label: 'Add to Group',
+        title: clientId <= 0
+          ? 'No client on this appointment.'
+          : 'You need permission to create appointments.',
+      });
+    }
+    items.push({
+      submenu: 'Remove Cleanup Time',
+      title: 'Prep (before) and turnover (after) adjust staff availability only.',
+      children: canCleanup
+        ? [
+            { label: 'Remove All Cleanup', action: 'cleanup_all' },
+            { label: 'Remove Employee Cleanup', action: 'cleanup_employee' },
+            { label: 'Remove Room Cleanup', action: 'cleanup_room' },
+          ]
+        : [{ type: 'disabled', label: 'Not available for this status', title: '' }],
+    });
+    items.push(null);
+    if (canEdit) items.push({ label: 'Edit Customer Notes', action: 'edit_notes' });
+    items.push(null);
+    items.push({ label: 'Delete', action: 'delete', mod: 'danger' });
+    return items;
+  }
+
+  function appendApptContextMenuNodes(menu, defs, apptId) {
+    defs.forEach((def) => {
+      if (def === null) {
+        const sep = document.createElement('div');
+        sep.className = 'cal-ctx-sep';
+        sep.setAttribute('role', 'separator');
+        menu.appendChild(sep);
+        return;
+      }
+      if (def.type === 'disabled') {
+        const sp = document.createElement('span');
+        sp.className = 'cal-ctx-item cal-ctx-item--disabled';
+        sp.textContent = def.label;
+        if (def.title) sp.title = def.title;
+        sp.setAttribute('aria-disabled', 'true');
+        menu.appendChild(sp);
+        return;
+      }
+      if (def.submenu && def.children) {
+        const wrap = document.createElement('div');
+        wrap.className = 'cal-ctx-submenu-wrap';
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'cal-ctx-item cal-ctx-item--sub';
+        btn.textContent = def.submenu;
+        if (def.title) btn.title = def.title;
+        btn.setAttribute('role', 'menuitem');
+        btn.setAttribute('aria-haspopup', 'true');
+        const sub = document.createElement('div');
+        sub.className = 'cal-ctx-submenu';
+        sub.setAttribute('role', 'menu');
+        def.children.forEach((ch) => {
+          if (ch.type === 'disabled') {
+            const sp = document.createElement('span');
+            sp.className = 'cal-ctx-item cal-ctx-item--disabled';
+            sp.textContent = ch.label;
+            if (ch.title) sp.title = ch.title;
+            sp.setAttribute('aria-disabled', 'true');
+            sub.appendChild(sp);
+            return;
+          }
+          const subBtn = document.createElement('button');
+          subBtn.type = 'button';
+          subBtn.className = 'cal-ctx-item' + (ch.mod ? ' cal-ctx-item--' + ch.mod : '');
+          subBtn.textContent = ch.label;
+          if (ch.title) subBtn.title = ch.title;
+          subBtn.dataset.apptId = String(apptId);
+          subBtn.dataset.action = ch.action;
+          subBtn.setAttribute('role', 'menuitem');
+          sub.appendChild(subBtn);
+        });
+        wrap.appendChild(btn);
+        wrap.appendChild(sub);
+        menu.appendChild(wrap);
+        return;
+      }
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'cal-ctx-item' + (def.mod ? ' cal-ctx-item--' + def.mod : '');
+      btn.textContent = def.label;
+      if (def.title) btn.title = def.title;
+      btn.dataset.apptId = String(apptId);
+      btn.dataset.action = def.action;
+      btn.setAttribute('role', 'menuitem');
+      menu.appendChild(btn);
+    });
+  }
+
+  /**
+   * @param {{ linkedInvoiceId?: number, clientId?: number, capabilities?: object }} [menuCtx]
+   */
+  function showApptContextMenu(clientX, clientY, apptId, status, staffLocked, menuCtx) {
+    closeApptContextMenu();
+    const menu = document.createElement('div');
+    menu.id = 'cal-appt-ctx-menu';
+    menu.className = 'cal-ctx-menu';
+    menu.setAttribute('role', 'menu');
+    menu.setAttribute('aria-label', 'Appointment options');
+
+    const mergedCtx = Object.assign({}, menuCtx || {}, { capabilities: calendarCapabilities });
+    appendApptContextMenuNodes(menu, buildApptContextMenuItems(status, staffLocked, mergedCtx), apptId);
+
+    document.body.appendChild(menu);
+    ctxMenuEl = menu;
+
+    menu.style.left = '-9999px';
+    menu.style.top  = '-9999px';
+    requestAnimationFrame(() => {
+      const vw = window.innerWidth, vh = window.innerHeight;
+      const r  = menu.getBoundingClientRect();
+      const x  = clientX + r.width  > vw ? Math.max(4, clientX - r.width)  : clientX;
+      const y  = clientY + r.height > vh ? Math.max(4, clientY - r.height) : clientY;
+      menu.style.left = x + 'px';
+      menu.style.top  = y + 'px';
+    });
+
+    menu.addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      e.stopPropagation();
+      closeApptContextMenu();
+      await handleApptContextAction(btn.dataset.action, btn.dataset.apptId);
+    });
+
+    menu.addEventListener('keydown', (e) => {
+      const items = [...menu.querySelectorAll('button[role="menuitem"][data-action], .cal-ctx-submenu-wrap > button[role="menuitem"]')];
+      const idx = items.indexOf(document.activeElement);
+      if (e.key === 'Escape') { closeApptContextMenu(); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); if (idx < items.length - 1) items[idx + 1].focus(); }
+      if (e.key === 'ArrowUp')   { e.preventDefault(); if (idx > 0) items[idx - 1].focus(); }
+    });
+
+    const first = menu.querySelector('button[role="menuitem"]');
+    if (first) requestAnimationFrame(() => first.focus());
+  }
+
+  async function handleApptContextAction(action, apptIdStr) {
+    const id = parseInt(apptIdStr, 10);
+    if (!id) return;
+    const base = '/appointments/' + id;
+    if (action === 'clipboard') {
+      // Read display data from the appointment block DOM
+      const block = document.querySelector('[data-appt-id="' + apptIdStr + '"]');
+      const title      = block?.querySelector('.ops-block-title')?.textContent || ('Appointment #' + id);
+      const meta       = block?.querySelector('.ops-block-meta')?.textContent  || '';
+      const time       = block?.querySelector('.ops-block-time')?.textContent  || '';
+      const status     = block?.dataset?.apptStatus || '';
+      const rawStartAt = block?.dataset?.rawStartAt || '';
+      addToClipboard(id, title, meta, time, status, rawStartAt);
+      return;
+    }
+    if (action === 'view') {
+      await openDrawerUrl(base + '?drawer=1');
+    } else if (action === 'edit') {
+      await openDrawerUrl(base + '/edit?drawer=1');
+    } else if (action === 'print' || action === 'print_appointment') {
+      window.open(base + '/print', '_blank', 'noopener,noreferrer');
+    } else if (action === 'print_itinerary') {
+      window.open(base + '/print-itinerary', '_blank', 'noopener,noreferrer');
+    } else if (action === 'checkout_new_sale' || action === 'take_deposit_sale') {
+      window.open('/sales/invoices/create?appointment_id=' + encodeURIComponent(String(id)), '_blank', 'noopener,noreferrer');
+    } else if (action === 'take_payment_invoice') {
+      const blockInv = document.querySelector('[data-appt-id="' + apptIdStr + '"]');
+      const lidPay = blockInv && blockInv.dataset.linkedInvoiceId ? String(blockInv.dataset.linkedInvoiceId).trim() : '';
+      if (lidPay) {
+        window.open('/sales/invoices/' + encodeURIComponent(lidPay) + '/payments/create', '_blank', 'noopener,noreferrer');
+      }
+    } else if (action === 'add_companion_booking') {
+      const blockC = document.querySelector('[data-appt-id="' + apptIdStr + '"]');
+      const cid = blockC && blockC.dataset.clientId ? parseInt(blockC.dataset.clientId, 10) : 0;
+      if (cid > 0) {
+        const params = currentCalendarQuery();
+        params.set('client_id', String(cid));
+        params.set('drawer', '1');
+        await openDrawerUrl('/appointments/create?' + params.toString());
+      }
+      return;
+    } else if (action === 'view_invoice') {
+      const block = document.querySelector('[data-appt-id="' + apptIdStr + '"]');
+      const lid = block && block.dataset.linkedInvoiceId ? String(block.dataset.linkedInvoiceId).trim() : '';
+      if (lid) {
+        window.open('/sales/invoices/' + encodeURIComponent(lid), '_blank', 'noopener,noreferrer');
+      }
+    } else if (action === 'print_invoice') {
+      const block = document.querySelector('[data-appt-id="' + apptIdStr + '"]');
+      const lid = block && block.dataset.linkedInvoiceId ? String(block.dataset.linkedInvoiceId).trim() : '';
+      if (lid) {
+        window.open('/sales/invoices/' + encodeURIComponent(lid), '_blank', 'noopener,noreferrer');
+      }
+    } else if (action === 'checkin') {
+      const { ok, payload } = await apptQuickFetch(base + '/check-in');
+      if (!ok) { alert((payload?.error?.message) || 'Could not check in.'); return; }
+      window.dispatchEvent(new CustomEvent('app:appointments-calendar-refresh'));
+      loadSidePanelData();
+    } else if (action === 'confirm') {
+      const { ok, payload } = await apptQuickFetch(base + '/status', { status: 'confirmed' });
+      if (!ok) { alert((payload?.error?.message) || 'Could not confirm.'); return; }
+      window.dispatchEvent(new CustomEvent('app:appointments-calendar-refresh'));
+    } else if (action === 'unconfirm') {
+      const { ok, payload } = await apptQuickFetch(base + '/status', { status: 'scheduled' });
+      if (!ok) { alert((payload?.error?.message) || 'Could not unconfirm.'); return; }
+      window.dispatchEvent(new CustomEvent('app:appointments-calendar-refresh'));
+    } else if (action === 'in_progress') {
+      const { ok, payload } = await apptQuickFetch(base + '/status', { status: 'in_progress' });
+      if (!ok) { alert((payload?.error?.message) || 'Could not update status.'); return; }
+      window.dispatchEvent(new CustomEvent('app:appointments-calendar-refresh'));
+    } else if (action === 'complete') {
+      const { ok, payload } = await apptQuickFetch(base + '/status', { status: 'completed' });
+      if (!ok) { alert((payload?.error?.message) || 'Could not complete.'); return; }
+      window.dispatchEvent(new CustomEvent('app:appointments-calendar-refresh'));
+      loadSidePanelData();
+    } else if (action === 'no_show') {
+      if (!confirm('Mark as no-show?')) return;
+      const { ok, payload } = await apptQuickFetch(base + '/status', { status: 'no_show' });
+      if (!ok) { alert((payload?.error?.message) || 'Could not mark no-show.'); return; }
+      window.dispatchEvent(new CustomEvent('app:appointments-calendar-refresh'));
+    } else if (action === 'cancel') {
+      if (!confirm('Cancel this appointment?')) return;
+      const { ok, payload } = await apptQuickFetch(base + '/cancel');
+      if (!ok) { alert((payload?.error?.message) || 'Could not cancel.'); return; }
+      window.dispatchEvent(new CustomEvent('app:appointments-calendar-refresh'));
+    } else if (action === 'delete') {
+      if (!confirm('Permanently delete this appointment?')) return;
+      const { ok, payload } = await apptQuickFetch(base + '/delete');
+      if (!ok) { alert((payload?.error?.message) || 'Could not delete.'); return; }
+      window.dispatchEvent(new CustomEvent('app:appointments-calendar-refresh'));
+    } else if (action === 'cleanup_all') {
+      const { ok, payload } = await apptQuickFetch(base + '/buffer-cleanup', { scope: 'all' });
+      if (!ok) { alert((payload?.error?.message) || 'Could not update cleanup buffers.'); return; }
+      window.dispatchEvent(new CustomEvent('app:appointments-calendar-refresh'));
+    } else if (action === 'cleanup_employee') {
+      const { ok, payload } = await apptQuickFetch(base + '/buffer-cleanup', { scope: 'employee' });
+      if (!ok) { alert((payload?.error?.message) || 'Could not update cleanup buffers.'); return; }
+      window.dispatchEvent(new CustomEvent('app:appointments-calendar-refresh'));
+    } else if (action === 'cleanup_room') {
+      const { ok, payload } = await apptQuickFetch(base + '/buffer-cleanup', { scope: 'room' });
+      if (!ok) { alert((payload?.error?.message) || 'Could not update cleanup buffers.'); return; }
+      window.dispatchEvent(new CustomEvent('app:appointments-calendar-refresh'));
+    } else if (action === 'staff_lock') {
+      const { ok, payload } = await apptQuickFetch(base + '/staff-lock', { locked: '1' });
+      if (!ok) { alert((payload?.error?.message) || 'Could not lock staff.'); return; }
+      window.dispatchEvent(new CustomEvent('app:appointments-calendar-refresh'));
+    } else if (action === 'staff_unlock') {
+      const { ok, payload } = await apptQuickFetch(base + '/staff-lock', { locked: '0' });
+      if (!ok) { alert((payload?.error?.message) || 'Could not unlock staff.'); return; }
+      window.dispatchEvent(new CustomEvent('app:appointments-calendar-refresh'));
+    } else if (action === 'send_confirmation') {
+      const { ok, payload } = await apptQuickFetch(base + '/send-confirmation');
+      if (!ok) { alert((payload?.error?.message) || 'Could not queue confirmation.'); return; }
+      window.dispatchEvent(new CustomEvent('app:appointments-calendar-refresh'));
+    } else if (action === 'edit_notes') {
+      await openDrawerUrl(base + '/edit?drawer=1#appt-notes');
+      setTimeout(() => {
+        const ta = document.getElementById('appt-notes');
+        if (ta && typeof ta.focus === 'function') ta.focus();
+      }, 400);
+    }
+  }
+
+  // ── Calendar side tools panel ────────────────────────────────────────────────
+  let sidePanelAbort = null;
+
+  function initToolsPanel() {
+    const panel = document.getElementById('cal-tools-panel');
+    if (!panel) return;
+    const tabs = panel.querySelectorAll('[data-tools-tab]');
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        tabs.forEach((t) => { t.classList.remove('cal-tools-tab--active'); t.setAttribute('aria-selected', 'false'); });
+        tab.classList.add('cal-tools-tab--active');
+        tab.setAttribute('aria-selected', 'true');
+        const paneId = 'cal-tools-' + tab.dataset.toolsTab;
+        panel.querySelectorAll('.cal-tools-pane').forEach((p) => {
+          const isTarget = p.id === paneId;
+          p.hidden = !isTarget;
+          if (isTarget) p.classList.add('cal-tools-pane--active');
+          else p.classList.remove('cal-tools-pane--active');
+        });
+      });
+    });
+
+    // ── Clipboard pane: accept drops from calendar blocks ──────────────────
+    const clipPane = document.getElementById('cal-tools-clipboard');
+    if (clipPane) {
+      clipPane.addEventListener('dragenter', (e) => {
+        if (!Array.from(e.dataTransfer.types).includes('text/plain')) return;
+        e.preventDefault();
+        clipPane.classList.add('cal-clipboard-drag-over');
+        // Auto-switch to clipboard tab so user sees where the item will land
+        const clipTab = panel.querySelector('[data-tools-tab="clipboard"]');
+        if (clipTab && !clipTab.classList.contains('cal-tools-tab--active')) clipTab.click();
+      });
+      clipPane.addEventListener('dragover', (e) => {
+        if (!Array.from(e.dataTransfer.types).includes('text/plain')) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+      });
+      clipPane.addEventListener('dragleave', (e) => {
+        if (!clipPane.contains(e.relatedTarget)) clipPane.classList.remove('cal-clipboard-drag-over');
+      });
+      clipPane.addEventListener('drop', (e) => {
+        e.preventDefault();
+        clipPane.classList.remove('cal-clipboard-drag-over');
+        let data;
+        try { data = JSON.parse(e.dataTransfer.getData('text/plain')); } catch (err) { return; }
+        if (!data || !data.id) return;
+        addToClipboard(data.id, data.title || '', data.meta || '', data.time || '', data.status || '', data.rawStartAt || '');
+      });
+    }
+  }
+
+  async function loadSidePanelData() {
+    const panel = document.getElementById('cal-tools-panel');
+    if (!panel || !dateEl || !branchEl) return;
+    if (sidePanelAbort) sidePanelAbort.abort();
+    sidePanelAbort = new AbortController();
+    const sideCtrl = sidePanelAbort;
+    const sideDeadline = bindAbortDeadline(sideCtrl, CALENDAR_FETCH_TIMEOUT_MS);
+    const params = new URLSearchParams();
+    params.set('date', dateEl.value);
+    if (branchEl.value) params.set('branch_id', branchEl.value);
+    try {
+      const res = await fetch('/calendar/side-panel?' + params.toString(), {
+        headers: { Accept: 'application/json' },
+        signal: sideCtrl.signal,
+      });
+      if (!res.ok) return;
+      const raw = await res.text();
+      let body;
+      try {
+        body = raw ? JSON.parse(raw) : null;
+      } catch (_e) {
+        return;
+      }
+      if (!body || !body.success) return;
+      const data = body.data;
+      renderWaitlistPane(data);
+      renderCheckinPane(data);
+    } catch (e) {
+      if (e && e.name === 'AbortError' && sidePanelAbort !== sideCtrl) return;
+    } finally {
+      clearTimeout(sideDeadline);
+    }
+  }
+
+  function renderWaitlistPane(data) {
+    const pane = document.getElementById('cal-tools-waitlist');
+    const badge = document.getElementById('cal-tools-waitlist-badge');
+    if (!pane || !data) return;
+    const count = Number(data.waitlist_count) || 0;
+    const url = String(data.waitlist_url || '/appointments/waitlist');
+    if (badge) {
+      badge.textContent = count > 99 ? '99+' : String(count);
+      badge.hidden = count === 0;
+    }
+    if (count === 0) {
+      pane.innerHTML = '<p class="cal-tools-hint">No active waitlist entries for this date.</p>'
+        + '<a href="' + url + '" class="cal-tools-link">Open full waitlist</a>';
+    } else {
+      pane.innerHTML = '<p class="cal-tools-count">' + count + ' waiting</p>'
+        + '<a href="' + url + '" class="cal-tools-link cal-tools-link--primary">View &amp; manage waitlist →</a>';
+    }
+  }
+
+  function renderCheckinPane(data) {
+    const pane = document.getElementById('cal-tools-checkin');
+    const badge = document.getElementById('cal-tools-checkin-badge');
+    if (!pane || !data) return;
+    const checkins = Array.isArray(data.checkins) ? data.checkins : [];
+    if (badge) {
+      badge.textContent = checkins.length > 99 ? '99+' : String(checkins.length);
+      badge.hidden = checkins.length === 0;
+    }
+    if (checkins.length === 0) {
+      pane.innerHTML = '<p class="cal-tools-hint">No check-ins recorded yet for this date.</p>';
+      return;
+    }
+    const items = checkins.map((c) => {
+      const name = c.client_name || 'Guest';
+      const svc  = c.service_name || '';
+      const time = c.checked_in_at || '';
+      const link = '/appointments/' + c.id;
+      return '<a href="' + link + '" class="cal-tools-entry" data-drawer-url="' + link + '?drawer=1">'
+        + '<span class="cal-tools-entry__time">' + escHtml(time) + '</span>'
+        + '<span class="cal-tools-entry__name">' + escHtml(name) + '</span>'
+        + (svc ? '<span class="cal-tools-entry__svc">' + escHtml(svc) + '</span>' : '')
+        + '</a>';
+    }).join('');
+    pane.innerHTML = '<div class="cal-tools-entries">' + items + '</div>';
+  }
+
+  function escHtml(str) {
+    return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // ── Appointment Clipboard ────────────────────────────────────────────────────
+  const CLIPBOARD_KEY_PREFIX = 'appts_cal_clipboard';
+  const CLIPBOARD_MAX        = 20;
+
+  function clipboardKey() {
+    return CLIPBOARD_KEY_PREFIX + '_' + (branchEl?.value || '0');
+  }
+
+  /** @returns {Array<{id:number,title:string,meta:string,time:string,status:string,link:string}>} */
+  function getClipboard() {
+    try {
+      const raw = sessionStorage.getItem(clipboardKey());
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) { return []; }
+  }
+
+  function saveClipboard(items) {
+    try { sessionStorage.setItem(clipboardKey(), JSON.stringify(items)); } catch (e) { /* quota exceeded: silently ignore */ }
+  }
+
+  function addToClipboard(apptId, title, meta, time, status, rawStartAt) {
+    const items = getClipboard();
+    if (items.some((i) => i.id === Number(apptId))) return; // already there
+    if (items.length >= CLIPBOARD_MAX) items.shift(); // evict oldest to stay within cap
+    items.push({
+      id:         Number(apptId),
+      title:      String(title      || ''),
+      meta:       String(meta       || ''),
+      time:       String(time       || ''),
+      status:     String(status     || ''),
+      rawStartAt: String(rawStartAt || ''),
+      link:   '/appointments/' + apptId,
+    });
+    saveClipboard(items);
+    renderClipboardPane();
+    // Switch to clipboard tab so user sees the result
+    const clipTab = document.querySelector('[data-tools-tab="clipboard"]');
+    if (clipTab) clipTab.click();
+  }
+
+  function removeFromClipboard(apptId) {
+    saveClipboard(getClipboard().filter((i) => i.id !== Number(apptId)));
+    renderClipboardPane();
+  }
+
+  function renderClipboardPane() {
+    const pane      = document.getElementById('cal-tools-clipboard');
+    const listEl    = document.getElementById('cal-clipboard-items');
+    const emptyHint = document.getElementById('cal-clipboard-empty-hint');
+    const clearBtn  = document.getElementById('cal-clipboard-clear');
+    const badge     = document.getElementById('cal-tools-clipboard-badge');
+    if (!pane || !listEl) return;
+
+    const items = getClipboard();
+
+    // Badge
+    if (badge) { badge.textContent = String(items.length); badge.hidden = items.length === 0; }
+
+    if (items.length === 0) {
+      listEl.hidden = true;
+      listEl.innerHTML = '';
+      if (emptyHint) emptyHint.hidden = false;
+      if (clearBtn)  clearBtn.hidden = true;
+      return;
+    }
+
+    if (emptyHint) emptyHint.hidden = true;
+    if (clearBtn)  clearBtn.hidden = false;
+    listEl.hidden = false;
+
+    listEl.innerHTML = items.map((item) => `
+      <div class="cal-clipboard-item" data-clipboard-id="${item.id}">
+        <div class="cal-clipboard-item__body">
+          <span class="cal-clipboard-item__time">${escHtml(item.time)}</span>
+          <span class="cal-clipboard-item__name">${escHtml(item.title)}</span>
+          ${item.meta ? `<span class="cal-clipboard-item__svc">${escHtml(item.meta)}</span>` : ''}
+        </div>
+        <div class="cal-clipboard-item__actions">
+          <button type="button" class="cal-clipboard-btn cal-clipboard-btn--reschedule"
+                  data-clipboard-action="reschedule" data-clipboard-id="${item.id}"
+                  title="Open to reschedule">↗</button>
+          <button type="button" class="cal-clipboard-btn cal-clipboard-btn--remove"
+                  data-clipboard-action="remove" data-clipboard-id="${item.id}"
+                  title="Remove from clipboard">✕</button>
+        </div>
+      </div>
+    `).join('');
+
+    // Wire item action buttons + make items draggable
+    listEl.querySelectorAll('.cal-clipboard-item').forEach((itemEl) => {
+      const clipId   = itemEl.dataset.clipboardId;
+      const clipItem = items.find((i) => String(i.id) === String(clipId));
+
+      // Action buttons
+      const rescheduleBtn = itemEl.querySelector('[data-clipboard-action="reschedule"]');
+      const removeBtn     = itemEl.querySelector('[data-clipboard-action="remove"]');
+      if (rescheduleBtn) rescheduleBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await openDrawerUrl('/appointments/' + clipId + '/edit?drawer=1');
+      });
+      if (removeBtn) removeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeFromClipboard(clipId);
+      });
+
+      // Draggable → drop onto calendar lane to reschedule
+      if (!clipItem) return;
+      itemEl.draggable = true;
+      itemEl.addEventListener('dragstart', (e) => {
+        currentDragSource = 'clipboard';
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', JSON.stringify({
+          type:       'clipboard-appt-drag',
+          id:         clipItem.id,
+          title:      clipItem.title,
+          meta:       clipItem.meta,
+          time:       clipItem.time,
+          status:     clipItem.status,
+          rawStartAt: clipItem.rawStartAt || '',
+        }));
+        requestAnimationFrame(() => itemEl.classList.add('cal-clipboard-item--dragging'));
+      });
+      itemEl.addEventListener('dragend', () => {
+        currentDragSource = null;
+        itemEl.classList.remove('cal-clipboard-item--dragging');
+        document.querySelectorAll('.ops-drop-preview').forEach((p) => { p.hidden = true; });
+      });
+    });
+  }
+
+  function initClipboardClearBtn() {
+    const btn = document.getElementById('cal-clipboard-clear');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      saveClipboard([]);
+      renderClipboardPane();
+    });
+  }
+
+  function snapTimeFromTop(offsetPx, dayStart, step, dayEnd) {
+    const rawMinutes = dayStart + Math.max(0, Math.round((offsetPx - GRID_TOP_INSET_PX) / getPixelsPerMinute()));
     const snapped = Math.round(rawMinutes / step) * step;
-    return fmtTime(snapped);
+    const clamped = (dayEnd != null && Number.isFinite(dayEnd)) ? Math.min(snapped, dayEnd) : snapped;
+    return fmtTime(clamped);
   }
 
   function toMinutes(hhmm) {
@@ -850,6 +1794,108 @@
   function minutesFromDateTime(dt) {
     const hhmm = String(dt || '').slice(11, 16);
     return toMinutes(hhmm);
+  }
+
+  /**
+   * Vertical span of the day grid in minutes (matches {@link buildCalendarViewModel} envelope).
+   * @returns {{ range: number } | null}
+   */
+  function computePayloadDayRangeMinutes(payload) {
+    if (!payload || typeof payload !== 'object') return null;
+    const grid = payload.time_grid && typeof payload.time_grid === 'object' ? payload.time_grid : {};
+    const rawGridStep = Number(grid.slot_minutes);
+    const step = Number.isFinite(rawGridStep) && rawGridStep > 0 ? rawGridStep : GRID_STEP_FALLBACK_MINUTES;
+    const dayStart = toMinutes(grid.day_start || '09:00');
+    const dayEnd = toMinutes(grid.day_end || '18:00');
+    const safeEnd = dayEnd > dayStart ? dayEnd : dayStart + step;
+    const range = safeEnd - dayStart;
+    if (!Number.isFinite(range) || range <= 0) return null;
+    return { range };
+  }
+
+  /**
+   * Scale time zoom so the full day range fits in the calendar grid viewport (no vertical scroll for the workday).
+   * Does not run during slider-driven re-renders; triggered after load + grid resize only.
+   */
+  function tryFitWorkdayToViewport() {
+    if (inWorkdayFitRender) return;
+    if (calendarPrefsPersistedFromServer) return;
+    if (isCalendarAutofitTimeZoomLocked()) return;
+    const pl = lastCalendarPayload;
+    const gridEl = document.getElementById('appts-calendar-grid');
+    if (!pl || !gridEl || !wrap) return;
+    if (wrap.querySelector('.calendar-empty-hint')) return;
+    const r = computePayloadDayRangeMinutes(pl);
+    if (!r) return;
+    const { range } = r;
+    const gridH = gridEl.clientHeight;
+    if (gridH < 100) return;
+    const headEl = wrap.querySelector('.ops-calendar-head');
+    const headH = headEl ? Math.ceil(headEl.getBoundingClientRect().height) : 48;
+    const vFitPad = 8;
+    const available = gridH - headH - vFitPad;
+    if (available < 80) return;
+    const targetPxPerMin = (available - GRID_TOP_INSET_PX) / range;
+    if (!Number.isFinite(targetPxPerMin) || targetPxPerMin <= 0.05) return;
+    const fitFloor = AUTO_FIT_MIN_TIME_ZOOM_PERCENT;
+    // Floor so rounded zoom never exceeds viewport; cap how far we shrink on auto-fit so the grid stays readable.
+    let clamped = Math.max(
+      fitFloor,
+      Math.min(MAX_TIME_ZOOM_PERCENT, Math.floor((targetPxPerMin / BASE_PIXELS_PER_MINUTE) * 100))
+    );
+    while (clamped > fitFloor) {
+      const bodyH = range * BASE_PIXELS_PER_MINUTE * (clamped / 100) + GRID_TOP_INSET_PX;
+      if (bodyH <= available + 1) break;
+      clamped -= 1;
+    }
+    if (Math.abs(clamped - timeZoomPercent) < 2) return;
+    inWorkdayFitRender = true;
+    timeZoomPercent = clamped;
+    syncCalendarToolbarControls();
+    renderCalendar(lastCalendarPayload);
+    inWorkdayFitRender = false;
+  }
+
+  function scheduleWorkdayViewportFit() {
+    if (inWorkdayFitRender) return;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        tryFitWorkdayToViewport();
+        scheduleNowLineCenterScroll();
+      });
+    });
+  }
+
+  /** Scroll so the red "now" line is vertically centered in the time area below the sticky staff header. */
+  function scrollNowLineToVerticalCenter() {
+    const gridEl = document.getElementById('appts-calendar-grid');
+    const line = document.getElementById('ops-now-line-indicator');
+    const head = wrap && wrap.querySelector('.ops-calendar-head');
+    if (!gridEl || !line || line.hidden || !head || !dateEl) return;
+    const { dateStr: nowDate } = getBranchNow();
+    if (dateEl.value !== nowDate) return;
+    const gridRect = gridEl.getBoundingClientRect();
+    const headRect = head.getBoundingClientRect();
+    const lineRect = line.getBoundingClientRect();
+    const viewportTop = headRect.bottom;
+    const viewportBottom = gridRect.bottom;
+    if (viewportBottom <= viewportTop + 4) return;
+    const viewportMidY = (viewportTop + viewportBottom) / 2;
+    const lineMidY = lineRect.top + lineRect.height / 2;
+    const delta = lineMidY - viewportMidY;
+    if (Math.abs(delta) < 3) return;
+    const maxScroll = Math.max(0, gridEl.scrollHeight - gridEl.clientHeight);
+    const nextTop = Math.max(0, Math.min(maxScroll, gridEl.scrollTop + delta));
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    gridEl.scrollTo({ top: nextTop, behavior: prefersReducedMotion ? 'instant' : 'smooth' });
+  }
+
+  function scheduleNowLineCenterScroll() {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollNowLineToVerticalCenter();
+      });
+    });
   }
 
   function safeLabel(text, maxLen) {
@@ -866,8 +1912,8 @@
     const clampedStart = Math.max(dayStart, Math.min(start, safeEnd));
     const clampedEnd = Math.max(dayStart, Math.min(end, safeEnd));
     if (clampedEnd <= clampedStart) return null;
-    const top = Math.max(0, (clampedStart - dayStart) * PIXELS_PER_MINUTE);
-    const height = Math.max(MIN_BLOCK_HEIGHT, (clampedEnd - clampedStart) * PIXELS_PER_MINUTE);
+    const top = Math.max(0, (clampedStart - dayStart) * getPixelsPerMinute());
+    const height = Math.max(MIN_BLOCK_HEIGHT, (clampedEnd - clampedStart) * getPixelsPerMinute());
     return { top: Number(top) || 0, height: Number(height) || MIN_BLOCK_HEIGHT };
   }
 
@@ -896,6 +1942,73 @@
       marks.push(cur);
     }
     return marks;
+  }
+
+  function normalizeCalendarBadges(raw) {
+    if (!Array.isArray(raw)) return [];
+    return raw.filter((b) => b && typeof b === 'object' && typeof b.icon_id === 'string');
+  }
+
+  /**
+   * Top row: leading (calendar badges and/or kind label) + time on the right.
+   * @param {HTMLElement} hostEl
+   * @param {{ badges?: unknown, timeLabel?: string, kindLabel?: string }} opts
+   */
+  function appendBlockHead(hostEl, opts) {
+    if (!hostEl || !opts || typeof opts !== 'object') return;
+    const badges = normalizeCalendarBadges(opts.badges);
+    const timeLabel = opts.timeLabel ? String(opts.timeLabel) : '';
+    const kindLabel = opts.kindLabel ? String(opts.kindLabel) : '';
+    if (!badges.length && !timeLabel && !kindLabel) return;
+
+    const head = document.createElement('div');
+    head.className = 'ops-block-head';
+
+    const leading = document.createElement('div');
+    leading.className = 'ops-block-head__leading';
+
+    if (badges.length) {
+      const wrap = document.createElement('div');
+      wrap.className = 'ops-block-badges';
+      wrap.setAttribute('role', 'presentation');
+      badges.forEach((b) => {
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('class', 'ops-block-badge-ic');
+        svg.setAttribute('width', '11');
+        svg.setAttribute('height', '11');
+        svg.setAttribute('focusable', 'false');
+        if (b.label) {
+          const t = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+          t.textContent = String(b.label);
+          svg.appendChild(t);
+        }
+        const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+        use.setAttribute('href', '#' + b.icon_id);
+        if (b.color_token) {
+          svg.style.color = 'var(--' + b.color_token + ')';
+        }
+        svg.appendChild(use);
+        wrap.appendChild(svg);
+      });
+      leading.appendChild(wrap);
+    }
+    if (kindLabel) {
+      const kindEl = document.createElement('div');
+      kindEl.className = 'ops-block-kind';
+      kindEl.textContent = kindLabel;
+      leading.appendChild(kindEl);
+    }
+
+    head.appendChild(leading);
+
+    if (timeLabel) {
+      const timeEl = document.createElement('div');
+      timeEl.className = 'ops-block-time';
+      timeEl.textContent = timeLabel;
+      head.appendChild(timeEl);
+    }
+
+    hostEl.insertBefore(head, hostEl.firstChild);
   }
 
   function buildCalendarViewModel(payload) {
@@ -928,10 +2041,22 @@
       const items = [];
 
       appts.forEach((a) => {
-        const start = minutesFromDateTime(a.start_at);
-        const end = minutesFromDateTime(a.end_at);
-        const placement = blockPlacement(start, end, dayStart, dayEnd, step);
+        if (String(a.status || '') === 'in_progress' && !showInProgressAppointments) {
+          return;
+        }
+        const bufBefore = Math.max(0, parseInt(String(a.buffer_before_effective ?? '0'), 10) || 0);
+        const bufAfter = Math.max(0, parseInt(String(a.buffer_after_effective ?? '0'), 10) || 0);
+        const svcStart = minutesFromDateTime(a.start_at);
+        const svcEnd = minutesFromDateTime(a.end_at);
+        const extStart = svcStart - bufBefore;
+        const extEnd = svcEnd + bufAfter;
+        const placement = blockPlacement(extStart, extEnd, dayStart, dayEnd, step);
         if (!placement) return;
+        const totalBlockMin = Math.max(1, extEnd - extStart);
+        const serviceMinutes = Math.max(1, svcEnd - svcStart);
+        const pctBefore = totalBlockMin > 0 ? (bufBefore / totalBlockMin) * 100 : 0;
+        const pctAfter = totalBlockMin > 0 ? (bufAfter / totalBlockMin) * 100 : 0;
+        const pctCore = Math.max(0, 100 - pctBefore - pctAfter);
         const seriesId = a.series_id != null && String(a.series_id).trim() !== '' ? Number(a.series_id) : 0;
         const isSeriesLinked = seriesId > 0;
         const showStartTime = isSeriesLinked
@@ -955,6 +2080,10 @@
           labelPrimary = clientLine;
           metaLine = '';
         }
+        const roomNm = a.room_name != null && String(a.room_name).trim() !== '' ? safeLabel(String(a.room_name), 28) : '';
+        if (roomNm) {
+          metaLine = metaLine ? (metaLine + ' · ' + roomNm) : roomNm;
+        }
         const endOnly = fmtFromDt(a.end_at);
         const timeLabel = showStartTime
           ? timeRangeLabel(a.start_at, a.end_at)
@@ -964,9 +2093,20 @@
         const ns = a.client_no_show_alert && typeof a.client_no_show_alert === 'object' ? a.client_no_show_alert : null;
         const noShowAlert = !!(ns && ns.active);
         const noShowTitle = noShowAlert && ns.message ? String(ns.message) : '';
+        const clientPhone = a.client_phone != null && String(a.client_phone).trim() !== '' ? String(a.client_phone).trim() : '';
+        const staffAssignmentLocked = parseInt(String(a.staff_assignment_locked ?? '0'), 10) === 1;
+        const clientIdNum = a.client_id != null && String(a.client_id).trim() !== '' ? Number(a.client_id) : 0;
+        const linkedInvNum = a.linked_invoice_id != null && String(a.linked_invoice_id).trim() !== ''
+          ? Number(a.linked_invoice_id)
+          : 0;
+        const domBadge = a.calendar_dominant_badge && typeof a.calendar_dominant_badge === 'object'
+          ? a.calendar_dominant_badge
+          : null;
         items.push({
           kind: 'appointment',
           id: Number(a.id || 0),
+          status: String(a.status || 'scheduled'),
+          rawStartAt: String(a.start_at || ''),
           top: placement.top,
           height: placement.height,
           timeLabel,
@@ -976,7 +2116,17 @@
           prebooked,
           noShowAlert,
           noShowTitle,
-          link: '/appointments/' + (a.id ?? '')
+          clientPhone,
+          staffAssignmentLocked,
+          clientId: Number.isFinite(clientIdNum) && clientIdNum > 0 ? clientIdNum : 0,
+          linkedInvoiceId: Number.isFinite(linkedInvNum) && linkedInvNum > 0 ? linkedInvNum : 0,
+          bufferPctBefore: pctBefore,
+          bufferPctAfter: pctAfter,
+          bufferPctCore: pctCore,
+          serviceMinutes,
+          link: '/appointments/' + (a.id ?? ''),
+          calendarBadges: normalizeCalendarBadges(a.calendar_badges),
+          calendarDominant: domBadge && domBadge.code ? domBadge : null
         });
       });
 
@@ -1012,7 +2162,7 @@
       end: safeEnd,
       step,
       marks: buildTimeMarks(dayStart, safeEnd, step),
-      height: range * PIXELS_PER_MINUTE + GRID_TOP_INSET_PX,
+      height: range * getPixelsPerMinute() + GRID_TOP_INSET_PX,
       branchHours: {
         available: !!branchHours.branch_hours_available,
         isClosedDay: !!branchHours.is_closed_day,
@@ -1031,8 +2181,25 @@
   }
 
   function renderCalendar(payload) {
+    lastCalendarPayload = payload && typeof payload === 'object' ? payload : null;
+    const gridHost = document.getElementById('appts-calendar-grid');
+    const cw = Math.max(96, Math.min(420, Number(columnWidthPx) || 160));
+    if (gridHost) {
+      gridHost.style.setProperty('--cal-col-min', cw + 'px');
+    }
+    if (payload && payload.capabilities && typeof payload.capabilities === 'object') {
+      calendarCapabilities = normalizeCalendarCapabilities(payload.capabilities);
+    }
     wrap.innerHTML = '';
     const apptCount = countAppointmentsInPayload(payload);
+    // Filter hidden staff columns before building the view model.
+    const hiddenIds = getHiddenStaffIds();
+    if (hiddenIds.size > 0 && payload && Array.isArray(payload.staff)) {
+      payload = Object.assign({}, payload, {
+        staff: payload.staff.filter((s) => !hiddenIds.has(String(s.id))),
+      });
+    }
+    updateHiddenColumnsIndicator();
     const vm = buildCalendarViewModel(payload);
     renderBranchHoursIndicator(vm.branchHours, vm.closureDate);
     if (!vm.columns.length) {
@@ -1055,6 +2222,12 @@
     vm.columns.forEach((col) => {
       const h = document.createElement('div');
       h.className = 'ops-staff-head';
+      h.dataset.staffId = String(col.id);
+      h.setAttribute('role', 'button');
+      h.setAttribute('tabindex', '0');
+      h.setAttribute('aria-haspopup', 'true');
+      h.setAttribute('aria-expanded', 'false');
+      h.title = 'Options for ' + col.label;
       const inner = document.createElement('div');
       inner.className = 'ops-staff-head-inner';
       const name = document.createElement('div');
@@ -1062,8 +2235,90 @@
       name.textContent = col.label;
       inner.appendChild(name);
       h.appendChild(inner);
+
+      // ── dropdown menu ──────────────────────────────────────────────────────
+      const menu = document.createElement('div');
+      menu.className = 'ops-staff-menu';
+      menu.setAttribute('role', 'menu');
+      menu.setAttribute('aria-label', col.label + ' options');
+      menu.hidden = true;
+
+      [
+        { label: 'Block Out Time', action: 'block' },
+        { label: 'Edit Schedule',  action: 'schedule' },
+        { label: 'Edit Services',  action: 'services' },
+        { label: 'View Profile',   action: 'profile' },
+        null,
+        { label: 'Hide Column',    action: 'hide', mod: 'danger' },
+      ].forEach((def) => {
+        if (def === null) {
+          const sep = document.createElement('div');
+          sep.className = 'ops-staff-menu__sep';
+          sep.setAttribute('role', 'separator');
+          menu.appendChild(sep);
+          return;
+        }
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'ops-staff-menu__item' + (def.mod ? ' ops-staff-menu__item--' + def.mod : '');
+        btn.dataset.action = def.action;
+        btn.dataset.staffId = String(col.id);
+        btn.dataset.staffLabel = col.label;
+        btn.textContent = def.label;
+        btn.setAttribute('role', 'menuitem');
+        menu.appendChild(btn);
+      });
+
+      h.appendChild(menu);
+
+      h.addEventListener('click', (e) => {
+        if (e.target.closest('.ops-staff-menu')) return;
+        const expanded = h.getAttribute('aria-expanded') === 'true';
+        closeAllStaffMenus();
+        if (!expanded) {
+          menu.hidden = false;
+          h.setAttribute('aria-expanded', 'true');
+          h.classList.add('ops-staff-head--open');
+          const first = menu.querySelector('[role="menuitem"]');
+          if (first) requestAnimationFrame(() => first.focus());
+        }
+        e.stopPropagation();
+      });
+
+      h.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); h.click(); }
+        if (e.key === 'Escape') { closeAllStaffMenus(); h.focus(); }
+        if (e.key === 'ArrowDown' && !menu.hidden) {
+          e.preventDefault();
+          const items = [...menu.querySelectorAll('[role="menuitem"]')];
+          if (items.length) items[0].focus();
+        }
+      });
+
+      menu.addEventListener('click', async (e) => {
+        const item = e.target.closest('[data-action]');
+        if (!item) return;
+        e.stopPropagation();
+        closeAllStaffMenus();
+        await handleStaffMenuAction(item.dataset.action, item.dataset.staffId, item.dataset.staffLabel || '');
+      });
+
+      menu.addEventListener('keydown', (e) => {
+        const items = [...menu.querySelectorAll('[role="menuitem"]')];
+        const idx = items.indexOf(document.activeElement);
+        if (e.key === 'Escape') { closeAllStaffMenus(); h.focus(); }
+        if (e.key === 'ArrowDown') { e.preventDefault(); if (idx < items.length - 1) items[idx + 1].focus(); }
+        if (e.key === 'ArrowUp')   { e.preventDefault(); if (idx > 0) items[idx - 1].focus(); else { closeAllStaffMenus(); h.focus(); } }
+        if (e.key === 'Tab') { closeAllStaffMenus(); }
+      });
+
       head.appendChild(h);
     });
+    const nStaffCols = vm.columns.length;
+    if (nStaffCols > 0) {
+      const colPat = 'repeat(' + nStaffCols + ', minmax(' + cw + 'px, 1fr))';
+      head.style.gridTemplateColumns = '84px ' + colPat;
+    }
     root.appendChild(head);
 
     const body = document.createElement('div');
@@ -1075,7 +2330,7 @@
     vm.marks.forEach((mark) => {
       const row = document.createElement('div');
       row.className = 'ops-time-label';
-      row.style.top = ((mark - vm.start) * PIXELS_PER_MINUTE + GRID_TOP_INSET_PX) + 'px';
+      row.style.top = ((mark - vm.start) * getPixelsPerMinute() + GRID_TOP_INSET_PX) + 'px';
       const mod = ((mark % 60) + 60) % 60;
       if (mod === 0) {
         row.classList.add('ops-time-label--hour');
@@ -1092,6 +2347,10 @@
 
     const laneWrap = document.createElement('div');
     laneWrap.className = 'ops-lanes';
+    if (vm.columns.length > 0) {
+      laneWrap.style.gridTemplateColumns =
+        'repeat(' + vm.columns.length + ', minmax(' + cw + 'px, 1fr))';
+    }
     vm.columns.forEach((col) => {
       const lane = document.createElement('div');
       lane.className = 'ops-lane';
@@ -1107,8 +2366,10 @@
 
       vm.marks.forEach((mark) => {
         const line = document.createElement('div');
-        line.className = 'ops-grid-line';
-        line.style.top = ((mark - vm.start) * PIXELS_PER_MINUTE + GRID_TOP_INSET_PX) + 'px';
+        const lineMod = ((mark % 60) + 60) % 60;
+        line.className = 'ops-grid-line' +
+          (lineMod === 0 ? ' ops-grid-line--hour' : lineMod === 30 ? ' ops-grid-line--half' : '');
+        line.style.top = ((mark - vm.start) * getPixelsPerMinute() + GRID_TOP_INSET_PX) + 'px';
         lane.appendChild(line);
       });
 
@@ -1154,6 +2415,24 @@
             }
           }
           block.setAttribute('data-block-type', item.kind === 'blocked' ? 'blocked' : 'appointment');
+          if (item.kind === 'appointment') {
+            block.dataset.apptId     = String(item.id);
+            block.dataset.apptStatus = item.status || '';
+            block.dataset.rawStartAt = item.rawStartAt || '';
+            block.dataset.staffLocked = item.staffAssignmentLocked ? '1' : '0';
+            block.dataset.clientId = item.clientId ? String(item.clientId) : '';
+            block.dataset.linkedInvoiceId = item.linkedInvoiceId ? String(item.linkedInvoiceId) : '';
+            if (item.calendarDominant && item.calendarDominant.color_token) {
+              block.style.setProperty('--cal-dominant', 'var(--' + item.calendarDominant.color_token + ')');
+            } else {
+              block.style.removeProperty('--cal-dominant');
+            }
+            if (item.calendarDominant && item.calendarDominant.code) {
+              block.setAttribute('data-dominant-badge', String(item.calendarDominant.code));
+            } else {
+              block.removeAttribute('data-dominant-badge');
+            }
+          }
           if (item.statusLabel) {
             block.setAttribute('data-status', String(item.statusLabel).toLowerCase().replace(/\s+/g, '-').slice(0, 40));
           }
@@ -1166,33 +2445,98 @@
             block.href = buildBlockedTimeUrl();
             block.dataset.drawerUrl = buildBlockedTimeUrl();
           }
-          if (item.timeLabel) {
-            const timeEl = document.createElement('div');
-            timeEl.className = 'ops-block-time';
-            timeEl.textContent = item.timeLabel;
-            block.appendChild(timeEl);
+          if (item.kind === 'appointment' && (item.bufferPctBefore > 0 || item.bufferPctAfter > 0)) {
+            block.classList.add('ops-block-appt--with-buffers');
           }
-          if (item.kind === 'blocked') {
-            const kindEl = document.createElement('div');
-            kindEl.className = 'ops-block-kind';
-            kindEl.textContent = 'Blocked';
-            block.appendChild(kindEl);
+          if (item.kind === 'appointment' && (item.bufferPctBefore > 0.5 || item.bufferPctAfter > 0.5)) {
+            if (item.bufferPctBefore > 0.5) {
+              const bbf = document.createElement('div');
+              bbf.className = 'ops-block-buffer ops-block-buffer--before';
+              bbf.style.flexBasis = item.bufferPctBefore + '%';
+              bbf.title = 'Prep / staff buffer';
+              block.appendChild(bbf);
+            }
+            const core = document.createElement('div');
+            core.className = 'ops-block-core';
+            core.style.flexGrow = 1;
+            core.style.flexBasis = item.bufferPctCore + '%';
+            core.style.minHeight = '0';
+            block.appendChild(core);
+            appendBlockHead(core, { badges: item.calendarBadges, timeLabel: item.timeLabel });
+            const ttl = document.createElement('div');
+            ttl.className = 'ops-block-title';
+            ttl.textContent = safeLabel(item.title, MAX_TITLE_LENGTH) || 'Appointment';
+            core.appendChild(ttl);
+            if (item.meta) {
+              const meta = document.createElement('div');
+              meta.className = 'ops-block-meta';
+              meta.textContent = safeLabel(item.meta, MAX_META_LENGTH);
+              core.appendChild(meta);
+            }
+            if (item.statusLabel) {
+              const st = document.createElement('div');
+              st.className = 'ops-block-status';
+              st.textContent = safeLabel(item.statusLabel, 32);
+              core.appendChild(st);
+            }
+            if (item.bufferPctAfter > 0.5) {
+              const bba = document.createElement('div');
+              bba.className = 'ops-block-buffer ops-block-buffer--after';
+              bba.style.flexBasis = item.bufferPctAfter + '%';
+              bba.title = 'Turnover / room buffer (staff availability)';
+              block.appendChild(bba);
+            }
+          } else {
+            if (item.kind === 'appointment') {
+              appendBlockHead(block, { badges: item.calendarBadges, timeLabel: item.timeLabel });
+            } else if (item.kind === 'blocked') {
+              appendBlockHead(block, { kindLabel: 'Blocked', timeLabel: item.timeLabel });
+            }
+            const ttl0 = document.createElement('div');
+            ttl0.className = 'ops-block-title';
+            ttl0.textContent = safeLabel(item.title, MAX_TITLE_LENGTH) || (item.kind === 'blocked' ? 'Blocked' : 'Appointment');
+            block.appendChild(ttl0);
+            if (item.meta) {
+              const meta0 = document.createElement('div');
+              meta0.className = 'ops-block-meta';
+              meta0.textContent = safeLabel(item.meta, MAX_META_LENGTH);
+              block.appendChild(meta0);
+            }
+            if (item.kind === 'appointment' && item.statusLabel) {
+              const st0 = document.createElement('div');
+              st0.className = 'ops-block-status';
+              st0.textContent = safeLabel(item.statusLabel, 32);
+              block.appendChild(st0);
+            }
           }
-          const ttl = document.createElement('div');
-          ttl.className = 'ops-block-title';
-          ttl.textContent = safeLabel(item.title, MAX_TITLE_LENGTH) || (item.kind === 'blocked' ? 'Blocked' : 'Appointment');
-          block.appendChild(ttl);
-          if (item.meta) {
-            const meta = document.createElement('div');
-            meta.className = 'ops-block-meta';
-            meta.textContent = safeLabel(item.meta, MAX_META_LENGTH);
-            block.appendChild(meta);
+          if (item.kind === 'appointment' && item.clientPhone) {
+            const prevTitle = block.getAttribute('title') || '';
+            const contactLine = 'Contact: ' + item.clientPhone;
+            block.setAttribute('title', prevTitle ? (prevTitle + '\n' + contactLine) : contactLine);
           }
-          if (item.kind === 'appointment' && item.statusLabel) {
-            const st = document.createElement('div');
-            st.className = 'ops-block-status';
-            st.textContent = safeLabel(item.statusLabel, 32);
-            block.appendChild(st);
+          // ── Drag from calendar → clipboard or another lane ──────────────
+          if (item.kind === 'appointment') {
+            block.draggable = true;
+            block.addEventListener('dragstart', (e) => {
+              currentDragSource = 'calendar';
+              e.dataTransfer.effectAllowed = 'copy'; // calendar blocks copy TO clipboard only
+              e.dataTransfer.setData('text/plain', JSON.stringify({
+                type: 'appt-drag',
+                id:         item.id,
+                title:      item.title      || '',
+                meta:       item.meta       || '',
+                time:       item.timeLabel  || '',
+                status:     item.status     || '',
+                rawStartAt: item.rawStartAt || '',
+              }));
+              requestAnimationFrame(() => block.classList.add('ops-block-appt--dragging'));
+            });
+            block.addEventListener('dragend', () => {
+              currentDragSource = null;
+              block.classList.remove('ops-block-appt--dragging');
+              // Clear any lane drop-preview that may be left if the drag was abandoned
+              document.querySelectorAll('.ops-drop-preview').forEach((p) => { p.hidden = true; });
+            });
           }
           lane.appendChild(block);
         });
@@ -1204,8 +2548,8 @@
         }
         const rect = lane.getBoundingClientRect();
         const offsetY = e.clientY - rect.top;
-        const snapped = snapTimeFromTop(offsetY, vm.start, vm.step);
-        const topPx = Math.max(GRID_TOP_INSET_PX, (toMinutes(snapped) - vm.start) * PIXELS_PER_MINUTE + GRID_TOP_INSET_PX);
+        const snapped = snapTimeFromTop(offsetY, vm.start, vm.step, vm.end);
+        const topPx = Math.max(GRID_TOP_INSET_PX, (toMinutes(snapped) - vm.start) * getPixelsPerMinute() + GRID_TOP_INSET_PX);
         hoverPreview.hidden = false;
         hoverPreview.style.top = topPx + 'px';
         hoverLabel.textContent = col.label + ' \u00B7 ' + snapped;
@@ -1213,6 +2557,70 @@
 
       lane.addEventListener('mouseleave', () => {
         hoverPreview.hidden = true;
+      });
+
+      // ── Drop target: reschedule appointment onto this lane+time ───────────
+      const dropPreview = document.createElement('div');
+      dropPreview.className = 'ops-drop-preview';
+      dropPreview.hidden = true;
+      dropPreview.setAttribute('aria-hidden', 'true');
+      const dropLabel = document.createElement('div');
+      dropLabel.className = 'ops-drop-preview__label';
+      dropPreview.appendChild(dropLabel);
+      lane.appendChild(dropPreview);
+
+      lane.addEventListener('dragover', (e) => {
+        if (!Array.from(e.dataTransfer.types).includes('text/plain')) return;
+        // Only allow drops from the clipboard panel, not direct calendar→calendar moves
+        if (currentDragSource !== 'clipboard') return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const rect = lane.getBoundingClientRect();
+        const snapped = snapTimeFromTop(e.clientY - rect.top, vm.start, vm.step, vm.end);
+        const topPx = Math.max(GRID_TOP_INSET_PX, (toMinutes(snapped) - vm.start) * getPixelsPerMinute() + GRID_TOP_INSET_PX);
+        dropPreview.style.top = topPx + 'px';
+        dropPreview.hidden = false;
+        dropLabel.textContent = col.label + ' · ' + snapped;
+        hoverPreview.hidden = true;
+      });
+
+      lane.addEventListener('dragleave', (e) => {
+        if (!lane.contains(e.relatedTarget)) dropPreview.hidden = true;
+      });
+
+      let dropInFlight = false;
+      lane.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        dropPreview.hidden = true;
+        if (dropInFlight) return;
+        let data;
+        try { data = JSON.parse(e.dataTransfer.getData('text/plain')); } catch (err) { return; }
+        // Only accept drops that originate from the clipboard panel — never direct calendar→calendar drags
+        if (!data || !data.id || data.type !== 'clipboard-appt-drag') return;
+        const rect = lane.getBoundingClientRect();
+        const snapped = snapTimeFromTop(e.clientY - rect.top, vm.start, vm.step, vm.end);
+        const startTime = (dateEl.value) + ' ' + snapped + ':00';
+        if (statusEl) statusEl.textContent = 'Rescheduling…';
+        dropInFlight = true;
+        const extraBody = { start_time: startTime, staff_id: String(col.id) };
+        if (data.rawStartAt) extraBody.expected_current_start_at = data.rawStartAt;
+        const { ok, payload } = await apptQuickFetch(
+          '/appointments/' + data.id + '/reschedule',
+          extraBody
+        );
+        dropInFlight = false;
+        if (!ok) {
+          const msg = (payload && payload.error && payload.error.message) || 'Could not reschedule.';
+          if (statusEl) statusEl.textContent = '\u26a0 ' + msg;
+          setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 4000);
+          return;
+        }
+        removeFromClipboard(data.id);
+        if (statusEl) {
+          statusEl.textContent = '\u2713 Moved to ' + col.label + ' at ' + snapped;
+          setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 3000);
+        }
+        window.dispatchEvent(new CustomEvent('app:appointments-calendar-refresh'));
       });
 
       lane.addEventListener('click', async (e) => {
@@ -1224,7 +2632,7 @@
         selectedSlot = {
           staffId: col.id,
           staffLabel: col.label,
-          time: snapTimeFromTop(offsetY, vm.start, vm.step),
+          time: snapTimeFromTop(offsetY, vm.start, vm.step, vm.end),
           bookingDurationMinutes: DEFAULT_BOOKING_DURATION_MINUTES,
         };
         const url = buildNewAppointmentUrl();
@@ -1304,8 +2712,8 @@
     const range = Math.max(1, (dayEnd - dayStart));
     if (meta.isClosedDay) {
       return {
-        beforeHeight: range * PIXELS_PER_MINUTE,
-        afterTop: range * PIXELS_PER_MINUTE,
+        beforeHeight: range * getPixelsPerMinute(),
+        afterTop: range * getPixelsPerMinute(),
         afterHeight: 0
       };
     }
@@ -1317,10 +2725,781 @@
     const openClamped = Math.max(dayStart, Math.min(open, dayEnd));
     const closeClamped = Math.max(dayStart, Math.min(close, dayEnd));
     return {
-      beforeHeight: Math.max(0, (openClamped - dayStart) * PIXELS_PER_MINUTE),
-      afterTop: Math.max(0, (closeClamped - dayStart) * PIXELS_PER_MINUTE),
-      afterHeight: Math.max(0, (dayEnd - closeClamped) * PIXELS_PER_MINUTE)
+      beforeHeight: Math.max(0, (openClamped - dayStart) * getPixelsPerMinute()),
+      afterTop: Math.max(0, (closeClamped - dayStart) * getPixelsPerMinute()),
+      afterHeight: Math.max(0, (dayEnd - closeClamped) * getPixelsPerMinute())
     };
+  }
+
+  function applyViewConfigFields(cfg) {
+    if (!cfg || typeof cfg !== 'object') return;
+    if (cfg.column_width_px != null && Number.isFinite(Number(cfg.column_width_px))) {
+      columnWidthPx = Math.max(96, Math.min(420, Number(cfg.column_width_px)));
+    }
+    if (cfg.time_zoom_percent != null && Number.isFinite(Number(cfg.time_zoom_percent))) {
+      // Never apply a zoom lower than AUTO_FIT_MIN_TIME_ZOOM_PERCENT (25) from persisted prefs —
+      // old rows may have stored sub-25 values; clamp them up for usability.
+      timeZoomPercent = Math.max(AUTO_FIT_MIN_TIME_ZOOM_PERCENT, Math.min(MAX_TIME_ZOOM_PERCENT, Number(cfg.time_zoom_percent)));
+    }
+    if (typeof cfg.show_in_progress === 'boolean') {
+      showInProgressAppointments = cfg.show_in_progress;
+    }
+    if (Array.isArray(cfg.hidden_staff_ids)) {
+      setHiddenStaffIds(new Set(cfg.hidden_staff_ids.map((x) => String(x))));
+    }
+  }
+
+  function applyCalendarUiBootstrap(data) {
+    if (!data || typeof data !== 'object') return;
+    const persisted = Boolean(data.preferences_persisted);
+    // DB row for this branch → always use server preferences (authoritative).
+    if (persisted && data.preferences && typeof data.preferences === 'object') {
+      applyViewConfigFields(data.preferences);
+    } else if (!persisted && data.default_view_config && typeof data.default_view_config === 'object') {
+      // No per-branch row yet: apply default saved view config if the user has one (GET still sends generic defaults in `preferences`).
+      applyViewConfigFields(data.default_view_config);
+    } else if (data.preferences && typeof data.preferences === 'object') {
+      applyViewConfigFields(data.preferences);
+    }
+    syncCalendarToolbarControls();
+  }
+
+  function buildCalendarPrefsPayload() {
+    return {
+      column_width_px: columnWidthPx,
+      time_zoom_percent: timeZoomPercent,
+      show_in_progress: showInProgressAppointments,
+      hidden_staff_ids: [...getHiddenStaffIds()],
+    };
+  }
+
+  /**
+   * Best-effort save when the document is unloading (debounced POST may not have fired yet).
+   * Uses fetch keepalive so the request can outlive the page.
+   */
+  function sendCalendarPrefsKeepalive() {
+    try {
+      if (!dateEl || !dateEl.value) return;
+      const token = getCsrfToken();
+      if (!token) return;
+      const params = currentCalendarQuery();
+      const url = '/calendar/ui-preferences?' + params.toString();
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-Token': token,
+        },
+        body: JSON.stringify(buildCalendarPrefsPayload()),
+        keepalive: true,
+      }).catch(() => {});
+    } catch (_e) { /* ignore */ }
+  }
+
+  function buildCurrentViewConfig() {
+    const branch = branchEl && branchEl.value ? parseInt(String(branchEl.value), 10) : 0;
+    const o = {
+      column_width_px: columnWidthPx,
+      time_zoom_percent: timeZoomPercent,
+      show_in_progress: showInProgressAppointments,
+      hidden_staff_ids: [...getHiddenStaffIds()],
+    };
+    if (branch > 0) o.branch_id = branch;
+    return o;
+  }
+
+  function schedulePersistCalendarPrefs() {
+    if (calendarToolbarSaveTimer) clearTimeout(calendarToolbarSaveTimer);
+    calendarToolbarSaveTimer = setTimeout(() => {
+      void persistCalendarPrefs();
+    }, 280);
+  }
+
+  async function persistCalendarPrefs() {
+    const params = currentCalendarQuery();
+    const url = '/calendar/ui-preferences?' + params.toString();
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'X-CSRF-Token': getCsrfToken(),
+        },
+        body: JSON.stringify(buildCalendarPrefsPayload()),
+      });
+      const j = await res.json().catch(() => null);
+      if (res.status === 419) {
+        // CSRF middleware returns HTML; 419 is unambiguous (do not treat other non-JSON as session expiry).
+        calendarPrefsSaveFailCount = 0;
+        showCalendarPrefsAlert('Session expired \u2014 please refresh the page.');
+        return;
+      }
+      if (!res.ok && j === null) {
+        calendarPrefsSaveFailCount++;
+        if (calendarPrefsSaveFailCount < 2) {
+          calendarToolbarSaveTimer = setTimeout(() => { void persistCalendarPrefs(); }, 3000);
+          return;
+        }
+        calendarPrefsSaveFailCount = 0;
+        showCalendarPrefsAlert('Could not read server response. Check your connection or try again.');
+        return;
+      }
+      if (!res.ok || !(j && j.success)) {
+        calendarPrefsSaveFailCount++;
+        if (calendarPrefsSaveFailCount < 2) {
+          // First failure: silent retry after 3 s (Google-style)
+          calendarToolbarSaveTimer = setTimeout(() => { void persistCalendarPrefs(); }, 3000);
+          return;
+        }
+        // Second consecutive failure: surface the error
+        calendarPrefsSaveFailCount = 0;
+        const errCode = j && j.error && typeof j.error.code === 'string' ? j.error.code : '';
+        let msg = j && j.error && typeof j.error.message === 'string'
+          ? j.error.message
+          : 'Unable to save calendar preferences.';
+        if (errCode === 'INTERNAL_ERROR') {
+          msg += ' Ensure database migration 134 (calendar_user_preferences) is applied, or ask an administrator to check server logs.';
+        }
+        showCalendarPrefsAlert(msg);
+        return;
+      }
+      // Success
+      calendarPrefsSaveFailCount = 0;
+      calendarPrefsPersistedFromServer = true;
+      clearCalendarAutofitTimeZoomLock();
+      clearCalendarPrefsAlert();
+    } catch (_e) {
+      calendarPrefsSaveFailCount++;
+      if (calendarPrefsSaveFailCount < 2) {
+        calendarToolbarSaveTimer = setTimeout(() => { void persistCalendarPrefs(); }, 3000);
+        return;
+      }
+      calendarPrefsSaveFailCount = 0;
+      showCalendarPrefsAlert('Unable to save calendar preferences (network error).');
+    }
+  }
+
+  let openToolbarPopover = null;
+  let openToolbarTrigger = null;
+  let openDialog = null;
+  let openDialogTrigger = null;
+  let releasePopoverFocusTrap = null;
+  let releaseDialogFocusTrap = null;
+
+  function setToolbarViewsInlineError(message) {
+    const el = document.getElementById('cal-toolbar-views-error');
+    if (!el) return;
+    const text = String(message || '').trim();
+    if (text === '') {
+      el.textContent = '';
+      el.classList.add('visually-hidden');
+      return;
+    }
+    el.textContent = text;
+    el.classList.remove('visually-hidden');
+  }
+
+  function installFocusTrap(container, onEscape) {
+    if (!container) return () => {};
+    const keyHandler = (ev) => {
+      if (ev.key === 'Escape') {
+        ev.preventDefault();
+        if (typeof onEscape === 'function') onEscape();
+        return;
+      }
+      if (ev.key !== 'Tab') return;
+      const nodes = [...container.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+        .filter((n) => !n.hasAttribute('hidden') && n.getAttribute('aria-hidden') !== 'true');
+      if (nodes.length === 0) return;
+      const first = nodes[0];
+      const last = nodes[nodes.length - 1];
+      if (ev.shiftKey && document.activeElement === first) {
+        ev.preventDefault();
+        last.focus();
+      } else if (!ev.shiftKey && document.activeElement === last) {
+        ev.preventDefault();
+        first.focus();
+      }
+    };
+    container.addEventListener('keydown', keyHandler);
+    return () => container.removeEventListener('keydown', keyHandler);
+  }
+
+  function closeCalendarToolbarPopovers(restoreFocus = false) {
+    document.querySelectorAll('.appts-cal-toolbar__popover[aria-hidden="false"]').forEach((p) => {
+      p.setAttribute('aria-hidden', 'true');
+      p.hidden = true;
+    });
+    document.querySelectorAll('.appts-cal-toolbar__btn[aria-expanded="true"]').forEach((b) => {
+      b.setAttribute('aria-expanded', 'false');
+    });
+    if (typeof releasePopoverFocusTrap === 'function') releasePopoverFocusTrap();
+    releasePopoverFocusTrap = null;
+    if (restoreFocus && openToolbarTrigger && typeof openToolbarTrigger.focus === 'function') {
+      openToolbarTrigger.focus();
+    }
+    openToolbarPopover = null;
+    openToolbarTrigger = null;
+    if (calendarToolbarSaveTimer) {
+      clearTimeout(calendarToolbarSaveTimer);
+      calendarToolbarSaveTimer = null;
+      void persistCalendarPrefs();
+    }
+  }
+
+  function closeToolsDropdownIfOpen() {
+    const toolsPanel = document.getElementById('cal-toolbar-tools-panel');
+    const toolsToggle = document.getElementById('cal-toolbar-tools-toggle');
+    if (!toolsPanel || toolsPanel.hidden) return;
+    toolsPanel.hidden = true;
+    if (toolsToggle) toolsToggle.setAttribute('aria-expanded', 'false');
+    if (calendarToolbarSaveTimer) {
+      clearTimeout(calendarToolbarSaveTimer);
+      calendarToolbarSaveTimer = null;
+      void persistCalendarPrefs();
+    }
+  }
+
+  function hideToolbarDialog(restoreFocus = false) {
+    const backdrop = document.getElementById('cal-toolbar-dialog-backdrop');
+    if (backdrop) backdrop.hidden = true;
+    if (openDialog) {
+      openDialog.hidden = true;
+      openDialog.setAttribute('aria-hidden', 'true');
+    }
+    if (typeof releaseDialogFocusTrap === 'function') releaseDialogFocusTrap();
+    releaseDialogFocusTrap = null;
+    if (restoreFocus && openDialogTrigger && typeof openDialogTrigger.focus === 'function') {
+      openDialogTrigger.focus();
+    }
+    openDialog = null;
+    openDialogTrigger = null;
+  }
+
+  function showToolbarDialog(dialogId, triggerBtn) {
+    const dialog = document.getElementById(dialogId);
+    const backdrop = document.getElementById('cal-toolbar-dialog-backdrop');
+    if (!dialog || !backdrop) return null;
+    closeCalendarToolbarPopovers(false);
+    hideToolbarDialog(false);
+    backdrop.hidden = false;
+    dialog.hidden = false;
+    dialog.setAttribute('aria-hidden', 'false');
+    openDialog = dialog;
+    openDialogTrigger = triggerBtn || null;
+    const focusable = dialog.querySelector('input, button, [href], [tabindex]:not([tabindex="-1"])');
+    if (focusable && typeof focusable.focus === 'function') focusable.focus();
+    releaseDialogFocusTrap = installFocusTrap(dialog, () => hideToolbarDialog(true));
+    return dialog;
+  }
+
+  function updateSliderFill(sliderEl, min, max, value) {
+    if (!sliderEl) return;
+    const pct = Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
+    sliderEl.style.setProperty('--track-fill', pct.toFixed(1) + '%');
+  }
+
+  function updateZoomPresetActiveState() {
+    document.querySelectorAll('[data-zoom-preset]').forEach((btn) => {
+      const v = parseInt(btn.dataset.zoomPreset, 10);
+      btn.classList.toggle('appts-cal-zoom__preset--active', v === timeZoomPercent);
+    });
+  }
+
+  function syncCalendarToolbarControls() {
+    const z = document.getElementById('cal-toolbar-zoom-slider');
+    const c = document.getElementById('cal-toolbar-col-slider');
+    const ch = document.getElementById('cal-toolbar-in-progress');
+    const zv = document.getElementById('cal-toolbar-zoom-value');
+    const cv = document.getElementById('cal-toolbar-col-value');
+    if (z) z.value = String(timeZoomPercent);
+    if (c) c.value = String(columnWidthPx);
+    if (ch) ch.checked = !!showInProgressAppointments;
+    if (zv) zv.textContent = String(timeZoomPercent) + '%';
+    if (cv) cv.textContent = String(columnWidthPx) + 'px';
+    updateSliderFill(z, 25, 200, timeZoomPercent);
+    updateSliderFill(c, 96, 420, columnWidthPx);
+    updateZoomPresetActiveState();
+  }
+
+  async function refreshViewsListInToolbar() {
+    const ul = document.getElementById('cal-toolbar-views-list');
+    if (!ul) return;
+    ul.innerHTML = '';
+    const params = currentCalendarQuery();
+    try {
+      const res = await fetch('/calendar/ui-preferences?' + params.toString(), {
+        headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+      });
+      const j = await res.json().catch(() => null);
+      const views = j && j.success && j.data && Array.isArray(j.data.views) ? j.data.views : [];
+      views.forEach((v) => {
+        const li = document.createElement('li');
+        const a = document.createElement('a');
+        a.href = '#';
+        a.className = 'appts-cal-toolbar__views-link';
+        a.textContent = String(v.name || '') + (v.is_default ? ' (default)' : '');
+        a.addEventListener('click', async (e) => {
+          e.preventDefault();
+          try {
+            const det = await fetch('/calendar/saved-views/' + encodeURIComponent(String(v.id)), {
+              headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            const dj = await det.json().catch(() => null);
+            const vw = dj && dj.success && dj.data && dj.data.view ? dj.data.view : null;
+            if (vw && vw.config && typeof vw.config === 'object') {
+              applyViewConfigFields(vw.config);
+              setCalendarAutofitTimeZoomLocked();
+              activeSavedViewId = Number(v.id) || null;
+              syncCalendarToolbarControls();
+              schedulePersistCalendarPrefs();
+              load();
+            }
+          } catch (_e) { /* ignore */ }
+          closeCalendarToolbarPopovers();
+        });
+        li.appendChild(a);
+        ul.appendChild(li);
+      });
+    } catch (_e) { /* ignore */ }
+  }
+
+  /** Highlight the "Now" toolbar button when viewing today's date (mirrors Google Calendar behaviour). */
+  function updateNowButtonState() {
+    const btn = document.getElementById('cal-toolbar-now');
+    if (!btn) return;
+    const todayStr = getBranchNow().dateStr;
+    const isToday = dateEl && dateEl.value === todayStr;
+    btn.classList.toggle('appts-cal-toolbar__btn--today', isToday);
+    btn.title = isToday ? 'Center on current time' : 'Jump to today';
+  }
+
+  function initCalendarToolbar() {
+    const root = document.getElementById('appts-calendar-toolbar');
+    if (!root) return;
+
+    const toolsToggle = document.getElementById('cal-toolbar-tools-toggle');
+    const toolsPanel = document.getElementById('cal-toolbar-tools-panel');
+    if (toolsToggle && toolsPanel) {
+      toolsToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const opening = toolsPanel.hidden;
+        if (!opening) {
+          closeCalendarToolbarPopovers(false);
+        }
+        toolsPanel.hidden = !opening;
+        toolsToggle.setAttribute('aria-expanded', opening ? 'true' : 'false');
+      });
+    }
+
+    const refreshBtn = document.getElementById('cal-toolbar-refresh');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', () => {
+        closeCalendarToolbarPopovers();
+        load();
+      });
+    }
+
+    // "Now" button — jump to today and center the red now-line in the viewport
+    const nowBtn = document.getElementById('cal-toolbar-now');
+    if (nowBtn) {
+      nowBtn.addEventListener('click', () => {
+        closeCalendarToolbarPopovers();
+        const todayStr = getBranchNow().dateStr;
+        if (dateEl && dateEl.value === todayStr) {
+          // Already on today — just scroll to center the now-line
+          scheduleNowLineCenterScroll();
+        } else {
+          // Navigate to today; after load, scheduleWorkdayViewportFit auto-centers
+          goToBranchToday();
+        }
+        updateNowButtonState();
+      });
+    }
+
+    const zoomBtn = document.getElementById('cal-toolbar-zoom');
+    const zoomPop = document.getElementById('cal-toolbar-zoom-pop');
+    const bindToggle = (btn, pop) => {
+      if (!btn || !pop) return;
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const open = pop.getAttribute('aria-hidden') === 'false';
+        closeCalendarToolbarPopovers(false);
+        if (!open) {
+          pop.hidden = false;
+          pop.setAttribute('aria-hidden', 'false');
+          btn.setAttribute('aria-expanded', 'true');
+          openToolbarPopover = pop;
+          openToolbarTrigger = btn;
+          const autofocusTarget = pop.querySelector('input, button, a[href], [tabindex]:not([tabindex="-1"])');
+          if (autofocusTarget && typeof autofocusTarget.focus === 'function') autofocusTarget.focus();
+          releasePopoverFocusTrap = installFocusTrap(pop, () => closeCalendarToolbarPopovers(true));
+        }
+      });
+    };
+    bindToggle(zoomBtn, zoomPop);
+
+    const staffBtn = document.getElementById('cal-toolbar-staff');
+    const staffPop = document.getElementById('cal-toolbar-staff-pop');
+    bindToggle(staffBtn, staffPop);
+
+    const viewBtn = document.getElementById('cal-toolbar-views');
+    const viewPop = document.getElementById('cal-toolbar-views-pop');
+    bindToggle(viewBtn, viewPop);
+    viewBtn?.addEventListener('click', () => {
+      setToolbarViewsInlineError('');
+      void refreshViewsListInToolbar();
+    });
+
+    const printBtn = document.getElementById('cal-toolbar-print');
+    const printPop = document.getElementById('cal-toolbar-print-pop');
+    bindToggle(printBtn, printPop);
+
+    const folderBtn = document.getElementById('cal-toolbar-folder');
+    if (folderBtn) {
+      folderBtn.addEventListener('click', () => {
+        closeCalendarToolbarPopovers();
+        const tab = document.querySelector('.cal-tools-tab[data-tools-tab="waitlist"]');
+        if (tab) tab.click();
+      });
+    }
+
+    const zSl = document.getElementById('cal-toolbar-zoom-slider');
+    if (zSl) {
+      zSl.addEventListener('input', () => {
+        setCalendarAutofitTimeZoomLocked();
+        timeZoomPercent = Math.max(AUTO_FIT_MIN_TIME_ZOOM_PERCENT, Math.min(MAX_TIME_ZOOM_PERCENT, parseInt(String(zSl.value), 10) || 100));
+        schedulePersistCalendarPrefs();
+        if (lastCalendarPayload) renderCalendar(lastCalendarPayload);
+        syncCalendarToolbarControls();
+      });
+    }
+    const cSl = document.getElementById('cal-toolbar-col-slider');
+    if (cSl) {
+      cSl.addEventListener('input', () => {
+        columnWidthPx = Math.max(96, Math.min(420, parseInt(String(cSl.value), 10) || 160));
+        schedulePersistCalendarPrefs();
+        if (lastCalendarPayload) renderCalendar(lastCalendarPayload);
+        syncCalendarToolbarControls();
+      });
+    }
+    const ip = document.getElementById('cal-toolbar-in-progress');
+    if (ip) {
+      ip.addEventListener('change', () => {
+        showInProgressAppointments = !!ip.checked;
+        schedulePersistCalendarPrefs();
+        if (lastCalendarPayload) renderCalendar(lastCalendarPayload);
+      });
+    }
+
+    // ── Zoom reset buttons ─────────────────────────────────────────────────
+    document.getElementById('cal-toolbar-col-reset')?.addEventListener('click', () => {
+      columnWidthPx = 160;
+      clearCalendarAutofitTimeZoomLock();
+      syncCalendarToolbarControls();
+      schedulePersistCalendarPrefs();
+      if (lastCalendarPayload) renderCalendar(lastCalendarPayload);
+    });
+    document.getElementById('cal-toolbar-zoom-reset')?.addEventListener('click', () => {
+      timeZoomPercent = 100;
+      clearCalendarAutofitTimeZoomLock();
+      syncCalendarToolbarControls();
+      schedulePersistCalendarPrefs();
+      if (lastCalendarPayload) renderCalendar(lastCalendarPayload);
+    });
+
+    // ── Time zoom preset buttons ───────────────────────────────────────────
+    document.querySelectorAll('[data-zoom-preset]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const v = parseInt(btn.dataset.zoomPreset, 10);
+        if (!Number.isFinite(v)) return;
+        timeZoomPercent = Math.max(AUTO_FIT_MIN_TIME_ZOOM_PERCENT, Math.min(MAX_TIME_ZOOM_PERCENT, v));
+        setCalendarAutofitTimeZoomLocked();
+        syncCalendarToolbarControls();
+        schedulePersistCalendarPrefs();
+        if (lastCalendarPayload) renderCalendar(lastCalendarPayload);
+      });
+    });
+
+    // ── "Fit" preset: auto-fit workday to viewport ─────────────────────────
+    document.getElementById('cal-toolbar-zoom-fit')?.addEventListener('click', () => {
+      clearCalendarAutofitTimeZoomLock();
+      calendarPrefsPersistedFromServer = false;
+      tryFitWorkdayToViewport();
+      syncCalendarToolbarControls();
+      schedulePersistCalendarPrefs();
+    });
+
+    document.getElementById('cal-toolbar-staff-apply')?.addEventListener('click', () => {
+      const box = document.getElementById('cal-toolbar-staff-fields');
+      if (!box) return;
+      const hidden = new Set();
+      box.querySelectorAll('input[type="checkbox"][data-staff-id]').forEach((inp) => {
+        if (!inp.checked) hidden.add(String(inp.dataset.staffId));
+      });
+      setHiddenStaffIds(hidden);
+      closeCalendarToolbarPopovers();
+      schedulePersistCalendarPrefs();
+      load();
+    });
+    document.getElementById('cal-toolbar-staff-all')?.addEventListener('click', () => {
+      document.querySelectorAll('#cal-toolbar-staff-fields input[type="checkbox"]').forEach((i) => { i.checked = true; });
+    });
+    document.getElementById('cal-toolbar-staff-none')?.addEventListener('click', () => {
+      document.querySelectorAll('#cal-toolbar-staff-fields input[type="checkbox"]').forEach((i) => { i.checked = false; });
+    });
+    document.getElementById('cal-toolbar-staff-cancel')?.addEventListener('click', () => {
+      closeCalendarToolbarPopovers(true);
+    });
+
+    document.getElementById('cal-toolbar-view-save')?.addEventListener('click', () => {
+      setToolbarViewsInlineError('');
+      const dialog = showToolbarDialog('cal-toolbar-save-dialog', viewBtn);
+      const input = document.getElementById('cal-toolbar-save-name');
+      const errEl = document.getElementById('cal-toolbar-save-error');
+      if (input) input.value = '';
+      if (errEl) {
+        errEl.textContent = '';
+        errEl.classList.add('visually-hidden');
+      }
+      if (!dialog || !input) return;
+      input.focus();
+    });
+
+    document.getElementById('cal-toolbar-save-cancel')?.addEventListener('click', () => {
+      hideToolbarDialog(true);
+    });
+
+    document.getElementById('cal-toolbar-save-confirm')?.addEventListener('click', async () => {
+      const input = document.getElementById('cal-toolbar-save-name');
+      const errEl = document.getElementById('cal-toolbar-save-error');
+      const name = input ? String(input.value || '').trim() : '';
+      if (name === '') {
+        if (errEl) {
+          errEl.textContent = 'View name is required.';
+          errEl.classList.remove('visually-hidden');
+        }
+        return;
+      }
+      try {
+        const res = await fetch('/calendar/saved-views', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-Token': getCsrfToken(),
+          },
+          body: JSON.stringify({
+            name,
+            config: buildCurrentViewConfig(),
+            set_as_default: false,
+          }),
+        });
+        const j = await res.json().catch(() => null);
+        if (j && j.success && j.data && j.data.id) {
+          activeSavedViewId = Number(j.data.id);
+          hideToolbarDialog(true);
+          closeCalendarToolbarPopovers();
+          await refreshViewsListInToolbar();
+          return;
+        }
+        const msg = j && j.error && typeof j.error.message === 'string'
+          ? j.error.message
+          : 'Unable to save view.';
+        if (errEl) {
+          errEl.textContent = msg;
+          errEl.classList.remove('visually-hidden');
+        }
+      } catch (_e) {
+        if (errEl) {
+          errEl.textContent = 'Network error while saving view.';
+          errEl.classList.remove('visually-hidden');
+        }
+      }
+    });
+    document.getElementById('cal-toolbar-view-default')?.addEventListener('click', async () => {
+      if (!activeSavedViewId) {
+        setToolbarViewsInlineError('Load a saved view first, or save a new one.');
+        return;
+      }
+      setToolbarViewsInlineError('');
+      try {
+        const res = await fetch('/calendar/saved-views/' + activeSavedViewId + '/set-default', {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-Token': getCsrfToken(),
+          },
+        });
+        const j = await res.json().catch(() => null);
+        if (!(j && j.success)) {
+          setToolbarViewsInlineError((j && j.error && j.error.message) || 'Unable to set default view.');
+          return;
+        }
+        await refreshViewsListInToolbar();
+      } catch (_e) { /* ignore */ }
+      closeCalendarToolbarPopovers();
+    });
+    document.getElementById('cal-toolbar-view-delete')?.addEventListener('click', () => {
+      if (!activeSavedViewId) {
+        setToolbarViewsInlineError('No saved view selected.');
+        return;
+      }
+      setToolbarViewsInlineError('');
+      const errEl = document.getElementById('cal-toolbar-delete-error');
+      if (errEl) {
+        errEl.textContent = '';
+        errEl.classList.add('visually-hidden');
+      }
+      showToolbarDialog('cal-toolbar-delete-dialog', viewBtn);
+    });
+    document.getElementById('cal-toolbar-delete-cancel')?.addEventListener('click', () => {
+      hideToolbarDialog(true);
+    });
+    document.getElementById('cal-toolbar-delete-confirm')?.addEventListener('click', async () => {
+      const errEl = document.getElementById('cal-toolbar-delete-error');
+      try {
+        const res = await fetch('/calendar/saved-views/' + activeSavedViewId + '/delete', {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-Token': getCsrfToken(),
+          },
+        });
+        const j = await res.json().catch(() => null);
+        if (!(j && j.success)) {
+          const msg = j && j.error && typeof j.error.message === 'string' ? j.error.message : 'Unable to delete view.';
+          if (errEl) {
+            errEl.textContent = msg;
+            errEl.classList.remove('visually-hidden');
+          }
+          return;
+        }
+        activeSavedViewId = null;
+        hideToolbarDialog(true);
+        closeCalendarToolbarPopovers();
+        await refreshViewsListInToolbar();
+        return;
+      } catch (_e) {
+        if (errEl) {
+          errEl.textContent = 'Network error while deleting view.';
+          errEl.classList.remove('visually-hidden');
+        }
+      }
+    });
+
+    document.getElementById('cal-toolbar-dialog-backdrop')?.addEventListener('click', () => {
+      hideToolbarDialog(true);
+    });
+
+    document.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape' && openDialog) {
+        hideToolbarDialog(true);
+      }
+    });
+
+    document.querySelectorAll('.appts-cal-dialog').forEach((dlg) => {
+      dlg.addEventListener('click', (ev) => ev.stopPropagation());
+    });
+
+    document.addEventListener('click', (ev) => {
+      if (openDialog) {
+        const t = ev.target;
+        if (!(t instanceof Element) || !t.closest('.appts-cal-dialog')) {
+          hideToolbarDialog(false);
+        }
+      }
+    });
+
+    document.querySelectorAll('[data-cal-print]').forEach((a) => {
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        const kind = a.getAttribute('data-cal-print');
+        const q = currentCalendarQuery();
+        const path =
+          kind === 'planning' ? '/appointments/calendar/day/print/planning'
+            : kind === 'appointments' ? '/appointments/calendar/day/print/appointments'
+              : kind === 'itineraries' ? '/appointments/calendar/day/print/itineraries'
+                : '/appointments/calendar/day/print/calendar';
+        window.open(path + '?' + q.toString(), '_blank', 'noopener,noreferrer');
+        closeCalendarToolbarPopovers();
+      });
+    });
+
+    root.addEventListener('click', (e) => e.stopPropagation());
+    document.querySelectorAll('.appts-cal-toolbar__popover').forEach((p) => {
+      p.addEventListener('click', (ev) => ev.stopPropagation());
+    });
+    document.addEventListener('click', (ev) => {
+      if (openDialog) return;
+      closeCalendarToolbarPopovers();
+      const toolsCluster = document.getElementById('cal-toolbar-tools-cluster');
+      const toolsPanel = document.getElementById('cal-toolbar-tools-panel');
+      const toolsToggle = document.getElementById('cal-toolbar-tools-toggle');
+      if (
+        toolsCluster &&
+        toolsPanel &&
+        toolsToggle &&
+        !toolsPanel.hidden &&
+        (!(ev.target instanceof Node) || !toolsCluster.contains(ev.target))
+      ) {
+        toolsPanel.hidden = true;
+        toolsToggle.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    function populateStaffFilterModal() {
+      const box = document.getElementById('cal-toolbar-staff-fields');
+      if (!box || !lastCalendarPayload || !Array.isArray(lastCalendarPayload.staff)) return;
+      box.innerHTML = '';
+      const hidden = getHiddenStaffIds();
+      const sched = document.createElement('div');
+      sched.className = 'appts-cal-staff-modal__col';
+      const fr = document.createElement('div');
+      fr.className = 'appts-cal-staff-modal__col';
+      const schedRows = document.createElement('div');
+      schedRows.className = 'appts-cal-staff-modal__rows';
+      const frRows = document.createElement('div');
+      frRows.className = 'appts-cal-staff-modal__rows appts-cal-staff-modal__rows--single';
+      const hSched = document.createElement('h3');
+      hSched.className = 'appts-cal-staff-modal__subhead';
+      hSched.textContent = 'Scheduled';
+      const hFr = document.createElement('h3');
+      hFr.className = 'appts-cal-staff-modal__subhead';
+      hFr.textContent = 'Freelancers';
+      sched.appendChild(hSched);
+      fr.appendChild(hFr);
+      lastCalendarPayload.staff.forEach((s) => {
+        const id = String(s.id);
+        const label = ((s.first_name || '') + ' ' + (s.last_name || '')).trim() || ('Staff #' + id);
+        const row = document.createElement('label');
+        row.className = 'appts-cal-staff-modal__row';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.dataset.staffId = id;
+        cb.checked = !hidden.has(id);
+        row.appendChild(cb);
+        row.appendChild(document.createTextNode(' ' + label));
+        const st = String(s.staff_type || 'scheduled');
+        if (st === 'freelancer') frRows.appendChild(row);
+        else schedRows.appendChild(row);
+      });
+      sched.appendChild(schedRows);
+      fr.appendChild(frRows);
+      box.appendChild(sched);
+      box.appendChild(fr);
+    }
+
+    staffBtn?.addEventListener('click', () => {
+      populateStaffFilterModal();
+    });
   }
 
   async function load() {
@@ -1336,23 +3515,25 @@
     }
     const abortCtrl = new AbortController();
     currentLoadAbort = abortCtrl;
+    const branchIdNow = branchEl.value ? (parseInt(String(branchEl.value), 10) || 0) : 0;
+    if (lastUiPrefsBranchId !== branchIdNow) {
+      calendarPrefsPersistedFromServer = false;
+    }
+    const dayDeadline = bindAbortDeadline(abortCtrl, CALENDAR_FETCH_TIMEOUT_MS);
     try {
       const res = await fetch('/calendar/day?' + params.toString(), {
         headers: {'Accept': 'application/json'},
         signal: abortCtrl.signal,
       });
-      const payload = await res.json();
-      // BKM-008: success payloads include contract fields only; errors may be a string (422) or
-      // { message } (auth/HTTP JSON). Avoid truthy non-string `error` and property access on non-objects.
-      const payloadError = payload && typeof payload === 'object' ? payload.error : undefined;
-      const errMsg =
-        typeof payloadError === 'string'
-          ? payloadError
-          : payloadError && typeof payloadError === 'object' && typeof payloadError.message === 'string'
-            ? payloadError.message
-            : null;
-      if (!res.ok || errMsg) {
-        statusEl.textContent = errMsg || 'Failed to load calendar.';
+      const rawText = await res.text();
+      let payload = null;
+      try {
+        payload = rawText ? JSON.parse(rawText) : null;
+      } catch (_parseErr) {
+        const snippet = rawText && rawText.trim().charAt(0) === '<' ? ' (HTML error page)' : '';
+        statusEl.textContent =
+          'Calendar response is not valid JSON (HTTP ' + res.status + ')' + snippet
+          + '. Often: run DB migration 133 (appointments.appointment_calendar_meta).';
         wrap.innerHTML = '';
         clearWeekSummaryDecorations();
         latestWeekSummary = null;
@@ -1363,21 +3544,98 @@
         refreshSummaryRailVisible();
         return;
       }
-      statusEl.textContent = '';
-      renderCalendar(payload);
-    } catch (e) {
-      if (e && e.name === 'AbortError') {
+      if (!payload || typeof payload !== 'object') {
+        statusEl.textContent = 'Invalid calendar payload (HTTP ' + res.status + ').';
+        wrap.innerHTML = '';
+        clearWeekSummaryDecorations();
+        latestWeekSummary = null;
+        clearMonthGridDecorations();
+        latestMonthSummary = null;
+        weekSummaryErrorText = '';
+        monthSummaryErrorText = '';
+        refreshSummaryRailVisible();
         return;
       }
-      statusEl.textContent = 'Could not load calendar data.';
-      wrap.innerHTML = '';
-      clearWeekSummaryDecorations();
-      latestWeekSummary = null;
-      clearMonthGridDecorations();
-      latestMonthSummary = null;
-      weekSummaryErrorText = '';
-      monthSummaryErrorText = '';
-      refreshSummaryRailVisible();
+      // BKM-008: success payloads include contract fields only; errors may be a string (422) or
+      // { message } (auth/HTTP JSON). Avoid truthy non-string `error` and property access on non-objects.
+      const payloadError = payload && typeof payload === 'object' ? payload.error : undefined;
+      const errMsg =
+        typeof payloadError === 'string'
+          ? payloadError
+          : payloadError && typeof payloadError === 'object' && typeof payloadError.message === 'string'
+            ? payloadError.message
+            : null;
+      if (!res.ok || errMsg) {
+        statusEl.textContent = errMsg || ('Failed to load calendar (HTTP ' + res.status + ').');
+        wrap.innerHTML = '';
+        clearWeekSummaryDecorations();
+        latestWeekSummary = null;
+        clearMonthGridDecorations();
+        latestMonthSummary = null;
+        weekSummaryErrorText = '';
+        monthSummaryErrorText = '';
+        refreshSummaryRailVisible();
+        return;
+      }
+      try {
+        const prefsRes = await fetch('/calendar/ui-preferences?' + params.toString(), {
+          headers: {
+            Accept: 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+          signal: abortCtrl.signal,
+        });
+        if (prefsRes.ok) {
+          const pj = await prefsRes.json().catch(() => null);
+          if (pj && pj.success && pj.data && typeof pj.data === 'object') {
+            lastUiPrefsBranchId = branchIdNow;
+            calendarPrefsPersistedFromServer = Boolean(pj.data.preferences_persisted);
+            applyCalendarUiBootstrap(pj.data);
+          }
+        }
+      } catch (_prefErr) {
+        /* optional: migration 134 not applied — keep calendarPrefsPersistedFromServer if same branch */
+      }
+      clearCalendarPrefsAlert();
+      statusEl.textContent = '';
+      renderCalendar(payload);
+      {
+        const gh = document.getElementById('appts-calendar-grid');
+        if (gh) void gh.getBoundingClientRect();
+      }
+      tryFitWorkdayToViewport();
+      scheduleWorkdayViewportFit();
+      window.setTimeout(() => scheduleWorkdayViewportFit(), 0);
+      window.setTimeout(() => scheduleWorkdayViewportFit(), 220);
+      updateNowButtonState();
+      loadSidePanelData();
+    } catch (e) {
+      if (e && e.name === 'AbortError') {
+        if (currentLoadAbort !== abortCtrl) {
+          return;
+        }
+        statusEl.textContent = 'Day calendar request timed out. Check your connection or try again.';
+        wrap.innerHTML = '';
+        clearWeekSummaryDecorations();
+        latestWeekSummary = null;
+        clearMonthGridDecorations();
+        latestMonthSummary = null;
+        weekSummaryErrorText = '';
+        monthSummaryErrorText = '';
+        refreshSummaryRailVisible();
+        return;
+      }
+      statusEl.textContent = 'Could not load calendar (network or unexpected error).';
+        wrap.innerHTML = '';
+        clearWeekSummaryDecorations();
+        latestWeekSummary = null;
+        clearMonthGridDecorations();
+        latestMonthSummary = null;
+        weekSummaryErrorText = '';
+        monthSummaryErrorText = '';
+        refreshSummaryRailVisible();
+    } finally {
+      clearTimeout(dayDeadline);
     }
   }
 
@@ -1390,16 +3648,15 @@
   });
   dateEl.addEventListener('change', () => {
     selectedSlot = null;
-    nowLineScrolled = false;
     renderSmartCard();
     pushCalendarHistoryIfChanged();
     load();
   });
   branchEl.addEventListener('change', () => {
     selectedSlot = null;
-    nowLineScrolled = false;
     pushCalendarHistoryIfChanged();
     renderSmartCard();
+    renderClipboardPane(); // refresh clipboard to show items scoped to the new branch
     load();
   });
 
@@ -1421,7 +3678,64 @@
   window.addEventListener('app:appointments-calendar-refresh', () => {
     refreshCalendarSummaries();
     load();
+    loadSidePanelData();
   });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.ops-staff-head')) closeAllStaffMenus();
+    if (!e.target.closest('#cal-appt-ctx-menu')) closeApptContextMenu();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const innerToolbarPopoverOpen = document.querySelector('.appts-cal-toolbar__popover[aria-hidden="false"]');
+      closeAllStaffMenus();
+      closeApptContextMenu();
+      closeCalendarToolbarPopovers();
+      if (!innerToolbarPopoverOpen) {
+        closeToolsDropdownIfOpen();
+      }
+    }
+  });
+
+  if (wrap) {
+    wrap.addEventListener('contextmenu', (e) => {
+      const block = e.target.closest('[data-block-type="appointment"]');
+      if (!block || !block.dataset.apptId) return;
+      e.preventDefault();
+      closeAllStaffMenus();
+      showApptContextMenu(
+        e.clientX,
+        e.clientY,
+        block.dataset.apptId,
+        block.dataset.apptStatus || '',
+        block.dataset.staffLocked === '1',
+        {
+          clientId: parseInt(block.dataset.clientId || '0', 10) || 0,
+          linkedInvoiceId: parseInt(block.dataset.linkedInvoiceId || '0', 10) || 0,
+        }
+      );
+    });
+  }
+
+  initCalendarToolbar();
+  updateNowButtonState();
+
+  (function initCalendarGridViewportFit() {
+    const gridEl = document.getElementById('appts-calendar-grid');
+    if (!gridEl || typeof ResizeObserver === 'undefined') return;
+    let t = null;
+    const ro = new ResizeObserver(() => {
+      if (t) clearTimeout(t);
+      t = setTimeout(() => {
+        scheduleWorkdayViewportFit();
+      }, 100);
+    });
+    ro.observe(gridEl);
+  })();
+
+  initToolsPanel();
+  renderClipboardPane();
+  initClipboardClearBtn();
 
   if (calModeWeek) {
     calModeWeek.addEventListener('click', () => setCalendarMode('week'));
@@ -1454,7 +3768,6 @@
       if (e.key === 'ArrowLeft') {
         e.preventDefault();
         selectedSlot = null;
-        nowLineScrolled = false;
         dateEl.value = shiftIsoDate(dateEl.value, -1);
         renderSmartCard();
         pushCalendarHistoryIfChanged();
@@ -1462,7 +3775,6 @@
       } else if (e.key === 'ArrowRight') {
         e.preventDefault();
         selectedSlot = null;
-        nowLineScrolled = false;
         dateEl.value = shiftIsoDate(dateEl.value, 1);
         renderSmartCard();
         pushCalendarHistoryIfChanged();
@@ -1488,14 +3800,32 @@
     }
     if (b != null && b !== '') {
       const bs = String(b);
-      if ([...branchEl.options].some((opt) => opt.value === bs)) {
+      if (branchEl.options) {
+        if ([...branchEl.options].some((opt) => opt.value === bs)) {
+          branchEl.value = bs;
+        }
+      } else {
         branchEl.value = bs;
       }
     }
     selectedSlot = null;
-    nowLineScrolled = false;
     renderSmartCard();
     load();
+  });
+
+  window.addEventListener('pagehide', () => {
+    if (calendarToolbarSaveTimer) {
+      clearTimeout(calendarToolbarSaveTimer);
+      calendarToolbarSaveTimer = null;
+      sendCalendarPrefsKeepalive();
+    }
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'hidden') return;
+    if (!calendarToolbarSaveTimer) return;
+    clearTimeout(calendarToolbarSaveTimer);
+    calendarToolbarSaveTimer = null;
+    void persistCalendarPrefs();
   });
 
   replaceCalendarHistoryCanonical();

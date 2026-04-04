@@ -6,9 +6,12 @@ $workspace = isset($workspace) && is_array($workspace) ? $workspace : [];
 $workspace['shell_modifier'] = 'workspace-shell--calendar';
 $calDateRaw = $date ?? date('Y-m-d');
 $calDate = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $calDateRaw) ? (string) $calDateRaw : date('Y-m-d');
+$calBadgeLegendItems = \Modules\Appointments\Services\CalendarBadgeRegistry::legendItemsImplemented();
 ob_start();
 ?>
 <div class="calendar-workspace" id="calendar-workspace-root" data-calendar-immersive-root>
+<?php require base_path('modules/appointments/views/partials/calendar-badge-sprite.php'); ?>
+<?php require base_path('modules/appointments/views/partials/calendar-toolbar-bootstrap-sprite.php'); ?>
 <?php require base_path('modules/appointments/views/partials/workspace-shell.php'); ?>
 <?php if (!empty($flash) && is_array($flash)): $t = array_key_first($flash); ?>
 <div class="flash flash-<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($flash[$t] ?? '') ?></div>
@@ -56,9 +59,82 @@ ob_start();
                 <div class="appts-cal-month__grid" id="appts-cal-month-grid" role="group" aria-label="Month days"></div>
             </div>
         </div>
+        <div class="cal-tools-panel" id="cal-tools-panel" aria-label="Calendar tools panel">
+            <nav class="cal-tools-tabs" role="tablist" aria-label="Calendar tools">
+                <button type="button" class="cal-tools-tab cal-tools-tab--active" role="tab"
+                        data-tools-tab="waitlist" aria-selected="true" aria-controls="cal-tools-waitlist"
+                        title="Waitlist">
+                    <svg class="cal-tools-tab__ic cal-tools-tab__ic--bi" width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false">
+                        <use href="#bi-list-task"/>
+                    </svg>
+                    <span id="cal-tools-waitlist-badge" class="cal-tools-badge" hidden></span>
+                </button>
+                <button type="button" class="cal-tools-tab" role="tab"
+                        data-tools-tab="checkin" aria-selected="false" aria-controls="cal-tools-checkin"
+                        title="Check-in today">
+                    <svg class="cal-tools-tab__ic cal-tools-tab__ic--bi" width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false">
+                        <use href="#bi-check-circle"/>
+                    </svg>
+                    <span id="cal-tools-checkin-badge" class="cal-tools-badge" hidden></span>
+                </button>
+                <button type="button" class="cal-tools-tab" role="tab"
+                        data-tools-tab="legend" aria-selected="false" aria-controls="cal-tools-legend"
+                        title="Legend">
+                    <svg class="cal-tools-tab__ic cal-tools-tab__ic--bi" width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false">
+                        <use href="#bi-info-circle"/>
+                    </svg>
+                </button>
+                <button type="button" class="cal-tools-tab" role="tab"
+                        data-tools-tab="clipboard" aria-selected="false" aria-controls="cal-tools-clipboard"
+                        title="Clipboard (held appointments)">
+                    <svg class="cal-tools-tab__ic cal-tools-tab__ic--bi" width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false">
+                        <use href="#bi-clipboard"/>
+                    </svg>
+                    <span id="cal-tools-clipboard-badge" class="cal-tools-badge" hidden></span>
+                </button>
+            </nav>
+            <div class="cal-tools-body">
+                <div id="cal-tools-waitlist" class="cal-tools-pane cal-tools-pane--active" role="tabpanel" tabindex="0">
+                    <p class="cal-tools-hint">Loading…</p>
+                </div>
+                <div id="cal-tools-checkin" class="cal-tools-pane" role="tabpanel" tabindex="0" hidden>
+                    <p class="cal-tools-hint">Loading…</p>
+                </div>
+                <div id="cal-tools-legend" class="cal-tools-pane" role="tabpanel" tabindex="0" hidden>
+                    <ul class="cal-legend-list">
+                        <li class="cal-legend-item"><span class="cal-legend-dot cal-legend-dot--scheduled"></span>Scheduled</li>
+                        <li class="cal-legend-item"><span class="cal-legend-dot cal-legend-dot--confirmed"></span>Confirmed</li>
+                        <li class="cal-legend-item"><span class="cal-legend-dot cal-legend-dot--in-progress"></span>In Progress</li>
+                        <li class="cal-legend-item"><span class="cal-legend-dot cal-legend-dot--completed"></span>Completed</li>
+                        <li class="cal-legend-item"><span class="cal-legend-dot cal-legend-dot--cancelled"></span>Cancelled</li>
+                        <li class="cal-legend-item"><span class="cal-legend-dot cal-legend-dot--no-show"></span>No Show</li>
+                        <li class="cal-legend-item cal-legend-item--sep"></li>
+                        <li class="cal-legend-item"><span class="cal-legend-stripe"></span>Blocked Time</li>
+                        <?php if (!empty($calBadgeLegendItems)): ?>
+                        <li class="cal-legend-item cal-legend-item--sep"></li>
+                        <li class="cal-legend-item cal-legend-subhead" aria-hidden="true">Appointment tags</li>
+                        <?php foreach ($calBadgeLegendItems as $ble): ?>
+                        <li class="cal-legend-item cal-legend-item--badge">
+                            <svg class="cal-legend-badge-ic" width="14" height="14" aria-hidden="true" style="color:var(--<?= htmlspecialchars((string) ($ble['color_token'] ?? ''), ENT_QUOTES, 'UTF-8') ?>)">
+                                <use href="#<?= htmlspecialchars((string) ($ble['icon_id'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"/>
+                            </svg>
+                            <span><?= htmlspecialchars((string) ($ble['label'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
+                        </li>
+                        <?php endforeach; ?>
+                        <?php endif; ?>
+                    </ul>
+                </div>
+                <div id="cal-tools-clipboard" class="cal-tools-pane" role="tabpanel" tabindex="0" hidden>
+                    <p class="cal-tools-hint" id="cal-clipboard-empty-hint">Right-click any appointment and select <strong>"Hold on Clipboard"</strong> to park it here while you find a new slot.</p>
+                    <div id="cal-clipboard-items" class="cal-clipboard-list" hidden></div>
+                    <button type="button" class="cal-clipboard-clear-btn" id="cal-clipboard-clear" hidden title="Remove all from clipboard">Clear all</button>
+                </div>
+            </div>
+        </div>
     </aside>
     <div class="appts-calendar-main">
-        <div class="appts-command-strip" role="group" aria-label="Date, branch, and blocked time">
+        <section class="appts-calendar-control-surface" aria-label="Calendar filters and display tools">
+        <div class="appts-command-strip" role="group" aria-label="Date, branch, tools, and blocked time">
             <form method="get" action="/appointments/calendar/day" class="appts-command-strip__form" id="calendar-filter-form">
                 <div class="appts-command-strip__fields">
                     <div class="appts-command-field appts-command-field--date-secondary">
@@ -87,13 +163,151 @@ ob_start();
                 <button type="button" class="ds-btn ds-btn--secondary appts-immersive-exit" id="calendar-immersive-exit" data-calendar-immersive-exit hidden aria-hidden="true" aria-label="Restore full workspace header and navigation">Show chrome</button>
                 <button type="button" class="ds-btn ds-btn--secondary" id="calendar-blocked-time-btn">Blocked time</button>
             </div>
+            <div class="appts-cal-tools-cluster" id="cal-toolbar-tools-cluster">
+                <div id="calendar-toolbar-context" class="appts-cal-toolbar__context" aria-label="Column visibility summary"></div>
+                <div class="appts-cal-tools-dropdown">
+                <button type="button" class="ds-btn ds-btn--secondary appts-cal-tools-toggle" id="cal-toolbar-tools-toggle" aria-expanded="false" aria-controls="cal-toolbar-tools-panel" aria-haspopup="true">
+                    <svg class="appts-cal-tools-toggle__icon appts-cal-toolbar__icon appts-cal-toolbar__icon--bi" width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-sliders"/></svg>
+                    <span class="appts-cal-tools-toggle__label" id="cal-toolbar-tools-toggle-text">Tools</span>
+                </button>
+                <div id="cal-toolbar-tools-panel" class="appts-cal-tools-panel" role="region" aria-labelledby="cal-toolbar-tools-toggle-text" hidden>
+                    <div class="appts-calendar-toolbar" id="appts-calendar-toolbar" role="toolbar" aria-label="Calendar display tools">
+            <div class="appts-cal-toolbar__track">
+            <button type="button" class="appts-cal-toolbar__btn" id="cal-toolbar-refresh" title="Refresh calendar">
+                <svg class="appts-cal-toolbar__icon appts-cal-toolbar__icon--bi" width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-arrow-clockwise"/></svg>
+                <span class="appts-cal-toolbar__btn-text">Refresh</span>
+            </button>
+            <button type="button" class="appts-cal-toolbar__btn" id="cal-toolbar-now" title="Jump to current time">
+                <svg class="appts-cal-toolbar__icon appts-cal-toolbar__icon--bi" width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-clock"/></svg>
+                <span class="appts-cal-toolbar__btn-text">Now</span>
+            </button>
+            <div class="appts-cal-toolbar__slot">
+                <button type="button" class="appts-cal-toolbar__btn" id="cal-toolbar-zoom" aria-expanded="false" aria-haspopup="dialog" aria-controls="cal-toolbar-zoom-pop" title="Zoom">
+                    <svg class="appts-cal-toolbar__icon appts-cal-toolbar__icon--bi" width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-zoom-in"/></svg>
+                    <span class="appts-cal-toolbar__btn-text">Zoom</span>
+                </button>
+                <div class="appts-cal-toolbar__popover appts-cal-toolbar__popover--zoom" id="cal-toolbar-zoom-pop" hidden aria-hidden="true" role="dialog" aria-modal="false" aria-label="Zoom settings">
+                    <div class="appts-cal-zoom__group">
+                        <div class="appts-cal-zoom__header">
+                            <label class="appts-cal-zoom__label" for="cal-toolbar-col-slider">Column width</label>
+                            <div class="appts-cal-zoom__value-row">
+                                <span class="appts-cal-zoom__value" id="cal-toolbar-col-value" aria-live="polite">160px</span>
+                                <button type="button" class="appts-cal-zoom__reset" id="cal-toolbar-col-reset" aria-label="Reset column width to default" title="Reset to default">&#8635;</button>
+                            </div>
+                        </div>
+                        <input type="range" id="cal-toolbar-col-slider" class="appts-cal-zoom__range" min="96" max="420" value="160" />
+                        <div class="appts-cal-zoom__hints"><span>Narrow</span><span>Wide</span></div>
+                    </div>
+                    <hr class="appts-cal-zoom__sep" aria-hidden="true" />
+                    <div class="appts-cal-zoom__group">
+                        <div class="appts-cal-zoom__header">
+                            <label class="appts-cal-zoom__label" for="cal-toolbar-zoom-slider">Time zoom</label>
+                            <div class="appts-cal-zoom__value-row">
+                                <span class="appts-cal-zoom__value" id="cal-toolbar-zoom-value" aria-live="polite">100%</span>
+                                <button type="button" class="appts-cal-zoom__reset" id="cal-toolbar-zoom-reset" aria-label="Reset time zoom to default" title="Reset to default">&#8635;</button>
+                            </div>
+                        </div>
+                        <input type="range" id="cal-toolbar-zoom-slider" class="appts-cal-zoom__range" min="25" max="200" value="100" />
+                        <div class="appts-cal-zoom__hints"><span>Compact</span><span>Expanded</span></div>
+                        <div class="appts-cal-zoom__presets" role="group" aria-label="Time zoom presets">
+                            <button type="button" class="appts-cal-zoom__preset" data-zoom-preset="50">Compact</button>
+                            <button type="button" class="appts-cal-zoom__preset" data-zoom-preset="100">Normal</button>
+                            <button type="button" class="appts-cal-zoom__preset" data-zoom-preset="150">Large</button>
+                            <button type="button" class="appts-cal-zoom__preset" id="cal-toolbar-zoom-fit">Fit</button>
+                        </div>
+                    </div>
+                    <hr class="appts-cal-zoom__sep" aria-hidden="true" />
+                    <label class="appts-cal-zoom__check">
+                        <input type="checkbox" id="cal-toolbar-in-progress" class="appts-cal-zoom__checkbox" checked />
+                        <span class="appts-cal-zoom__check-text">Show in-progress appointments</span>
+                    </label>
+                </div>
+            </div>
+            <div class="appts-cal-toolbar__slot">
+                <button type="button" class="appts-cal-toolbar__btn" id="cal-toolbar-staff" aria-expanded="false" aria-haspopup="dialog" aria-controls="cal-toolbar-staff-pop" title="Staff columns">
+                    <svg class="appts-cal-toolbar__icon appts-cal-toolbar__icon--bi" width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-people"/></svg>
+                    <span class="appts-cal-toolbar__btn-text">Staff</span>
+                </button>
+                <div class="appts-cal-toolbar__popover appts-cal-toolbar__popover--wide" id="cal-toolbar-staff-pop" hidden aria-hidden="true" role="dialog" aria-modal="false" aria-label="Staff visibility">
+                    <div id="cal-toolbar-staff-fields" class="appts-cal-staff-modal__grid"></div>
+                    <div class="appts-cal-toolbar__footer">
+                        <button type="button" class="ds-btn ds-btn--ghost" id="cal-toolbar-staff-all">Select all</button>
+                        <button type="button" class="ds-btn ds-btn--ghost" id="cal-toolbar-staff-none">Deselect all</button>
+                        <button type="button" class="ds-btn ds-btn--ghost" id="cal-toolbar-staff-cancel">Cancel</button>
+                        <button type="button" class="ds-btn ds-btn--primary" id="cal-toolbar-staff-apply">Apply</button>
+                    </div>
+                </div>
+            </div>
+            <div class="appts-cal-toolbar__slot">
+                <button type="button" class="appts-cal-toolbar__btn" id="cal-toolbar-views" aria-expanded="false" aria-haspopup="dialog" aria-controls="cal-toolbar-views-pop" title="Saved views">
+                    <svg class="appts-cal-toolbar__icon appts-cal-toolbar__icon--bi" width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-bookmarks"/></svg>
+                    <span class="appts-cal-toolbar__btn-text">Views</span>
+                </button>
+                <div class="appts-cal-toolbar__popover" id="cal-toolbar-views-pop" hidden aria-hidden="true" role="dialog" aria-modal="false" aria-label="Saved views">
+                    <ul class="appts-cal-toolbar__views-list" id="cal-toolbar-views-list"></ul>
+                    <button type="button" class="appts-cal-toolbar__menu-item" id="cal-toolbar-view-save">Save current view as…</button>
+                    <button type="button" class="appts-cal-toolbar__menu-item" id="cal-toolbar-view-default">Set current view as default</button>
+                    <button type="button" class="appts-cal-toolbar__menu-item appts-cal-toolbar__menu-item--danger" id="cal-toolbar-view-delete">Delete current view</button>
+                    <p class="appts-cal-toolbar__inline-error visually-hidden" id="cal-toolbar-views-error" role="status" aria-live="polite"></p>
+                </div>
+            </div>
+            <button type="button" class="appts-cal-toolbar__btn" id="cal-toolbar-folder" title="Open waitlist panel">
+                <svg class="appts-cal-toolbar__icon appts-cal-toolbar__icon--bi" width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-folder2-open"/></svg>
+                <span class="appts-cal-toolbar__btn-text">Waitlist</span>
+            </button>
+            <div class="appts-cal-toolbar__slot">
+                <button type="button" class="appts-cal-toolbar__btn" id="cal-toolbar-print" aria-expanded="false" aria-haspopup="dialog" aria-controls="cal-toolbar-print-pop" title="Print">
+                    <svg class="appts-cal-toolbar__icon appts-cal-toolbar__icon--bi" width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-printer"/></svg>
+                    <span class="appts-cal-toolbar__btn-text">Print</span>
+                </button>
+                <div class="appts-cal-toolbar__popover" id="cal-toolbar-print-pop" hidden aria-hidden="true" role="dialog" aria-modal="false" aria-label="Print">
+                    <a href="#" class="appts-cal-toolbar__menu-item" data-cal-print="calendar">Print calendar</a>
+                    <a href="#" class="appts-cal-toolbar__menu-item" data-cal-print="planning">Print planning</a>
+                    <a href="#" class="appts-cal-toolbar__menu-item" data-cal-print="appointments">Print appointments</a>
+                    <a href="#" class="appts-cal-toolbar__menu-item" data-cal-print="itineraries">Print client itineraries</a>
+                </div>
+            </div>
+            </div>
+                    </div>
+                </div>
+                </div>
+            </div>
         </div>
+        </section>
+        <div class="appts-cal-dialog-backdrop" id="cal-toolbar-dialog-backdrop" hidden></div>
+        <div class="appts-cal-dialog" id="cal-toolbar-save-dialog" role="dialog" aria-modal="true" aria-labelledby="cal-toolbar-save-title" hidden>
+            <h3 class="appts-cal-dialog__title" id="cal-toolbar-save-title">Save current view</h3>
+            <label class="appts-cal-dialog__label" for="cal-toolbar-save-name">View name</label>
+            <input class="ds-input appts-cal-dialog__input" type="text" id="cal-toolbar-save-name" maxlength="120" autocomplete="off" />
+            <p class="appts-cal-dialog__error visually-hidden" id="cal-toolbar-save-error" role="alert"></p>
+            <div class="appts-cal-dialog__actions">
+                <button type="button" class="ds-btn ds-btn--ghost" id="cal-toolbar-save-cancel">Cancel</button>
+                <button type="button" class="ds-btn ds-btn--primary" id="cal-toolbar-save-confirm">Save view</button>
+            </div>
+        </div>
+        <div class="appts-cal-dialog" id="cal-toolbar-delete-dialog" role="dialog" aria-modal="true" aria-labelledby="cal-toolbar-delete-title" hidden>
+            <h3 class="appts-cal-dialog__title" id="cal-toolbar-delete-title">Delete saved view?</h3>
+            <p class="appts-cal-dialog__text">This action cannot be undone.</p>
+            <p class="appts-cal-dialog__error visually-hidden" id="cal-toolbar-delete-error" role="alert"></p>
+            <div class="appts-cal-dialog__actions">
+                <button type="button" class="ds-btn ds-btn--ghost" id="cal-toolbar-delete-cancel">Cancel</button>
+                <button type="button" class="ds-btn ds-btn--danger" id="cal-toolbar-delete-confirm">Delete view</button>
+            </div>
+        </div>
+        <div id="calendar-prefs-alert" class="appts-calendar-prefs-alert" role="alert" hidden></div>
         <div class="appts-calendar-meta">
             <p class="appts-calendar-meta__hint">Staff columns · appointments and blocked time by length</p>
             <div id="calendar-status" class="appts-calendar-meta__status" role="status" aria-live="polite">Loading day calendar…</div>
         </div>
         <div id="calendar-branch-hours-indicator" class="appts-calendar-hours calendar-branch-hours-indicator" role="status" aria-live="polite"></div>
-        <div class="appts-calendar-grid" id="appts-calendar-grid" data-branch-timezone="<?= htmlspecialchars($branchTimezone ?? 'UTC') ?>">
+        <div class="appts-calendar-grid" id="appts-calendar-grid"
+             data-branch-timezone="<?= htmlspecialchars($branchTimezone ?? 'UTC') ?>"
+             data-csrf="<?= htmlspecialchars($csrf) ?>"
+             data-csrf-name="<?= htmlspecialchars((string) config('app.csrf_token_name', 'csrf_token')) ?>"
+             data-cal-cap-sales-create="<?= !empty($workspace['sales_create']) ? '1' : '0' ?>"
+             data-cal-cap-sales-pay="<?= !empty($workspace['sales_pay']) ? '1' : '0' ?>"
+             data-cal-cap-sales-view="<?= !empty($workspace['sales_view']) ? '1' : '0' ?>"
+             data-cal-cap-appointments-create="<?= !empty($workspace['appointments_create']) ? '1' : '0' ?>">
             <div id="calendar-day-wrap" class="calendar-day-wrap"></div>
         </div>
     </div>
@@ -125,7 +339,6 @@ if (!empty($calendarMonthSummaryBootstrap) && is_array($calendarMonthSummaryBoot
 <?php endif; ?>
 
 <script src="/assets/js/app-calendar-day.js" defer></script>
-<script src="/assets/js/app-calendar-immersive.js" defer></script>
 <?php
 $content = ob_get_clean();
 require shared_path('layout/base.php');

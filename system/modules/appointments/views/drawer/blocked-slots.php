@@ -21,7 +21,7 @@
                     <select id="blocked-staff-id" name="staff_id" required>
                         <option value="">—</option>
                         <?php foreach ($staffOptions as $st): ?>
-                        <option value="<?= (int) $st['id'] ?>"><?= htmlspecialchars(trim(($st['first_name'] ?? '') . ' ' . ($st['last_name'] ?? ''))) ?></option>
+                        <option value="<?= (int) $st['id'] ?>" <?= ($prefillStaffId > 0 && (int) $st['id'] === $prefillStaffId) ? 'selected' : '' ?>><?= htmlspecialchars(trim(($st['first_name'] ?? '') . ' ' . ($st['last_name'] ?? ''))) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>

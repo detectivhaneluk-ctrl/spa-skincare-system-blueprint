@@ -189,11 +189,13 @@ ob_start();
                 </select>
             </div>
             <div class="form-row">
-                <label for="notes">Notes</label>
-                <textarea id="notes" name="notes" rows="3"><?= htmlspecialchars($appointment['notes'] ?? '') ?></textarea>
+                <label for="appt-notes">Notes</label>
+                <textarea id="appt-notes" name="notes" rows="3"><?= htmlspecialchars($appointment['notes'] ?? '') ?></textarea>
             </div>
         </div>
     </section>
+
+    <?php require base_path('modules/appointments/views/partials/appointment-calendar-meta-fields.php'); ?>
     </div>
 
     <div class="form-actions appt-create-actions appt-edit-actions">

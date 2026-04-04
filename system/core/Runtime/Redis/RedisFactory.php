@@ -27,6 +27,12 @@ final class RedisFactory
         $timeout = 2.0;
         $redis = new Redis();
         $redis->connect($host, $port, $timeout);
+        // Avoid hung HTTP requests when Redis stops responding mid-command (SharedCache, sessions, locks).
+        try {
+            $redis->setOption(Redis::OPT_READ_TIMEOUT, $timeout);
+        } catch (\Throwable) {
+            // Older phpredis builds may omit OPT_READ_TIMEOUT support.
+        }
         $pass = $parts['pass'] ?? '';
         if ($pass !== '') {
             $redis->auth($pass);

@@ -174,10 +174,21 @@ final class AppointmentService
             if (!$current) {
                 throw new \RuntimeException('Appointment not found');
             }
+            $data = $this->applyCalendarMetaFromRequest($current, $data);
             $currentBranchId = $current['branch_id'] !== null && $current['branch_id'] !== '' ? (int) $current['branch_id'] : null;
 
             $schedulingMutated = $this->schedulingPatchDiffersFromCurrent($current, $data);
             $merged = array_merge($current, $data);
+
+            if (!empty($current['staff_assignment_locked'])) {
+                if (array_key_exists('staff_id', $data)) {
+                    $newStaff = ($data['staff_id'] === null || $data['staff_id'] === '') ? 0 : (int) $data['staff_id'];
+                    $oldStaff = (int) ($current['staff_id'] ?? 0);
+                    if ($newStaff !== $oldStaff) {
+                        throw new \DomainException('Staff is locked for this appointment. Unlock before reassigning.');
+                    }
+                }
+            }
 
             if ($schedulingMutated) {
                 $svcId = $this->nullablePositiveId($merged, 'service_id');
@@ -508,6 +519,9 @@ final class AppointmentService
             if ($resolvedStaffId <= 0) {
                 throw new \DomainException('Staff is required for rescheduling.');
             }
+            if (!empty($current['staff_assignment_locked']) && $resolvedStaffId !== (int) ($current['staff_id'] ?? 0)) {
+                throw new \DomainException('Staff is locked for this appointment. Unlock before reassigning.');
+            }
             $serviceId = (int) ($current['service_id'] ?? 0);
             if ($serviceId <= 0) {
                 throw new \DomainException('Service is required for rescheduling.');
@@ -806,6 +820,108 @@ final class AppointmentService
                 'checked_in_at' => $ts,
             ]);
         }, 'appointment check-in', true);
+    }
+
+    /**
+     * Per-appointment buffer overrides for calendar "remove cleanup" actions.
+     * Scope: {@code all} zeros both; {@code employee} zeros prep (before); {@code room} zeros turnover (after) — staff-availability only.
+     */
+    public function applyBufferCleanupScope(int $id, string $scope): void
+    {
+        $scope = strtolower(trim($scope));
+        if (!in_array($scope, ['all', 'employee', 'room'], true)) {
+            throw new \InvalidArgumentException('Invalid cleanup scope.');
+        }
+        $cacheDate = null;
+        $cacheBranchId = null;
+        $this->transactional(function () use ($id, $scope, &$cacheDate, &$cacheBranchId): void {
+            $ctx = $this->contextHolder->requireContext();
+            $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::APPOINTMENT_MODIFY, ResourceRef::instance('appointment', $id));
+            $current = $this->repo->loadForUpdate($ctx, $id);
+            if (!$current) {
+                throw new \RuntimeException('Appointment not found');
+            }
+            $st = (string) ($current['status'] ?? 'scheduled');
+            if (in_array($st, self::TERMINAL_STATUSES, true)) {
+                throw new \DomainException('Cannot change cleanup buffers in this appointment status.');
+            }
+            $patch = ['updated_by' => $this->currentUserId()];
+            if ($scope === 'all') {
+                $patch['buffer_before_override_minutes'] = 0;
+                $patch['buffer_after_override_minutes'] = 0;
+            } elseif ($scope === 'employee') {
+                $patch['buffer_before_override_minutes'] = 0;
+            } else {
+                $patch['buffer_after_override_minutes'] = 0;
+            }
+            $this->repo->update($id, $patch);
+            $startRaw = (string) ($current['start_at'] ?? '');
+            $cacheDate = $startRaw !== '' ? date('Y-m-d', strtotime($startRaw)) : null;
+            $cacheBranchId = $current['branch_id'] !== null && $current['branch_id'] !== '' ? (int) $current['branch_id'] : null;
+        }, 'appointment buffer cleanup', true);
+        try {
+            if ($cacheDate !== null && preg_match('/^\d{4}-\d{2}-\d{2}$/', $cacheDate) === 1) {
+                $this->availability->invalidateDayCalendarCache($cacheDate, $cacheBranchId);
+            }
+        } catch (\Throwable) {
+        }
+    }
+
+    public function setStaffAssignmentLocked(int $id, bool $locked): void
+    {
+        $cacheDate = null;
+        $cacheBranchId = null;
+        $this->transactional(function () use ($id, $locked, &$cacheDate, &$cacheBranchId): void {
+            $ctx = $this->contextHolder->requireContext();
+            $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::APPOINTMENT_MODIFY, ResourceRef::instance('appointment', $id));
+            $current = $this->repo->loadForUpdate($ctx, $id);
+            if (!$current) {
+                throw new \RuntimeException('Appointment not found');
+            }
+            $st = (string) ($current['status'] ?? 'scheduled');
+            if (in_array($st, self::TERMINAL_STATUSES, true)) {
+                throw new \DomainException('Cannot change staff lock in this appointment status.');
+            }
+            $this->repo->update($id, [
+                'staff_assignment_locked' => $locked ? 1 : 0,
+                'updated_by' => $this->currentUserId(),
+            ]);
+            $startRaw = (string) ($current['start_at'] ?? '');
+            $cacheDate = $startRaw !== '' ? date('Y-m-d', strtotime($startRaw)) : null;
+            $cacheBranchId = $current['branch_id'] !== null && $current['branch_id'] !== '' ? (int) $current['branch_id'] : null;
+        }, 'appointment staff lock', true);
+        try {
+            if ($cacheDate !== null && preg_match('/^\d{4}-\d{2}-\d{2}$/', $cacheDate) === 1) {
+                $this->availability->invalidateDayCalendarCache($cacheDate, $cacheBranchId);
+            }
+        } catch (\Throwable) {
+        }
+    }
+
+    /**
+     * Queues outbound appointment confirmation (same pipeline as status-driven enqueue).
+     */
+    public function enqueueAppointmentConfirmationManual(int $id): void
+    {
+        $ctx = $this->contextHolder->requireContext();
+        $ctx->requireResolvedTenant();
+        $this->authorizer->requireAuthorized($ctx, ResourceAction::APPOINTMENT_MODIFY, ResourceRef::instance('appointment', $id));
+        $apt = $this->repo->find($id);
+        if (!$apt) {
+            throw new \RuntimeException('Appointment not found');
+        }
+        $st = (string) ($apt['status'] ?? '');
+        if ($st === 'cancelled' || $st === 'no_show') {
+            throw new \DomainException('Cannot send confirmation for this appointment status.');
+        }
+        try {
+            $this->outboundTransactional->enqueueAppointmentConfirmation($id);
+        } catch (\Throwable $e) {
+            slog('error', 'appointments.outbound.confirmation_manual', $e->getMessage(), ['appointment_id' => $id]);
+            throw new \DomainException('Could not queue confirmation message.');
+        }
     }
 
     public function getDisplaySummary(array $apt): string
@@ -1214,7 +1330,8 @@ final class AppointmentService
             ], $appointmentId, 'appointment_scheduling_move');
         }
 
-        if (!$this->availability->isSlotAvailable($serviceId, $staffId, $startAt, $appointmentId, $branchId, false, $forPublicBookingAvailabilityChannel)) {
+        $buf = $this->effectiveBuffersForAppointmentRow($current, $serviceId, $branchId);
+        if (!$this->availability->isSlotAvailable($serviceId, $staffId, $startAt, $appointmentId, $branchId, false, $forPublicBookingAvailabilityChannel, null, $buf['before'], $buf['after'])) {
             throw new \DomainException('Selected slot is no longer available.');
         }
 
@@ -1500,6 +1617,29 @@ final class AppointmentService
     }
 
     /**
+     * Effective staff-availability buffers for an appointment row (override replaces service default for that side).
+     *
+     * @param array<string, mixed> $appointmentRow
+     * @return array{before:int, after:int}
+     */
+    private function effectiveBuffersForAppointmentRow(array $appointmentRow, int $serviceId, ?int $branchId): array
+    {
+        $timing = $this->availability->getServiceTiming($serviceId, $branchId);
+        $before = $timing !== null ? $timing['buffer_before_minutes'] : 0;
+        $after = $timing !== null ? $timing['buffer_after_minutes'] : 0;
+        $ob = $appointmentRow['buffer_before_override_minutes'] ?? null;
+        $oa = $appointmentRow['buffer_after_override_minutes'] ?? null;
+        if ($ob !== null && $ob !== '') {
+            $before = max(0, (int) $ob);
+        }
+        if ($oa !== null && $oa !== '') {
+            $after = max(0, (int) $oa);
+        }
+
+        return ['before' => $before, 'after' => $after];
+    }
+
+    /**
      * @return string[] Conflict messages
      */
     private function checkConflicts(array $data, int $excludeId): array
@@ -1523,6 +1663,19 @@ final class AppointmentService
                 if ($timing !== null) {
                     $bufferBefore = $timing['buffer_before_minutes'];
                     $bufferAfter = $timing['buffer_after_minutes'];
+                }
+                if ($excludeId > 0) {
+                    $existing = $this->repo->find($excludeId);
+                    if ($existing !== null) {
+                        $ob = $existing['buffer_before_override_minutes'] ?? null;
+                        $oa = $existing['buffer_after_override_minutes'] ?? null;
+                        if ($ob !== null && $ob !== '') {
+                            $bufferBefore = max(0, (int) $ob);
+                        }
+                        if ($oa !== null && $oa !== '') {
+                            $bufferAfter = max(0, (int) $oa);
+                        }
+                    }
                 }
             }
             if (!$this->availability->isStaffWindowAvailable($staffId, (string) $start, (string) $end, $branchId, $excludeId, $bufferBefore, $bufferAfter, true, false)) {
@@ -1833,6 +1986,75 @@ final class AppointmentService
         }
         $this->assertInternalSlotBookingBranchAllowedForPrincipal($contextBranch);
         $data['branch_id'] = $contextBranch;
+
+        return $data;
+    }
+
+    /**
+     * Whitelist-merge POST fields into appointment_calendar_meta (JSON). Strips request keys from $data.
+     *
+     * @param array<string, mixed> $current
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    private function applyCalendarMetaFromRequest(array $current, array $data): array
+    {
+        $calendarKeys = [
+            'calendar_booking_source',
+            'calendar_group_booking',
+            'calendar_couple_booking',
+            'calendar_staff_gender_preference',
+        ];
+        $touched = false;
+        foreach ($calendarKeys as $ck) {
+            if (array_key_exists($ck, $data)) {
+                $touched = true;
+                break;
+            }
+        }
+        if (!$touched) {
+            return $data;
+        }
+
+        $existing = [];
+        $rawMeta = $current['appointment_calendar_meta'] ?? null;
+        if ($rawMeta !== null && $rawMeta !== '') {
+            $decoded = json_decode((string) $rawMeta, true);
+            if (is_array($decoded)) {
+                $existing = $decoded;
+            }
+        }
+
+        $patch = [];
+        if (array_key_exists('calendar_booking_source', $data)) {
+            $v = trim((string) $data['calendar_booking_source']);
+            if ($v === '' || in_array($v, CalendarBadgeRegistry::BOOKING_SOURCE_VALUES, true)) {
+                $patch['booking_source'] = $v;
+            }
+        }
+        if (array_key_exists('calendar_group_booking', $data)) {
+            $patch['group_booking'] = ((string) $data['calendar_group_booking'] === '1');
+        }
+        if (array_key_exists('calendar_couple_booking', $data)) {
+            $patch['couple_booking'] = ((string) $data['calendar_couple_booking'] === '1');
+        }
+        if (array_key_exists('calendar_staff_gender_preference', $data)) {
+            $v = trim((string) $data['calendar_staff_gender_preference']);
+            if ($v === '' || in_array($v, CalendarBadgeRegistry::STAFF_GENDER_PREFERENCE_VALUES, true)) {
+                $patch['staff_gender_preference'] = $v;
+            }
+        }
+
+        foreach ($calendarKeys as $ck) {
+            unset($data[$ck]);
+        }
+
+        if ($patch === []) {
+            return $data;
+        }
+
+        $merged = CalendarBadgeRegistry::mergeCalendarMetaPatch($existing, $patch);
+        $data['appointment_calendar_meta'] = $merged === [] ? null : json_encode($merged, JSON_UNESCAPED_SLASHES);
 
         return $data;
     }

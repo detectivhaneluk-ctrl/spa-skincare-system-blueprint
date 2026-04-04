@@ -212,6 +212,36 @@ final class AppointmentRepository
     }
 
     /**
+     * Appointments that have been checked in on a given date for the branch.
+     * Used by the calendar side-panel endpoint (display-only, replica-eligible).
+     *
+     * @return list<array<string,mixed>>
+     */
+    public function listCheckedInForDate(string $date, int $branchId, int $limit = 50): array
+    {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) !== 1 || $branchId <= 0) {
+            return [];
+        }
+        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('a');
+        $sql = 'SELECT a.id, a.start_at, a.end_at, a.checked_in_at, a.status,
+                       c.first_name AS client_first_name, c.last_name AS client_last_name,
+                       s.name AS service_name,
+                       st.first_name AS staff_first_name, st.last_name AS staff_last_name
+                FROM appointments a
+                LEFT JOIN clients c ON c.id = a.client_id
+                LEFT JOIN services s ON s.id = a.service_id
+                LEFT JOIN staff st ON st.id = a.staff_id
+                WHERE a.deleted_at IS NULL
+                  AND a.branch_id = ?
+                  AND DATE(a.start_at) = ?
+                  AND a.checked_in_at IS NOT NULL'
+            . $frag['sql'] . '
+                ORDER BY a.checked_in_at ASC
+                LIMIT ?';
+        return $this->db->forRead()->fetchAll($sql, array_merge([$branchId, $date], $frag['params'], [$limit]));
+    }
+
+    /**
      * Sets check-in columns only (not exposed via {@see normalize()} / generic update mass-assign).
      *
      * @return int Rows updated (0 if id out of scope or missing)
@@ -351,7 +381,9 @@ final class AppointmentRepository
         $allowed = [
             'client_id', 'service_id', 'staff_id', 'room_id', 'branch_id',
             'series_id', 'client_membership_id', 'start_at', 'end_at', 'status', 'notes',
+            'appointment_calendar_meta',
             'cancellation_reason_id', 'no_show_reason_id',
+            'buffer_before_override_minutes', 'buffer_after_override_minutes', 'staff_assignment_locked',
             'created_by', 'updated_by',
         ];
         return array_intersect_key($data, array_flip($allowed));

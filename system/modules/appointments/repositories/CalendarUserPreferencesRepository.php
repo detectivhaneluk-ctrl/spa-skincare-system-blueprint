@@ -1,0 +1,121 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Modules\Appointments\Repositories;
+
+use Core\App\Database;
+use Modules\Appointments\Services\CalendarToolbarUiService;
+
+final class CalendarUserPreferencesRepository
+{
+    public function __construct(private Database $db)
+    {
+    }
+
+    /**
+     * @return array{
+     *   column_width_px:int,
+     *   time_zoom_percent:int,
+     *   show_in_progress:bool,
+     *   hidden_staff_ids:list<string>
+     * }|null
+     */
+    public function find(int $organizationId, int $userId, int $branchId): ?array
+    {
+        $row = $this->db->fetchOne(
+            'SELECT column_width_px, time_zoom_percent, show_in_progress, hidden_staff_ids
+             FROM calendar_user_preferences
+             WHERE organization_id = ? AND user_id = ? AND branch_id = ?',
+            [$organizationId, $userId, $branchId]
+        );
+        if (!$row) {
+            return null;
+        }
+
+        return $this->normalizeRow($row);
+    }
+
+    public function exists(int $organizationId, int $userId, int $branchId): bool
+    {
+        $row = $this->db->fetchOne(
+            'SELECT 1 AS ok FROM calendar_user_preferences
+             WHERE organization_id = ? AND user_id = ? AND branch_id = ?
+             LIMIT 1',
+            [$organizationId, $userId, $branchId]
+        );
+
+        return $row !== null;
+    }
+
+    /**
+     * @param list<string> $hiddenStaffIds
+     */
+    public function upsert(
+        int $organizationId,
+        int $userId,
+        int $branchId,
+        int $columnWidthPx,
+        int $timeZoomPercent,
+        bool $showInProgress,
+        array $hiddenStaffIds
+    ): void {
+        $json = json_encode(array_values($hiddenStaffIds), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+        $this->db->query(
+            'INSERT INTO calendar_user_preferences
+                (organization_id, user_id, branch_id, column_width_px, time_zoom_percent, show_in_progress, hidden_staff_ids)
+             VALUES (?, ?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+                column_width_px = VALUES(column_width_px),
+                time_zoom_percent = VALUES(time_zoom_percent),
+                show_in_progress = VALUES(show_in_progress),
+                hidden_staff_ids = VALUES(hidden_staff_ids),
+                updated_at = CURRENT_TIMESTAMP',
+            [
+                $organizationId,
+                $userId,
+                $branchId,
+                $columnWidthPx,
+                $timeZoomPercent,
+                $showInProgress ? 1 : 0,
+                $json,
+            ]
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @return array{
+     *   column_width_px:int,
+     *   time_zoom_percent:int,
+     *   show_in_progress:bool,
+     *   hidden_staff_ids:list<string>
+     * }
+     */
+    private function normalizeRow(array $row): array
+    {
+        $raw = $row['hidden_staff_ids'] ?? null;
+        $ids = [];
+        if (is_string($raw) && $raw !== '') {
+            $dec = json_decode($raw, true);
+            if (is_array($dec)) {
+                foreach ($dec as $v) {
+                    $ids[] = (string) $v;
+                }
+            }
+        }
+
+        $col = (int) ($row['column_width_px'] ?? 160);
+        $col = max(CalendarToolbarUiService::MIN_COLUMN_WIDTH, min(CalendarToolbarUiService::MAX_COLUMN_WIDTH, $col));
+        $zoom = (int) ($row['time_zoom_percent'] ?? 100);
+        // Clamp to UI min (25) so old rows that stored sub-25 values are silently upgraded on read.
+        $zoom = max(CalendarToolbarUiService::AUTO_FIT_MIN_TIME_ZOOM_PERCENT, min(CalendarToolbarUiService::MAX_TIME_ZOOM_PERCENT, $zoom));
+
+        return [
+            'column_width_px' => $col,
+            'time_zoom_percent' => $zoom,
+            'show_in_progress' => !empty($row['show_in_progress']),
+            'hidden_staff_ids' => $ids,
+        ];
+    }
+}

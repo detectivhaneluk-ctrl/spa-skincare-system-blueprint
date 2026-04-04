@@ -26,6 +26,17 @@ final class TenantBranchAccessService
     }
 
     /**
+     * Returns the list of branch IDs the user is allowed to book appointments into.
+     *
+     * Returns [] (empty) — causing appointment create to fail with AccessDeniedException — when:
+     *   1. Membership table exists but user has no active organization_memberships rows, OR
+     *   2. Membership table exists, user has a pinned branch_id, but that branch is not in any
+     *      of the user's active member organizations, OR
+     *   3. Legacy mode (no membership table) and user has no pinned users.branch_id.
+     *
+     * Fix: ensure the user has either users.branch_id set to a valid branch OR at least one
+     * active row in organization_memberships for the org that owns the booking branch.
+     *
      * @return list<int>
      */
     public function allowedBranchIdsForUser(int $userId): array

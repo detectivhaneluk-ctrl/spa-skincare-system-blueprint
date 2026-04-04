@@ -345,7 +345,7 @@ final class StaffController
         require base_path('modules/staff/views/show.php');
     }
 
-    public function edit(int $id): void
+    public function editProfile(int $id): void
     {
         $staff = $this->repo->find($id);
         if (!$staff) {
@@ -355,13 +355,28 @@ final class StaffController
         if (!$this->ensureBranchAccess($staff)) {
             return;
         }
-        $users = Application::container()->get(\Core\App\Database::class)->fetchAll('SELECT id, name, email FROM users WHERE deleted_at IS NULL ORDER BY name');
-        $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
+        $staff['display_name'] = $this->service->getDisplayName($staff);
+        $users        = Application::container()->get(\Core\App\Database::class)->fetchAll('SELECT id, name, email FROM users WHERE deleted_at IS NULL ORDER BY name');
+        $serviceTypes = $this->loadServiceTypes();
+        $groups       = $this->loadActiveGroups();
+        $branchId     = $this->resolveStaffBranchId($staff);
+        $serviceGroups = $this->loadServicesGrouped($branchId);
+        $assignedIds   = array_flip($this->serviceRepo->listAssignedServiceIdsForStaff($id));
+        $rawSchedule   = $this->scheduleRepo->listByStaff($id);
+        $schedule      = $this->indexScheduleByDay($rawSchedule);
+        $isFirstVisit  = empty($rawSchedule);
+        $activeTab     = $_GET['tab'] ?? 'basic';
+        $allowedTabs   = ['basic', 'compensation', 'services', 'schedule', 'history'];
+        if (!in_array($activeTab, $allowedTabs, true)) {
+            $activeTab = 'basic';
+        }
+        $csrf   = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
         $errors = [];
-        require base_path('modules/staff/views/edit.php');
+        $flash  = flash();
+        require base_path('modules/staff/views/edit_profile.php');
     }
 
-    public function update(int $id): void
+    public function updateProfile(int $id): void
     {
         $staff = $this->repo->find($id);
         if (!$staff) {
@@ -371,18 +386,152 @@ final class StaffController
         if (!$this->ensureBranchAccess($staff)) {
             return;
         }
-        $data = $this->parseEditInput();
-        $errors = $this->validateEdit($data);
+        $data = $this->parseProfileInput();
+        $errors = $this->validateProfile($data);
+
+        $activeTab = in_array(($_POST['_tab'] ?? ''), ['basic', 'compensation'], true) ? $_POST['_tab'] : 'basic';
+
         if (!empty($errors)) {
-            $users = Application::container()->get(\Core\App\Database::class)->fetchAll('SELECT id, name, email FROM users WHERE deleted_at IS NULL ORDER BY name');
-            $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
             $staff = array_merge($staff, $data);
-            require base_path('modules/staff/views/edit.php');
+            $staff['display_name'] = $this->service->getDisplayName($staff);
+            $users        = Application::container()->get(\Core\App\Database::class)->fetchAll('SELECT id, name, email FROM users WHERE deleted_at IS NULL ORDER BY name');
+            $serviceTypes = $this->loadServiceTypes();
+            $groups       = $this->loadActiveGroups();
+            $branchId     = $this->resolveStaffBranchId($staff);
+            $serviceGroups = $this->loadServicesGrouped($branchId);
+            $assignedIds   = array_flip($this->serviceRepo->listAssignedServiceIdsForStaff($id));
+            $rawSchedule   = $this->scheduleRepo->listByStaff($id);
+            $schedule      = $this->indexScheduleByDay($rawSchedule);
+            $isFirstVisit  = false;
+            $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
+            $flash = [];
+            require base_path('modules/staff/views/edit_profile.php');
             return;
         }
-        $this->service->update($id, $data);
-        flash('success', 'Staff member updated.');
-        header('Location: /staff/' . $id);
+
+        try {
+            $this->service->update($id, $data);
+        } catch (\DomainException | \RuntimeException $e) {
+            $errors['_general'] = $e->getMessage();
+            $staff = array_merge($staff, $data);
+            $staff['display_name'] = $this->service->getDisplayName($staff);
+            $users        = Application::container()->get(\Core\App\Database::class)->fetchAll('SELECT id, name, email FROM users WHERE deleted_at IS NULL ORDER BY name');
+            $serviceTypes = $this->loadServiceTypes();
+            $groups       = $this->loadActiveGroups();
+            $branchId     = $this->resolveStaffBranchId($staff);
+            $serviceGroups = $this->loadServicesGrouped($branchId);
+            $assignedIds   = array_flip($this->serviceRepo->listAssignedServiceIdsForStaff($id));
+            $rawSchedule   = $this->scheduleRepo->listByStaff($id);
+            $schedule      = $this->indexScheduleByDay($rawSchedule);
+            $isFirstVisit  = false;
+            $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
+            $flash = [];
+            require base_path('modules/staff/views/edit_profile.php');
+            return;
+        }
+
+        flash('success', 'Profile saved.');
+        header('Location: /staff/' . $id . '/edit?tab=' . $activeTab);
+        exit;
+    }
+
+    public function updateProfileServices(int $id): void
+    {
+        $staff = $this->repo->find($id);
+        if (!$staff) {
+            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handle(404);
+            return;
+        }
+        if (!$this->ensureBranchAccess($staff)) {
+            return;
+        }
+
+        $rawIds     = $_POST['service_ids'] ?? [];
+        $serviceIds = is_array($rawIds)
+            ? array_values(array_filter(array_map('intval', $rawIds), static fn (int $v): bool => $v > 0))
+            : [];
+
+        $branchId = $this->resolveStaffBranchId($staff);
+
+        try {
+            $this->serviceRepo->replaceAssignedServicesForStaff($id, $serviceIds, $branchId);
+        } catch (\DomainException | \RuntimeException $e) {
+            $staff['display_name'] = $this->service->getDisplayName($staff);
+            $serviceGroups  = $this->loadServicesGrouped($branchId);
+            $assignedIds    = array_flip($serviceIds);
+            $users          = Application::container()->get(\Core\App\Database::class)->fetchAll('SELECT id, name, email FROM users WHERE deleted_at IS NULL ORDER BY name');
+            $serviceTypes   = $this->loadServiceTypes();
+            $groups         = $this->loadActiveGroups();
+            $rawSchedule    = $this->scheduleRepo->listByStaff($id);
+            $schedule       = $this->indexScheduleByDay($rawSchedule);
+            $isFirstVisit   = false;
+            $activeTab      = 'services';
+            $errors = ['_services_general' => $e->getMessage()];
+            $csrf   = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
+            $flash  = [];
+            require base_path('modules/staff/views/edit_profile.php');
+            return;
+        }
+
+        flash('success', 'Services saved.');
+        header('Location: /staff/' . $id . '/edit?tab=services');
+        exit;
+    }
+
+    public function updateProfileSchedule(int $id): void
+    {
+        $staff = $this->repo->find($id);
+        if (!$staff) {
+            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handle(404);
+            return;
+        }
+        if (!$this->ensureBranchAccess($staff)) {
+            return;
+        }
+
+        $rawDays = $_POST['schedule'] ?? [];
+        if (!is_array($rawDays)) {
+            $rawDays = [];
+        }
+
+        try {
+            $this->scheduleService->saveDefaultWeek($id, $rawDays);
+        } catch (\InvalidArgumentException | \DomainException | \RuntimeException $e) {
+            $staff['display_name'] = $this->service->getDisplayName($staff);
+            $rawSchedule = $this->scheduleRepo->listByStaff($id);
+            $schedule    = $this->indexScheduleByDay($rawSchedule);
+            // Re-hydrate submitted values
+            foreach ($rawDays as $dowRaw => $day) {
+                $dow = (int) $dowRaw;
+                if (!empty($day['is_working'])) {
+                    $schedule[$dow] = [
+                        'day_of_week'      => $dow,
+                        'start_time'       => $day['start_time'] ?? '',
+                        'end_time'         => $day['end_time'] ?? '',
+                        'lunch_start_time' => $day['lunch_start_time'] ?? null,
+                        'lunch_end_time'   => $day['lunch_end_time'] ?? null,
+                    ];
+                } else {
+                    unset($schedule[$dow]);
+                }
+            }
+            $isFirstVisit = false;
+            $activeTab    = 'schedule';
+            $users        = Application::container()->get(\Core\App\Database::class)->fetchAll('SELECT id, name, email FROM users WHERE deleted_at IS NULL ORDER BY name');
+            $serviceTypes = $this->loadServiceTypes();
+            $groups       = $this->loadActiveGroups();
+            $branchId     = $this->resolveStaffBranchId($staff);
+            $serviceGroups = $this->loadServicesGrouped($branchId);
+            $assignedIds   = array_flip($this->serviceRepo->listAssignedServiceIdsForStaff($id));
+            $errors = ['_schedule_general' => $e->getMessage()];
+            $csrf   = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
+            $flash  = [];
+            require base_path('modules/staff/views/edit_profile.php');
+            return;
+        }
+
+        flash('success', 'Schedule saved.');
+        header('Location: /staff/' . $id . '/edit?tab=schedule');
         exit;
     }
 
@@ -657,29 +806,97 @@ final class StaffController
     }
 
     // ---------------------------------------------------------------------------
-    // Legacy edit form helpers (preserve original behavior for edit/update flow)
+    // Profile editor input parsing & validation (replaces legacy edit helpers)
     // ---------------------------------------------------------------------------
 
-    private function parseEditInput(): array
+    private function parseProfileInput(): array
     {
+        $specifyEndDate = !empty($_POST['specify_end_date']);
+        $endDate = $specifyEndDate ? trim($_POST['employment_end_date'] ?? '') : null;
+        $maxAppt = trim($_POST['max_appointments_per_day'] ?? '');
+        $serviceTypeId = trim($_POST['service_type_id'] ?? '');
         $uid = trim($_POST['user_id'] ?? '');
+        $groupRaw = trim($_POST['primary_group_id'] ?? '');
+        $vacRaw = trim($_POST['vacation_days'] ?? '');
+        $sickRaw = trim($_POST['sick_days'] ?? '');
+        $persRaw = trim($_POST['personal_days'] ?? '');
+
         return [
-            'user_id'    => $uid !== '' ? (int) $uid : null,
-            'first_name' => trim($_POST['first_name'] ?? ''),
-            'last_name'  => trim($_POST['last_name'] ?? '') ?: null,
-            'phone'      => trim($_POST['phone'] ?? '') ?: null,
-            'email'      => trim($_POST['email'] ?? '') ?: null,
-            'job_title'  => trim($_POST['job_title'] ?? '') ?: null,
-            'is_active'  => !empty($_POST['is_active']),
+            'user_id'                => ($uid !== '') ? (int) $uid : null,
+            'first_name'             => trim($_POST['first_name'] ?? ''),
+            'last_name'              => trim($_POST['last_name'] ?? '') ?: null,
+            'display_name'           => trim($_POST['display_name'] ?? '') ?: null,
+            'gender'                 => in_array(trim($_POST['gender'] ?? ''), ['male', 'female'], true) ? trim($_POST['gender']) : null,
+            'email'                  => trim($_POST['email'] ?? '') ?: null,
+            'phone'                  => trim($_POST['phone'] ?? '') ?: null,
+            'job_title'              => trim($_POST['job_title'] ?? '') ?: null,
+            'staff_type'             => in_array(trim($_POST['staff_type'] ?? ''), ['freelancer', 'scheduled'], true) ? trim($_POST['staff_type']) : null,
+            'is_active'              => !empty($_POST['is_active']) ? 1 : 0,
+            'employment_end_date'    => ($endDate !== null && $endDate !== '') ? $endDate : null,
+            'max_appointments_per_day' => ($maxAppt !== '' && $maxAppt !== '0') ? (int) $maxAppt : null,
+            'service_type_id'        => ($serviceTypeId !== '') ? (int) $serviceTypeId : null,
+            'create_login_requested' => !empty($_POST['create_login_requested']) ? 1 : 0,
+            'street_1'               => trim($_POST['street_1'] ?? '') ?: null,
+            'street_2'               => trim($_POST['street_2'] ?? '') ?: null,
+            'city'                   => trim($_POST['city'] ?? '') ?: null,
+            'postal_code'            => trim($_POST['postal_code'] ?? '') ?: null,
+            'country'                => trim($_POST['country'] ?? '') ?: null,
+            'home_phone'             => trim($_POST['home_phone'] ?? '') ?: null,
+            'mobile_phone'           => trim($_POST['mobile_phone'] ?? '') ?: null,
+            'preferred_phone'        => in_array($_POST['preferred_phone'] ?? '', ['home', 'mobile'], true) ? $_POST['preferred_phone'] : null,
+            'sms_opt_in'             => !empty($_POST['sms_opt_in']) ? 1 : 0,
+            'profile_description'    => trim($_POST['profile_description'] ?? '') ?: null,
+            'employee_notes'         => trim($_POST['employee_notes'] ?? '') ?: null,
+            'license_number'         => trim($_POST['license_number'] ?? '') ?: null,
+            'license_expiration_date' => trim($_POST['license_expiration_date'] ?? '') ?: null,
+            'primary_group_id'       => ($groupRaw !== '') ? (int) $groupRaw : null,
+            'pay_type'               => in_array(trim($_POST['pay_type'] ?? ''), self::PAY_TYPE_VALUES, true) ? trim($_POST['pay_type']) : null,
+            'pay_type_classes'       => in_array(trim($_POST['pay_type_classes'] ?? ''), self::PAY_TYPE_CLASSES_VALUES, true) ? trim($_POST['pay_type_classes']) : null,
+            'pay_type_products'      => in_array(trim($_POST['pay_type_products'] ?? ''), self::PAY_TYPE_PRODUCTS_VALUES, true) ? trim($_POST['pay_type_products']) : null,
+            'vacation_days'          => ($vacRaw !== '') ? (int) $vacRaw : null,
+            'sick_days'              => ($sickRaw !== '') ? (int) $sickRaw : null,
+            'personal_days'          => ($persRaw !== '') ? (int) $persRaw : null,
+            'employee_number'        => trim($_POST['employee_number'] ?? '') ?: null,
+            'has_dependents'         => !empty($_POST['has_dependents']) ? 1 : 0,
+            'is_exempt'              => !empty($_POST['is_exempt']) ? 1 : 0,
         ];
     }
 
-    private function validateEdit(array $data): array
+    private function validateProfile(array $data): array
     {
         $errors = [];
+
         if ($data['first_name'] === '') {
             $errors['first_name'] = 'First name is required.';
+        } elseif (mb_strlen($data['first_name']) > 100) {
+            $errors['first_name'] = 'First name must be 100 characters or fewer.';
         }
+
+        if (!empty($data['email']) && filter_var($data['email'], FILTER_VALIDATE_EMAIL) === false) {
+            $errors['email'] = 'A valid email address is required.';
+        }
+
+        if ($data['max_appointments_per_day'] !== null && $data['max_appointments_per_day'] < 1) {
+            $errors['max_appointments_per_day'] = 'Max appointments per day must be a positive number.';
+        }
+
+        if ($data['employment_end_date'] !== null) {
+            $parsed = \DateTimeImmutable::createFromFormat('Y-m-d', $data['employment_end_date']);
+            if ($parsed === false || $parsed->format('Y-m-d') !== $data['employment_end_date']) {
+                $errors['employment_end_date'] = 'Employment end date must be a valid date (YYYY-MM-DD).';
+            }
+        }
+
+        if ($data['vacation_days'] !== null && $data['vacation_days'] < 0) {
+            $errors['vacation_days'] = 'Vacation days must be zero or greater.';
+        }
+        if ($data['sick_days'] !== null && $data['sick_days'] < 0) {
+            $errors['sick_days'] = 'Sick days must be zero or greater.';
+        }
+        if ($data['personal_days'] !== null && $data['personal_days'] < 0) {
+            $errors['personal_days'] = 'Personal days must be zero or greater.';
+        }
+
         return $errors;
     }
 

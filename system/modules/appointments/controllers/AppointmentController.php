@@ -25,7 +25,11 @@ use Modules\Appointments\Repositories\WaitlistRepository;
 use Modules\Appointments\Services\AvailabilityService;
 use Modules\Appointments\Services\AppointmentPrintSummaryService;
 use Modules\Appointments\Services\AppointmentService;
+use Modules\Appointments\Services\CalendarAppointmentBadgeResolver;
+use Core\Organization\OrganizationContext;
 use Modules\Appointments\Services\CalendarMonthSummaryService;
+use Modules\Appointments\Services\CalendarToolbarUiService;
+use Modules\Appointments\Services\DayCalendarPrintService;
 use Modules\Appointments\Services\AppointmentSeriesService;
 use Modules\Appointments\Services\BlockedSlotService;
 use Modules\Appointments\Services\WaitlistService;
@@ -67,6 +71,9 @@ final class AppointmentController
         private OrganizationScopedBranchAssert $organizationScopedBranchAssert,
         private BranchContext $branchContext,
         private CalendarMonthSummaryService $calendarMonthSummary,
+        private OrganizationContext $organizationContext,
+        private CalendarToolbarUiService $calendarToolbarUi,
+        private DayCalendarPrintService $dayCalendarPrint,
     ) {
     }
 
@@ -395,6 +402,33 @@ final class AppointmentController
         require shared_path('layout/base.php');
     }
 
+    /**
+     * Printable client-centric itinerary: current visit context + recent appointments for the client (same data as print summary history block).
+     */
+    public function printItineraryPage(int $id): void
+    {
+        $appointment = $this->repo->find($id);
+        if (!$appointment) {
+            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handle(404);
+            return;
+        }
+        if (!$this->ensureBranchAccess($appointment)) {
+            return;
+        }
+        $printBranch = isset($appointment['branch_id']) && $appointment['branch_id'] !== '' && $appointment['branch_id'] !== null
+            ? (int) $appointment['branch_id']
+            : 0;
+        $print = $this->appointmentPrintSummary->compose($appointment, $printBranch > 0 ? $printBranch : null, 'itinerary');
+        $title = 'Customer itinerary — Appointment #' . $id;
+        $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
+        $hideNav = true;
+        $mainClass = 'appointment-print-shell';
+        ob_start();
+        require base_path('modules/appointments/views/print.php');
+        $content = ob_get_clean();
+        require shared_path('layout/base.php');
+    }
+
     public function checkInAction(int $id): void
     {
         $appointment = $this->repo->find($id);
@@ -422,6 +456,119 @@ final class AppointmentController
             Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handleException($e);
             exit;
         } catch (\DomainException | \RuntimeException $e) {
+            if ($this->wantsJsonRequest()) {
+                $this->respondJson([
+                    'success' => false,
+                    'error' => ['message' => $e->getMessage()],
+                ], 422);
+            }
+            flash('error', $e->getMessage());
+        }
+        header('Location: /appointments/' . $id);
+        exit;
+    }
+
+    public function bufferCleanupAction(int $id): void
+    {
+        $appointment = $this->repo->find($id);
+        if (!$appointment) {
+            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handle(404);
+
+            return;
+        }
+        if (!$this->ensureBranchAccess($appointment)) {
+            return;
+        }
+        $scope = trim((string) ($_POST['scope'] ?? ''));
+        try {
+            $this->service->applyBufferCleanupScope($id, $scope);
+            if ($this->wantsJsonRequest()) {
+                $this->respondJson([
+                    'success' => true,
+                    'data' => [
+                        'message' => 'Cleanup buffers updated.',
+                        'refresh_calendar' => true,
+                    ],
+                ]);
+            }
+            flash('success', 'Cleanup buffers updated.');
+        } catch (\Throwable $e) {
+            $this->exitIfAccessDenied($e);
+            if ($this->wantsJsonRequest()) {
+                $this->respondJson([
+                    'success' => false,
+                    'error' => ['message' => $e->getMessage()],
+                ], 422);
+            }
+            flash('error', $e->getMessage());
+        }
+        header('Location: /appointments/' . $id);
+        exit;
+    }
+
+    public function staffLockAction(int $id): void
+    {
+        $appointment = $this->repo->find($id);
+        if (!$appointment) {
+            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handle(404);
+
+            return;
+        }
+        if (!$this->ensureBranchAccess($appointment)) {
+            return;
+        }
+        $locked = (int) ($_POST['locked'] ?? 1) === 1;
+        try {
+            $this->service->setStaffAssignmentLocked($id, $locked);
+            if ($this->wantsJsonRequest()) {
+                $this->respondJson([
+                    'success' => true,
+                    'data' => [
+                        'message' => $locked ? 'Staff assignment locked.' : 'Staff assignment unlocked.',
+                        'refresh_calendar' => true,
+                    ],
+                ]);
+            }
+            flash('success', $locked ? 'Staff assignment locked.' : 'Staff assignment unlocked.');
+        } catch (\Throwable $e) {
+            $this->exitIfAccessDenied($e);
+            if ($this->wantsJsonRequest()) {
+                $this->respondJson([
+                    'success' => false,
+                    'error' => ['message' => $e->getMessage()],
+                ], 422);
+            }
+            flash('error', $e->getMessage());
+        }
+        header('Location: /appointments/' . $id);
+        exit;
+    }
+
+    public function sendConfirmationAction(int $id): void
+    {
+        $appointment = $this->repo->find($id);
+        if (!$appointment) {
+            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handle(404);
+
+            return;
+        }
+        if (!$this->ensureBranchAccess($appointment)) {
+            return;
+        }
+        try {
+            $this->service->enqueueAppointmentConfirmationManual($id);
+            if ($this->wantsJsonRequest()) {
+                $this->respondJson([
+                    'success' => true,
+                    'data' => [
+                        'message' => 'Confirmation queued for delivery.',
+                        'refresh_calendar' => false,
+                    ],
+                ]);
+            }
+            flash('success', 'Confirmation queued for delivery.');
+        } catch (\Throwable $e) {
+            $this->exitIfAccessDenied($e);
             if ($this->wantsJsonRequest()) {
                 $this->respondJson([
                     'success' => false,
@@ -671,11 +818,67 @@ final class AppointmentController
     }
 
     /**
+     * GET /calendar/side-panel
+     * Lightweight JSON for the calendar left-side tools panel.
+     * Returns waitlist count (today, active statuses) and check-in history (appointments checked-in today).
+     */
+    public function calendarSidePanelJson(): void
+    {
+        $date = trim((string) ($_GET['date'] ?? ''));
+        if ($date === '' || preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) !== 1) {
+            $date = date('Y-m-d');
+        }
+        try {
+            $branchId = $this->resolveAppointmentBranchFromGetOrFail();
+        } catch (\Core\Errors\AccessDeniedException $e) {
+            $this->respondJson(['success' => false, 'error' => ['code' => 'FORBIDDEN', 'message' => 'Access denied.']], 403);
+            return;
+        } catch (\DomainException $e) {
+            $this->respondJson(['success' => false, 'error' => ['code' => 'VALIDATION_FAILED', 'message' => $e->getMessage()]], 422);
+            return;
+        }
+
+        $waitlistCount = $this->waitlistRepo->count(['branch_id' => $branchId, 'date' => $date, 'status' => 'waiting'])
+            + $this->waitlistRepo->count(['branch_id' => $branchId, 'date' => $date, 'status' => 'offered']);
+
+        $checkinRows = $this->repo->listCheckedInForDate($date, $branchId);
+
+        $checkins = array_map(static function (array $row): array {
+            $checkedInAt = isset($row['checked_in_at']) && $row['checked_in_at'] !== null
+                ? substr((string) $row['checked_in_at'], 11, 5)
+                : null;
+            return [
+                'id'           => (int) $row['id'],
+                'client_name'  => trim((string) ($row['client_first_name'] ?? '') . ' ' . (string) ($row['client_last_name'] ?? '')) ?: null,
+                'service_name' => isset($row['service_name']) && $row['service_name'] !== null ? (string) $row['service_name'] : null,
+                'staff_name'   => trim((string) ($row['staff_first_name'] ?? '') . ' ' . (string) ($row['staff_last_name'] ?? '')) ?: null,
+                'start_time'   => isset($row['start_at']) ? substr((string) $row['start_at'], 11, 5) : null,
+                'checked_in_at' => $checkedInAt,
+                'status'       => (string) ($row['status'] ?? 'scheduled'),
+            ];
+        }, $checkinRows);
+
+        $this->respondJson([
+            'success' => true,
+            'data' => [
+                'date'           => $date,
+                'branch_id'      => $branchId,
+                'waitlist_count' => (int) $waitlistCount,
+                'waitlist_url'   => '/appointments/waitlist?' . http_build_query(['branch_id' => $branchId, 'date' => $date]),
+                'checkins'       => $checkins,
+            ],
+        ]);
+    }
+
+    /**
      * Calendar day JSON (versioned contract — see `day_calendar_contract` in payload and booking concurrency doc §13).
-     *
      * Stable v1 keys: date, branch_id, staff, appointments_by_staff, blocked_by_staff, time_grid, capabilities.
+     * capabilities (additive): move_preview, sales_create, sales_pay, sales_view, appointments_create.
      * Additive (backward compatible): appointment_calendar_display (includes series_show_start_time / series_label_mode for
      * rows with series_id); each appointment may include series_id, display_flags, created_at, and client_no_show_alert.
+     * Additive display: buffer_before_effective, buffer_after_effective, room_name, client_phone, staff_assignment_locked, linked_invoice_id.
+     * Additive: calendar_badges (list of {code, icon_id, color_token, label}), calendar_dominant_badge ({code, label, color_token}|null).
+     * Additive (v1): each staff row may include staff_type: scheduled|freelancer.
      */
     public function dayCalendar(): void
     {
@@ -750,6 +953,348 @@ final class AppointmentController
                 'records_visible_count' => $closedDayRecordsCount,
             ],
         ]));
+    }
+
+    public function calendarUiPreferencesGet(): void
+    {
+        if (!$this->wantsJsonRequest()) {
+            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handle(404);
+
+            return;
+        }
+        try {
+            $branchId = $this->resolveAppointmentBranchFromGetOrFail();
+        } catch (\Core\Errors\AccessDeniedException $e) {
+            $this->respondJson(['success' => false, 'error' => ['code' => 'FORBIDDEN', 'message' => 'Branch access denied.']], 403);
+
+            return;
+        } catch (\DomainException $e) {
+            $this->respondJson(['success' => false, 'error' => ['code' => 'VALIDATION_FAILED', 'message' => $e->getMessage()]], 422);
+
+            return;
+        }
+        $actor = $this->resolveCalendarUiActor();
+        if ($actor === null) {
+            return;
+        }
+        $prefs = $this->calendarToolbarUi->getPreferencesOrDefaults($actor['org_id'], $actor['user_id'], $branchId);
+        $defaultConfig = $this->calendarToolbarUi->getDefaultViewConfig($actor['org_id'], $actor['user_id']);
+        $viewsList = $this->calendarToolbarUi->listViews($actor['org_id'], $actor['user_id']);
+        $this->respondJson([
+            'success' => true,
+            'data' => [
+                'preferences' => $prefs,
+                'preferences_persisted' => $this->calendarToolbarUi->preferencesRowExists($actor['org_id'], $actor['user_id'], $branchId),
+                'default_view_config' => $defaultConfig,
+                'views' => $viewsList['ok'] ? $viewsList['views'] : [],
+            ],
+        ]);
+    }
+
+    public function calendarUiPreferencesSave(): void
+    {
+        if (!$this->wantsJsonRequest()) {
+            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handle(404);
+
+            return;
+        }
+        try {
+            $branchId = $this->resolveAppointmentBranchFromGetOrFail();
+        } catch (\Core\Errors\AccessDeniedException $e) {
+            $this->respondJson(['success' => false, 'error' => ['code' => 'FORBIDDEN', 'message' => 'Branch access denied.']], 403);
+
+            return;
+        } catch (\DomainException $e) {
+            $this->respondJson(['success' => false, 'error' => ['code' => 'VALIDATION_FAILED', 'message' => $e->getMessage()]], 422);
+
+            return;
+        }
+        $actor = $this->resolveCalendarUiActor();
+        if ($actor === null) {
+            return;
+        }
+        $patch = $this->parseJsonOrPostPayload();
+        try {
+            $result = $this->calendarToolbarUi->patchPreferences($actor['org_id'], $actor['user_id'], $branchId, $patch);
+        } catch (\Throwable $e) {
+            error_log(
+                'calendarUiPreferencesSave failed: ' . $e->getMessage()
+                . ' @ ' . $e->getFile() . ':' . $e->getLine()
+            );
+            $env = (string) config('app.env', 'production');
+            $debug = (bool) config('app.debug', false);
+            $isDevHint = $env !== 'production' || $debug;
+            $code = 'INTERNAL_ERROR';
+            $message = 'Unable to save calendar preferences.';
+            if ($e instanceof \PDOException) {
+                $sqlState = is_array($e->errorInfo ?? null) ? (string) ($e->errorInfo[0] ?? '') : '';
+                $em = $e->getMessage();
+                if ($isDevHint && ($sqlState === '42S02' || str_contains($em, 'calendar_user_preferences'))) {
+                    $code = 'DB_SCHEMA';
+                    $message = 'Database table missing or schema mismatch. Run migration 134_calendar_user_ui_foundation.sql (table calendar_user_preferences).';
+                }
+            }
+            $this->respondJson(['success' => false, 'error' => ['code' => $code, 'message' => $message]], 500);
+
+            return;
+        }
+        if (!$result['ok']) {
+            $code = (string) ($result['code'] ?? 'VALIDATION_FAILED');
+            $status = $code === 'LIMIT_EXCEEDED' ? 429 : 422;
+            $this->respondJson(['success' => false, 'error' => ['code' => $code, 'message' => (string) $result['error']]], $status);
+
+            return;
+        }
+        $this->respondJson(['success' => true, 'data' => $result['data']]);
+    }
+
+    public function calendarSavedViewDetail(int $id): void
+    {
+        if (!$this->wantsJsonRequest()) {
+            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handle(404);
+
+            return;
+        }
+        $actor = $this->resolveCalendarUiActor();
+        if ($actor === null) {
+            return;
+        }
+        $r = $this->calendarToolbarUi->getView($actor['org_id'], $actor['user_id'], $id);
+        if (!$r['ok']) {
+            $this->respondJson(['success' => false, 'error' => ['code' => 'NOT_FOUND', 'message' => 'View not found.']], 404);
+
+            return;
+        }
+        $this->respondJson(['success' => true, 'data' => $r['view']]);
+    }
+
+    public function calendarSavedViewsCreate(): void
+    {
+        if (!$this->wantsJsonRequest()) {
+            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handle(404);
+
+            return;
+        }
+        $actor = $this->resolveCalendarUiActor();
+        if ($actor === null) {
+            return;
+        }
+        $in = $this->parseJsonOrPostPayload();
+        $name = trim((string) ($in['name'] ?? ''));
+        $config = isset($in['config']) && is_array($in['config']) ? $in['config'] : [];
+        $setDefault = !empty($in['set_as_default']);
+        try {
+            $result = $this->calendarToolbarUi->createView($actor['org_id'], $actor['user_id'], $name, $config, $setDefault);
+        } catch (\Throwable $e) {
+            $this->respondJson(['success' => false, 'error' => ['code' => 'INTERNAL_ERROR', 'message' => 'Unable to save view.']], 500);
+
+            return;
+        }
+        if (!$result['ok']) {
+            $code = (string) ($result['code'] ?? 'VALIDATION_FAILED');
+            $status = $code === 'LIMIT_EXCEEDED' ? 429 : 422;
+            $this->respondJson(['success' => false, 'error' => ['code' => $code, 'message' => (string) $result['error']]], $status);
+
+            return;
+        }
+        $this->respondJson(['success' => true, 'data' => ['id' => $result['id']]]);
+    }
+
+    public function calendarSavedViewsDelete(int $id): void
+    {
+        if (!$this->wantsJsonRequest()) {
+            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handle(404);
+
+            return;
+        }
+        $actor = $this->resolveCalendarUiActor();
+        if ($actor === null) {
+            return;
+        }
+        try {
+            $result = $this->calendarToolbarUi->deleteView($actor['org_id'], $actor['user_id'], $id);
+        } catch (\Throwable $e) {
+            $this->respondJson(['success' => false, 'error' => ['code' => 'INTERNAL_ERROR', 'message' => 'Unable to delete view.']], 500);
+
+            return;
+        }
+        if (!$result['ok']) {
+            $this->respondJson(['success' => false, 'error' => ['code' => 'NOT_FOUND', 'message' => 'View not found.']], 404);
+
+            return;
+        }
+        $this->respondJson(['success' => true]);
+    }
+
+    public function calendarSavedViewsSetDefault(int $id): void
+    {
+        if (!$this->wantsJsonRequest()) {
+            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handle(404);
+
+            return;
+        }
+        $actor = $this->resolveCalendarUiActor();
+        if ($actor === null) {
+            return;
+        }
+        try {
+            $result = $this->calendarToolbarUi->setDefaultView($actor['org_id'], $actor['user_id'], $id);
+        } catch (\Throwable $e) {
+            $this->respondJson(['success' => false, 'error' => ['code' => 'INTERNAL_ERROR', 'message' => 'Unable to set default view.']], 500);
+
+            return;
+        }
+        if (!$result['ok']) {
+            $this->respondJson(['success' => false, 'error' => ['code' => 'NOT_FOUND', 'message' => 'View not found.']], 404);
+
+            return;
+        }
+        $this->respondJson(['success' => true]);
+    }
+
+    public function printDayCalendarPage(): void
+    {
+        $date = trim((string) ($_GET['date'] ?? ''));
+        if ($date === '' || preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) !== 1) {
+            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handle(400);
+
+            return;
+        }
+        try {
+            $branchId = $this->resolveAppointmentBranchFromGetOrFail();
+        } catch (\Core\Errors\AccessDeniedException $e) {
+            $this->failAppointmentBranchAccessDenied($e);
+
+            return;
+        } catch (\DomainException $e) {
+            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handle(400);
+
+            return;
+        }
+        $snap = $this->dayCalendarPrint->buildDaySnapshot($date, $branchId);
+        $title = 'Print calendar — ' . $date;
+        $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
+        $hideNav = true;
+        $mainClass = 'appointment-print-shell';
+        ob_start();
+        require base_path('modules/appointments/views/print-day-calendar.php');
+        $content = ob_get_clean();
+        require shared_path('layout/base.php');
+    }
+
+    public function printDayPlanningPage(): void
+    {
+        $date = trim((string) ($_GET['date'] ?? ''));
+        if ($date === '' || preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) !== 1) {
+            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handle(400);
+
+            return;
+        }
+        try {
+            $branchId = $this->resolveAppointmentBranchFromGetOrFail();
+        } catch (\Core\Errors\AccessDeniedException $e) {
+            $this->failAppointmentBranchAccessDenied($e);
+
+            return;
+        } catch (\DomainException $e) {
+            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handle(400);
+
+            return;
+        }
+        $snap = $this->dayCalendarPrint->buildDaySnapshot($date, $branchId);
+        $title = 'Print planning — ' . $date;
+        $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
+        $hideNav = true;
+        $mainClass = 'appointment-print-shell';
+        ob_start();
+        require base_path('modules/appointments/views/print-day-planning.php');
+        $content = ob_get_clean();
+        require shared_path('layout/base.php');
+    }
+
+    public function printDayAppointmentsPage(): void
+    {
+        $date = trim((string) ($_GET['date'] ?? ''));
+        if ($date === '' || preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) !== 1) {
+            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handle(400);
+
+            return;
+        }
+        try {
+            $branchId = $this->resolveAppointmentBranchFromGetOrFail();
+        } catch (\Core\Errors\AccessDeniedException $e) {
+            $this->failAppointmentBranchAccessDenied($e);
+
+            return;
+        } catch (\DomainException $e) {
+            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handle(400);
+
+            return;
+        }
+        $snap = $this->dayCalendarPrint->buildDaySnapshot($date, $branchId);
+        $flat = $this->dayCalendarPrint->flattenAppointmentsSorted($snap['appointments_by_staff']);
+        $title = 'Print appointments — ' . $date;
+        $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
+        $hideNav = true;
+        $mainClass = 'appointment-print-shell';
+        ob_start();
+        require base_path('modules/appointments/views/print-day-appointments.php');
+        $content = ob_get_clean();
+        require shared_path('layout/base.php');
+    }
+
+    public function printDayClientItinerariesPage(): void
+    {
+        $date = trim((string) ($_GET['date'] ?? ''));
+        if ($date === '' || preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) !== 1) {
+            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handle(400);
+
+            return;
+        }
+        try {
+            $branchId = $this->resolveAppointmentBranchFromGetOrFail();
+        } catch (\Core\Errors\AccessDeniedException $e) {
+            $this->failAppointmentBranchAccessDenied($e);
+
+            return;
+        } catch (\DomainException $e) {
+            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handle(400);
+
+            return;
+        }
+        $snap = $this->dayCalendarPrint->buildDaySnapshot($date, $branchId);
+        $flat = $this->dayCalendarPrint->flattenAppointmentsSorted($snap['appointments_by_staff']);
+        $byClient = $this->dayCalendarPrint->groupFlatByClient($flat);
+        $title = 'Print client itineraries — ' . $date;
+        $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
+        $hideNav = true;
+        $mainClass = 'appointment-print-shell';
+        ob_start();
+        require base_path('modules/appointments/views/print-day-itineraries.php');
+        $content = ob_get_clean();
+        require shared_path('layout/base.php');
+    }
+
+    /**
+     * @return array{org_id:int,user_id:int}|null
+     */
+    private function resolveCalendarUiActor(): ?array
+    {
+        $orgId = $this->organizationContext->getCurrentOrganizationId();
+        if ($orgId === null || (int) $orgId <= 0) {
+            $this->respondJson(['success' => false, 'error' => ['code' => 'FORBIDDEN', 'message' => 'Organization context required.']], 403);
+
+            return null;
+        }
+        $auth = Application::container()->get(\Core\Auth\SessionAuth::class);
+        $uid = $auth->id();
+        if ($uid === null || (int) $uid <= 0) {
+            $this->respondJson(['success' => false, 'error' => ['code' => 'FORBIDDEN', 'message' => 'Authentication required.']], 403);
+
+            return null;
+        }
+
+        return ['org_id' => (int) $orgId, 'user_id' => (int) $uid];
     }
 
     /**
@@ -839,7 +1384,7 @@ final class AppointmentController
     /**
      * Top-level fields shared by success and error responses for GET /calendar/day.
      *
-     * @return array{day_calendar_contract: array{name: string, version: int}, capabilities: array{move_preview: bool}}
+     * @return array{day_calendar_contract: array{name: string, version: int}, capabilities: array{move_preview: bool, sales_create: bool, sales_pay: bool, sales_view: bool, appointments_create: bool}}
      */
     private function dayCalendarContractEnvelope(): array
     {
@@ -848,9 +1393,38 @@ final class AppointmentController
                 'name' => self::DAY_CALENDAR_CONTRACT_NAME,
                 'version' => self::DAY_CALENDAR_CONTRACT_VERSION,
             ],
-            'capabilities' => [
-                'move_preview' => false,
-            ],
+            'capabilities' => $this->resolveCurrentUserCalendarCapabilities(),
+        ];
+    }
+
+    /**
+     * Permissions for calendar UI affordances (context menu, etc.). Same keys are mirrored on the HTML grid for bootstrap before the first /calendar/day fetch.
+     *
+     * @return array{move_preview: bool, sales_create: bool, sales_pay: bool, sales_view: bool, appointments_create: bool}
+     */
+    private function resolveCurrentUserCalendarCapabilities(): array
+    {
+        $defaults = [
+            'move_preview' => false,
+            'sales_create' => false,
+            'sales_pay' => false,
+            'sales_view' => false,
+            'appointments_create' => false,
+        ];
+        $auth = Application::container()->get(\Core\Auth\SessionAuth::class);
+        $userId = $auth->id();
+        if ($userId === null || (int) $userId <= 0) {
+            return $defaults;
+        }
+        $uid = (int) $userId;
+        $perm = Application::container()->get(\Core\Permissions\PermissionService::class);
+
+        return [
+            'move_preview' => false,
+            'sales_create' => $perm->has($uid, 'sales.create'),
+            'sales_pay' => $perm->has($uid, 'sales.pay'),
+            'sales_view' => $perm->has($uid, 'sales.view'),
+            'appointments_create' => $perm->has($uid, 'appointments.create'),
         ];
     }
 
@@ -872,6 +1446,7 @@ final class AppointmentController
         $minLeadSec = $preUnit === 'hours' ? $preVal * 3600 : $preVal * 60;
 
         $noShowAlertByClientId = [];
+        $badgeResolver = new CalendarAppointmentBadgeResolver();
 
         foreach ($grouped as $sid => $list) {
             foreach ($list as $i => $a) {
@@ -894,6 +1469,19 @@ final class AppointmentController
                 } else {
                     $grouped[$sid][$i]['client_no_show_alert'] = null;
                 }
+
+                $resolved = $badgeResolver->resolve($grouped[$sid][$i]);
+                $grouped[$sid][$i]['calendar_badges'] = $resolved['calendar_badges'];
+                $grouped[$sid][$i]['calendar_dominant_badge'] = $resolved['calendar_dominant_badge'];
+
+                unset(
+                    $grouped[$sid][$i]['has_notes_flag'],
+                    $grouped[$sid][$i]['client_prior_appts_before'],
+                    $grouped[$sid][$i]['same_day_booking'],
+                    $grouped[$sid][$i]['linked_invoice'],
+                    $grouped[$sid][$i]['appointment_calendar_meta'],
+                    $grouped[$sid][$i]['checked_in_at'],
+                );
             }
         }
 
@@ -1240,6 +1828,7 @@ final class AppointmentController
         $branches = $this->getBranches();
         $blockedSlots = $this->blockedSlotRepo->listForDate($date, $branchId);
         $staffOptions = $this->staffList->list($branchId);
+        $prefillStaffId = trim((string) ($_GET['staff_id'] ?? '')) !== '' ? (int) $_GET['staff_id'] : 0;
         $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
         require base_path('modules/appointments/views/drawer/blocked-slots.php');
     }
@@ -1575,7 +2164,7 @@ final class AppointmentController
         if (!in_array($status, ['scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show'], true)) {
             $status = 'scheduled';
         }
-        return [
+        $parsed = [
             'client_id' => $clientId,
             'service_id' => $serviceId,
             'staff_id' => $staffId,
@@ -1589,6 +2178,20 @@ final class AppointmentController
             'cancellation_reason_id' => trim((string) ($_POST['cancellation_reason_id'] ?? '')) !== '' ? (int) $_POST['cancellation_reason_id'] : null,
             'no_show_reason_id' => trim((string) ($_POST['no_show_reason_id'] ?? '')) !== '' ? (int) $_POST['no_show_reason_id'] : null,
         ];
+        if (array_key_exists('calendar_booking_source', $_POST)) {
+            $parsed['calendar_booking_source'] = trim((string) $_POST['calendar_booking_source']);
+        }
+        if (array_key_exists('calendar_group_booking', $_POST)) {
+            $parsed['calendar_group_booking'] = (string) ($_POST['calendar_group_booking'] ?? '0');
+        }
+        if (array_key_exists('calendar_couple_booking', $_POST)) {
+            $parsed['calendar_couple_booking'] = (string) ($_POST['calendar_couple_booking'] ?? '0');
+        }
+        if (array_key_exists('calendar_staff_gender_preference', $_POST)) {
+            $parsed['calendar_staff_gender_preference'] = trim((string) $_POST['calendar_staff_gender_preference']);
+        }
+
+        return $parsed;
     }
 
     private function validate(array $data): array
@@ -1849,13 +2452,7 @@ final class AppointmentController
             $newAppointmentQuery['date'] = $date;
         }
 
-        $auth = Application::container()->get(\Core\Auth\SessionAuth::class);
-        $userId = $auth->id();
-        $canCreate = false;
-        if ($userId !== null && $userId > 0) {
-            $permService = Application::container()->get(\Core\Permissions\PermissionService::class);
-            $canCreate = $permService->has((int) $userId, 'appointments.create');
-        }
+        $caps = $this->resolveCurrentUserCalendarCapabilities();
 
         return [
             'active_tab' => $activeTab,
@@ -1865,7 +2462,11 @@ final class AppointmentController
                 ['id' => 'waitlist', 'label' => 'Waitlist', 'url' => '/appointments/waitlist' . $this->buildQueryString($waitlistQuery)],
             ],
             'new_appointment_url' => '/appointments/create' . $this->buildQueryString($newAppointmentQuery),
-            'can_create' => $canCreate,
+            'can_create' => $caps['appointments_create'],
+            'sales_create' => $caps['sales_create'],
+            'sales_pay' => $caps['sales_pay'],
+            'sales_view' => $caps['sales_view'],
+            'appointments_create' => $caps['appointments_create'],
         ];
     }
 

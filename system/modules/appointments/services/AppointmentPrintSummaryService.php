@@ -60,17 +60,26 @@ final class AppointmentPrintSummaryService
      *     client_service_history: bool,
      *     package_detail: bool,
      *     client_product_purchase_history: bool
-     *   }
+     *   },
+     *   print_layout: 'full'|'itinerary'
      * }
      */
-    public function compose(array $appointment, ?int $branchIdForSettings = null): array
+    public function compose(array $appointment, ?int $branchIdForSettings = null, string $layout = 'full'): array
     {
+        $itineraryOnly = ($layout === 'itinerary');
         $settingsBranch = ($branchIdForSettings !== null && $branchIdForSettings > 0) ? $branchIdForSettings : null;
         $aptSt = $this->settings->getAppointmentSettings($settingsBranch);
-        $showStaffDay = !empty($aptSt['print_show_staff_appointment_list']);
-        $showHistory = !empty($aptSt['print_show_client_service_history']);
-        $showPackages = !empty($aptSt['print_show_package_detail']);
-        $showProductPurchase = !empty($aptSt['print_show_client_product_purchase_history']);
+        if ($itineraryOnly) {
+            $showStaffDay = false;
+            $showHistory = true;
+            $showPackages = false;
+            $showProductPurchase = false;
+        } else {
+            $showStaffDay = !empty($aptSt['print_show_staff_appointment_list']);
+            $showHistory = !empty($aptSt['print_show_client_service_history']);
+            $showPackages = !empty($aptSt['print_show_package_detail']);
+            $showProductPurchase = !empty($aptSt['print_show_client_product_purchase_history']);
+        }
 
         $a = $appointment;
         $a['display_summary'] = $this->appointmentService->getDisplaySummary($a);
@@ -161,6 +170,7 @@ final class AppointmentPrintSummaryService
                 'package_detail' => $showPackages,
                 'client_product_purchase_history' => $showProductPurchase,
             ],
+            'print_layout' => $itineraryOnly ? 'itinerary' : 'full',
         ];
     }
 }

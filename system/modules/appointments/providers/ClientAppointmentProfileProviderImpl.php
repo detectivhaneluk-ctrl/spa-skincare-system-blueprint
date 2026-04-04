@@ -16,6 +16,9 @@ final class ClientAppointmentProfileProviderImpl implements ClientAppointmentPro
     /** @var list<string> */
     private const PROFILE_LIST_STATUSES = ['scheduled', 'confirmed', 'in_progress', 'completed', 'cancelled', 'no_show'];
 
+    /** @var array<int, array<string, mixed>> */
+    private array $getSummaryRequestCache = [];
+
     public function __construct(
         private Database $db,
         private ClientProfileAccessService $profileAccess,
@@ -67,8 +70,11 @@ final class ClientAppointmentProfileProviderImpl implements ClientAppointmentPro
 
     public function getSummary(int $clientId): array
     {
+        if (isset($this->getSummaryRequestCache[$clientId])) {
+            return $this->getSummaryRequestCache[$clientId];
+        }
         if ($this->profileAccess->resolveForProviderRead($clientId) === null) {
-            return [
+            $denied = [
                 'total' => 0,
                 'scheduled' => 0,
                 'confirmed' => 0,
@@ -83,6 +89,9 @@ final class ClientAppointmentProfileProviderImpl implements ClientAppointmentPro
                 'last_start_at' => null,
                 'first_start_at' => null,
             ];
+            $this->getSummaryRequestCache[$clientId] = $denied;
+
+            return $denied;
         }
 
         $aFrag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('a');
@@ -113,7 +122,7 @@ final class ClientAppointmentProfileProviderImpl implements ClientAppointmentPro
         $lastStart = $row['last_start_at'] ?? null;
         $firstStart = $row['first_start_at'] ?? null;
 
-        return [
+        $out = [
             'total' => (int) ($row['total'] ?? 0),
             'scheduled' => (int) ($row['scheduled'] ?? 0),
             'confirmed' => (int) ($row['confirmed'] ?? 0),
@@ -128,6 +137,9 @@ final class ClientAppointmentProfileProviderImpl implements ClientAppointmentPro
             'last_start_at' => $lastStart !== null && (string) $lastStart !== '' ? (string) $lastStart : null,
             'first_start_at' => $firstStart !== null && (string) $firstStart !== '' ? (string) $firstStart : null,
         ];
+        $this->getSummaryRequestCache[$clientId] = $out;
+
+        return $out;
     }
 
     public function listRecent(int $clientId, int $limit = 10): array

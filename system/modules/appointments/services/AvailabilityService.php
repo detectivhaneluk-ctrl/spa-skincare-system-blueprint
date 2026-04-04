@@ -23,7 +23,10 @@ final class AvailabilityService
     private const SLOT_MINUTES = 15;
     private const BLOCKING_STATUSES = ['scheduled', 'confirmed', 'in_progress', 'completed'];
     private const DAY_APT_CACHE_TTL = 30;
-    private const DAY_APT_CACHE_KEY_PREFIX = 'cal_v1:day_apts';
+    private const DAY_APT_CACHE_KEY_PREFIX = 'cal_v4:day_apts';
+
+    /** One-shot notice when day-calendar SQL runs without appointment_calendar_meta (migration 133 not applied). */
+    private static bool $dayAptLegacySqlNoticeLogged = false;
 
     public function __construct(
         private Database $db,
@@ -220,6 +223,8 @@ final class AvailabilityService
         bool $forAvailabilitySearch = false,
         bool $forPublicBookingChannel = false,
         ?int $roomIdForOccupancyInSearch = null,
+        ?int $candidateBufferBeforeMinutes = null,
+        ?int $candidateBufferAfterMinutes = null,
     ): bool {
         $timing = $this->getServiceTiming($serviceId, $branchId);
         if ($timing === null) {
@@ -242,14 +247,17 @@ final class AvailabilityService
             );
         }
 
+        $bb = $candidateBufferBeforeMinutes !== null ? max(0, $candidateBufferBeforeMinutes) : $timing['buffer_before_minutes'];
+        $ba = $candidateBufferAfterMinutes !== null ? max(0, $candidateBufferAfterMinutes) : $timing['buffer_after_minutes'];
+
         if (!$this->isStaffWindowAvailable(
             $staffId,
             $startAt,
             $endAt,
             $scopeBranchId,
             $excludeAppointmentId,
-            $timing['buffer_before_minutes'],
-            $timing['buffer_after_minutes'],
+            $bb,
+            $ba,
             $enforceStaffSchedule,
             $forPublicBookingChannel
         )) {
@@ -460,17 +468,22 @@ final class AvailabilityService
     }
 
     /**
-     * @return array<int, array{id:int,first_name:string,last_name:string,branch_id:int|null}>
+     * @return array<int, array{id:int,first_name:string,last_name:string,branch_id:int|null,staff_type:string}>
      */
     public function listActiveStaff(?int $branchId = null): array
     {
         $rows = $this->getEligibleStaff(0, $branchId, null, false);
-        return array_map(static fn (array $r): array => [
-            'id' => (int) $r['id'],
-            'first_name' => (string) ($r['first_name'] ?? ''),
-            'last_name' => (string) ($r['last_name'] ?? ''),
-            'branch_id' => $r['branch_id'] !== null ? (int) $r['branch_id'] : null,
-        ], $rows);
+        return array_map(static function (array $r): array {
+            $st = (string) ($r['staff_type'] ?? 'scheduled');
+
+            return [
+                'id' => (int) $r['id'],
+                'first_name' => (string) ($r['first_name'] ?? ''),
+                'last_name' => (string) ($r['last_name'] ?? ''),
+                'branch_id' => $r['branch_id'] !== null ? (int) $r['branch_id'] : null,
+                'staff_type' => in_array($st, ['freelancer', 'scheduled'], true) ? $st : 'scheduled',
+            ];
+        }, $rows);
     }
 
     /**
@@ -485,7 +498,19 @@ final class AvailabilityService
      *   start_at:string,
      *   end_at:string,
      *   status:string,
-     *   created_at:string|null
+     *   created_at:string|null,
+     *   buffer_before_effective:int,
+     *   buffer_after_effective:int,
+     *   room_name:string|null,
+     *   client_phone:string|null,
+     *   staff_assignment_locked:int,
+     *   linked_invoice_id:int|null,
+     *   has_notes_flag:int,
+     *   checked_in_at:string|null,
+     *   same_day_booking:int,
+     *   client_prior_appts_before:int,
+     *   appointment_calendar_meta:array,
+     *   linked_invoice:array{id:int,status:string,total_amount:float,paid_amount:float}|null
      * }>
      */
     public function listDayAppointmentsGroupedByStaff(string $date, ?int $branchId = null): array
@@ -513,25 +538,104 @@ final class AvailabilityService
 
         $start = $date . ' 00:00:00';
         $end = $date . ' 23:59:59';
+        // Prior-appointment count: one grouped join instead of a correlated subquery per row (was a major
+        // calendar-day latency source when many appointments share clients with long histories).
+        $branchFilterA = '';
+        $branchFilterA2 = '';
+        $branchFilterA3 = '';
+        $branchParams = [];
+        if ($branchId !== null) {
+            $branchFilterA = ' AND a.branch_id = ?';
+            $branchFilterA2 = ' AND a2.branch_id = ?';
+            $branchFilterA3 = ' AND a3.branch_id = ?';
+            $branchParams[] = $branchId;
+        }
+        $priorAggSql = 'SELECT a2.id AS appointment_id, COUNT(p.id) AS prior_cnt
+            FROM appointments a2
+            LEFT JOIN appointments p ON p.client_id = a2.client_id
+                AND p.deleted_at IS NULL
+                AND p.id <> a2.id
+                AND p.start_at < a2.start_at
+            WHERE a2.deleted_at IS NULL
+              AND a2.start_at <= ?
+              AND a2.end_at >= ?'
+            . $branchFilterA2 . '
+            GROUP BY a2.id';
+        // Latest invoice per appointment: scoped to the same day/branch appointment id set (avoids per-row correlated subquery).
+        $invoiceLatestSql = 'SELECT i.appointment_id,
+                JSON_OBJECT(
+                    \'id\', i.id,
+                    \'status\', IFNULL(i.status, \'\'),
+                    \'total_amount\', IFNULL(i.total_amount, 0),
+                    \'paid_amount\', IFNULL(i.paid_amount, 0)
+                ) AS linked_invoice_snapshot
+            FROM invoices i
+            INNER JOIN (
+                SELECT inv_sub.appointment_id, MAX(inv_sub.id) AS max_id
+                FROM invoices inv_sub
+                WHERE inv_sub.deleted_at IS NULL
+                  AND inv_sub.appointment_id IN (
+                    SELECT a3.id FROM appointments a3
+                    WHERE a3.deleted_at IS NULL
+                      AND a3.start_at <= ?
+                      AND a3.end_at >= ?'
+            . $branchFilterA3 . '
+                  )
+                GROUP BY inv_sub.appointment_id
+            ) mx ON mx.max_id = i.id AND i.appointment_id = mx.appointment_id
+            WHERE i.deleted_at IS NULL';
         $sql = "SELECT a.id, a.client_id, a.service_id, a.staff_id, a.series_id, a.start_at, a.end_at, a.status, a.created_at,
+                       a.checked_in_at, a.appointment_calendar_meta,
+                       a.buffer_before_override_minutes, a.buffer_after_override_minutes, a.staff_assignment_locked,
+                       (CASE WHEN NULLIF(TRIM(a.notes), '') IS NULL THEN 0 ELSE 1 END) AS has_notes_flag,
+                       (CASE WHEN DATE(a.created_at) = DATE(a.start_at) THEN 1 ELSE 0 END) AS same_day_booking,
+                       COALESCE(prior.prior_cnt, 0) AS client_prior_appts_before,
                        c.first_name AS client_first_name, c.last_name AS client_last_name,
-                       s.name AS service_name
+                       NULLIF(TRIM(COALESCE(NULLIF(TRIM(c.phone_mobile), ''), NULLIF(TRIM(c.phone), ''))), '') AS client_phone_effective,
+                       s.name AS service_name,
+                       COALESCE(s.buffer_before_minutes, 0) AS service_buffer_before_minutes,
+                       COALESCE(s.buffer_after_minutes, 0) AS service_buffer_after_minutes,
+                       r.name AS room_name,
+                       latest_inv.linked_invoice_snapshot AS linked_invoice_snapshot
                 FROM appointments a
+                LEFT JOIN ({$priorAggSql}) prior ON prior.appointment_id = a.id
+                LEFT JOIN ({$invoiceLatestSql}) latest_inv ON latest_inv.appointment_id = a.id
                 LEFT JOIN clients c ON c.id = a.client_id
                 LEFT JOIN services s ON s.id = a.service_id
+                LEFT JOIN rooms r ON r.id = a.room_id
                 WHERE a.deleted_at IS NULL
                   AND a.start_at <= ?
-                  AND a.end_at >= ?";
-        $params = [$end, $start];
-        if ($branchId !== null) {
-            $sql .= ' AND a.branch_id = ?';
-            $params[] = $branchId;
-        }
+                  AND a.end_at >= ?"
+            . $branchFilterA;
+        $params = array_merge(
+            [$end, $start],
+            $branchParams,
+            [$end, $start],
+            $branchParams,
+            [$end, $start],
+            $branchParams
+        );
         $sql .= ' ORDER BY a.staff_id, a.start_at';
         // WAVE-07: display-only path — eligible for replica read.
         // The booking write path uses isSlotAvailable() which always hits primary directly.
         // Bounded lag (≤ replica replication window) is acceptable for calendar display.
-        $rows = $this->db->forRead()->fetchAll($sql, $params);
+        try {
+            $rows = $this->db->forRead()->fetchAll($sql, $params);
+        } catch (\Throwable $e) {
+            if ($this->isMissingAppointmentCalendarMetaColumn($e)) {
+                $sqlLegacy = str_replace(', a.appointment_calendar_meta', '', $sql);
+                if (!self::$dayAptLegacySqlNoticeLogged) {
+                    self::$dayAptLegacySqlNoticeLogged = true;
+                    error_log(
+                        'AvailabilityService::listDayAppointmentsGroupedByStaff: appointment_calendar_meta column missing; '
+                        . 'using legacy SELECT. Apply migration 133_appointments_calendar_meta.sql (php scripts/migrate.php from system/).'
+                    );
+                }
+                $rows = $this->db->forRead()->fetchAll($sqlLegacy, $params);
+            } else {
+                throw $e;
+            }
+        }
         $grouped = [];
         foreach ($rows as $row) {
             $sid = (int) ($row['staff_id'] ?? 0);
@@ -544,6 +648,50 @@ final class AvailabilityService
             $createdRaw = $row['created_at'] ?? null;
             $seriesRaw = $row['series_id'] ?? null;
             $seriesId = ($seriesRaw !== null && $seriesRaw !== '' && (int) $seriesRaw > 0) ? (int) $seriesRaw : null;
+            $svcBb = max(0, (int) ($row['service_buffer_before_minutes'] ?? 0));
+            $svcBa = max(0, (int) ($row['service_buffer_after_minutes'] ?? 0));
+            $obRaw = $row['buffer_before_override_minutes'] ?? null;
+            $oaRaw = $row['buffer_after_override_minutes'] ?? null;
+            $effBefore = ($obRaw !== null && $obRaw !== '') ? max(0, (int) $obRaw) : $svcBb;
+            $effAfter = ($oaRaw !== null && $oaRaw !== '') ? max(0, (int) $oaRaw) : $svcBa;
+            $phoneEff = $row['client_phone_effective'] ?? null;
+            $phoneStr = ($phoneEff !== null && (string) $phoneEff !== '') ? (string) $phoneEff : null;
+            $roomName = $row['room_name'] !== null && trim((string) $row['room_name']) !== '' ? trim((string) $row['room_name']) : null;
+            $staffLocked = !empty($row['staff_assignment_locked']) ? 1 : 0;
+
+            $checkedInRaw = $row['checked_in_at'] ?? null;
+            $checkedInAt = $checkedInRaw !== null && trim((string) $checkedInRaw) !== '' ? (string) $checkedInRaw : null;
+
+            $metaRaw = $row['appointment_calendar_meta'] ?? null;
+            $metaArr = [];
+            if (is_array($metaRaw)) {
+                $metaArr = $metaRaw;
+            } elseif ($metaRaw !== null && (string) $metaRaw !== '') {
+                $decodedMeta = json_decode((string) $metaRaw, true);
+                if (is_array($decodedMeta)) {
+                    $metaArr = $decodedMeta;
+                }
+            }
+
+            $snapRaw = $row['linked_invoice_snapshot'] ?? null;
+            $linkedInvoice = null;
+            $linkedInvoiceId = null;
+            if ($snapRaw !== null && (string) $snapRaw !== '') {
+                $decodedInv = json_decode((string) $snapRaw, true);
+                if (is_array($decodedInv) && isset($decodedInv['id'])) {
+                    $lid = (int) $decodedInv['id'];
+                    if ($lid > 0) {
+                        $linkedInvoiceId = $lid;
+                        $linkedInvoice = [
+                            'id' => $lid,
+                            'status' => (string) ($decodedInv['status'] ?? ''),
+                            'total_amount' => (float) ($decodedInv['total_amount'] ?? 0),
+                            'paid_amount' => (float) ($decodedInv['paid_amount'] ?? 0),
+                        ];
+                    }
+                }
+            }
+
             $grouped[$sid][] = [
                 'id' => (int) $row['id'],
                 'staff_id' => $sid,
@@ -556,6 +704,18 @@ final class AvailabilityService
                 'end_at' => (string) $row['end_at'],
                 'status' => (string) ($row['status'] ?? 'scheduled'),
                 'created_at' => $createdRaw !== null && (string) $createdRaw !== '' ? (string) $createdRaw : null,
+                'buffer_before_effective' => $effBefore,
+                'buffer_after_effective' => $effAfter,
+                'room_name' => $roomName,
+                'client_phone' => $phoneStr,
+                'staff_assignment_locked' => $staffLocked,
+                'linked_invoice_id' => $linkedInvoiceId,
+                'linked_invoice' => $linkedInvoice,
+                'has_notes_flag' => !empty($row['has_notes_flag']) ? 1 : 0,
+                'checked_in_at' => $checkedInAt,
+                'same_day_booking' => !empty($row['same_day_booking']) ? 1 : 0,
+                'client_prior_appts_before' => (int) ($row['client_prior_appts_before'] ?? 0),
+                'appointment_calendar_meta' => $metaArr,
             ];
         }
 
@@ -748,6 +908,14 @@ final class AvailabilityService
         return $out;
     }
 
+    private function isMissingAppointmentCalendarMetaColumn(\Throwable $e): bool
+    {
+        $m = strtolower($e->getMessage());
+
+        return str_contains($m, 'appointment_calendar_meta')
+            && (str_contains($m, 'unknown column') || str_contains($m, "doesn't exist"));
+    }
+
     private function dayAptCacheKey(string $date, ?int $branchId): string
     {
         $b = $branchId === null ? 'null' : (string) $branchId;
@@ -804,7 +972,7 @@ final class AvailabilityService
     }
 
     /**
-     * @return array<int, array{id:int,first_name:string,last_name:string,branch_id:int|null}>
+     * @return array<int, array{id:int,first_name:string,last_name:string,branch_id:int|null,staff_type:string}>
      */
     private function getEligibleStaff(int $serviceId, ?int $branchId, ?int $specificStaffId, bool $applyServiceMapping = true): array
     {
@@ -816,7 +984,8 @@ final class AvailabilityService
 
         if ($specificStaffId !== null) {
             if ($hasMapping) {
-                $sql = 'SELECT st.id, st.first_name, st.last_name, st.branch_id
+                $sql = 'SELECT st.id, st.first_name, st.last_name, st.branch_id,
+                               COALESCE(st.staff_type, \'scheduled\') AS staff_type
                         FROM staff st
                         INNER JOIN service_staff ss ON ss.staff_id = st.id
                         WHERE st.id = ? AND ss.service_id = ? AND st.deleted_at IS NULL AND st.is_active = 1';
@@ -825,7 +994,8 @@ final class AvailabilityService
                 $sql .= $sgSql;
                 $params = array_merge($params, $sgParams);
             } else {
-                $sql = 'SELECT id, first_name, last_name, branch_id
+                $sql = 'SELECT id, first_name, last_name, branch_id,
+                               COALESCE(staff_type, \'scheduled\') AS staff_type
                         FROM staff
                         WHERE id = ? AND deleted_at IS NULL AND is_active = 1';
                 $params = [$specificStaffId];
@@ -854,7 +1024,8 @@ final class AvailabilityService
         }
 
         if ($hasMapping) {
-            $sql = 'SELECT st.id, st.first_name, st.last_name, st.branch_id
+            $sql = 'SELECT st.id, st.first_name, st.last_name, st.branch_id,
+                           COALESCE(st.staff_type, \'scheduled\') AS staff_type
                     FROM staff st
                     INNER JOIN service_staff ss ON ss.staff_id = st.id
                     WHERE ss.service_id = ? AND st.deleted_at IS NULL AND st.is_active = 1';
@@ -863,7 +1034,8 @@ final class AvailabilityService
             $sql .= $sgSql;
             $params = array_merge($params, $sgParams);
         } else {
-            $sql = 'SELECT id, first_name, last_name, branch_id
+            $sql = 'SELECT id, first_name, last_name, branch_id,
+                           COALESCE(staff_type, \'scheduled\') AS staff_type
                     FROM staff
                     WHERE deleted_at IS NULL AND is_active = 1';
             $params = [];
@@ -1120,8 +1292,8 @@ final class AvailabilityService
                 WHERE a.deleted_at IS NULL
                   AND a.status IN (?, ?, ?, ?)
                   AND a.staff_id = ?
-                  AND a.start_at < DATE_ADD(?, INTERVAL COALESCE(s.buffer_before_minutes, 0) MINUTE)
-                  AND a.end_at > DATE_SUB(?, INTERVAL COALESCE(s.buffer_after_minutes, 0) MINUTE)";
+                  AND a.start_at < DATE_ADD(?, INTERVAL COALESCE(a.buffer_before_override_minutes, s.buffer_before_minutes, 0) MINUTE)
+                  AND a.end_at > DATE_SUB(?, INTERVAL COALESCE(a.buffer_after_override_minutes, s.buffer_after_minutes, 0) MINUTE)";
         $params = [
             self::BLOCKING_STATUSES[0],
             self::BLOCKING_STATUSES[1],

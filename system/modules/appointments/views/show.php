@@ -1,6 +1,5 @@
 <?php
 $title = 'Appointment: ' . htmlspecialchars($appointment['display_summary'] ?? '');
-$flash = flash();
 $workspace = isset($workspace) && is_array($workspace) ? $workspace : [];
 $wBranch = isset($appointment['branch_id']) && $appointment['branch_id'] !== '' && $appointment['branch_id'] !== null
     ? (int) $appointment['branch_id']
@@ -101,10 +100,12 @@ $nsActive = is_array($nsAlert) && !empty($nsAlert['active']);
             <button type="submit" class="appt-show-toolbar__btn">Check in</button>
         </form>
         <?php endif; ?>
+        <?php if (!in_array((string) ($appointment['status'] ?? ''), ['cancelled', 'no_show'], true)): ?>
         <form method="post" action="/appointments/<?= (int) $appointment['id'] ?>/cancel" class="appt-show-toolbar__form" onsubmit="return confirm('Cancel this appointment?')">
             <input type="hidden" name="<?= htmlspecialchars(config('app.csrf_token_name', 'csrf_token')) ?>" value="<?= htmlspecialchars($csrf) ?>">
             <button type="submit" class="appt-show-toolbar__btn">Cancel Appointment</button>
         </form>
+        <?php endif; ?>
         <form method="post" action="/appointments/<?= (int) $appointment['id'] ?>/delete" class="appt-show-toolbar__form" onsubmit="return confirm('Delete this appointment?')">
             <input type="hidden" name="<?= htmlspecialchars(config('app.csrf_token_name', 'csrf_token')) ?>" value="<?= htmlspecialchars($csrf) ?>">
             <button type="submit" class="appt-show-toolbar__btn appt-show-toolbar__btn--danger">Delete</button>

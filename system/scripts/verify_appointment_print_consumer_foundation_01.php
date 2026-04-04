@@ -41,6 +41,12 @@ if (!str_contains($routeSrc, "/appointments/{id:\\d+}/print")) {
     vPrintPass('route_path_registered');
 }
 
+if (!str_contains($routeSrc, '/print-itinerary') || !str_contains($routeSrc, 'printItineraryPage')) {
+    vPrintFail('route_itinerary', 'Expected GET /appointments/{id}/print-itinerary → printItineraryPage');
+} else {
+    vPrintPass('route_print_itinerary_registered');
+}
+
 if (!str_contains($routeSrc, "'printSummaryPage'") && !str_contains($routeSrc, 'printSummaryPage')) {
     vPrintFail('route_action', 'Expected printSummaryPage action');
 } else {
@@ -71,6 +77,12 @@ if (!str_contains($ctlSrc, 'function printSummaryPage')) {
     vPrintFail('controller_method', 'printSummaryPage missing');
 } else {
     vPrintPass('controller_printSummaryPage_exists');
+}
+
+if (!str_contains($ctlSrc, 'function printItineraryPage')) {
+    vPrintFail('controller_itinerary', 'printItineraryPage missing');
+} else {
+    vPrintPass('controller_printItineraryPage_exists');
 }
 
 if (!str_contains($ctlSrc, 'ensureBranchAccess')) {

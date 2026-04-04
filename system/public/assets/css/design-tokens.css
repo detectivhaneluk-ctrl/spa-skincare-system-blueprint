@@ -18,6 +18,13 @@
   --ds-color-border-light: rgba(0, 0, 0, 0.05);
   --ds-color-divider: rgba(0, 0, 0, 0.06);
 
+  /* —— Brand mark (tenant shell: dark tile + orange bolt) —— */
+  --ds-color-brand-logo-bg: #171717;
+  --ds-color-brand-bolt: #f97316;
+
+  /* —— Tenant main column max width —— */
+  --ds-content-max-width: 1320px;
+
   /* —— Accent: primary CTA + active nav/mode only —— */
   --ds-color-accent: #0066cc;
   --ds-color-accent-hover: #0055b3;
@@ -34,7 +41,8 @@
   --ds-color-warning-text: #6b5a1a;
 
   /* —— Typography —— */
-  --ds-font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  /* Inter self-hosted in base layout (inter-fonts.css); falls back to system UI */
+  --ds-font-sans: "Inter", system-ui, -apple-system, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --ds-text-xs: 0.6875rem;
   --ds-text-sm: 0.8125rem;
   --ds-text-md: 0.875rem;
@@ -42,6 +50,8 @@
   --ds-text-xl: 1.125rem;
   --ds-text-2xl: 1.25rem;
   --ds-text-display: 1.5rem;
+  /* Module sub-header page title (HIG-style hierarchy above body copy) */
+  --ds-text-page-title: clamp(1.25rem, 2vw, 1.5rem);
   --ds-font-normal: 400;
   --ds-font-medium: 500;
   --ds-font-semibold: 600;
@@ -71,18 +81,26 @@
   --ds-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --ds-shadow-md: 0 4px 14px rgba(0, 0, 0, 0.07);
   --ds-shadow-drawer: -12px 0 40px rgba(0, 0, 0, 0.1);
+  /* iOS-style segmented “thumb” */
+  /* Segmented “thumb”: Tailwind shadow-sm equivalent */
+  --ds-shadow-segmented-active: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --ds-color-segmented-track: #f3f4f6;
 
   /* —— Control sizes (desktop) —— */
   --ds-control-height: 2.25rem;
   --ds-control-height-sm: 2rem;
   --ds-control-height-lg: 2.5rem;
   --ds-control-padding-x: 0.75rem;
+  /* App shell top rail + workspace header controls (Tailwind h-10 equivalent) */
+  --ds-app-header-rail-height: 3.5rem;
+  --ds-workspace-control-height: var(--ds-control-height-lg);
 
   /* —— Layout —— */
   --ds-shell-pad-x: var(--ds-space-5);
   --ds-shell-pad-y: var(--ds-space-4);
   --ds-workspace-max-width: none;
   --ds-z-drawer: 80;
+  --ds-z-app-header: 200;
 
   /* —— Motion (functional only) —— */
   --ds-duration-drawer: 180ms;

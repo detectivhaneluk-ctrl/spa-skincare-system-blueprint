@@ -8,7 +8,7 @@ declare(strict_types=1);
  * Semantics (unchanged vs legacy AvailabilityService query):
  * - Same staff_id, deleted_at IS NULL, BLOCKING_STATUSES set, optional exclude id.
  * - For each existing row, blocking interval is [start_at - buffer_before, end_at + buffer_after] with buffers from
- *   LEFT JOIN services (COALESCE to 0 when service row missing).
+ *   appointment overrides when set, else LEFT JOIN services (COALESCE to 0 when both missing).
  * - Overlap with candidate [windowStartAt, windowEndAt] iff blocked_start < windowEnd AND blocked_end > windowStart
  *   (strict inequalities, same as before).
  *
@@ -42,9 +42,11 @@ $checks['AvailabilityService: uses bare a.start_at < DATE_ADD on window end para
 $checks['AvailabilityService: uses bare a.end_at > DATE_SUB on window start parameter'] =
     (bool) preg_match('/a\.end_at\s*>\s*DATE_SUB\s*\(\s*\?/s', $src);
 
-$checks['AvailabilityService: preserves buffer minutes from joined services'] =
-    str_contains($src, 'COALESCE(s.buffer_before_minutes, 0)')
-    && str_contains($src, 'COALESCE(s.buffer_after_minutes, 0)');
+$checks['AvailabilityService: preserves buffer minutes from overrides or joined services'] =
+    str_contains($src, 'a.buffer_before_override_minutes')
+    && str_contains($src, 'a.buffer_after_override_minutes')
+    && str_contains($src, 's.buffer_before_minutes')
+    && str_contains($src, 's.buffer_after_minutes');
 
 $failed = [];
 foreach ($checks as $label => $ok) {

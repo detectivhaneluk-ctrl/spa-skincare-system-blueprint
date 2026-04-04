@@ -1,0 +1,52 @@
+Calendar day — appointment right-click menu: RUNTIME smoke matrix
+====================================================================
+Prerequisites: migrations applied; test branch/staff/service/client/appointments; user with
+appointments.view/edit/delete and (optional) sales.create/pay/view; buffer override migration if testing cleanup.
+
+Run each row in a browser on /appointments/calendar/day with DevTools Network open.
+Expected for POST actions: HTTP 200, JSON success:true (Accept JSON + CSRF from grid), calendar refresh.
+
+Section A — Status workflow (appointments.edit, scheduled row unless noted)
+---------------------------------------------------------------------------
+[ ] A1  Complete Appointment        → status completed
+[ ] A2  Confirm                    → confirmed (new scheduled row for retests)
+[ ] A3  Unconfirm                  → scheduled (when row is confirmed)
+[ ] A4  Check-in Guest             → checked in, refresh
+[ ] A5  Start service              → in_progress
+[ ] A6  Complete Appointment       → completed
+[ ] A7  No show                    → no_show (confirm dialog)
+
+Section B — Cancel, lock, cleanup
+---------------------------------
+[ ] B1  Cancel Appointment         → cancelled
+[ ] B2  Lock to Technician        → staff locked flag
+[ ] B3  Unlock Technician         → unlock
+[ ] B4  Remove All Cleanup        → POST buffer-cleanup scope=all
+[ ] B5  Remove Employee Cleanup    → scope=employee
+[ ] B6  Remove Room Cleanup        → scope=room
+
+Section C — Comms & delete
+--------------------------
+[ ] C1  Send Appointment Info      → send-confirmation OK
+[ ] C2  Delete                     → destroy (test row only; appointments.delete)
+
+Section D — Clipboard, group, notes
+-----------------------------------
+[ ] D1  Move to Clipboard          → item in clipboard tab
+[ ] D2  Add to Group               → create drawer with client_id
+[ ] D3  Edit Customer Notes        → edit drawer + #appt-notes focus
+
+Section E — Sales (vary user caps)
+----------------------------------
+[ ] E1  Take Payment/Check-Out     → payments/create when invoice+sales.pay
+[ ] E2  Take Payment (view only) → invoice show when sales.view only
+[ ] E3  Take Payment/Deposit       → /sales/invoices/create?appointment_id= when sales.create
+[ ] E4  View Invoice / Print Invoice → opens invoice URL
+
+Section F — Print
+-----------------
+[ ] F1  Print Appointment          → GET .../print new tab
+[ ] F2  Print Customer Itinerary → GET .../print-itinerary (client required on row)
+[ ] F3  Print Invoice            → invoice show tab (linked invoice)
+
+Mark PASS/FAIL and note HTTP status + any alert text for failures.

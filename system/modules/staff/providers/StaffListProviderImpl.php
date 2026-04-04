@@ -18,7 +18,10 @@ final class StaffListProviderImpl implements StaffListProvider
 
     public function list(?int $branchId = null): array
     {
-        $filters = $branchId !== null ? ['branch_id' => $branchId] : [];
+        $filters = ['active' => true];
+        if ($branchId !== null) {
+            $filters['branch_id'] = $branchId;
+        }
         $rows = $this->repo->list($filters, 500, 0);
 
         return array_values(array_filter($rows, fn (array $r): bool => $this->staffGroupService->isStaffInScopeForBranch((int) $r['id'], $branchId)));
