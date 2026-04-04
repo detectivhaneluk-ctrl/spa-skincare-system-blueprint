@@ -82,11 +82,14 @@ final class AppointmentWizardService
     /**
      * Validate step 1 search criteria.
      * Package mode is explicitly fail-closed in this phase.
+     * Category/service consistency is enforced: if a category is selected, the
+     * service must belong to it. This is the primary backend guard — the frontend
+     * filter is a convenience aid only and must NOT be trusted.
      *
      * @param array<string, mixed> $data
      * @return array<string, string> $errors  Empty means valid.
      */
-    public function validateStep1(array $data): array
+    public function validateStep1(array $data, int $branchId): array
     {
         $errors = [];
 
@@ -105,7 +108,9 @@ final class AppointmentWizardService
             return $errors;
         }
 
-        $serviceId = (int) ($data['service_id'] ?? 0);
+        $serviceId  = (int) ($data['service_id'] ?? 0);
+        $categoryId = (int) ($data['category_id'] ?? 0);
+
         if ($serviceId <= 0) {
             $errors['service_id'] = 'Please select a service.';
         }
@@ -136,6 +141,29 @@ final class AppointmentWizardService
             }
             if (empty($errors['date_from']) && empty($errors['date_to']) && $dateTo < $dateFrom) {
                 $errors['date_to'] = 'End date must be on or after start date.';
+            }
+        }
+
+        // Category → service consistency check.
+        // Only runs when both category_id and service_id are provided and service_id
+        // has no prior validation error (no point checking a missing service_id).
+        if ($categoryId > 0 && $serviceId > 0 && empty($errors['service_id'])) {
+            $services     = $this->serviceList->list($branchId);
+            $serviceFound = false;
+
+            foreach ($services as $svc) {
+                if ((int) ($svc['id'] ?? 0) === $serviceId) {
+                    $serviceFound     = true;
+                    $svcCategoryId    = (int) ($svc['category_id'] ?? 0);
+                    if ($svcCategoryId !== $categoryId) {
+                        $errors['service_id'] = 'The selected service does not belong to the selected category. Please select a service that matches the chosen category.';
+                    }
+                    break;
+                }
+            }
+
+            if (!$serviceFound) {
+                $errors['service_id'] = 'The selected service was not found. Please select a valid service.';
             }
         }
 

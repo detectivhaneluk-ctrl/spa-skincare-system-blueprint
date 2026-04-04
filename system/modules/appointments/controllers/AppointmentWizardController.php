@@ -106,7 +106,7 @@ final class AppointmentWizardController
         $this->assertWizardBranchAccess($branchId);
 
         $data   = $_POST;
-        $errors = $this->wizardService->validateStep1($data);
+        $errors = $this->wizardService->validateStep1($data, $branchId);
 
         if (!empty($errors)) {
             $continuation = $state['pending_chain_continuation'] ?? null;

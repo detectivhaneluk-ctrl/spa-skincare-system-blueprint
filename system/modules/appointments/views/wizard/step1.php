@@ -198,18 +198,60 @@ $csrfName = config('app.csrf_token_name', 'csrf_token');
 
 <script>
 (() => {
-  // Show/hide date fields based on date_mode radio selection.
-  const radios    = document.querySelectorAll('[name="date_mode"]');
-  const exactRow  = document.getElementById('wiz-date-exact-row');
-  const rangeRow  = document.getElementById('wiz-date-range-row');
+  // ── Category → Service filtering ───────────────────────────────────────────
+  // When a category is selected, hide/disable services that do not belong to it.
+  // When "All categories" (value="") is selected, show all services.
+  // If the currently selected service is no longer valid after a category change,
+  // it is reset to the placeholder so the user must make an explicit choice.
+  const categorySelect = document.getElementById('wiz-category');
+  const serviceSelect  = document.getElementById('wiz-service');
+
+  function applyServiceFilter() {
+    if (!categorySelect || !serviceSelect) { return; }
+    const selectedCategoryId = parseInt(categorySelect.value || '0', 10);
+    let currentSelectionStillValid = false;
+
+    Array.from(serviceSelect.options).forEach((opt) => {
+      if (!opt.value) {
+        // Placeholder "— Select service —": always visible.
+        opt.hidden   = false;
+        opt.disabled = false;
+        return;
+      }
+      const optCatId = parseInt(opt.dataset.categoryId || '0', 10);
+      const visible  = (selectedCategoryId === 0) || (optCatId === selectedCategoryId);
+      opt.hidden     = !visible;
+      opt.disabled   = !visible;
+      if (visible && opt.selected) {
+        currentSelectionStillValid = true;
+      }
+    });
+
+    // Reset to placeholder if the currently selected service is no longer
+    // in the visible/valid set after a category change.
+    if (!currentSelectionStillValid) {
+      serviceSelect.value = '';
+    }
+  }
+
+  if (categorySelect) {
+    categorySelect.addEventListener('change', applyServiceFilter);
+    // Apply immediately on page load to correct any pre-filled mismatch.
+    applyServiceFilter();
+  }
+
+  // ── Date mode show/hide ─────────────────────────────────────────────────────
+  const radios   = document.querySelectorAll('[name="date_mode"]');
+  const exactRow = document.getElementById('wiz-date-exact-row');
+  const rangeRow = document.getElementById('wiz-date-range-row');
 
   function applyDateMode() {
     const mode = document.querySelector('[name="date_mode"]:checked')?.value || 'exact';
-    if (exactRow) exactRow.hidden = (mode === 'range' || mode === 'first_available');
-    if (rangeRow) rangeRow.hidden = (mode !== 'range');
+    if (exactRow) { exactRow.hidden = (mode === 'range' || mode === 'first_available'); }
+    if (rangeRow) { rangeRow.hidden = (mode !== 'range'); }
   }
 
-  radios.forEach(r => r.addEventListener('change', applyDateMode));
+  radios.forEach((r) => r.addEventListener('change', applyDateMode));
   applyDateMode();
 })();
 </script>
