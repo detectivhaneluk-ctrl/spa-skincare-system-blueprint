@@ -18,11 +18,11 @@ final class ServiceRepository
 
     public function find(int $id): ?array
     {
-        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('s');
+        $frag = $this->orgScope->taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause('s');
         $row = $this->db->fetchOne(
             'SELECT s.*, c.name AS category_name FROM services s
              LEFT JOIN service_categories c ON s.category_id = c.id AND c.deleted_at IS NULL
-             WHERE s.id = ? AND s.deleted_at IS NULL' . $frag['sql'],
+             WHERE s.id = ? AND s.deleted_at IS NULL AND (' . $frag['sql'] . ')',
             array_merge([$id], $frag['params'])
         );
         if (!$row) return null;
@@ -35,7 +35,7 @@ final class ServiceRepository
 
     public function list(?int $categoryId = null, ?int $branchId = null): array
     {
-        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('s');
+        $frag = $this->orgScope->taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause('s');
         $sql = 'SELECT s.*, c.name AS category_name FROM services s
                 LEFT JOIN service_categories c ON s.category_id = c.id AND c.deleted_at IS NULL
                 WHERE s.deleted_at IS NULL';
@@ -48,7 +48,7 @@ final class ServiceRepository
             $sql .= ' AND (s.branch_id = ? OR s.branch_id IS NULL)';
             $params[] = $branchId;
         }
-        $sql .= $frag['sql'];
+        $sql .= ' AND (' . $frag['sql'] . ')';
         $params = array_merge($params, $frag['params']);
         $sql .= ' ORDER BY c.sort_order, c.name, s.name';
         // WAVE-07B: display-only service catalog list — replica-eligible.
@@ -61,14 +61,14 @@ final class ServiceRepository
      */
     public function count(?int $branchId = null): int
     {
-        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('s');
+        $frag = $this->orgScope->taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause('s');
         $sql = 'SELECT COUNT(*) AS c FROM services s WHERE s.deleted_at IS NULL';
         $params = [];
         if ($branchId !== null) {
             $sql .= ' AND (s.branch_id = ? OR s.branch_id IS NULL)';
             $params[] = $branchId;
         }
-        $sql .= $frag['sql'];
+        $sql .= ' AND (' . $frag['sql'] . ')';
         $params = array_merge($params, $frag['params']);
         $row = $this->db->forRead()->fetchOne($sql, $params);
 
@@ -92,7 +92,7 @@ final class ServiceRepository
 
     public function update(int $id, array $data): void
     {
-        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('s');
+        $frag = $this->orgScope->taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause('s');
         $mappings = [
             'staff_ids' => $data['staff_ids'] ?? null,
             'staff_group_ids' => $data['staff_group_ids'] ?? null,
@@ -106,7 +106,7 @@ final class ServiceRepository
             $vals = array_values($norm);
             $vals[] = $id;
             $vals = array_merge($vals, $frag['params']);
-            $this->db->query('UPDATE services s SET ' . implode(', ', $cols) . ' WHERE s.id = ?' . $frag['sql'], $vals);
+            $this->db->query('UPDATE services s SET ' . implode(', ', $cols) . ' WHERE s.id = ? AND (' . $frag['sql'] . ')', $vals);
         }
         if ($mappings['staff_ids'] !== null) $this->syncStaff($id, $mappings['staff_ids']);
         if ($mappings['staff_group_ids'] !== null) {
@@ -118,9 +118,9 @@ final class ServiceRepository
 
     public function softDelete(int $id): void
     {
-        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('s');
+        $frag = $this->orgScope->taxonomyCatalogUnionBranchInOrgOrNullGlobalOrgHasLiveBranchClause('s');
         $params = array_merge([$id], $frag['params']);
-        $this->db->query('UPDATE services s SET s.deleted_at = NOW() WHERE s.id = ?' . $frag['sql'], $params);
+        $this->db->query('UPDATE services s SET s.deleted_at = NOW() WHERE s.id = ? AND (' . $frag['sql'] . ')', $params);
     }
 
     private function normalize(array $data): array
