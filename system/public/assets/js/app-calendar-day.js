@@ -40,6 +40,8 @@
   let calendarPrefsSaveFailCount = 0;
   /** True while re-rendering after auto viewport time-zoom fit (avoids nested fit). */
   let inWorkdayFitRender = false;
+  /** After explicit Tools > Fit: block implicit tryFit from ResizeObserver / delayed schedule (avoids staged second shrink). */
+  let implicitWorkdayFitSuppressedUntil = 0;
   /**
    * When true, skip auto "fit workday" zoom — either a DB prefs row exists or we just saved successfully.
    * Prevents load/resize from overwriting the user's chosen column width / time zoom.
@@ -1821,11 +1823,15 @@
   /**
    * Scale time zoom so the full day range fits in the calendar grid viewport (no vertical scroll for the workday).
    * Does not run during slider-driven re-renders; triggered after load + grid resize only.
+   * @param {{ explicitUserFit?: boolean }} [opts] explicitUserFit: Tools > Fit (suppress follow-up implicit fits briefly).
    */
-  function tryFitWorkdayToViewport() {
+  function tryFitWorkdayToViewport(opts) {
+    const options = opts && typeof opts === 'object' ? opts : {};
+    const explicitUserFit = !!options.explicitUserFit;
+    if (!explicitUserFit && performance.now() < implicitWorkdayFitSuppressedUntil) return;
     if (inWorkdayFitRender) return;
-    if (calendarPrefsPersistedFromServer) return;
-    if (isCalendarAutofitTimeZoomLocked()) return;
+    if (!explicitUserFit && calendarPrefsPersistedFromServer) return;
+    if (!explicitUserFit && isCalendarAutofitTimeZoomLocked()) return;
     const pl = lastCalendarPayload;
     const gridEl = document.getElementById('appts-calendar-grid');
     if (!pl || !gridEl || !wrap) return;
@@ -1853,18 +1859,24 @@
       if (bodyH <= available + 1) break;
       clamped -= 1;
     }
-    if (Math.abs(clamped - timeZoomPercent) < 2) return;
+    if (Math.abs(clamped - timeZoomPercent) < 2) {
+      if (explicitUserFit) implicitWorkdayFitSuppressedUntil = performance.now() + 450;
+      return;
+    }
     inWorkdayFitRender = true;
     timeZoomPercent = clamped;
     syncCalendarToolbarControls();
     renderCalendar(lastCalendarPayload);
     inWorkdayFitRender = false;
+    if (explicitUserFit) implicitWorkdayFitSuppressedUntil = performance.now() + 500;
   }
 
   function scheduleWorkdayViewportFit() {
     if (inWorkdayFitRender) return;
+    if (performance.now() < implicitWorkdayFitSuppressedUntil) return;
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
+        if (performance.now() < implicitWorkdayFitSuppressedUntil) return;
         tryFitWorkdayToViewport();
         scheduleNowLineCenterScroll();
       });
@@ -2845,6 +2857,14 @@
     }, 280);
   }
 
+  /** Clear debounced save and POST immediately (Fit / Staff Apply — avoid races with load/bootstrap). */
+  function commitCalendarPrefsToServerImmediate() {
+    if (calendarPersistenceWriteDisabled) return;
+    if (calendarToolbarSaveTimer) clearTimeout(calendarToolbarSaveTimer);
+    calendarToolbarSaveTimer = null;
+    void persistCalendarPrefs();
+  }
+
   async function persistCalendarPrefs() {
     if (calendarPersistenceWriteDisabled) return;
     const params = currentCalendarQuery();
@@ -3265,9 +3285,9 @@
     document.getElementById('cal-toolbar-zoom-fit')?.addEventListener('click', () => {
       clearCalendarAutofitTimeZoomLock();
       calendarPrefsPersistedFromServer = false;
-      tryFitWorkdayToViewport();
+      tryFitWorkdayToViewport({ explicitUserFit: true });
       syncCalendarToolbarControls();
-      schedulePersistCalendarPrefs();
+      commitCalendarPrefsToServerImmediate();
     });
 
     document.getElementById('cal-toolbar-staff-apply')?.addEventListener('click', () => {
@@ -3279,8 +3299,8 @@
       });
       setHiddenStaffIds(hidden);
       closeCalendarToolbarPopovers();
-      schedulePersistCalendarPrefs();
-      load();
+      if (lastCalendarPayload) renderCalendar(lastCalendarPayload);
+      commitCalendarPrefsToServerImmediate();
     });
     document.getElementById('cal-toolbar-staff-all')?.addEventListener('click', () => {
       document.querySelectorAll('#cal-toolbar-staff-fields input[type="checkbox"]').forEach((i) => { i.checked = true; });
@@ -3651,9 +3671,7 @@
         const gh = document.getElementById('appts-calendar-grid');
         if (gh) void gh.getBoundingClientRect();
       }
-      tryFitWorkdayToViewport();
       scheduleWorkdayViewportFit();
-      window.setTimeout(() => scheduleWorkdayViewportFit(), 0);
       window.setTimeout(() => scheduleWorkdayViewportFit(), 220);
       updateNowButtonState();
       loadSidePanelData();
@@ -3774,8 +3792,10 @@
     if (!gridEl || typeof ResizeObserver === 'undefined') return;
     let t = null;
     const ro = new ResizeObserver(() => {
+      if (performance.now() < implicitWorkdayFitSuppressedUntil) return;
       if (t) clearTimeout(t);
       t = setTimeout(() => {
+        if (performance.now() < implicitWorkdayFitSuppressedUntil) return;
         scheduleWorkdayViewportFit();
       }, 100);
     });

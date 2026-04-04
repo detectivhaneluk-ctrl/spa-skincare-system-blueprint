@@ -1691,59 +1691,18 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   line-height: var(--ds-leading-normal);
   max-width: 42rem;
 }
-.workspace-subnav {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--ds-space-2);
-  margin-top: var(--ds-space-3);
-  padding: var(--ds-space-2) 0;
-}
-/* Mode bar: segmented control visuals from design-system .ds-segmented__link */
-.workspace-subnav__link.workspace-tab {
-  display: inline-flex;
-  align-items: center;
-}
-
-/* Clients / Sales / tenant dashboard: module title + segmented-style subnav (matches appointments shell) */
+/* Clients / Sales / tenant dashboard: module title (segmented nav uses design-system .ds-segmented--ios) */
 .clients-workspace-shell .workspace-module-head__title,
 .workspace-shell--sales:not(.platform-control-plane) .workspace-module-head__title,
 .dashboard-shell--tenant .tenant-dash-head .workspace-module-head__title {
   font-size: var(--ds-text-display);
   font-weight: var(--ds-font-bold);
 }
-.clients-workspace-shell .workspace-subnav,
-.workspace-shell--sales:not(.platform-control-plane) .workspace-subnav {
-  gap: 2px;
-  padding: 4px;
+.clients-workspace-shell .ds-segmented.ds-segmented--ios,
+.workspace-shell--sales:not(.platform-control-plane) .ds-segmented.ds-segmented--ios {
   margin-top: var(--ds-space-3);
-  background: var(--ds-color-segmented-track);
-  border-radius: var(--ds-radius-lg);
   width: fit-content;
   max-width: 100%;
-  box-shadow: none;
-}
-.clients-workspace-shell .workspace-subnav > a,
-.workspace-shell--sales:not(.platform-control-plane) .workspace-subnav > a {
-  border: none;
-  border-radius: var(--ds-radius-sm);
-  background: transparent;
-  box-shadow: none;
-  padding: 0.4rem 0.85rem;
-}
-.clients-workspace-shell .workspace-subnav > a:hover,
-.workspace-shell--sales:not(.platform-control-plane) .workspace-subnav > a:hover {
-  color: var(--ds-color-text);
-  background: rgba(255, 255, 255, 0.45);
-}
-.clients-workspace-shell .workspace-subnav > a[aria-current="page"],
-.clients-workspace-shell .workspace-subnav > a.workspace-subnav__link--active,
-.workspace-shell--sales:not(.platform-control-plane) .workspace-subnav > a[aria-current="page"],
-.workspace-shell--sales:not(.platform-control-plane) .workspace-subnav > a.workspace-subnav__link--active {
-  color: var(--ds-color-text);
-  font-weight: var(--ds-font-semibold);
-  background: var(--ds-color-bg-canvas);
-  box-shadow: var(--ds-shadow-segmented-active);
 }
 
 .workspace-shell--sales.workspace-shell--list {
@@ -1768,6 +1727,7 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
 
 .appts-workspace-header {
   margin-bottom: var(--ds-space-4);
+  overflow: visible;
 }
 .appts-workspace-header__row {
   display: flex;
@@ -1775,6 +1735,7 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   align-items: center;
   justify-content: space-between;
   gap: var(--ds-space-3) var(--ds-space-4);
+  overflow: visible;
 }
 .appts-workspace-header__intro {
   min-width: min(100%, 14rem);
@@ -1784,59 +1745,39 @@ html[data-app-sidebar-collapsed="true"] .app-shell__sidebar-logout-btn {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--ds-space-4);
+  gap: var(--ds-space-6);
   margin-left: auto;
+  overflow: visible;
+  /* Vertical gutter: box-shadow blur extends above/below; avoid clip vs flex line height */
+  padding: 14px 0 22px;
+  opacity: 0;
+  margin-top: 8px;
+  /* Avoid transform on this wrapper: it can create a compositor layer that clips descendant shadows */
+  animation: ds-toolbar-fade-up-in var(--ds-duration-toolbar-entrance) var(--ds-ease-spring) forwards;
 }
 .appts-workspace-header__action {
   margin-left: 0;
-}
-/* 3-class specificity beats .ds-btn.ds-btn--primary for fixed h-10 layout */
-.appts-workspace-header__new.ds-btn.ds-btn--primary {
-  display: inline-flex;
+  overflow: visible;
+  padding: 0;
+  display: flex;
   align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  gap: 0;
+}
+.appts-workspace-header__new.ds-btn--toolbar {
   white-space: nowrap;
-  border-radius: var(--ds-radius-pill);
-  height: var(--ds-workspace-control-height);
-  min-height: var(--ds-workspace-control-height);
-  padding: 0 var(--ds-space-4);
-  font-size: var(--ds-text-sm);
-  font-weight: var(--ds-font-medium);
-  letter-spacing: -0.01em;
-  line-height: 1;
-  background: #111827;
-  border: 1px solid #111827;
-  color: #fff;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-  transition: transform 0.2s cubic-bezier(0.25, 0.1, 0.25, 1),
-    background 0.2s cubic-bezier(0.25, 0.1, 0.25, 1),
-    border-color 0.2s cubic-bezier(0.25, 0.1, 0.25, 1),
-    box-shadow 0.2s cubic-bezier(0.25, 0.1, 0.25, 1),
-    opacity 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
-.appts-workspace-header__new.ds-btn--primary:hover {
-  background: #1f2937;
-  border-color: #1f2937;
-  color: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  transform: scale(1.015);
-  opacity: 1;
-}
-@media (prefers-reduced-motion: reduce) {
-  .appts-workspace-header__new.ds-btn--primary:hover {
-    transform: none;
+
+@keyframes ds-toolbar-fade-up-in {
+  to {
+    opacity: 1;
+    margin-top: 0;
   }
 }
-.appts-workspace-header__new.ds-btn--primary:active {
-  transform: scale(0.98);
-  opacity: 0.92;
-}
+
 @media (prefers-reduced-motion: reduce) {
-  .appts-workspace-header__new.ds-btn--primary:active {
-    transform: none;
+  .appts-workspace-header__controls {
+    animation: none;
     opacity: 1;
+    margin-top: 0;
   }
 }
 
@@ -3532,8 +3473,8 @@ a.appts-cal-toolbar__menu-item:hover {
   display: inline-flex !important;
   pointer-events: auto;
 }
+/* No overflow:hidden here: it clips ds-btn--toolbar shadow (worse on hover: larger blur + translateY). */
 .calendar-workspace .appts-workspace-header {
-  overflow: hidden;
   max-height: 12rem;
   opacity: 1;
   transition: max-height 0.28s ease, opacity 0.22s ease, margin 0.22s ease;
@@ -3701,7 +3642,7 @@ a.appts-cal-toolbar__menu-item:hover {
     margin-left: 0;
     width: 100%;
   }
-  .appts-workspace-header__action .appts-workspace-header__new.ds-btn.ds-btn--primary {
+  .appts-workspace-header__action .appts-workspace-header__new.ds-btn.ds-btn--toolbar {
     display: flex;
     width: 100%;
     justify-content: center;
@@ -3724,6 +3665,12 @@ a.appts-cal-toolbar__menu-item:hover {
 
 /* —— Calendar day: operational grid (structure unchanged in JS) —— */
 .ops-calendar { min-width: 860px; background: var(--ds-color-bg-canvas); }
+/* Instant Tools Fit / column changes: no width/grid-template animation (avoids staged shrink feel). */
+.ops-calendar-head,
+.ops-lanes,
+.ops-calendar-body {
+  transition: none;
+}
 .ops-calendar-head {
   display: grid;
   grid-template-columns: 84px repeat(auto-fit, minmax(var(--cal-col-min, 152px), 1fr));
