@@ -54,3 +54,24 @@ $router->get('/appointments/calendar/day/print/itineraries', [\Modules\Appointme
 $router->get('/calendar/month-summary', [\Modules\Appointments\Controllers\AppointmentController::class, 'calendarMonthSummary'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('appointments.view')]);
 $router->get('/calendar/week-summary', [\Modules\Appointments\Controllers\AppointmentController::class, 'calendarWeekSummary'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('appointments.view')]);
 $router->get('/calendar/side-panel', [\Modules\Appointments\Controllers\AppointmentController::class, 'calendarSidePanelJson'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('appointments.view')]);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Full-page appointment creation wizard (full_page_wizard flow only).
+// Quick-drawer and blocked-time flows are NOT routed here.
+// ─────────────────────────────────────────────────────────────────────────────
+$wizardMiddleware = [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('appointments.create')];
+
+$router->get('/appointments/wizard',               [\Modules\Appointments\Controllers\AppointmentWizardController::class, 'entry'],        $wizardMiddleware);
+$router->get('/appointments/wizard/step1',         [\Modules\Appointments\Controllers\AppointmentWizardController::class, 'step1'],        $wizardMiddleware);
+$router->post('/appointments/wizard/step1',        [\Modules\Appointments\Controllers\AppointmentWizardController::class, 'step1Submit'],  $wizardMiddleware);
+$router->get('/appointments/wizard/step2',         [\Modules\Appointments\Controllers\AppointmentWizardController::class, 'step2'],        $wizardMiddleware);
+$router->post('/appointments/wizard/step2',        [\Modules\Appointments\Controllers\AppointmentWizardController::class, 'step2Submit'],  $wizardMiddleware);
+$router->post('/appointments/wizard/step2/line',   [\Modules\Appointments\Controllers\AppointmentWizardController::class, 'step2AddLine'], $wizardMiddleware);
+$router->get('/appointments/wizard/step3',         [\Modules\Appointments\Controllers\AppointmentWizardController::class, 'step3'],        $wizardMiddleware);
+$router->post('/appointments/wizard/step3',        [\Modules\Appointments\Controllers\AppointmentWizardController::class, 'step3Submit'],  $wizardMiddleware);
+$router->get('/appointments/wizard/step4',         [\Modules\Appointments\Controllers\AppointmentWizardController::class, 'step4'],        $wizardMiddleware);
+$router->post('/appointments/wizard/step4',        [\Modules\Appointments\Controllers\AppointmentWizardController::class, 'step4Submit'],  $wizardMiddleware);
+$router->get('/appointments/wizard/review',        [\Modules\Appointments\Controllers\AppointmentWizardController::class, 'review'],       $wizardMiddleware);
+$router->post('/appointments/wizard/commit',       [\Modules\Appointments\Controllers\AppointmentWizardController::class, 'commit'],       $wizardMiddleware);
+$router->get('/appointments/wizard/client-search', [\Modules\Appointments\Controllers\AppointmentWizardController::class, 'clientSearch'], $wizardMiddleware);
+$router->post('/appointments/wizard/cancel',       [\Modules\Appointments\Controllers\AppointmentWizardController::class, 'cancel'],       $wizardMiddleware);

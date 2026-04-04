@@ -50,3 +50,38 @@ $container->singleton(\Modules\Appointments\Services\CalendarToolbarUiService::c
 $container->singleton(\Modules\Appointments\Services\DayCalendarPrintService::class, fn ($c) => new \Modules\Appointments\Services\DayCalendarPrintService($c->get(\Modules\Appointments\Services\AvailabilityService::class), $c->get(\Core\Branch\BranchDirectory::class), $c->get(\Modules\Appointments\Services\AppointmentService::class)));
 $container->singleton(\Modules\Appointments\Controllers\AppointmentController::class, fn ($c) => new \Modules\Appointments\Controllers\AppointmentController($c->get(\Modules\Appointments\Repositories\AppointmentRepository::class), $c->get(\Modules\Appointments\Services\AppointmentService::class), $c->get(\Core\Contracts\ClientListProvider::class), $c->get(\Core\Contracts\ServiceListProvider::class), $c->get(\Core\Contracts\StaffListProvider::class), $c->get(\Core\Contracts\RoomListProvider::class), $c->get(\Core\Contracts\PackageAvailabilityProvider::class), $c->get(\Core\Contracts\AppointmentPackageConsumptionProvider::class), $c->get(\Modules\Appointments\Services\AvailabilityService::class), $c->get(\Modules\Appointments\Repositories\WaitlistRepository::class), $c->get(\Modules\Appointments\Services\WaitlistService::class), $c->get(\Modules\Appointments\Repositories\BlockedSlotRepository::class), $c->get(\Modules\Appointments\Services\BlockedSlotService::class), $c->get(\Modules\Appointments\Services\AppointmentSeriesService::class), $c->get(\Core\Branch\BranchDirectory::class), $c->get(\Modules\Settings\Services\BranchOperatingHoursService::class), $c->get(\Modules\Settings\Services\BranchClosureDateService::class), $c->get(\Core\App\SettingsService::class), $c->get(\Core\Contracts\ClientAppointmentProfileProvider::class), $c->get(\Modules\Appointments\Services\AppointmentPrintSummaryService::class), $c->get(\Core\Branch\TenantBranchAccessService::class), $c->get(\Core\Organization\OrganizationScopedBranchAssert::class), $c->get(\Core\Branch\BranchContext::class), $c->get(\Modules\Appointments\Services\CalendarMonthSummaryService::class), $c->get(\Core\Organization\OrganizationContext::class), $c->get(\Modules\Appointments\Services\CalendarToolbarUiService::class), $c->get(\Modules\Appointments\Services\DayCalendarPrintService::class)));
 $container->singleton(\Core\Contracts\AppointmentCheckoutProvider::class, fn ($c) => new \Modules\Appointments\Providers\AppointmentCheckoutProviderImpl($c->get(\Modules\Appointments\Repositories\AppointmentRepository::class), $c->get(\Core\Contracts\ServiceListProvider::class)));
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Full-page appointment creation wizard services and controller.
+// ─────────────────────────────────────────────────────────────────────────────
+$container->singleton(
+    \Modules\Appointments\Services\AppointmentWizardStateService::class,
+    fn ($c) => new \Modules\Appointments\Services\AppointmentWizardStateService(
+        $c->get(\Core\Auth\SessionAuth::class)
+    )
+);
+$container->singleton(
+    \Modules\Appointments\Services\AppointmentWizardService::class,
+    fn ($c) => new \Modules\Appointments\Services\AppointmentWizardService(
+        $c->get(\Modules\Appointments\Services\AvailabilityService::class),
+        $c->get(\Modules\Appointments\Services\AppointmentService::class),
+        $c->get(\Core\Contracts\ClientListProvider::class),
+        $c->get(\Modules\Clients\Repositories\ClientRepository::class),
+        $c->get(\Core\Contracts\ServiceListProvider::class),
+        $c->get(\Core\Contracts\StaffListProvider::class),
+        $c->get(\Core\Contracts\RoomListProvider::class),
+        $c->get(\Modules\ServicesResources\Repositories\ServiceCategoryRepository::class)
+    )
+);
+$container->singleton(
+    \Modules\Appointments\Controllers\AppointmentWizardController::class,
+    fn ($c) => new \Modules\Appointments\Controllers\AppointmentWizardController(
+        $c->get(\Modules\Appointments\Services\AppointmentWizardStateService::class),
+        $c->get(\Modules\Appointments\Services\AppointmentWizardService::class),
+        $c->get(\Core\Auth\SessionAuth::class),
+        $c->get(\Core\Branch\BranchContext::class),
+        $c->get(\Core\Branch\BranchDirectory::class),
+        $c->get(\Core\Branch\TenantBranchAccessService::class),
+        $c->get(\Core\Organization\OrganizationScopedBranchAssert::class)
+    )
+);

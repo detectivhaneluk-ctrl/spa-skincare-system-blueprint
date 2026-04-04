@@ -215,7 +215,17 @@ final class AppointmentController
             require base_path('modules/appointments/views/drawer/create.php');
             return;
         }
-        require base_path('modules/appointments/views/create.php');
+        // Non-drawer: promote to full-page wizard. Carry branch_id and date context.
+        $q  = [];
+        if (isset($_GET['branch_id'])) {
+            $q['branch_id'] = (int) $_GET['branch_id'];
+        }
+        if (isset($_GET['date'])) {
+            $q['date'] = (string) $_GET['date'];
+        }
+        $qs = $q ? '?' . http_build_query($q) : '';
+        header('Location: /appointments/wizard' . $qs);
+        exit;
     }
 
     public function store(): void
