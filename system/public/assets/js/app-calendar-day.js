@@ -4272,15 +4272,11 @@
     load();
   });
 
-  newAppointmentBtns.forEach((btn) => btn.addEventListener('click', async () => {
-    if (!selectedSlot) {
-      selectedSlot = {
-        staffId: null,
-        time: '09:00',
-        bookingDurationMinutes: DEFAULT_BOOKING_DURATION_MINUTES,
-      };
-    }
-    await openDrawerUrl(buildNewAppointmentUrl());
+  // Toolbar "New Appointment" buttons navigate full-page, not drawer.
+  // Empty slot click (lane click handler) is the drawer entry path.
+  newAppointmentBtns.forEach((btn) => btn.addEventListener('click', () => {
+    const params = currentCalendarQuery();
+    window.location.href = '/appointments/create?' + params.toString();
   }));
   if (blockedTimeBtn) {
     blockedTimeBtn.addEventListener('click', async () => {
