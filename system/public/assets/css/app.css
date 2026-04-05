@@ -4581,18 +4581,19 @@ a.appts-cal-toolbar__menu-item:hover {
 .ops-calendar-head {
   display: grid;
   grid-template-columns: 84px repeat(auto-fit, minmax(var(--cal-col-min, 152px), 1fr));
-  border-bottom: 1px solid var(--ds-color-divider);
+  /* Single hairline only — avoid border + box-shadow stacking (reads as a heavy “black bar”). */
+  border-bottom: 1px solid var(--ds-color-border-light);
   background: var(--ds-color-bg-subtle);
   position: sticky;
   top: 0;
   z-index: 5;
-  box-shadow: 0 1px 0 var(--ds-color-divider);
+  box-shadow: none;
 }
 .ops-time-head, .ops-staff-head {
   padding: 0.45rem 0.55rem;
   min-height: 2.85rem;
   box-sizing: border-box;
-  border-right: 1px solid var(--ds-color-divider);
+  border-right: 1px solid var(--ds-color-border-light);
 }
 .ops-time-head {
   color: var(--ds-color-text-secondary);
@@ -4825,25 +4826,25 @@ a.appts-cal-toolbar__menu-item:hover {
   position: absolute;
   left: 84px;
   right: 0;
-  height: 2px;
-  background: #ef4444;
+  height: 1px;
+  background: rgba(17, 24, 39, 0.22);
   z-index: 8;
   pointer-events: none;
 }
 .ops-now-line::before {
   content: '';
   position: absolute;
-  left: -5px;
-  top: -4px;
-  width: 10px;
-  height: 10px;
+  left: -4px;
+  top: -3px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: #ef4444;
+  background: var(--ds-color-accent);
   animation: ops-now-pulse 2s ease-in-out infinite;
 }
 @keyframes ops-now-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-  50%       { box-shadow: 0 0 0 5px rgba(239, 68, 68, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(17, 24, 39, 0.2); }
+  50%       { box-shadow: 0 0 0 4px rgba(17, 24, 39, 0); }
 }
 .ops-now-label {
   position: absolute;
@@ -4851,15 +4852,16 @@ a.appts-cal-toolbar__menu-item:hover {
   left: auto;
   transform: translateY(-50%);
   font-size: 0.5625rem;
-  font-weight: 800;
+  font-weight: var(--ds-font-semibold);
   color: #fff;
-  background: #ef4444;
-  padding: 1px 5px;
-  border-radius: 3px;
+  background: var(--ds-color-accent);
+  padding: 0.2rem 0.45rem;
+  border-radius: var(--ds-radius-pill);
   z-index: 6;
   pointer-events: none;
   white-space: nowrap;
-  line-height: 1.5;
+  line-height: 1.35;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 .calendar-branch-hours-indicator {
   margin: 0.35rem 0 0.35rem;
@@ -4900,7 +4902,7 @@ a.appts-cal-toolbar__menu-item:hover {
   position: absolute;
   left: 6px;
   right: 6px;
-  border-radius: var(--ds-radius-md, 10px);
+  border-radius: var(--ds-radius-lg);
   padding: 0.4rem 0.55rem 0.45rem 0.6rem;
   font-size: 0.75rem;
   overflow: hidden;
@@ -4936,7 +4938,7 @@ a.appts-cal-toolbar__menu-item:hover {
   top: 0;
   bottom: 0;
   width: 4px;
-  border-radius: var(--ds-radius-md, 10px) 0 0 var(--ds-radius-md, 10px);
+  border-radius: var(--ds-radius-lg) 0 0 var(--ds-radius-lg);
   background: var(--cal-dominant, rgba(13, 148, 136, 0.55));
   pointer-events: none;
   opacity: 0.95;
@@ -5019,7 +5021,7 @@ a.appts-cal-toolbar__menu-item:hover {
   box-sizing: border-box;
 }
 .ops-block-buffer--before {
-  border-radius: var(--ds-radius-md, 10px) var(--ds-radius-md, 10px) 0 0;
+  border-radius: var(--ds-radius-lg) var(--ds-radius-lg) 0 0;
   background: repeating-linear-gradient(
     -45deg,
     rgba(250, 204, 21, 0.22),
@@ -5030,7 +5032,7 @@ a.appts-cal-toolbar__menu-item:hover {
   border-bottom: 1px dashed rgba(234, 179, 8, 0.35);
 }
 .ops-block-buffer--after {
-  border-radius: 0 0 var(--ds-radius-md, 10px) var(--ds-radius-md, 10px);
+  border-radius: 0 0 var(--ds-radius-lg) var(--ds-radius-lg);
   background: repeating-linear-gradient(
     -45deg,
     rgba(250, 204, 21, 0.22),
@@ -5075,7 +5077,7 @@ a.appts-cal-toolbar__menu-item:hover {
   top: 0;
   bottom: 0;
   width: 4px;
-  border-radius: var(--ds-radius-md, 10px) 0 0 var(--ds-radius-md, 10px);
+  border-radius: var(--ds-radius-lg) 0 0 var(--ds-radius-lg);
   background: linear-gradient(180deg, rgba(168, 162, 158, 0.55), rgba(120, 113, 108, 0.45));
   pointer-events: none;
 }
