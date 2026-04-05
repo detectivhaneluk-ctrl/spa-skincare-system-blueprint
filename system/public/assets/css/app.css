@@ -12,6 +12,15 @@
   inset: 0;
   display: flex;
   justify-content: flex-end;
+  /* Timing shared by overlay + panel (see app-drawer.js close fallback). */
+  --drawer-t: 360ms;
+  --drawer-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-drawer {
+    --drawer-t: 0.01ms;
+  }
 }
 
 .app-drawer[hidden] {
@@ -22,8 +31,14 @@
   position: absolute;
   inset: 0;
   border: 0;
-  background: rgba(29, 29, 31, 0.38);
+  background: rgba(29, 29, 31, 0.42);
   cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--drawer-t) var(--drawer-ease);
+}
+
+.app-drawer.is-open .app-drawer__overlay {
+  opacity: 1;
 }
 
 .app-drawer__panel {
@@ -32,16 +47,21 @@
   flex-direction: column;
   width: min(100vw, 760px);
   height: 100vh;
-  background: rgba(248, 248, 250, 0.96);
-  backdrop-filter: var(--ds-glass-blur);
-  -webkit-backdrop-filter: var(--ds-glass-blur);
+  font-family: var(--ds-font-sans);
+  /* Same surface law as main workspace: canvas white + token drawer elevation. */
+  background: var(--ds-color-bg-canvas);
   box-shadow: var(--ds-shadow-drawer);
-  transform: translateX(100%);
-  transition: transform var(--ds-duration-drawer) var(--ds-ease-standard);
+  transform: translate3d(100%, 0, 0) scale(0.988);
+  transition: transform var(--drawer-t) var(--drawer-ease);
+  will-change: transform;
 }
 
 .app-drawer.is-open .app-drawer__panel {
-  transform: translateX(0);
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+.app-drawer:not(.is-open) .app-drawer__panel {
+  will-change: auto;
 }
 
 .app-drawer__panel[data-width="narrow"] {
@@ -62,8 +82,9 @@
   align-items: center;
   gap: var(--ds-space-3);
   padding: var(--ds-space-4) var(--ds-space-5);
-  background: rgba(255, 255, 255, 0.82);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  background: var(--ds-color-bg-canvas);
+  border-bottom: 1px solid var(--ds-color-border-light);
+  flex-shrink: 0;
 }
 
 .app-drawer__footer {
@@ -78,19 +99,21 @@
 }
 
 .app-drawer__eyebrow {
-  margin: 0 0 0.2rem;
+  margin: 0 0 var(--ds-space-1);
   color: var(--ds-color-text-secondary);
-  font-size: var(--ds-text-sm);
+  font-size: var(--ds-text-xs);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
+  font-weight: var(--ds-font-semibold);
 }
 
 .app-drawer__title {
   margin: 0;
-  font-size: var(--ds-text-lg);
+  font-size: var(--ds-text-page-title);
   font-weight: var(--ds-font-semibold);
   color: var(--ds-color-text);
   letter-spacing: var(--ds-tracking-tight);
+  line-height: var(--ds-leading-tight);
 }
 
 .app-drawer__header-actions {
@@ -100,21 +123,23 @@
 }
 
 .app-drawer__close {
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--ds-color-border);
   border-radius: var(--ds-radius-md);
-  background: rgba(255, 255, 255, 0.75);
+  background: var(--ds-color-bg-subtle);
   color: var(--ds-color-text-secondary);
-  width: 2.25rem;
-  height: 2.25rem;
+  width: var(--ds-control-height-lg);
+  height: var(--ds-control-height-lg);
   cursor: pointer;
   font-size: 1.35rem;
   line-height: 1;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .app-drawer__close:hover {
-  background: #fff;
+  background: var(--ds-color-bg-canvas);
   color: var(--ds-color-text);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  border-color: var(--ds-color-border);
+  box-shadow: var(--ds-shadow-control-rest);
 }
 
 .app-drawer__status {
@@ -143,8 +168,10 @@
 .app-drawer__body {
   flex: 1;
   overflow: auto;
-  padding: var(--ds-space-4) var(--ds-space-5) var(--ds-space-6);
-  background: var(--ds-color-bg-canvas);
+  padding: var(--ds-space-5) var(--ds-space-5) var(--ds-space-8);
+  background: var(--ds-color-bg-page);
+  color: var(--ds-color-text);
+  -webkit-font-smoothing: antialiased;
 }
 
 .app-drawer__empty {
@@ -160,24 +187,57 @@
   color: var(--ds-color-danger);
 }
 
+/* Single visual while fetching drawer HTML — avoids a second “Loading…” block that then swaps abruptly. */
+.app-drawer__load-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 10rem;
+  padding: var(--ds-space-6);
+  box-sizing: border-box;
+}
+.app-drawer__load-spinner {
+  display: block;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  border: 2px solid rgba(15, 23, 42, 0.08);
+  border-top-color: var(--ds-color-accent);
+  animation: app-drawer-load-spin 0.7s linear infinite;
+}
+@keyframes app-drawer-load-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-drawer__load-spinner {
+    animation: none;
+    border-color: rgba(15, 23, 42, 0.12);
+    border-top-color: var(--ds-color-accent);
+  }
+}
+
 .drawer-workspace {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--ds-space-4);
 }
 
 .drawer-workspace__intro {
   margin: 0;
+  max-width: 40rem;
   color: var(--ds-color-text-secondary);
-  font-size: var(--ds-text-md);
+  font-size: var(--ds-text-sm);
   line-height: var(--ds-leading-normal);
 }
 
 .drawer-card {
-  padding: var(--ds-space-4);
+  padding: var(--ds-space-5);
   border: 1px solid var(--ds-color-border-light);
   border-radius: var(--ds-radius-lg);
   background: var(--ds-color-bg-canvas);
+  box-shadow: var(--ds-shadow-xs);
 }
 
 .drawer-card__title {
@@ -196,7 +256,7 @@
 .drawer-toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.65rem;
+  gap: var(--ds-space-3);
   align-items: center;
   justify-content: space-between;
 }
@@ -226,12 +286,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 2.5rem;
-  padding: 0.65rem 1rem;
-  border-radius: 10px;
-  font-weight: 600;
+  min-height: var(--ds-control-height-lg);
+  padding: 0.65rem var(--ds-space-4);
+  border-radius: var(--ds-radius-md);
+  font-size: var(--ds-text-sm);
+  font-weight: var(--ds-font-semibold);
   text-decoration: none;
   cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .drawer-submit {
@@ -242,13 +304,20 @@
 
 .drawer-submit:hover {
   background: var(--ds-color-accent-hover);
+  box-shadow: var(--ds-shadow-toolbar-cta-hover);
 }
 
 .drawer-secondary-btn,
 .drawer-link-btn {
-  border: 1px solid var(--ds-color-border-light);
+  border: 1px solid var(--ds-color-border);
   background: var(--ds-color-bg-canvas);
   color: var(--ds-color-text);
+}
+
+.drawer-secondary-btn:hover,
+.drawer-link-btn:hover {
+  background: var(--ds-color-bg-subtle);
+  border-color: var(--ds-color-border);
 }
 
 .drawer-danger-btn {
@@ -265,19 +334,21 @@
 .drawer-tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  gap: var(--ds-space-2);
+  margin-bottom: var(--ds-space-4);
 }
 
 .drawer-tab {
-  border: 1px solid var(--ds-color-border-light);
+  border: 1px solid var(--ds-color-border);
   background: var(--ds-color-bg-canvas);
   color: var(--ds-color-text-secondary);
   border-radius: var(--ds-radius-pill);
-  padding: 0.45rem 0.85rem;
+  padding: 0.45rem var(--ds-space-3);
   cursor: pointer;
   font-size: var(--ds-text-sm);
   font-weight: var(--ds-font-medium);
+  font-family: var(--ds-font-sans);
+  transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
 }
 
 .drawer-tab.is-active {
@@ -306,6 +377,184 @@
 .drawer-detail-list dd {
   margin: 0;
   color: var(--ds-color-text);
+}
+
+/* —— Drawer body: same section / field laws as appointments workspace (design-tokens only) —— */
+.app-drawer__body .form-errors,
+.app-drawer__body .appt-create-errors {
+  margin: 0 0 var(--ds-space-4);
+  padding: var(--ds-space-3) var(--ds-space-4);
+  border: 1px solid var(--ds-color-border);
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-color-danger-bg);
+  color: var(--ds-color-danger);
+  font-size: var(--ds-text-sm);
+  list-style: none;
+}
+
+.app-drawer__body .drawer-workspace > .drawer-card:first-of-type {
+  margin-top: 0;
+}
+
+.app-drawer__body .appt-create-section--step .appt-create-section__title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--ds-space-2);
+}
+
+.app-drawer__body .appt-create-section__step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 0.35rem;
+  font-size: var(--ds-text-xs);
+  font-weight: var(--ds-font-bold);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ds-color-text);
+  background: var(--ds-color-accent-muted);
+  border: 1px solid var(--ds-color-accent-border);
+  border-radius: var(--ds-radius-sm);
+  line-height: 1;
+}
+
+.app-drawer__body .appt-create-section {
+  margin: 0;
+  padding: var(--ds-space-4) 0;
+  border-top: 1px solid var(--ds-color-divider);
+}
+
+.app-drawer__body .appt-create-section:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.app-drawer__body .appt-create-section__title {
+  margin: 0 0 var(--ds-space-3);
+  font-size: var(--ds-text-xs);
+  font-weight: var(--ds-font-bold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ds-color-text-secondary);
+}
+
+.app-drawer__body .appt-create-section__body {
+  max-width: 36rem;
+}
+
+@media (min-width: 640px) {
+  .app-drawer__body .appt-create-section__body--split {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 var(--ds-space-5);
+    max-width: 40rem;
+  }
+
+  .app-drawer__body .appt-create-section__body--split .form-row {
+    margin-bottom: var(--ds-space-3);
+  }
+}
+
+.app-drawer__body .appt-create-form .form-row {
+  margin-bottom: var(--ds-space-3);
+}
+
+.app-drawer__body .appt-create-form .form-row:last-child {
+  margin-bottom: 0;
+}
+
+.app-drawer__body .appt-create-form label {
+  display: block;
+  margin-bottom: var(--ds-space-1);
+  font-size: var(--ds-text-sm);
+  font-weight: var(--ds-font-semibold);
+  color: var(--ds-color-text);
+  letter-spacing: var(--ds-tracking-tight);
+}
+
+.app-drawer__body .appt-create-form input[type="date"],
+.app-drawer__body .appt-create-form input[type="time"],
+.app-drawer__body .appt-create-form input[type="text"],
+.app-drawer__body .appt-create-form input[type="number"],
+.app-drawer__body .appt-create-form input[type="email"],
+.app-drawer__body .appt-create-form input[type="tel"],
+.app-drawer__body .appt-create-form select,
+.app-drawer__body .appt-create-form textarea,
+.app-drawer__body .calendar-blocked-form input,
+.app-drawer__body .calendar-blocked-form select,
+.app-drawer__body .calendar-blocked-form textarea {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-height: var(--ds-control-height);
+  padding: 0.45rem 0.55rem;
+  font-size: var(--ds-text-sm);
+  font-family: var(--ds-font-sans);
+  border: 1px solid var(--ds-color-border);
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-color-bg-canvas);
+  color: var(--ds-color-text);
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.app-drawer__body .appt-create-form textarea,
+.app-drawer__body .calendar-blocked-form textarea {
+  min-height: 5rem;
+  resize: vertical;
+  line-height: var(--ds-leading-normal);
+}
+
+.app-drawer__body .appt-create-form input:focus,
+.app-drawer__body .appt-create-form select:focus,
+.app-drawer__body .appt-create-form textarea:focus,
+.app-drawer__body .calendar-blocked-form input:focus,
+.app-drawer__body .calendar-blocked-form select:focus,
+.app-drawer__body .calendar-blocked-form textarea:focus {
+  outline: none;
+  border-color: var(--ds-color-accent);
+  box-shadow: 0 0 0 2px var(--ds-color-focus-ring);
+}
+
+.app-drawer__body .appt-create-form .hint,
+.app-drawer__body .calendar-blocked-form .hint {
+  font-size: var(--ds-text-sm);
+  color: var(--ds-color-text-secondary);
+  line-height: var(--ds-leading-normal);
+}
+
+.app-drawer__body .slot-btn {
+  padding: 0.4rem 0.65rem;
+  margin: 0 var(--ds-space-1) var(--ds-space-1) 0;
+  border: 1px solid var(--ds-color-border);
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-color-bg-canvas);
+  font-size: var(--ds-text-sm);
+  font-weight: var(--ds-font-medium);
+  font-family: var(--ds-font-sans);
+  color: var(--ds-color-text);
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+
+.app-drawer__body .slot-btn:hover {
+  border-color: var(--ds-color-accent-border);
+  background: var(--ds-color-accent-muted);
+}
+
+.app-drawer__body .slot-btn.is-active {
+  border-color: var(--ds-color-accent-border);
+  background: var(--ds-color-accent-muted);
+  font-weight: var(--ds-font-semibold);
+}
+
+.app-drawer__body .entity-form .form-actions {
+  margin-top: var(--ds-space-4);
+  padding-top: var(--ds-space-4);
+  border-top: 1px solid var(--ds-color-divider);
+  gap: var(--ds-space-3);
 }
 
 .calendar-toolbar-aside {
@@ -407,29 +656,148 @@
   cursor: crosshair;
 }
 
-/* Above .ops-calendar-head (z-index 5) / .ops-time-head (6) so the pill label
-   (negative top offset) is not painted under sticky staff names. */
+/* Slot hover UI — under lane cards when idle; when .is-active uses fixed + JS so it paints above .ops-now-line. */
 .ops-slot-preview {
   position: absolute;
-  left: 0.35rem;
-  right: 0.35rem;
-  height: 2px;
-  background: var(--ds-color-accent);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.55);
+  left: 0;
+  right: 0;
   pointer-events: none;
-  z-index: 8;
+  z-index: var(--cal-z-slot-preview, 8);
+}
+.ops-slot-preview.is-active {
+  z-index: var(--cal-z-slot-preview-active, 95);
 }
 
+.ops-slot-preview__line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: rgba(15, 23, 42, 0.1);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.44s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ops-slot-preview.is-active .ops-slot-preview__line {
+  transform: scaleX(1);
+}
+
+.ops-slot-preview__dot {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 22px;
+  height: 22px;
+  background: rgba(255, 255, 255, 0.88);
+  border-radius: 50%;
+  backdrop-filter: blur(10px) saturate(160%);
+  -webkit-backdrop-filter: blur(10px) saturate(160%);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.06),
+    0 0 0 1px rgba(15, 23, 42, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ops-slot-preview__dot::after {
+  content: '+';
+  color: rgba(15, 23, 42, 0.72);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1;
+  margin-top: -0.5px;
+}
+
+.ops-slot-preview.is-active .ops-slot-preview__dot {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
+/* Speech bubble — centered above the + */
 .ops-slot-preview__label {
   position: absolute;
-  top: -1.55rem;
-  left: 0;
-  padding: 0.15rem 0.45rem;
-  border-radius: var(--ds-radius-pill);
-  background: var(--ds-color-text);
-  color: #fff;
-  font-size: 0.72rem;
+  top: -3.8rem;
+  left: 50%;
+  min-width: 72px;
+  padding: 0.42rem 0.78rem;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(20px) saturate(220%);
+  -webkit-backdrop-filter: blur(20px) saturate(220%);
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  box-shadow:
+    0 3px 14px rgba(0, 0, 0, 0.1),
+    0 1px 3px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+  color: #111827;
+  font-size: 0.9rem;
+  font-weight: 600;
   white-space: nowrap;
+  letter-spacing: -0.4px;
+  text-align: center;
+  opacity: 0;
+  transform: translateX(-50%) translateY(6px) scale(0.97);
+  transition: opacity 0.44s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.44s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ops-slot-preview__label::before {
+  content: '';
+  position: absolute;
+  bottom: -9px;
+  left: calc(50% - 8px);
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 9px solid rgba(0, 0, 0, 0.08);
+}
+
+.ops-slot-preview__label::after {
+  content: '';
+  position: absolute;
+  bottom: -7px;
+  left: calc(50% - 7px);
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 8px solid rgba(255, 255, 255, 0.96);
+}
+
+.ops-slot-preview.is-active .ops-slot-preview__label {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0) scale(1);
+}
+
+.ops-slot-preview.is-flipped .ops-slot-preview__label {
+  top: 2.2rem;
+  transform: translateX(-50%) translateY(-6px) scale(0.97);
+}
+
+.ops-slot-preview.is-flipped.is-active .ops-slot-preview__label {
+  transform: translateX(-50%) translateY(0) scale(1);
+}
+
+.ops-slot-preview.is-flipped .ops-slot-preview__label::before {
+  bottom: auto;
+  top: -9px;
+  border-top: none;
+  border-bottom: 9px solid rgba(0, 0, 0, 0.08);
+}
+
+.ops-slot-preview.is-flipped .ops-slot-preview__label::after {
+  bottom: auto;
+  top: -7px;
+  border-top: none;
+  border-bottom: 8px solid rgba(255, 255, 255, 0.96);
 }
 
 @media (max-width: 960px) {
@@ -1868,8 +2236,8 @@ body:has(.calendar-workspace) {
   margin-left: auto;
   min-width: 0;
   overflow: visible;
-  /* Vertical gutter: box-shadow blur extends above/below; avoid clip vs flex line height */
-  padding: 14px 0 22px;
+  /* Vertical gutter (tightened vs page title row; thumb shadow still clears) */
+  padding: 8px 0 14px;
   opacity: 0;
   margin-top: 8px;
   /* Avoid transform on this wrapper: it can create a compositor layer that clips descendant shadows */
@@ -1920,6 +2288,7 @@ body:has(.calendar-workspace) {
   animation: none;
   opacity: 1;
   margin-top: 0;
+  padding: 4px 0 10px;
 }
 @media (min-width: 720px) {
   .appts-workspace-header__controls {
@@ -1933,6 +2302,15 @@ body:has(.calendar-workspace) {
     flex-shrink: 1;
     width: 100%;
   }
+}
+
+/* Calendar | List | Waitlist: clearer inactive vs active (thumb track stays calm, labels read faster). */
+.calendar-workspace .appts-workspace-header__segmented-track.ds-segmented--ios.ds-segmented--pill-track .ds-segmented__link {
+  color: var(--ds-color-text-secondary);
+}
+.calendar-workspace .appts-workspace-header__segmented-track.ds-segmented--ios.ds-segmented--pill-track .ds-segmented__link.is-active,
+.calendar-workspace .appts-workspace-header__segmented-track.ds-segmented--ios.ds-segmented--pill-track .ds-segmented__link[aria-current='page'] {
+  color: var(--ds-color-text);
 }
 
 @keyframes ds-toolbar-fade-up-in {
@@ -1971,18 +2349,28 @@ body:has(.calendar-workspace) {
   align-items: stretch;
   flex: 1 1 auto;
   min-height: 0;
+  /* Grid gap + flex footers read as one tone (not page gray vs card white seam). */
+  background: var(--ds-color-bg-canvas);
+  /*
+   * Shared “chrome” for left rail + day grid: one radius, one hairline, one calm elevation
+   * (design-tokens policy: structural surfaces use border + control-rest only).
+   */
+  --appts-cal-surface-radius: var(--ds-radius-lg);
+  --appts-cal-inset-radius: var(--ds-radius-md);
+  --appts-cal-surface-border: 1px solid var(--ds-color-border-light);
+  --appts-cal-surface-elev: var(--ds-shadow-control-rest);
+  /* Softer grid — closer to Calendar / quiet paper than harsh spreadsheet lines */
+  --appts-cal-grid-line: rgba(15, 23, 42, 0.055);
+  --appts-cal-grid-line-strong: rgba(15, 23, 42, 0.09);
 }
 
 /* Left: weekly-first smart calendar control card (backend week summary; not a top strip) */
-.appts-calendar-rail.appts-smart-calendar-rail {
-  border-right: 1px solid var(--ds-color-border-light);
-}
 .appts-calendar-rail {
   min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--ds-color-divider);
+  border-right: var(--appts-cal-surface-border, 1px solid var(--ds-color-border-light));
   padding-right: var(--ds-space-3);
   align-self: stretch;
 }
@@ -1993,16 +2381,21 @@ body:has(.calendar-workspace) {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  margin-top: 0.75rem;
-  border-top: 1px solid var(--ds-color-divider);
-  padding-top: 0.5rem;
+  margin-top: var(--ds-space-3);
+  border-top: var(--appts-cal-surface-border, 1px solid var(--ds-color-border-light));
+  padding-top: var(--ds-space-2);
 }
+/* Icon tab row: same pill segmented language as .appts-cal-card__mode / .ds-segmented--pill-track */
 .cal-tools-tabs {
   display: flex;
-  gap: 0;
-  padding: 0 0.25rem;
-  border-bottom: 1px solid var(--ds-color-divider);
-  margin-bottom: 0.5rem;
+  align-items: stretch;
+  gap: var(--ds-space-1);
+  padding: var(--ds-segmented-track-padding);
+  border-bottom: none;
+  margin-bottom: var(--ds-space-2);
+  background: var(--ds-color-segmented-track-strong, #e5e7eb);
+  border-radius: var(--ds-radius-pill);
+  box-sizing: border-box;
 }
 .cal-tools-tab {
   flex: 1;
@@ -2011,29 +2404,33 @@ body:has(.calendar-workspace) {
   justify-content: center;
   gap: 0.2rem;
   position: relative;
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  padding: 0.55rem 0.25rem;
+  min-width: 0;
+  min-height: 34px;
+  margin: 0;
+  padding: 0.4rem 0.2rem;
   cursor: pointer;
-  color: var(--ds-color-text-tertiary);
-  transition: color 0.2s, border-color 0.2s, background 0.2s;
-  border-radius: var(--ds-radius-sm) var(--ds-radius-sm) 0 0;
-}
-.cal-tools-tab:hover {
   color: var(--ds-color-text-secondary);
-  background: var(--ds-color-bg-subtle);
+  background: transparent;
+  border: none;
+  border-radius: var(--ds-radius-pill);
+  transition: color 0.2s cubic-bezier(0.25, 0.1, 0.25, 1),
+    background 0.2s cubic-bezier(0.25, 0.1, 0.25, 1),
+    box-shadow 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+.cal-tools-tab:hover:not(.cal-tools-tab--active) {
+  color: var(--ds-color-text);
+  background: rgba(255, 255, 255, 0.45);
 }
 .cal-tools-tab--active {
-  color: var(--ds-color-accent);
-  border-bottom-color: var(--ds-color-accent);
-  background: var(--ds-color-accent-muted);
+  color: var(--ds-color-text);
+  background: var(--ds-color-bg-canvas);
+  box-shadow: var(--ds-shadow-segmented-active);
+  font-weight: var(--ds-font-semibold);
 }
 .cal-tools-tab:focus-visible {
-  outline: 2px solid var(--ds-color-focus-ring);
+  outline: 2px solid var(--ds-color-accent);
   outline-offset: 1px;
-  border-radius: 3px;
+  border-radius: var(--ds-radius-pill);
 }
 .cal-tools-tab__ic {
   display: block;
@@ -2051,7 +2448,7 @@ body:has(.calendar-workspace) {
   min-width: 14px;
   height: 14px;
   padding: 0 3px;
-  background: #ef4444;
+  background: var(--ds-color-danger);
   color: #fff;
   font-size: 9px;
   font-weight: 700;
@@ -2067,7 +2464,7 @@ body:has(.calendar-workspace) {
   font-size: var(--ds-text-xs, 0.75rem);
 }
 .cal-tools-hint {
-  color: #94a3b8;
+  color: var(--ds-color-text-tertiary);
   font-size: var(--ds-text-xs, 0.75rem);
   text-align: center;
   padding: 0.75rem 0.5rem;
@@ -2087,32 +2484,32 @@ body:has(.calendar-workspace) {
   color: var(--ds-color-accent);
   text-decoration: none;
   padding: 0.35rem 0.5rem;
-  border-radius: 0.35rem;
+  border-radius: var(--ds-radius-sm);
   margin: 0.25rem 0;
 }
-.cal-tools-link:hover { background: #f1f5f9; }
+.cal-tools-link:hover { background: var(--ds-color-bg-subtle); }
 .cal-tools-link--primary {
-  background: #f4f4f5;
+  background: var(--ds-color-bg-muted);
   color: var(--ds-color-accent);
-  font-weight: 600;
+  font-weight: var(--ds-font-semibold);
 }
-.cal-tools-link--primary:hover { background: #e4e4e7; }
+.cal-tools-link--primary:hover { background: var(--ds-color-bg-subtle); }
 .cal-tools-entries { display: flex; flex-direction: column; gap: 1px; }
 .cal-tools-entry {
   display: flex;
   flex-direction: column;
   gap: 1px;
   padding: 0.35rem 0.4rem;
-  border-radius: 0.35rem;
+  border-radius: var(--ds-radius-sm);
   text-decoration: none;
   color: var(--ds-color-text, #1e293b);
   border: 1px solid transparent;
   transition: background 0.1s;
 }
-.cal-tools-entry:hover { background: #f1f5f9; border-color: #e2e8f0; }
+.cal-tools-entry:hover { background: var(--ds-color-bg-subtle); border-color: var(--ds-color-border-light); }
 .cal-tools-entry__time { font-size: 10px; font-weight: 700; color: var(--ds-color-accent); }
 .cal-tools-entry__name { font-size: 0.75rem; font-weight: 600; }
-.cal-tools-entry__svc  { font-size: 0.7rem; color: #64748b; }
+.cal-tools-entry__svc  { font-size: 0.7rem; color: var(--ds-color-text-secondary); }
 
 /* ── Legend ─────────────────────────────────────────────────────────────── */
 .cal-legend-list { list-style: none; margin: 0; padding: 0.25rem 0; display: flex; flex-direction: column; gap: 0.35rem; }
@@ -2359,11 +2756,11 @@ body:has(.calendar-workspace) {
   display: flex;
   flex-direction: column;
   gap: var(--ds-space-2);
-  border-radius: 16px;
-  border: 1px solid #e5e7eb;
+  border-radius: var(--appts-cal-surface-radius, var(--ds-radius-lg));
+  border: var(--appts-cal-surface-border, 1px solid var(--ds-color-border-light));
   background: var(--ds-color-bg-canvas);
   padding: var(--ds-space-3) var(--ds-space-2);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  box-shadow: var(--appts-cal-surface-elev, var(--ds-shadow-control-rest));
 }
 .appts-cal-card:focus-visible {
   outline: 2px solid var(--ds-color-accent);
@@ -2381,38 +2778,42 @@ body:has(.calendar-workspace) {
 .appts-cal-card__mode {
   display: flex;
   align-self: center;
-  padding: 4px;
-  border-radius: 10px;
-  background: rgba(241, 245, 249, 0.8);
-  gap: 4px;
+  padding: var(--ds-segmented-track-padding, 4px);
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-color-segmented-track-strong, #e5e7eb);
+  gap: var(--ds-space-1, 4px);
 }
 .appts-cal-card__mode-btn {
   flex: 1 1 50%;
   min-width: 0;
   margin: 0;
-  padding: 0.35rem 0.75rem;
+  padding: 0.35rem 0.65rem;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--ds-radius-pill);
   background: transparent;
-  color: #64748b;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  color: var(--ds-color-text-secondary, #64748b);
+  font-size: var(--ds-text-sm, 0.875rem);
+  font-weight: var(--ds-font-medium);
+  letter-spacing: -0.012em;
+  text-transform: none;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: color 0.2s cubic-bezier(0.25, 0.1, 0.25, 1),
+    background 0.2s cubic-bezier(0.25, 0.1, 0.25, 1),
+    box-shadow 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
-.appts-cal-card__mode-btn:hover {
-  color: #0f172a;
+.appts-cal-card__mode-btn:hover:not(.appts-cal-card__mode-btn--active) {
+  color: var(--ds-color-text, #0f172a);
+  background: rgba(255, 255, 255, 0.45);
 }
 .appts-cal-card__mode-btn:focus-visible {
   outline: 2px solid var(--ds-color-accent);
   outline-offset: 1px;
 }
 .appts-cal-card__mode-btn--active {
-  background: #fff;
-  color: #0f172a;
+  background: var(--ds-color-bg-canvas, #fff);
+  color: var(--ds-color-text, #0f172a);
   box-shadow: var(--ds-shadow-segmented-active);
+  font-weight: var(--ds-font-semibold);
 }
 .appts-cal-card__title-month {
   margin: 0;
@@ -2421,7 +2822,7 @@ body:has(.calendar-workspace) {
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #64748b;
+  color: var(--ds-color-text-tertiary);
   line-height: 1.2;
 }
 .appts-cal-card__summary-status {
@@ -2435,9 +2836,9 @@ body:has(.calendar-workspace) {
   display: none;
 }
 .appts-cal-card__hero {
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
-  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+  border-radius: var(--appts-cal-inset-radius, var(--ds-radius-md));
+  border: var(--appts-cal-surface-border, 1px solid var(--ds-color-border-light));
+  background: linear-gradient(180deg, var(--ds-color-bg-subtle) 0%, var(--ds-color-bg-canvas) 100%);
   padding: 0.65rem var(--ds-space-2) 0.75rem;
   box-shadow: none;
 }
@@ -2611,7 +3012,7 @@ body:has(.calendar-workspace) {
 }
 .appts-cal-month__cell--today:not(.appts-cal-month__cell--selected) {
   box-shadow: inset 0 0 0 2px var(--ds-color-accent);
-  background: #f4f4f5;
+  background: var(--ds-color-bg-muted);
 }
 .appts-cal-month__cell--today .appts-cal-month__cell-num {
   color: var(--ds-color-accent);
@@ -2620,7 +3021,7 @@ body:has(.calendar-workspace) {
   border-color: var(--ds-color-accent);
   background: var(--ds-color-accent);
   color: #fff;
-  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.22);
 }
 .appts-cal-month__cell--selected .appts-cal-month__cell-num {
   color: #fff;
@@ -2660,8 +3061,9 @@ body:has(.calendar-workspace) {
   color: var(--ds-color-accent);
   border-color: var(--ds-color-accent);
 }
+/* Blocked hint: concentric ring only — offset shadow read as a second dot when combined with --has-appts */
 .appts-cal-month__cell--has-blocked .appts-cal-month__cell-dot {
-  box-shadow: 2px 0 0 0 var(--ds-color-text-tertiary);
+  box-shadow: 0 0 0 1px var(--ds-color-text-tertiary);
   opacity: 0.85;
 }
 .appts-cal-month__cell--busy-steady.appts-cal-month__cell--has-appts .appts-cal-month__cell-dot {
@@ -2743,7 +3145,7 @@ body:has(.calendar-workspace) {
 }
 .appts-cal-card__dow--today:not(.appts-cal-card__dow--selected) {
   box-shadow: inset 0 0 0 2px var(--ds-color-accent);
-  background: #f4f4f5;
+  background: var(--ds-color-bg-muted);
 }
 .appts-cal-card__dow--today .appts-cal-card__dow-num {
   color: var(--ds-color-accent);
@@ -2793,7 +3195,7 @@ body:has(.calendar-workspace) {
   border-color: var(--ds-color-accent);
 }
 .appts-cal-card__dow--has-blocked .appts-cal-card__dow-dot {
-  box-shadow: 2px 0 0 0 var(--ds-color-text-tertiary);
+  box-shadow: 0 0 0 1px var(--ds-color-text-tertiary);
   opacity: 0.85;
 }
 .appts-cal-card__dow--busy-steady.appts-cal-card__dow--has-appts .appts-cal-card__dow-dot {
@@ -2960,13 +3362,15 @@ body:has(.calendar-workspace) {
   align-items: center;
   gap: 0;
   margin: 0;
-  padding: 0.15rem 0.2rem;
+  padding: 0.12rem 0.25rem;
   border: none;
   background: none;
   font-family: var(--ds-font-sans);
-  font-size: clamp(1.5rem, 2.2vw, 1.875rem);
-  font-weight: var(--ds-font-bold);
+  /* Secondary to workspace H1: strong but not a second page title */
+  font-size: clamp(1.125rem, 1.65vw, 1.375rem);
+  font-weight: var(--ds-font-semibold);
   letter-spacing: var(--ds-tracking-tight);
+  line-height: var(--ds-leading-tight);
   color: var(--ds-color-text);
   cursor: pointer;
   border-radius: var(--ds-radius-sm);
@@ -2974,8 +3378,8 @@ body:has(.calendar-workspace) {
 }
 
 .appts-cal-toolbar-date-heading:hover {
-  color: #111827;
-  background: rgba(0, 0, 0, 0.03);
+  color: var(--ds-color-text);
+  background: var(--ds-color-accent-muted);
 }
 
 .appts-cal-toolbar-date-heading:focus-visible {
@@ -4307,50 +4711,57 @@ a.appts-cal-toolbar__menu-item:hover {
   margin: 0;
   flex-shrink: 0;
 }
-.appts-calendar-grid {
-  border: 1px solid rgba(226, 232, 240, 0.8);
-  border-radius: 12px;
+.appts-calendar-grid,
+#appts-calendar-grid.appts-calendar-grid {
+  color-scheme: light;
+  border: var(--appts-cal-surface-border, 1px solid var(--ds-color-border-light));
+  border-radius: var(--appts-cal-surface-radius, var(--ds-radius-lg));
   min-height: 0;
   /* Fills grid row 5; --appts-day-grid-viewport-h is set by syncCalendarViewportHeight() for a bounded box. */
   height: var(--appts-day-grid-viewport-h, 100%);
   max-height: var(--appts-day-grid-viewport-h, 100%);
+  display: flex;
+  flex-direction: column;
+  /* Vertical scroll only; staff columns pan inside .ops-calendar-head-scroll + .ops-calendar-lanes-scroll (synced). */
+  overflow-x: hidden;
   overflow-y: auto;
-  overflow-x: auto;
   overscroll-behavior: contain;
-  /* Reserve gutter so toggling the vertical scrollbar does not change clientWidth (column reflow / “shrink”). */
-  scrollbar-gutter: stable;
-  /* Firefox: slim system scrollbar + subtle thumb */
-  scrollbar-width: thin;
-  scrollbar-color: rgba(100, 116, 139, 0.4) transparent;
-  background: #f8fafc;
+  background: var(--ds-color-bg-canvas);
+  box-shadow: var(--appts-cal-surface-elev, var(--ds-shadow-control-rest));
+  /* No visible scrollbars (still scrolls: wheel / trackpad / touch). */
+  scrollbar-gutter: auto;
+  scrollbar-width: none;
+  scrollbar-color: transparent transparent;
+  -ms-overflow-style: none;
   -webkit-overflow-scrolling: touch;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 
-/* Chromium / Safari / Edge: slim rounded scrollbar (matches grid chrome) */
-.appts-calendar-grid::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-.appts-calendar-grid::-webkit-scrollbar-track {
-  background: transparent;
-}
-.appts-calendar-grid::-webkit-scrollbar-thumb {
-  background-clip: padding-box;
-  border: 2px solid transparent;
-  border-radius: 999px;
-  background-color: rgba(100, 116, 139, 0.32);
-}
-.appts-calendar-grid::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(71, 85, 105, 0.48);
-}
-.appts-calendar-grid::-webkit-scrollbar-corner {
-  background: transparent;
+/* WebKit/Blink: width:0 alone still paints a track on some Windows builds — hide all pieces. */
+#appts-calendar-grid::-webkit-scrollbar,
+#appts-calendar-grid::-webkit-scrollbar-track,
+#appts-calendar-grid::-webkit-scrollbar-thumb,
+#appts-calendar-grid::-webkit-scrollbar-button,
+#appts-calendar-grid::-webkit-scrollbar-corner,
+.appts-calendar-grid::-webkit-scrollbar,
+.appts-calendar-grid::-webkit-scrollbar-track,
+.appts-calendar-grid::-webkit-scrollbar-thumb,
+.appts-calendar-grid::-webkit-scrollbar-button {
+  display: none;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+  -webkit-appearance: none;
+  appearance: none;
 }
 .calendar-day-wrap {
   margin: 0;
   min-width: min-content;
   overflow: visible;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--ds-color-bg-canvas);
 }
 .calendar-empty-hint {
   margin: 1.25rem 1rem;
@@ -4358,183 +4769,73 @@ a.appts-cal-toolbar__menu-item:hover {
   color: #6b7280;
 }
 
-/* --- Immersive calendar workspace (grid scroll threshold; desktop) --- */
-/* Exit control: visibility must follow .is-immersive only. Plain [hidden] can lose to .ds-btn display rules. */
-.calendar-workspace:not(.is-immersive) .appts-immersive-exit {
+/* --- Full-screen calendar (button-only; no scroll trigger) --- */
+
+/* App navigation bar + sidebar — hidden via body class (outside calendar-workspace root) */
+body.calendar-is-fullscreen .app-shell__header--top,
+body.calendar-is-fullscreen .app-shell__header--mobile,
+body.calendar-is-fullscreen .app-shell__sidebar {
   display: none !important;
-  pointer-events: none;
 }
-.calendar-workspace.is-immersive .appts-immersive-exit {
-  display: inline-flex !important;
-  pointer-events: auto;
+
+/* Reset main padding so calendar fills from the very top */
+body.calendar-is-fullscreen .app-shell__main,
+body.calendar-is-fullscreen .app-shell__main.calendar-main-is-immersive {
+  padding: 0 !important;
 }
-/* No overflow:hidden here: it clips ds-btn--toolbar shadow (worse on hover: larger blur + translateY). */
-.calendar-workspace .appts-workspace-header {
-  max-height: 12rem;
-  opacity: 1;
-  transition: max-height 0.28s ease, opacity 0.22s ease, margin 0.22s ease;
+
+/* Workspace header ("Appointments" title/subtitle + mode tabs) — gone */
+.calendar-workspace.is-immersive .appts-workspace-header,
+.calendar-workspace.is-immersive .ds-workspace {
+  display: none !important;
 }
-.calendar-workspace .appts-workspace-header__intro,
-.calendar-workspace .appts-workspace-header__controls {
-  max-height: 8rem;
-  opacity: 1;
-  transform: translateY(0);
-  transition: opacity 0.22s ease, max-height 0.28s ease, transform 0.22s ease, margin 0.22s ease;
-}
-/* Immersive: collapse title/subtitle only; keep mode switch + New appointment (parity with list/waitlist). */
-.calendar-workspace.is-immersive .appts-workspace-header__intro {
-  max-height: 0;
-  opacity: 0;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  pointer-events: none;
-  transform: translateY(-4px);
-  min-width: 0 !important;
-  flex: 0 0 0;
-  width: 0;
-  border: 0;
-}
-.calendar-workspace.is-immersive .appts-workspace-header__controls {
-  max-height: none;
-  opacity: 1 !important;
-  margin-top: 0;
-  margin-left: auto;
-  padding: 6px 0 10px;
-  overflow: visible;
-  pointer-events: auto;
-  transform: none;
-  animation: none;
-}
-.calendar-workspace.is-immersive .appts-workspace-header {
-  max-height: none;
-  opacity: 1;
-  overflow: visible;
-  margin: 0 0 var(--ds-space-2);
-  padding: 0;
-  pointer-events: auto;
-}
-.calendar-workspace.is-immersive .appts-calendar-body {
-  grid-template-columns: minmax(11rem, 13.5rem) minmax(0, 1fr);
-  gap: var(--ds-space-2);
-}
+
+/* Left mini-calendar rail + tools panel — gone */
 .calendar-workspace.is-immersive .appts-calendar-rail {
-  padding-right: var(--ds-space-2);
+  display: none !important;
 }
-.calendar-workspace.is-immersive .appts-cal-card {
-  padding: var(--ds-space-2) var(--ds-space-1);
-  gap: var(--ds-space-1);
-}
-.calendar-workspace.is-immersive .appts-cal-card__title-month {
-  font-size: 0.5rem;
-  letter-spacing: 0.06em;
-}
-.calendar-workspace.is-immersive .appts-cal-card__hero-kicker {
-  font-size: 0.5rem;
-  margin-bottom: 0.22rem;
-}
-.calendar-workspace.is-immersive .appts-cal-card__hero-day {
-  font-size: 1.55rem;
-}
-.calendar-workspace.is-immersive .appts-cal-card__hero-weekday {
-  font-size: var(--ds-text-xs);
-}
-.calendar-workspace.is-immersive .appts-cal-card__chev {
-  flex-basis: 1.85rem;
-  width: 1.85rem;
-  height: 1.85rem;
-  font-size: 0.95rem;
-}
-.calendar-workspace.is-immersive .appts-cal-card__today {
-  min-height: 1.85rem;
-  padding: 0.22rem 0.3rem;
-  font-size: 0.6rem;
-}
-.calendar-workspace.is-immersive .appts-cal-card__mode-btn {
-  font-size: 0.55rem;
-  padding: 0.2rem 0.35rem;
-}
-.calendar-workspace.is-immersive .appts-cal-card__weekday-ribbon {
-  font-size: 0.5rem;
-}
-.calendar-workspace.is-immersive .appts-cal-card__strip {
-  gap: 0.12rem;
-}
-.calendar-workspace.is-immersive .appts-cal-card__dow {
-  padding: 0.22rem 0.05rem 0.32rem;
-}
-.calendar-workspace.is-immersive .appts-cal-card__dow-num {
-  font-size: var(--ds-text-xs);
-}
-.calendar-workspace.is-immersive .appts-cal-month__dow {
-  font-size: 0.5rem;
-}
-.calendar-workspace.is-immersive .appts-cal-month__grid {
-  gap: 0.1rem;
-}
-.calendar-workspace.is-immersive .appts-cal-month__cell--day {
-  min-height: 1.55rem;
-  padding: 0.1rem 0.02rem;
-}
-.calendar-workspace.is-immersive .appts-cal-month__cell-num {
-  font-size: 0.62rem;
-}
-.calendar-workspace .appts-calendar-meta,
-.calendar-workspace .appts-calendar-hours {
-  transition: opacity 0.2s ease, max-height 0.26s ease, margin 0.2s ease;
-  max-height: 6rem;
-  opacity: 1;
-}
+
+/* Status / hours indicator lines — gone */
 .calendar-workspace.is-immersive .appts-calendar-meta,
 .calendar-workspace.is-immersive .appts-calendar-hours {
-  max-height: 0;
-  opacity: 0;
+  display: none !important;
+}
+
+/* Calendar body: single column (no rail) */
+.calendar-workspace.is-immersive .appts-calendar-body {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Page wrappers: no extra margin */
+.calendar-workspace.is-immersive .appointments-workspace-page,
+.calendar-workspace.is-immersive .appts-calendar-page {
   margin: 0;
-  overflow: hidden;
-  pointer-events: none;
+  padding: 0;
 }
+
+/* Command strip: tighten padding */
 .calendar-workspace.is-immersive .appts-calendar-control-surface {
-  margin-bottom: var(--ds-space-2);
   padding: var(--ds-space-2) var(--ds-space-3);
-  gap: var(--ds-space-2);
 }
-.calendar-workspace.is-immersive .appts-command-strip {
-  margin-bottom: 0;
-  gap: var(--ds-space-1) var(--ds-space-2);
-}
-.calendar-workspace.is-immersive .appts-cal-tools-toggle__label {
-  font-size: var(--ds-text-xs);
-}
-.calendar-workspace.is-immersive .appts-command-field__label {
-  font-size: 0.5625rem;
-}
-.calendar-workspace.is-immersive-prefers-reduced .appts-workspace-header,
-.calendar-workspace.is-immersive-prefers-reduced .appts-workspace-header__intro,
-.calendar-workspace.is-immersive-prefers-reduced .appts-workspace-header__controls,
-.calendar-workspace.is-immersive-prefers-reduced .appts-calendar-meta,
-.calendar-workspace.is-immersive-prefers-reduced .appts-calendar-hours {
-  transition: none !important;
-}
+
+/* Transition: keep pointer events during animation */
 .calendar-workspace.is-immersive-transitioning .appts-calendar-grid {
   pointer-events: auto;
 }
-/* In immersive mode: reclaim all wasted vertical space above command strip */
-.calendar-workspace.is-immersive .ds-workspace {
-  margin-bottom: 0;
+
+/* Reduced-motion: no transitions on hide/show */
+.calendar-workspace.is-immersive-prefers-reduced .appts-workspace-header {
+  transition: none !important;
 }
-.calendar-workspace.is-immersive .appointments-workspace-page,
-.calendar-workspace.is-immersive .appts-calendar-page {
-  margin-top: 0;
-}
-/* Shrink (not zero) main top padding — 8px breathing room below the navbar bar */
-.app-shell__main:has(.calendar-workspace.is-immersive),
-.app-shell__main.calendar-main-is-immersive {
-  padding-top: var(--ds-space-2);
-  padding-bottom: var(--ds-space-1);
-}
-/* Command strip "New appointment" — duplicate of workspace header; keep hidden (header stays visible in immersive). */
+
+/* Command strip "New appointment" — duplicate of workspace header button; always hidden in command strip */
 .appts-command-strip__new-appt {
   display: none !important;
+}
+/* In fullscreen/immersive mode the workspace header is hidden, so surface the command-strip copy */
+.calendar-workspace.is-immersive .appts-command-strip__new-appt {
+  display: inline-flex !important;
 }
 
 @media (max-width: 960px) {
@@ -4560,7 +4861,7 @@ a.appts-cal-toolbar__menu-item:hover {
   }
   .appts-calendar-rail {
     border-right: none;
-    border-bottom: 1px solid var(--ds-color-divider);
+    border-bottom: var(--appts-cal-surface-border, 1px solid var(--ds-color-border-light));
     padding-right: 0;
     padding-bottom: var(--ds-space-2);
     max-height: none;
@@ -4570,110 +4871,241 @@ a.appts-cal-toolbar__menu-item:hover {
   }
 }
 
-/* —— Calendar day: operational grid (structure unchanged in JS) —— */
-.ops-calendar { min-width: 860px; background: var(--ds-color-bg-canvas); }
+/* —— Calendar day: operational grid —— */
+.ops-calendar {
+  /* Stacking: header (menus) above lane cards so absolute .ops-staff-menu is never covered by .ops-block. */
+  --cal-z-head: 25;
+  --cal-z-block: 10;
+  --cal-z-block-hover: 11;
+  --cal-z-slot-preview: 8;
+  /* Active slot hover (fixed to viewport): above .ops-now-line so the time bubble is not covered. */
+  --cal-z-slot-preview-active: 95;
+  /* Above staff menus (60) so the “now” line is never covered by cards or dropdowns. */
+  --cal-z-now-line: 80;
+  --cal-now-line-color: #dc2626;
+  /* Slightly larger corner curve on event cards (quiet “sheet” vs sharp widget) */
+  --ops-cal-card-radius: 0.75rem;
+  min-width: 860px;
+  background: var(--ds-color-bg-canvas);
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  /* Overlay scrollbars can still paint over the last lane; inset keeps staff headers/cards off the thumb. */
+  padding-inline-end: var(--ds-space-3);
+  box-sizing: border-box;
+}
 /* Instant Tools Fit / column changes: no width/grid-template animation (avoids staged shrink feel). */
 .ops-calendar-head,
+.ops-calendar-head-scroll,
+.ops-calendar-head-inner,
 .ops-lanes,
+.ops-calendar-lanes-scroll,
 .ops-calendar-body {
   transition: none;
 }
 .ops-calendar-head {
-  display: grid;
-  grid-template-columns: 84px repeat(auto-fit, minmax(var(--cal-col-min, 152px), 1fr));
-  /* Single hairline only — avoid border + box-shadow stacking (reads as a heavy “black bar”). */
-  border-bottom: 1px solid var(--ds-color-border-light);
-  background: var(--ds-color-bg-subtle);
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  /* Light header strip — canvas + hairline (less “gray toolbar band”) */
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  background: var(--ds-color-bg-canvas);
+  flex-shrink: 0;
   position: sticky;
   top: 0;
-  z-index: 5;
+  z-index: var(--cal-z-head);
+  overflow: visible;
+  /* Staff dropdown extends below this row; stays above lane cards (see --cal-z-* on .ops-calendar). */
   box-shadow: none;
+}
+/* Staff names scroll horizontally with lanes; synced via JS to .ops-calendar-lanes-scroll. */
+.ops-calendar-head-scroll {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  /* overflow-y intentionally unset: combined with overflow-x:auto the spec computes it as auto,
+     which is necessary so that absolutely-positioned .ops-staff-menu dropdowns can paint
+     outside the head row without being clipped. The head content is single-row so
+     no vertical scrollbar ever appears in practice. */
+  scrollbar-width: none;
+  scrollbar-color: transparent transparent;
+  -ms-overflow-style: none;
+}
+.ops-calendar-head-scroll::-webkit-scrollbar,
+.ops-calendar-head-scroll::-webkit-scrollbar-track,
+.ops-calendar-head-scroll::-webkit-scrollbar-thumb,
+.ops-calendar-head-scroll::-webkit-scrollbar-button {
+  display: none;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.ops-calendar-head-inner {
+  display: grid;
+  /* Column widths set in JS to match .ops-lanes (minmax per staff). */
+  grid-auto-rows: minmax(2.85rem, auto);
+  min-width: min-content;
+  box-sizing: border-box;
 }
 .ops-time-head, .ops-staff-head {
   padding: 0.45rem 0.55rem;
   min-height: 2.85rem;
   box-sizing: border-box;
-  border-right: 1px solid var(--ds-color-border-light);
+  border-right: 1px solid rgba(15, 23, 42, 0.05);
 }
 .ops-time-head {
-  color: var(--ds-color-text-secondary);
+  flex: 0 0 84px;
+  width: 84px;
+  min-width: 84px;
+  max-width: 84px;
+  /* Editorial column title — lighter than staff names */
+  color: var(--ds-color-text-tertiary);
   text-transform: uppercase;
   font-size: var(--ds-text-xs);
-  font-weight: var(--ds-font-semibold);
+  font-weight: var(--ds-font-medium);
   letter-spacing: 0.1em;
   display: flex;
   align-items: center;
-  position: sticky;
-  left: 0;
+  justify-content: center;
+  text-align: center;
   z-index: 6;
-  background: var(--ds-color-bg-subtle);
+  background: var(--ds-color-bg-canvas);
+  padding-left: 0.45rem;
+  padding-right: 0.45rem;
+  font-variant-numeric: tabular-nums;
 }
 .ops-staff-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.35rem;
+  justify-content: center;
+  position: relative;
+  padding-left: 0.35rem;
+  padding-right: 1.45rem;
+  gap: 0.25rem;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s ease, color 0.2s ease;
 }
-.ops-staff-head-inner { flex: 1; min-width: 0; padding-right: 0.15rem; }
+.ops-staff-head-inner {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  justify-content: center;
+}
 .ops-staff-head-name {
   font-size: var(--ds-text-xs);
   font-weight: var(--ds-font-semibold);
   letter-spacing: var(--ds-tracking-tight);
   color: var(--ds-color-text);
   line-height: var(--ds-leading-tight);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.ops-staff-head::after {
-  content: "";
-  flex-shrink: 0;
-  width: 0;
-  height: 0;
-  margin-top: 0.1rem;
-  border-left: 3px solid transparent;
-  border-right: 3px solid transparent;
-  border-top: 4px solid #94a3b8;
-  transition: transform 0.15s ease;
+/* + / − affordance (closed = plus, open = minus) — clicks hit parent .ops-staff-head */
+.ops-staff-head__exp {
+  position: absolute;
+  right: 0.32rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1.15rem;
+  height: 1.15rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0;
+  color: #111827;
+  opacity: 0.55;
+  pointer-events: none;
+  transition: opacity 0.15s ease, color 0.15s ease;
 }
-.ops-staff-head { cursor: pointer; user-select: none; position: relative; transition: background 0.2s ease, color 0.2s ease; }
-.ops-staff-head:hover { background: #f8fafc; color: #0f172a; }
-.ops-staff-head--open { background: #f8fafc; }
-.ops-staff-head--open::after { transform: rotate(180deg); border-top-color: var(--ds-color-accent); }
+.ops-staff-head__exp::before {
+  content: '+';
+  display: block;
+  margin-top: -0.05em;
+}
+.ops-staff-head:hover .ops-staff-head__exp,
+.ops-staff-head--open .ops-staff-head__exp {
+  opacity: 0.92;
+  color: #111827;
+}
+.ops-staff-head--open .ops-staff-head__exp::before {
+  content: '\2212';
+  font-weight: 300;
+  margin-top: 0;
+}
+.ops-staff-head:hover { background: rgba(15, 23, 42, 0.035); color: var(--ds-color-text); }
+.ops-staff-head--open { background: rgba(15, 23, 42, 0.045); }
 .ops-staff-head:focus-visible { outline: 2px solid var(--ds-color-accent); outline-offset: -2px; }
 
 .ops-staff-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  min-width: 208px;
-  background: var(--ds-color-bg-canvas);
-  border: 1px solid #f3f4f6;
-  border-radius: var(--ds-radius-lg);
-  box-shadow:
-    0 24px 48px rgba(15, 23, 42, 0.14),
-    0 12px 24px rgba(15, 23, 42, 0.1),
-    0 4px 8px rgba(15, 23, 42, 0.06);
+  position: fixed;
+  /* left / top / width are set by JS (positionStaffMenuFixed) each time the menu opens,
+     because the parent .ops-staff-head lives inside a horizontally-scrolling container
+     whose overflow-x:auto forces overflow-y to auto by spec, clipping absolute children. */
+  min-width: 0;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.2rem 0;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  border-top: 1px solid rgba(15, 23, 42, 0.06);
+  border-radius: 0 0 10px 10px;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.1), 0 2px 8px rgba(15, 23, 42, 0.04);
   z-index: 60;
-  padding: 0.25rem 0;
-  backdrop-filter: saturate(180%) blur(12px);
-  -webkit-backdrop-filter: saturate(180%) blur(12px);
+  backdrop-filter: saturate(180%) blur(14px);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+  transform-origin: top center;
+  opacity: 0;
+  transform: translateY(-6px) scale(0.98);
+  pointer-events: none;
+  visibility: hidden;
+  transition:
+    opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.24s cubic-bezier(0.16, 1, 0.3, 1),
+    visibility 0.24s;
+}
+.ops-staff-menu--open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+  visibility: visible;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ops-staff-menu {
+    transition: opacity 0.12s ease, visibility 0.12s;
+    transform: none;
+  }
+  .ops-staff-menu--open {
+    transform: none;
+  }
 }
 .ops-staff-menu__item {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   box-sizing: border-box;
-  width: calc(100% - 0.5rem);
-  margin: 0 0.25rem;
+  width: 100%;
+  margin: 0;
   text-align: left;
   background: none;
   border: none;
-  padding: 0.375rem 0.65rem;
+  padding: 0.42rem 0.65rem;
   font-size: 0.8125rem;
   font-weight: var(--ds-font-medium);
   color: var(--ds-color-text, #1e293b);
   cursor: pointer;
   line-height: 1.35;
   white-space: nowrap;
-  border-radius: var(--ds-radius-sm);
+  border-radius: 0;
   transition: background 0.12s ease, color 0.12s ease;
 }
 .ops-staff-menu__ic {
@@ -4683,7 +5115,7 @@ a.appts-cal-toolbar__menu-item:hover {
   justify-content: center;
   width: 1rem;
   height: 1rem;
-  color: #64748b;
+  color: #111827;
 }
 .ops-staff-menu__icon-svg {
   display: block;
@@ -4694,13 +5126,13 @@ a.appts-cal-toolbar__menu-item:hover {
 }
 .ops-staff-menu__item:hover,
 .ops-staff-menu__item:focus {
-  background: #f9fafb;
+  background: rgba(15, 23, 42, 0.045);
   outline: none;
   color: #0f172a;
 }
 .ops-staff-menu__item:hover .ops-staff-menu__ic,
 .ops-staff-menu__item:focus .ops-staff-menu__ic {
-  color: #475569;
+  color: #111827;
 }
 .ops-staff-menu__item--danger {
   color: #ef4444;
@@ -4719,8 +5151,8 @@ a.appts-cal-toolbar__menu-item:hover {
 }
 .ops-staff-menu__sep {
   height: 1px;
-  background: #f3f4f6;
-  margin: 0.2rem 0.5rem;
+  background: rgba(15, 23, 42, 0.06);
+  margin: 0.18rem 0.5rem;
 }
 
 .calendar-hidden-cols-pill {
@@ -4744,91 +5176,180 @@ a.appts-cal-toolbar__menu-item:hover {
   transform: none;
 }
 .ops-staff-head:last-child, .ops-lane:last-child { border-right: none; }
-.ops-calendar-body { position: relative; display: grid; grid-template-columns: 84px 1fr; }
+.ops-calendar-body {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  /* flex-shrink: 0 is required: the body height is set to vm.height px by JS.
+     Without this, the flex algorithm shrinks the body to fit the grid's viewport height,
+     preventing #appts-calendar-grid from ever scrolling.  That forces
+     .ops-calendar-lanes-scroll (which has computed overflow-y:auto due to overflow-x:auto)
+     to become the vertical scroller — but .ops-time-labels is outside it and therefore
+     stays fixed while the appointment lanes scroll independently (desync bug).
+     With flex-shrink:0 the body keeps vm.height, overflows #appts-calendar-grid
+     (through the overflow:visible intermediate containers), and the grid scrolls —
+     carrying both time labels and lanes together. */
+  flex-shrink: 0;
+  /* One floor tone under time gutter + lanes (avoids two grays at the scroll bottom). */
+  background: var(--ds-color-bg-canvas);
+}
+.ops-calendar-lanes-scroll {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow-x: auto;
+  /* overflow-y:clip (not visible) deliberately: the CSS spec converts overflow-y:visible
+     to auto when overflow-x is non-visible, which would make THIS element scroll vertically
+     instead of #appts-calendar-grid.  clip blocks that promotion: it clips at the border
+     without creating a scroll container, so vertical scrolling stays at the grid level
+     where time labels and lanes scroll together. */
+  overflow-y: clip;
+  scrollbar-width: none;
+  scrollbar-color: transparent transparent;
+  -ms-overflow-style: none;
+}
+.ops-calendar-lanes-scroll::-webkit-scrollbar,
+.ops-calendar-lanes-scroll::-webkit-scrollbar-track,
+.ops-calendar-lanes-scroll::-webkit-scrollbar-thumb,
+.ops-calendar-lanes-scroll::-webkit-scrollbar-button {
+  display: none;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+  -webkit-appearance: none;
+  appearance: none;
+}
 .ops-time-labels {
-  position: sticky;
-  left: 0;
-  z-index: 3;
-  border-right: 1px solid #e2e8f0;
-  background: #f8fafc;
+  flex: 0 0 84px;
+  width: 84px;
+  min-width: 84px;
+  max-width: 84px;
+  position: relative;
+  align-self: stretch;
+  min-height: 100%;
+  /* Above .ops-block (10) so labels are never covered if a lane paints wide. */
+  z-index: 12;
+  /* Lock width so hour text + sticky paint cannot drift or clip when the outer grid scrolls horizontally. */
+  width: 84px;
+  min-width: 84px;
+  max-width: 84px;
+  box-sizing: border-box;
+  border-right: 1px solid rgba(15, 23, 42, 0.05);
+  background: var(--ds-color-bg-canvas);
+  box-shadow: inset -1px 0 0 rgba(15, 23, 42, 0.04);
   cursor: default;
+  overflow: visible;
 }
 .ops-time-label {
   position: absolute;
-  left: 8px;
-  transform: translateY(-50%);
-  font-size: 0.625rem;
-  font-weight: 600;
-  color: #64748b;
+  left: 0;
+  right: 0;
+  padding-left: 0.65rem;
+  padding-right: 0.35rem;
+  box-sizing: border-box;
+  /* +0.5px: optical center on 1px grid lines (pure -50% reads slightly high). */
+  transform: translateY(calc(-50% + 0.5px));
+  font-size: var(--ds-text-xs);
+  font-weight: var(--ds-font-medium);
+  color: var(--ds-color-text-secondary);
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.03em;
+  letter-spacing: var(--ds-tracking-tight, -0.01em);
+  line-height: 1.2;
+  white-space: nowrap;
+  text-align: start;
 }
 .ops-time-label--hour {
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: #1e293b;
-  letter-spacing: 0.01em;
+  font-size: var(--ds-text-sm);
+  font-weight: var(--ds-font-semibold);
+  color: var(--ds-color-text);
+  letter-spacing: var(--ds-tracking-tight, -0.015em);
+  line-height: 1.15;
+  padding-left: 0.65rem;
 }
 .ops-time-label--half {
-  font-size: 0.5625rem;
-  font-weight: 600;
-  color: #94a3b8;
-  left: auto;
-  right: 6px;
-  letter-spacing: 0.02em;
+  /* Full time (e.g. 10:30) — same gutter rhythm as hours, quieter weight */
+  font-size: var(--ds-text-xs);
+  font-weight: var(--ds-font-medium);
+  color: var(--ds-color-text-tertiary);
+  left: 0;
+  right: 0;
+  padding-left: 0.65rem;
+  padding-right: 0.35rem;
+  text-align: start;
+  letter-spacing: var(--ds-tracking-tight, -0.01em);
+  font-variant-numeric: tabular-nums;
+  opacity: 0.92;
 }
 .ops-time-label--micro {
   font-size: 0;
-  width: 5px;
-  height: 1px;
-  background: #e2e8f0;
-  left: auto;
-  right: 0;
-  transform: translateY(0);
+  width: 4px;
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(15, 23, 42, 0.08);
+  left: 0.65rem;
+  right: auto;
+  padding: 0;
+  transform: translateY(calc(-50% + 0.5px));
+  opacity: 0.85;
 }
 .ops-lanes {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(var(--cal-col-min, 152px), 1fr));
+  /* One row fills parent height so each .ops-lane stretches with full vertical borders. */
+  grid-template-rows: minmax(0, 1fr);
   position: relative;
-  background: #fff;
+  min-width: min-content;
+  min-height: 0;
+  height: 100%;
+  align-self: stretch;
+  overflow-x: visible;
+  background: var(--ds-color-bg-canvas);
 }
 .ops-lane {
   position: relative;
-  border-right: 1px solid rgba(226, 232, 240, 0.6);
+  align-self: stretch;
+  border-right: 1px solid var(--appts-cal-grid-line, rgba(15, 23, 42, 0.055));
   min-height: 100%;
-  background: #fff;
+  height: 100%;
+  background: var(--ds-color-bg-canvas);
   transition: background-color 0.2s ease, box-shadow 0.2s ease;
   cursor: default;
 }
-.ops-lane:nth-child(even) { background: #fafafc; }
-.ops-lane:hover { background: #f4f7fa; }
-.ops-lane:nth-child(even):hover { background: #f0f4f8; }
+/* Neutral zebra + hover — cool slate read as “blue” wash on many displays */
+.ops-lane:nth-child(even) { background: rgba(0, 0, 0, 0.014); }
+.ops-lane:hover { background: rgba(0, 0, 0, 0.026); }
+.ops-lane:nth-child(even):hover { background: rgba(0, 0, 0, 0.032); }
 .ops-lane--selected {
-  background: #eff6ff !important;
-  box-shadow: inset 0 0 0 1px #bfdbfe;
+  background: rgba(0, 0, 0, 0.038) !important;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
 }
 .ops-grid-line {
   position: absolute;
   left: 0;
   right: 0;
-  border-top: 1px solid rgba(226, 232, 240, 0.55);
+  border-top: 1px solid var(--appts-cal-grid-line, var(--ds-color-border-light));
   pointer-events: none;
 }
 .ops-grid-line--hour {
-  border-top: 1px solid rgba(203, 213, 225, 0.85);
+  border-top-color: var(--appts-cal-grid-line-strong, var(--ds-color-divider));
 }
 .ops-grid-line--half {
-  border-top: 1px solid rgba(226, 232, 240, 0.7);
-  border-top-style: dashed;
+  border-top-color: var(--appts-cal-grid-line, rgba(15, 23, 42, 0.055));
+  border-top-style: solid;
+  opacity: 0.72;
 }
-/* Same stacking as .ops-slot-preview: stay visible along the top band under sticky header. */
+/* Current-time line: always above lane cards, grid lines, and staff menus (--cal-z-now-line). */
 .ops-now-line {
   position: absolute;
   left: 84px;
   right: 0;
-  height: 1px;
-  background: rgba(17, 24, 39, 0.22);
-  z-index: 8;
+  height: 2px;
+  /* JS sets top to the old 1px line’s top; center the 2px band on that instant. */
+  transform: translateY(-0.5px);
+  background: var(--cal-now-line-color, #dc2626);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--cal-now-line-color, #dc2626) 35%, transparent);
+  z-index: var(--cal-z-now-line, 80);
   pointer-events: none;
 }
 .ops-now-line::before {
@@ -4839,29 +5360,29 @@ a.appts-cal-toolbar__menu-item:hover {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--ds-color-accent);
+  background: var(--cal-now-line-color, #dc2626);
   animation: ops-now-pulse 2s ease-in-out infinite;
 }
 @keyframes ops-now-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(17, 24, 39, 0.2); }
-  50%       { box-shadow: 0 0 0 4px rgba(17, 24, 39, 0); }
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--cal-now-line-color, #dc2626) 35%, transparent); }
+  50%       { box-shadow: 0 0 0 4px transparent; }
 }
 .ops-now-label {
   position: absolute;
   right: 4px;
   left: auto;
-  transform: translateY(-50%);
+  transform: translateY(calc(-50% + 0.5px));
   font-size: 0.5625rem;
   font-weight: var(--ds-font-semibold);
   color: #fff;
-  background: var(--ds-color-accent);
+  background: var(--cal-now-line-color, #dc2626);
   padding: 0.2rem 0.45rem;
   border-radius: var(--ds-radius-pill);
-  z-index: 6;
+  z-index: var(--cal-z-now-line, 80);
   pointer-events: none;
   white-space: nowrap;
   line-height: 1.35;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--ds-shadow-control-rest);
 }
 .calendar-branch-hours-indicator {
   margin: 0.35rem 0 0.35rem;
@@ -4892,7 +5413,6 @@ a.appts-cal-toolbar__menu-item:hover {
   right: 0;
   background: rgba(148, 163, 184, 0.16);
   pointer-events: none;
-  z-index: 1;
 }
 .ops-lane-offhours--before {
   top: 0;
@@ -4902,23 +5422,42 @@ a.appts-cal-toolbar__menu-item:hover {
   position: absolute;
   left: 6px;
   right: 6px;
-  border-radius: var(--ds-radius-lg);
-  padding: 0.4rem 0.55rem 0.45rem 0.6rem;
+  border-radius: var(--ops-cal-card-radius, var(--ds-radius-lg));
+  padding: 0.45rem 0.58rem 0.48rem 0.62rem;
   font-size: 0.75rem;
   overflow: hidden;
   text-decoration: none;
   color: inherit;
-  box-shadow: var(--ds-shadow-xs, 0 2px 5px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02));
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 4px 14px rgba(15, 23, 42, 0.04),
+    0 0 0 1px rgba(15, 23, 42, 0.04);
   line-height: 1.3;
-  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  backdrop-filter: blur(6px);
+  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(8px) saturate(140%);
+  -webkit-backdrop-filter: blur(8px) saturate(140%);
+}
+/* Content + container-query host. Not on .ops-block itself: container-type/size containment on the
+   positioned card breaks horizontal sizing in the staff column (cards bleed over the time gutter). */
+.ops-block__cq {
+  box-sizing: border-box;
+  position: relative;
+  z-index: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.ops-block-appt--with-buffers > .ops-block__cq {
+  height: auto;
 }
 .ops-block-appt {
-  border: 1px solid rgba(191, 219, 254, 0.65);
-  border-left: 1px solid rgba(191, 219, 254, 0.65);
-  background: rgba(255, 255, 255, 0.96);
-  /* Above .ops-slot-preview (8) so hover slot UI does not paint over appointments. */
-  z-index: 10;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  border-left: 1px solid rgba(15, 23, 42, 0.06);
+  background: rgba(255, 255, 255, 0.94);
+  z-index: var(--cal-z-block);
   color: var(--ds-color-text, #0f172a);
 }
 @supports (color: color-mix(in srgb, red, blue)) {
@@ -4938,7 +5477,7 @@ a.appts-cal-toolbar__menu-item:hover {
   top: 0;
   bottom: 0;
   width: 4px;
-  border-radius: var(--ds-radius-lg) 0 0 var(--ds-radius-lg);
+  border-radius: var(--ops-cal-card-radius, var(--ds-radius-lg)) 0 0 var(--ops-cal-card-radius, var(--ds-radius-lg));
   background: var(--cal-dominant, rgba(13, 148, 136, 0.55));
   pointer-events: none;
   opacity: 0.95;
@@ -4974,17 +5513,15 @@ a.appts-cal-toolbar__menu-item:hover {
   opacity: 0.92;
 }
 .ops-block-appt:hover {
-  border-color: rgba(45, 212, 191, 0.55);
-  box-shadow: 0 8px 20px rgba(13, 148, 136, 0.09), 0 2px 8px rgba(15, 23, 42, 0.04);
-  z-index: 11;
-}
-@media (prefers-reduced-motion: no-preference) {
-  .ops-block-appt:hover {
-    transform: translateY(-2px);
-  }
+  border-color: var(--ds-color-accent-border);
+  box-shadow:
+    0 2px 6px rgba(15, 23, 42, 0.06),
+    0 8px 22px rgba(15, 23, 42, 0.07),
+    0 0 0 1px rgba(15, 23, 42, 0.05);
+  z-index: var(--cal-z-block-hover);
 }
 .ops-block-appt:focus-visible {
-  outline: 2px solid #0d9488;
+  outline: 2px solid var(--ds-color-focus-ring-ui);
   outline-offset: 2px;
 }
 .ops-block-appt--prebooked {
@@ -5021,7 +5558,7 @@ a.appts-cal-toolbar__menu-item:hover {
   box-sizing: border-box;
 }
 .ops-block-buffer--before {
-  border-radius: var(--ds-radius-lg) var(--ds-radius-lg) 0 0;
+  border-radius: var(--ops-cal-card-radius, var(--ds-radius-lg)) var(--ops-cal-card-radius, var(--ds-radius-lg)) 0 0;
   background: repeating-linear-gradient(
     -45deg,
     rgba(250, 204, 21, 0.22),
@@ -5032,7 +5569,7 @@ a.appts-cal-toolbar__menu-item:hover {
   border-bottom: 1px dashed rgba(234, 179, 8, 0.35);
 }
 .ops-block-buffer--after {
-  border-radius: 0 0 var(--ds-radius-lg) var(--ds-radius-lg);
+  border-radius: 0 0 var(--ops-cal-card-radius, var(--ds-radius-lg)) var(--ops-cal-card-radius, var(--ds-radius-lg));
   background: repeating-linear-gradient(
     -45deg,
     rgba(250, 204, 21, 0.22),
@@ -5064,11 +5601,13 @@ a.appts-cal-toolbar__menu-item:hover {
   border-radius: 0 0.5rem 0.5rem 0;
 }
 .ops-block-blocked {
-  border: 1px solid rgba(231, 213, 206, 0.75);
-  border-left: 1px solid rgba(231, 213, 206, 0.75);
-  background: rgba(250, 246, 244, 0.94);
-  color: var(--ds-color-text, #44403c);
-  z-index: 10;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-left: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(248, 250, 252, 0.88);
+  color: var(--ds-color-text-secondary, #475569);
+  box-shadow: var(--ds-shadow-control-rest);
+  padding: 0.5rem 0.65rem 0.52rem 0.68rem;
+  z-index: var(--cal-z-block);
 }
 .ops-block-blocked::before {
   content: '';
@@ -5077,31 +5616,26 @@ a.appts-cal-toolbar__menu-item:hover {
   top: 0;
   bottom: 0;
   width: 4px;
-  border-radius: var(--ds-radius-lg) 0 0 var(--ds-radius-lg);
-  background: linear-gradient(180deg, rgba(168, 162, 158, 0.55), rgba(120, 113, 108, 0.45));
+  border-radius: var(--ops-cal-card-radius, var(--ds-radius-lg)) 0 0 var(--ops-cal-card-radius, var(--ds-radius-lg));
+  background: linear-gradient(180deg, rgba(100, 116, 139, 0.4), rgba(71, 85, 105, 0.32));
   pointer-events: none;
 }
 @supports (color: color-mix(in srgb, red, blue)) {
   .ops-block-blocked {
     background: linear-gradient(
       90deg,
-      color-mix(in srgb, #a8a29e 14%, transparent) 0%,
+      color-mix(in srgb, #64748b 10%, transparent) 0%,
       transparent min(48%, 6.5rem)
     ),
-    rgba(250, 246, 244, 0.94);
+    rgba(248, 250, 252, 0.88);
   }
 }
 .ops-block-blocked:hover {
-  border-color: #d4b8a8;
-  box-shadow: 0 6px 14px rgba(68, 64, 60, 0.07), 0 2px 6px rgba(15, 23, 42, 0.03);
-}
-@media (prefers-reduced-motion: no-preference) {
-  .ops-block-blocked:hover {
-    transform: translateY(-1px);
-  }
+  border-color: rgba(15, 23, 42, 0.12);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.04);
 }
 .ops-block-blocked:focus-visible {
-  outline: 2px solid #78716c;
+  outline: 2px solid var(--ds-color-focus-ring-ui);
   outline-offset: 2px;
 }
 .ops-block-time {
@@ -5179,7 +5713,7 @@ a.appts-cal-toolbar__menu-item:hover {
 .ops-block-appt[data-status*="schedul"] .ops-block-status { background: rgba(96, 165, 250, 0.2); color: #1d4ed8; }
 
 @supports (container-type: size) {
-  .ops-block {
+  .ops-block__cq {
     container-type: size;
     container-name: opsblk;
   }
@@ -12614,10 +13148,13 @@ details.cashier-totals-summary:not([open]) {
 /* ── Smart Calendar Rail: Apple-style refresh ──────────────────────────── */
 
 .appts-smart-calendar-rail {
-  --appts-rail-shell-radius: var(--ds-radius-xl);
-  --appts-rail-track-radius: var(--ds-radius-lg);
-  --appts-rail-segment-radius: var(--ds-radius-md);
-  --appts-rail-track-fill: rgba(15, 23, 42, 0.06);
+  /* Align shell with day grid chrome (inherited --appts-cal-* from .appts-calendar-body). */
+  --appts-rail-shell-radius: var(--appts-cal-surface-radius, var(--ds-radius-lg));
+  /* Match workspace .ds-segmented--ios.ds-segmented--pill-track (full capsule track + thumb). */
+  --appts-rail-track-radius: var(--ds-radius-pill);
+  --appts-rail-segment-radius: var(--ds-radius-pill);
+  --appts-rail-track-fill: var(--ds-color-segmented-track-strong, #e5e7eb);
+  --appts-rail-body-chrome-radius: var(--appts-cal-inset-radius, var(--ds-radius-md));
 }
 
 /* Base layout for the new __header-row element (title + nav inline) */
@@ -12642,7 +13179,7 @@ details.cashier-totals-summary:not([open]) {
   box-shadow: var(--ds-shadow-control-rest);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  padding: var(--ds-space-3) var(--ds-space-2) var(--ds-space-3);
+  padding: var(--ds-space-3) var(--ds-space-3) var(--ds-space-3);
   gap: var(--ds-space-2);
   min-width: 0;
   overflow: visible;
@@ -12662,20 +13199,31 @@ details.cashier-totals-summary:not([open]) {
 }
 .appts-smart-calendar-rail .appts-cal-card__mode-btn {
   flex: 1 1 0;
-  min-height: 28px;
+  min-height: calc(var(--ds-workspace-control-height) - 6px);
   border-radius: var(--appts-rail-segment-radius);
-  font-size: 0.75rem;
+  font-size: var(--ds-text-sm, 0.875rem);
   text-transform: none;
-  letter-spacing: 0;
-  font-weight: 500;
-  color: #6b7280;
-  padding: 0.28rem 0.2rem;
+  letter-spacing: -0.012em;
+  font-weight: var(--ds-font-medium);
+  color: var(--ds-color-text-secondary, #6b7280);
+  padding: 0.28rem 0.5rem;
+  transition: color 0.2s cubic-bezier(0.25, 0.1, 0.25, 1),
+    background 0.2s cubic-bezier(0.25, 0.1, 0.25, 1),
+    box-shadow 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+.appts-smart-calendar-rail .appts-cal-card__mode-btn:hover:not(.appts-cal-card__mode-btn--active) {
+  color: var(--ds-color-text, #111827);
+  background: rgba(255, 255, 255, 0.45);
 }
 .appts-smart-calendar-rail .appts-cal-card__mode-btn--active {
-  background: #fff;
-  color: #111827;
+  background: var(--ds-color-bg-canvas, #fff);
+  color: var(--ds-color-text, #111827);
   box-shadow: var(--ds-shadow-segmented-active);
-  font-weight: 600;
+  font-weight: var(--ds-font-semibold);
+}
+.appts-smart-calendar-rail .appts-cal-card__mode-btn:focus-visible {
+  outline: 2px solid var(--ds-color-accent);
+  outline-offset: 1px;
 }
 
 /* Header row: title left, arrows right */
@@ -12737,7 +13285,7 @@ details.cashier-totals-summary:not([open]) {
 /* Grid region: soft inset so the week/month area matches the rounded shell */
 .appts-smart-calendar-rail .appts-cal-card__body {
   padding: var(--ds-space-2) var(--ds-space-2) var(--ds-space-1);
-  border-radius: var(--appts-rail-track-radius);
+  border-radius: var(--appts-rail-body-chrome-radius);
   background: rgba(255, 255, 255, 0.55);
 }
 
@@ -12913,30 +13461,32 @@ details.cashier-totals-summary:not([open]) {
 }
 .appts-smart-calendar-rail .cal-tools-tab {
   flex: 1;
-  margin-bottom: 0;
-  padding: 0.5rem 0.15rem;
-  border-bottom: none;
+  margin: 0;
+  min-height: calc(var(--ds-workspace-control-height) - 6px);
+  padding: 0.35rem 0.2rem;
+  border: none;
   border-radius: var(--appts-rail-segment-radius);
   background: transparent;
 }
-.appts-smart-calendar-rail .cal-tools-tab:hover {
+.appts-smart-calendar-rail .cal-tools-tab:hover:not(.cal-tools-tab--active) {
   color: var(--ds-color-text-secondary);
-  background: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.45);
 }
 .appts-smart-calendar-rail .cal-tools-tab--active {
-  color: var(--ds-color-accent);
+  color: var(--ds-color-text);
   background: var(--ds-color-bg-canvas);
-  border-bottom-color: transparent;
   box-shadow: var(--ds-shadow-segmented-active);
+  font-weight: var(--ds-font-semibold);
 }
 .appts-smart-calendar-rail .cal-tools-tab:focus-visible {
   border-radius: var(--appts-rail-segment-radius);
+  outline: 2px solid var(--ds-color-accent);
   outline-offset: 1px;
 }
 .appts-smart-calendar-rail .cal-tools-body {
-  border-radius: 0 0 var(--appts-rail-segment-radius) var(--appts-rail-segment-radius);
+  border-radius: 0 0 var(--appts-rail-body-chrome-radius) var(--appts-rail-body-chrome-radius);
   min-height: 0;
 }
 .appts-smart-calendar-rail .cal-tools-pane {
-  border-radius: 0 0 var(--appts-rail-segment-radius) var(--appts-rail-segment-radius);
+  border-radius: 0 0 var(--appts-rail-body-chrome-radius) var(--appts-rail-body-chrome-radius);
 }

@@ -41,9 +41,11 @@
   const MIN_TIME_ZOOM_PERCENT = 25;
   const MAX_TIME_ZOOM_PERCENT = 200;
   /**
-   * Vertical scroll for the day grid is owned only by #appts-calendar-grid (bounded viewport via
-   * layout + syncCalendarViewportHeight). Implicit fit may shrink time zoom to fit the workday but
-   * must not use zoom bumps to manufacture overflow; Tools ▸ Fit is explicit zoom only.
+   * Vertical scroll: #appts-calendar-grid. Horizontal pan: .ops-calendar-head-scroll + .ops-calendar-lanes-scroll
+   * (scrollLeft kept in sync in JS) so the 84px time gutter never uses position:sticky — labels and grid lines
+   * stay aligned while scrolling vertically.
+   * Bounded viewport via layout + syncCalendarViewportHeight. Implicit fit may shrink time zoom
+   * to fit the workday but must not use zoom bumps to manufacture overflow; Tools ▸ Fit is explicit zoom only.
    */
   let timeZoomPercent = 100;
   let columnWidthPx = 160;
@@ -115,11 +117,81 @@
     try { new Intl.DateTimeFormat([], { timeZone: raw }); return raw; } catch (e) { return 'UTC'; }
   })();
   /**
-   * Top inset added to all vertical pixel positions (labels, grid lines, blocks, now-line).
-   * Prevents the first time label from being clipped by the sticky header – a translateY(-50%) at top:0
-   * would otherwise overlap the header's background. The body height is also extended by this amount.
+   * Vertical padding inside the day body (px): breathing room before the first slot and after the last,
+   * so hour labels are not flush with the grid edges. Also keeps the first label clear of the sticky header
+   * (labels use translateY(-50%)).
    */
-  const GRID_TOP_INSET_PX = 10;
+  const GRID_TOP_INSET_PX = 20;
+  const GRID_BOTTOM_INSET_PX = 20;
+  const GRID_VERTICAL_INSETS_PX = GRID_TOP_INSET_PX + GRID_BOTTOM_INSET_PX;
+  /** Viewport clearance from #appts-calendar-grid top — below this, flip time bubble under the + chip. */
+  const SLOT_PREVIEW_FLIP_CLEARANCE_PX = 100;
+
+  function clearSlotPreviewViewportPin(p) {
+    if (!(p instanceof HTMLElement)) return;
+    p.style.position = '';
+    p.style.left = '';
+    p.style.width = '';
+    p.style.top = '';
+    p.style.right = '';
+  }
+
+  /**
+   * Pin slot preview to viewport coords so it stacks above .ops-now-line (a sibling of .ops-calendar-lanes-scroll).
+   * Clamps horizontal extent to #appts-calendar-grid so the bubble does not spill past the calendar surface.
+   */
+  function positionSlotPreviewInViewport(hoverPreview, lane, topPx) {
+    const laneRect = lane.getBoundingClientRect();
+    const gridEl = document.getElementById('appts-calendar-grid');
+    const gridR = gridEl ? gridEl.getBoundingClientRect() : null;
+    let left = laneRect.left;
+    let width = laneRect.width;
+    const top = laneRect.top + topPx;
+    if (gridR && Number.isFinite(left) && Number.isFinite(width)) {
+      const pad = 6;
+      const gLeft = gridR.left + pad;
+      const gRight = gridR.right - pad;
+      if (left + width > gRight) {
+        left = Math.max(gLeft, gRight - width);
+      }
+      if (left < gLeft) {
+        left = gLeft;
+      }
+      if (left + width > gRight) {
+        width = Math.max(48, gRight - left);
+      }
+    }
+    hoverPreview.style.position = 'fixed';
+    hoverPreview.style.left = Math.round(left) + 'px';
+    hoverPreview.style.width = Math.round(Math.max(48, width)) + 'px';
+    hoverPreview.style.top = Math.round(top) + 'px';
+    hoverPreview.style.right = 'auto';
+  }
+
+  function refreshSlotPreviewFlip(hoverPreview, lane, topPx) {
+    const rect = lane.getBoundingClientRect();
+    const snapViewportY = rect.top + topPx;
+    const vScroll = getCalendarVerticalScrollEl();
+    const gridEl = document.getElementById('appts-calendar-grid');
+    const gridViewportTop = vScroll
+      ? vScroll.getBoundingClientRect().top
+      : (gridEl ? gridEl.getBoundingClientRect().top : 0);
+    if (snapViewportY - gridViewportTop < SLOT_PREVIEW_FLIP_CLEARANCE_PX) {
+      hoverPreview.classList.add('is-flipped');
+    } else {
+      hoverPreview.classList.remove('is-flipped');
+    }
+  }
+
+  /** While hover is open, grid scroll changes viewport Y — dismiss the preview rather than
+   *  trying to track a stale position (mouseleave may not fire when content scrolls under cursor). */
+  function dismissAllActiveSlotPreviews() {
+    document.querySelectorAll('.ops-slot-preview.is-active').forEach((p) => {
+      p.classList.remove('is-active', 'is-flipped');
+      clearSlotPreviewViewportPin(p);
+    });
+  }
+
   let selectedSlot = null;
   /** AbortController for the in-flight /calendar/day fetch. Cancelled when a newer load() starts. */
   let currentLoadAbort = null;
@@ -341,8 +413,8 @@
   /** now-line: setInterval id; cleared whenever the grid is destroyed or re-rendered. */
   let nowLineTimer = null;
   /**
-   * Internal grid scroll (#appts-calendar-grid): after user scrolls manually, do not auto-anchor
-   * viewport to the now-line until branch/date session changes or explicit Today/Now/recenter.
+   * After the user scrolls the day grid (#appts-calendar-grid — vertical and/or horizontal),
+   * do not auto-anchor the viewport to the now-line until branch/date session changes or explicit Today/Now/recenter.
    */
   let calendarViewportManualScrollLock = false;
   /** `branchId|YYYY-MM-DD` — lock resets when this changes. */
@@ -350,6 +422,40 @@
   /** > 0 while JS performs programmatic scroll on the grid (ignore scroll events for lock). */
   let calendarGridProgrammaticScrollDepth = 0;
   let calendarViewportHeightSyncRaf = null;
+
+  function onCalendarMaybeUserScroll() {
+    if (calendarGridProgrammaticScrollDepth > 0) return;
+    calendarViewportManualScrollLock = true;
+  }
+
+  /** Scrollport for vertical day scroll (#appts-calendar-grid). Horizontal pan is on .ops-calendar-head-scroll + .ops-calendar-lanes-scroll (synced). */
+  function getCalendarVerticalScrollEl() {
+    const g = document.getElementById('appts-calendar-grid');
+    return g instanceof HTMLElement ? g : null;
+  }
+
+  /** Keep staff header strip aligned with lanes when the user pans horizontally. */
+  function bindOpsCalendarHorizontalScrollSync(a, b) {
+    if (!(a instanceof HTMLElement) || !(b instanceof HTMLElement)) return;
+    let lock = false;
+    function syncFrom(src, dst) {
+      if (lock || src.scrollLeft === dst.scrollLeft) return;
+      lock = true;
+      dst.scrollLeft = src.scrollLeft;
+      requestAnimationFrame(() => {
+        lock = false;
+      });
+    }
+    a.addEventListener('scroll', () => {
+      syncFrom(a, b);
+      closeAllStaffMenus();
+      dismissAllActiveSlotPreviews();
+    }, { passive: true });
+    b.addEventListener('scroll', () => {
+      syncFrom(b, a);
+      dismissAllActiveSlotPreviews();
+    }, { passive: true });
+  }
 
   /**
    * Bounded height for #appts-calendar-grid: subtract fixed rows inside .appts-calendar-main from
@@ -1211,8 +1317,7 @@
     line.setAttribute('aria-hidden', 'true');
     calBody.appendChild(line);
 
-    // Label placed inside the sticky .ops-time-labels column so it remains
-    // visible when the user scrolls the appointment lanes horizontally.
+    // Label in .ops-time-labels (fixed 84px gutter); lanes pan in .ops-calendar-lanes-scroll.
     const label = document.createElement('div');
     label.id = 'ops-now-label-indicator';
     label.className = 'ops-now-label';
@@ -1286,14 +1391,24 @@
   }
 
   function closeAllStaffMenus() {
-    document.querySelectorAll('.ops-staff-menu:not([hidden])').forEach((m) => {
-      m.hidden = true;
+    document.querySelectorAll('.ops-staff-menu--open').forEach((m) => {
+      m.classList.remove('ops-staff-menu--open');
+      m.setAttribute('aria-hidden', 'true');
+      m.setAttribute('inert', '');
       const head = m.closest('.ops-staff-head');
       if (head) {
         head.classList.remove('ops-staff-head--open');
         head.setAttribute('aria-expanded', 'false');
       }
     });
+  }
+
+  /** Pin the fixed-positioned staff menu below its header cell in viewport coordinates. */
+  function positionStaffMenuFixed(header, menu) {
+    const r = header.getBoundingClientRect();
+    menu.style.left  = r.left + 'px';
+    menu.style.top   = r.bottom + 'px';
+    menu.style.width = r.width + 'px';
   }
 
   function appendStaffMenuItemIcon(btn, symbolId) {
@@ -1314,11 +1429,15 @@
   }
 
   function toggleStaffMenu(header, menu) {
-    const wasOpen = !menu.hidden;
+    const wasOpen = menu.classList.contains('ops-staff-menu--open');
     closeAllStaffMenus();
     if (!wasOpen) {
-      menu.hidden = false;
+      positionStaffMenuFixed(header, menu);
+      menu.classList.add('ops-staff-menu--open');
+      menu.removeAttribute('inert');
+      menu.setAttribute('aria-hidden', 'false');
       header.classList.add('ops-staff-head--open');
+      header.setAttribute('aria-expanded', 'true');
       const first = menu.querySelector('[role="menuitem"]');
       if (first) requestAnimationFrame(() => first.focus());
     }
@@ -2097,9 +2216,52 @@
     return (h * 60) + m;
   }
 
+  /** True when the string carries an explicit offset / Z (UTC instant), not a naive DATETIME. */
+  function dateTimeStringHasExplicitOffset(s) {
+    const x = String(s || '').trim();
+    if (x === '') return false;
+    if (/Z$/i.test(x)) return true;
+    // +00:00, +0000, -05:00 at end (after optional fractional seconds)
+    return /[+-]\d{2}:\d{2}$/.test(x) || /[+-]\d{4}$/.test(x);
+  }
+
+  function minutesFromInstantInBranchTimezone(ms) {
+    try {
+      const parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: BRANCH_TIMEZONE,
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).formatToParts(new Date(ms));
+      let h = 0;
+      let m = 0;
+      for (const p of parts) {
+        if (p.type === 'hour') h = parseInt(p.value, 10) || 0;
+        if (p.type === 'minute') m = parseInt(p.value, 10) || 0;
+      }
+      return h * 60 + m;
+    } catch (_e) {
+      const d = new Date(ms);
+      return d.getHours() * 60 + d.getMinutes();
+    }
+  }
+
+  /**
+   * Minutes from midnight on the day grid axis: matches branch-local `time_grid.day_start` semantics.
+   * Naive `YYYY-MM-DD HH:mm:ss` / `YYYY-MM-DDTHH:mm:ss` (no offset) → clock substring (PHP/DB branch-wall contract).
+   * ISO with Z/offset → convert instant to branch wall clock (fixes label/position vs now-line drift).
+   */
   function minutesFromDateTime(dt) {
-    const hhmm = String(dt || '').slice(11, 16);
-    return toMinutes(hhmm);
+    const raw = String(dt || '').trim();
+    if (raw === '') return 0;
+    if (dateTimeStringHasExplicitOffset(raw)) {
+      const forParse = raw.includes('T') ? raw : raw.replace(/^(\d{4}-\d{2}-\d{2})\s+/, '$1T');
+      const ms = Date.parse(forParse);
+      if (!Number.isNaN(ms)) {
+        return minutesFromInstantInBranchTimezone(ms);
+      }
+    }
+    return toMinutes(raw.slice(11, 16));
   }
 
   /**
@@ -2147,7 +2309,7 @@
     const vFitPad = 8;
     const available = gridH - headH - vFitPad;
     if (available < 80) return;
-    const targetPxPerMin = (available - GRID_TOP_INSET_PX) / range;
+    const targetPxPerMin = (available - GRID_VERTICAL_INSETS_PX) / range;
     if (!Number.isFinite(targetPxPerMin) || targetPxPerMin <= 0.05) return;
     const fitFloor = MIN_TIME_ZOOM_PERCENT;
     // Floor so rounded zoom never exceeds viewport; cap how far we shrink on auto-fit so the grid stays readable.
@@ -2156,7 +2318,7 @@
       Math.min(MAX_TIME_ZOOM_PERCENT, Math.floor((targetPxPerMin / BASE_PIXELS_PER_MINUTE) * 100))
     );
     while (clamped > fitFloor) {
-      const bodyH = range * BASE_PIXELS_PER_MINUTE * (clamped / 100) + GRID_TOP_INSET_PX;
+      const bodyH = range * BASE_PIXELS_PER_MINUTE * (clamped / 100) + GRID_VERTICAL_INSETS_PX;
       if (bodyH <= available + 1) break;
       clamped -= 1;
     }
@@ -2218,14 +2380,14 @@
     const vFitPad = 8;
     const available = gridH - headH - vFitPad;
     if (available < 80) return null;
-    const targetPxPerMin = (available - GRID_TOP_INSET_PX) / range;
+    const targetPxPerMin = (available - GRID_VERTICAL_INSETS_PX) / range;
     if (!Number.isFinite(targetPxPerMin) || targetPxPerMin <= 0.05) return null;
     let clamped = Math.max(
       MIN_TIME_ZOOM_PERCENT,
       Math.min(MAX_TIME_ZOOM_PERCENT, Math.floor((targetPxPerMin / BASE_PIXELS_PER_MINUTE) * 100))
     );
     while (clamped > MIN_TIME_ZOOM_PERCENT) {
-      const bodyH = range * BASE_PIXELS_PER_MINUTE * (clamped / 100) + GRID_TOP_INSET_PX;
+      const bodyH = range * BASE_PIXELS_PER_MINUTE * (clamped / 100) + GRID_VERTICAL_INSETS_PX;
       if (bodyH <= available + 1) break;
       clamped -= 1;
     }
@@ -2272,7 +2434,7 @@
     const options = opts && typeof opts === 'object' ? opts : {};
     if (!options.ignoreLock && calendarViewportManualScrollLock) return;
     const gridEl = document.getElementById('appts-calendar-grid');
-    const scrollEl = gridEl;
+    const scrollEl = getCalendarVerticalScrollEl();
     const line = document.getElementById('ops-now-line-indicator');
     const head = wrap && wrap.querySelector('.ops-calendar-head');
     if (!gridEl || !scrollEl || !line || line.hidden || !head || !dateEl) return;
@@ -2342,7 +2504,32 @@
   }
 
   function fmtFromDt(dt) {
-    const t = String(dt || '').slice(11, 16);
+    const raw = String(dt || '').trim();
+    if (raw === '') return '';
+    if (dateTimeStringHasExplicitOffset(raw)) {
+      const forParse = raw.includes('T') ? raw : raw.replace(/^(\d{4}-\d{2}-\d{2})\s+/, '$1T');
+      const ms = Date.parse(forParse);
+      if (!Number.isNaN(ms)) {
+        try {
+          const parts = new Intl.DateTimeFormat('en-GB', {
+            timeZone: BRANCH_TIMEZONE,
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+          }).formatToParts(new Date(ms));
+          let h = 0;
+          let m = 0;
+          for (const p of parts) {
+            if (p.type === 'hour') h = parseInt(p.value, 10) || 0;
+            if (p.type === 'minute') m = parseInt(p.value, 10) || 0;
+          }
+          return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+        } catch (_e) {
+          /* fall through to substring */
+        }
+      }
+    }
+    const t = raw.slice(11, 16);
     return /^\d{2}:\d{2}$/.test(t) ? t : '';
   }
 
@@ -2579,7 +2766,7 @@
       end: safeEnd,
       step,
       marks: buildTimeMarks(dayStart, safeEnd, step),
-      height: range * getPixelsPerMinute() + GRID_TOP_INSET_PX,
+      height: range * getPixelsPerMinute() + GRID_VERTICAL_INSETS_PX,
       branchHours: {
         available: !!branchHours.branch_hours_available,
         isClosedDay: !!branchHours.is_closed_day,
@@ -2637,6 +2824,12 @@
     headTime.className = 'ops-time-head';
     headTime.textContent = 'Time';
     head.appendChild(headTime);
+    const headScroll = document.createElement('div');
+    headScroll.className = 'ops-calendar-head-scroll';
+    const headInner = document.createElement('div');
+    headInner.className = 'ops-calendar-head-inner';
+    headScroll.appendChild(headInner);
+    head.appendChild(headScroll);
     vm.columns.forEach((col) => {
       const h = document.createElement('div');
       h.className = 'ops-staff-head';
@@ -2653,13 +2846,18 @@
       name.textContent = col.label;
       inner.appendChild(name);
       h.appendChild(inner);
+      const exp = document.createElement('span');
+      exp.className = 'ops-staff-head__exp';
+      exp.setAttribute('aria-hidden', 'true');
+      h.appendChild(exp);
 
       // ── dropdown menu ──────────────────────────────────────────────────────
       const menu = document.createElement('div');
       menu.className = 'ops-staff-menu';
       menu.setAttribute('role', 'menu');
       menu.setAttribute('aria-label', col.label + ' options');
-      menu.hidden = true;
+      menu.setAttribute('aria-hidden', 'true');
+      menu.setAttribute('inert', '');
 
       [
         { label: 'Block Out Time', action: 'block', icon: 'bi-lock' },
@@ -2698,7 +2896,10 @@
         const expanded = h.getAttribute('aria-expanded') === 'true';
         closeAllStaffMenus();
         if (!expanded) {
-          menu.hidden = false;
+          positionStaffMenuFixed(h, menu);
+          menu.classList.add('ops-staff-menu--open');
+          menu.removeAttribute('inert');
+          menu.setAttribute('aria-hidden', 'false');
           h.setAttribute('aria-expanded', 'true');
           h.classList.add('ops-staff-head--open');
           const first = menu.querySelector('[role="menuitem"]');
@@ -2710,7 +2911,7 @@
       h.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); h.click(); }
         if (e.key === 'Escape') { closeAllStaffMenus(); h.focus(); }
-        if (e.key === 'ArrowDown' && !menu.hidden) {
+        if (e.key === 'ArrowDown' && menu.classList.contains('ops-staff-menu--open')) {
           e.preventDefault();
           const items = [...menu.querySelectorAll('[role="menuitem"]')];
           if (items.length) items[0].focus();
@@ -2734,14 +2935,13 @@
         if (e.key === 'Tab') { closeAllStaffMenus(); }
       });
 
-      head.appendChild(h);
+      headInner.appendChild(h);
     });
     const nStaffCols = vm.columns.length;
     if (nStaffCols > 0) {
       const colPat = 'repeat(' + nStaffCols + ', minmax(' + cw + 'px, 1fr))';
-      head.style.gridTemplateColumns = '84px ' + colPat;
+      headInner.style.gridTemplateColumns = colPat;
     }
-    root.appendChild(head);
 
     const body = document.createElement('div');
     body.className = 'ops-calendar-body';
@@ -2759,13 +2959,16 @@
         row.textContent = fmtTime(mark);
       } else if (mod === 30) {
         row.classList.add('ops-time-label--half');
-        row.textContent = ':30';
+        row.textContent = fmtTime(mark);
       } else {
         row.classList.add('ops-time-label--micro');
       }
       labelsCol.appendChild(row);
     });
     body.appendChild(labelsCol);
+
+    const lanesScroll = document.createElement('div');
+    lanesScroll.className = 'ops-calendar-lanes-scroll';
 
     const laneWrap = document.createElement('div');
     laneWrap.className = 'ops-lanes';
@@ -2780,7 +2983,13 @@
       lane.dataset.staffId = String(col.id);
       const hoverPreview = document.createElement('div');
       hoverPreview.className = 'ops-slot-preview';
-      hoverPreview.hidden = true;
+      hoverPreview.setAttribute('aria-hidden', 'true');
+      const hoverLine = document.createElement('div');
+      hoverLine.className = 'ops-slot-preview__line';
+      hoverPreview.appendChild(hoverLine);
+      const hoverDot = document.createElement('div');
+      hoverDot.className = 'ops-slot-preview__dot';
+      hoverPreview.appendChild(hoverDot);
       const hoverLabel = document.createElement('div');
       hoverLabel.className = 'ops-slot-preview__label';
       hoverPreview.appendChild(hoverLabel);
@@ -2867,6 +3076,9 @@
             block.href = buildBlockedTimeUrl();
             block.dataset.drawerUrl = buildBlockedTimeUrl();
           }
+          const blockCq = document.createElement('div');
+          blockCq.className = 'ops-block__cq';
+          block.appendChild(blockCq);
           if (item.kind === 'appointment' && (item.bufferPctBefore > 0 || item.bufferPctAfter > 0)) {
             block.classList.add('ops-block-appt--with-buffers');
           }
@@ -2876,14 +3088,14 @@
               bbf.className = 'ops-block-buffer ops-block-buffer--before';
               bbf.style.flexBasis = item.bufferPctBefore + '%';
               bbf.title = 'Prep / staff buffer';
-              block.appendChild(bbf);
+              blockCq.appendChild(bbf);
             }
             const core = document.createElement('div');
             core.className = 'ops-block-core';
             core.style.flexGrow = 1;
             core.style.flexBasis = item.bufferPctCore + '%';
             core.style.minHeight = '0';
-            block.appendChild(core);
+            blockCq.appendChild(core);
             appendBlockHead(core, { badges: item.calendarBadges, timeLabel: item.timeLabel });
             const ttl = document.createElement('div');
             ttl.className = 'ops-block-title';
@@ -2906,29 +3118,40 @@
               bba.className = 'ops-block-buffer ops-block-buffer--after';
               bba.style.flexBasis = item.bufferPctAfter + '%';
               bba.title = 'Turnover / room buffer (staff availability)';
-              block.appendChild(bba);
+              blockCq.appendChild(bba);
             }
           } else {
+            let blockedTitle = '';
             if (item.kind === 'appointment') {
-              appendBlockHead(block, { badges: item.calendarBadges, timeLabel: item.timeLabel });
+              appendBlockHead(blockCq, { badges: item.calendarBadges, timeLabel: item.timeLabel });
             } else if (item.kind === 'blocked') {
-              appendBlockHead(block, { kindLabel: 'Blocked', timeLabel: item.timeLabel });
+              blockedTitle = safeLabel(item.title, MAX_TITLE_LENGTH) || '';
+              /* One headline: default "Blocked" only in .ops-block-title; .ops-block-kind only if title adds detail. */
+              if (blockedTitle && blockedTitle !== 'Blocked') {
+                appendBlockHead(blockCq, { kindLabel: 'Blocked', timeLabel: item.timeLabel });
+              } else {
+                appendBlockHead(blockCq, { timeLabel: item.timeLabel });
+              }
             }
             const ttl0 = document.createElement('div');
             ttl0.className = 'ops-block-title';
-            ttl0.textContent = safeLabel(item.title, MAX_TITLE_LENGTH) || (item.kind === 'blocked' ? 'Blocked' : 'Appointment');
-            block.appendChild(ttl0);
+            if (item.kind === 'blocked') {
+              ttl0.textContent = blockedTitle && blockedTitle !== 'Blocked' ? blockedTitle : 'Blocked';
+            } else {
+              ttl0.textContent = safeLabel(item.title, MAX_TITLE_LENGTH) || 'Appointment';
+            }
+            blockCq.appendChild(ttl0);
             if (item.meta) {
               const meta0 = document.createElement('div');
               meta0.className = 'ops-block-meta';
               meta0.textContent = safeLabel(item.meta, MAX_META_LENGTH);
-              block.appendChild(meta0);
+              blockCq.appendChild(meta0);
             }
             if (item.kind === 'appointment' && item.statusLabel) {
               const st0 = document.createElement('div');
               st0.className = 'ops-block-status';
               st0.textContent = safeLabel(item.statusLabel, 32);
-              block.appendChild(st0);
+              blockCq.appendChild(st0);
             }
           }
           if (item.kind === 'appointment' && item.clientPhone) {
@@ -2965,20 +3188,23 @@
 
       lane.addEventListener('mousemove', (e) => {
         if (e.target.closest('.ops-block')) {
-          hoverPreview.hidden = true;
+          hoverPreview.classList.remove('is-active', 'is-flipped');
+          clearSlotPreviewViewportPin(hoverPreview);
           return;
         }
         const rect = lane.getBoundingClientRect();
         const offsetY = e.clientY - rect.top;
         const snapped = snapTimeFromTop(offsetY, vm.start, vm.step, vm.end);
         const topPx = Math.max(GRID_TOP_INSET_PX, (toMinutes(snapped) - vm.start) * getPixelsPerMinute() + GRID_TOP_INSET_PX);
-        hoverPreview.hidden = false;
-        hoverPreview.style.top = topPx + 'px';
-        hoverLabel.textContent = col.label + ' \u00B7 ' + snapped;
+        positionSlotPreviewInViewport(hoverPreview, lane, topPx);
+        hoverLabel.textContent = snapped;
+        refreshSlotPreviewFlip(hoverPreview, lane, topPx);
+        hoverPreview.classList.add('is-active');
       });
 
       lane.addEventListener('mouseleave', () => {
-        hoverPreview.hidden = true;
+        hoverPreview.classList.remove('is-active', 'is-flipped');
+        clearSlotPreviewViewportPin(hoverPreview);
       });
 
       // ── Drop target: reschedule appointment onto this lane+time ───────────
@@ -3003,7 +3229,8 @@
         dropPreview.style.top = topPx + 'px';
         dropPreview.hidden = false;
         dropLabel.textContent = col.label + ' · ' + snapped;
-        hoverPreview.hidden = true;
+        hoverPreview.classList.remove('is-active', 'is-flipped');
+        clearSlotPreviewViewportPin(hoverPreview);
       });
 
       lane.addEventListener('dragleave', (e) => {
@@ -3071,7 +3298,10 @@
       laneWrap.appendChild(lane);
     });
 
-    body.appendChild(laneWrap);
+    lanesScroll.appendChild(laneWrap);
+    body.appendChild(lanesScroll);
+    bindOpsCalendarHorizontalScrollSync(headScroll, lanesScroll);
+    root.appendChild(head);
     root.appendChild(body);
     wrap.appendChild(root);
     initNowLine(vm);
@@ -4346,16 +4576,12 @@
     ro.observe(gridEl);
   })();
 
-  (function initCalendarViewportManualScrollLock() {
-    function onMaybeUserScroll() {
-      if (calendarGridProgrammaticScrollDepth > 0) return;
-      calendarViewportManualScrollLock = true;
-    }
+  (function initCalendarGridHorizontalScrollPort() {
     const gridEl = document.getElementById('appts-calendar-grid');
-    if (gridEl && gridEl.dataset.calManualScrollLockBound !== '1') {
-      gridEl.dataset.calManualScrollLockBound = '1';
-      gridEl.addEventListener('scroll', onMaybeUserScroll, { passive: true });
-    }
+    if (!gridEl || gridEl.dataset.calGridHScrollBound === '1') return;
+    gridEl.dataset.calGridHScrollBound = '1';
+    gridEl.addEventListener('scroll', dismissAllActiveSlotPreviews, { passive: true });
+    gridEl.addEventListener('scroll', onCalendarMaybeUserScroll, { passive: true });
   })();
 
   (function initCalendarViewportHeightSync() {

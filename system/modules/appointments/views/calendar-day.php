@@ -202,12 +202,15 @@ ob_start();
                 <?php if ($workspace['can_create'] ?? false): ?>
                 <button type="button" class="ds-btn ds-btn--primary appts-command-strip__new-appt" data-calendar-new-appt>New appointment</button>
                 <?php endif; ?>
-                <button type="button" class="ds-btn ds-btn--secondary appts-immersive-exit" id="calendar-immersive-exit" data-calendar-immersive-exit hidden aria-hidden="true" aria-label="Restore full workspace header and navigation">Show chrome</button>
             </div>
             <div class="appts-cal-context-anchor" id="cal-toolbar-context-anchor">
                 <button type="button" class="appts-cal-toolbar-ghost-btn" id="calendar-blocked-time-btn">
                     <svg class="appts-cal-toolbar-ghost-btn__ic" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-slash-circle"/></svg>
                     <span>Blocked time</span>
+                </button>
+                <button type="button" class="appts-cal-toolbar-ghost-btn" id="calendar-fullscreen-btn" aria-label="Enter full screen" aria-pressed="false">
+                    <svg class="appts-cal-toolbar-ghost-btn__ic" id="calendar-fullscreen-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-fullscreen"/></svg>
+                    <span class="appts-cal-fullscreen-label">Full screen</span>
                 </button>
                 <div class="appts-cal-tools-cluster" id="cal-toolbar-tools-cluster">
                 <div id="calendar-toolbar-context" class="appts-cal-toolbar__context" aria-label="Column visibility summary"></div>
@@ -404,6 +407,7 @@ if (!empty($calendarUiPageBootstrap) && is_array($calendarUiPageBootstrap)) {
 <?php endif; ?>
 
 <script src="/assets/js/app-calendar-day.js" defer></script>
+<script src="/assets/js/app-calendar-immersive.js" defer></script>
 <?php
 $content = ob_get_clean();
 require shared_path('layout/base.php');

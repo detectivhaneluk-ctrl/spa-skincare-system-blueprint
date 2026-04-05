@@ -46,6 +46,50 @@
   const headerActionsEl = host.querySelector('#app-drawer-header-actions');
 
   const DRAWER_FETCH_TIMEOUT_MS = 25000;
+  /** Must exceed .app-drawer --drawer-t (360ms) + compositor slack; used if transitionend is missed. */
+  const DRAWER_CLOSE_FALLBACK_MS = 440;
+
+  let drawerCloseFallbackTimer = null;
+  let panelCloseTransitionHandler = null;
+  /** Bumps on each open/close start so stale timeouts / handlers never tear down a new session. */
+  let drawerMotionToken = 0;
+
+  function clearDrawerCloseFallback() {
+    if (drawerCloseFallbackTimer != null) {
+      clearTimeout(drawerCloseFallbackTimer);
+      drawerCloseFallbackTimer = null;
+    }
+  }
+
+  function detachPanelCloseTransitionHandler() {
+    if (panelCloseTransitionHandler) {
+      panelEl.removeEventListener('transitionend', panelCloseTransitionHandler);
+      panelCloseTransitionHandler = null;
+    }
+  }
+
+  function finalizeDrawerClose(expectedToken) {
+    if (expectedToken !== drawerMotionToken) {
+      return;
+    }
+    if (drawerEl.hidden) {
+      return;
+    }
+    detachPanelCloseTransitionHandler();
+    clearDrawerCloseFallback();
+    drawerEl.hidden = true;
+    drawerEl.setAttribute('aria-hidden', 'true');
+    drawerEl.classList.remove('is-open');
+    lockBody(false);
+    bodyEl.innerHTML = '';
+    setFooter('');
+    setHeaderActions('');
+    setStatus('');
+    setDirty(false);
+    state.isOpen = false;
+    state.activeUrl = '';
+    window.dispatchEvent(new CustomEvent('app:drawer-closed'));
+  }
   function bindAbortDeadline(abortController, ms) {
     const id = setTimeout(() => {
       try {
@@ -124,11 +168,14 @@
   /** If the drawer was hidden without going through closeDrawer, reset state so new opens are not blocked. */
   function syncOpenStateFromDom() {
     if (drawerEl.hidden && state.isOpen) {
+      detachPanelCloseTransitionHandler();
+      clearDrawerCloseFallback();
       lockBody(false);
       state.isOpen = false;
       state.activeUrl = '';
       setDirty(false);
       drawerEl.classList.remove('is-open');
+      drawerEl.setAttribute('aria-hidden', 'true');
     }
   }
 
@@ -136,25 +183,59 @@
     if (!force && !canClose()) {
       return false;
     }
-    drawerEl.hidden = true;
-    drawerEl.classList.remove('is-open');
-    lockBody(false);
-    bodyEl.innerHTML = '';
-    setFooter('');
-    setHeaderActions('');
-    setStatus('');
-    setDirty(false);
+    if (drawerEl.hidden) {
+      return true;
+    }
+
+    detachPanelCloseTransitionHandler();
+    clearDrawerCloseFallback();
+    drawerMotionToken += 1;
+    const closeToken = drawerMotionToken;
     state.isOpen = false;
-    state.activeUrl = '';
-    window.dispatchEvent(new CustomEvent('app:drawer-closed'));
+    drawerEl.classList.remove('is-open');
+
+    panelCloseTransitionHandler = (e) => {
+      if (e.target !== panelEl || e.propertyName !== 'transform') {
+        return;
+      }
+      detachPanelCloseTransitionHandler();
+      clearDrawerCloseFallback();
+      finalizeDrawerClose(closeToken);
+    };
+    panelEl.addEventListener('transitionend', panelCloseTransitionHandler);
+
+    drawerCloseFallbackTimer = window.setTimeout(() => {
+      drawerCloseFallbackTimer = null;
+      detachPanelCloseTransitionHandler();
+      finalizeDrawerClose(closeToken);
+    }, DRAWER_CLOSE_FALLBACK_MS);
+
     return true;
   }
 
-  function openShell() {
+  function openShell(options = {}) {
+    const skipEnterAnimation = !!(options && options.skipEnterAnimation);
+    detachPanelCloseTransitionHandler();
+    clearDrawerCloseFallback();
+    drawerMotionToken += 1;
+
     state.isOpen = true;
     drawerEl.hidden = false;
-    drawerEl.classList.add('is-open');
+    drawerEl.removeAttribute('aria-hidden');
     lockBody(true);
+
+    const alreadyOpen = drawerEl.classList.contains('is-open');
+    if (skipEnterAnimation || alreadyOpen) {
+      drawerEl.classList.add('is-open');
+      return;
+    }
+
+    drawerEl.classList.remove('is-open');
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        drawerEl.classList.add('is-open');
+      });
+    });
   }
 
   async function fetchHtml(url) {
@@ -190,6 +271,8 @@
   }
 
   function setContent(html, requestedUrl) {
+    /* Clear loading strip in the same turn as real HTML — avoids one frame of “content + loading bar” (layout jump). */
+    setStatus('', '');
     bodyEl.innerHTML = html;
     state.activeUrl = requestedUrl || state.activeUrl;
     const root = currentContentRoot();
@@ -200,8 +283,6 @@
     initAppointmentCreate(bodyEl);
     initAppointmentEdit(bodyEl);
     initDrawerLinks(bodyEl);
-    setStatus('', '');
-    openShell();
   }
 
   /**
@@ -216,9 +297,16 @@
       return false;
     }
     state.activeUrl = url;
-    openShell();
-    setStatus('Loading workspace...', 'loading');
-    bodyEl.innerHTML = '<div class="app-drawer__empty">Loading...</div>';
+    const skipEnter =
+      !drawerEl.hidden && drawerEl.classList.contains('is-open');
+    openShell({ skipEnterAnimation: skipEnter });
+    setStatus('Loading workspace…', 'loading');
+    /* Spinner only in body — status row already carries the message (no duplicate “Loading…” pop-in). */
+    bodyEl.innerHTML =
+      '<div class="app-drawer__load-placeholder" role="status" aria-live="polite">' +
+      '<span class="app-drawer__load-spinner" aria-hidden="true"></span>' +
+      '<span class="visually-hidden">Loading workspace</span>' +
+      '</div>';
     (async () => {
       try {
         const html = await fetchHtml(url);
@@ -583,6 +671,62 @@
     event.preventDefault();
     openUrl(target.getAttribute('href') || target.dataset.drawerUrl || '');
   }
+
+  /**
+   * Best-effort warm-up: after the pointer rests on a drawer link, hint the browser to prefetch the URL.
+   * Does not bypass openUrl() — the real open still does a normal fetch (cookies, CSRF, session stay authoritative).
+   * Trade-off: extra GETs if users hover many links (low priority in the network stack).
+   */
+  const drawerPrefetchIssued = new Set();
+  let drawerPrefetchHoverTimer = null;
+
+  function issueDrawerPrefetch(href) {
+    const raw = String(href || '').trim();
+    if (raw === '' || raw.toLowerCase().startsWith('javascript:')) {
+      return;
+    }
+    let u;
+    try {
+      u = new URL(raw, window.location.href);
+    } catch (_) {
+      return;
+    }
+    if (u.origin !== window.location.origin) {
+      return;
+    }
+    if (!u.searchParams.has('drawer')) {
+      u.searchParams.set('drawer', '1');
+    }
+    const key = u.pathname + u.search;
+    if (drawerPrefetchIssued.has(key)) {
+      return;
+    }
+    drawerPrefetchIssued.add(key);
+    const link = document.createElement('link');
+    link.rel = 'prefetch';
+    link.href = u.toString();
+    document.head.appendChild(link);
+  }
+
+  document.addEventListener(
+    'pointerenter',
+    (event) => {
+      const el = event.target.closest('[data-drawer-url]');
+      if (!el || el.closest('#app-drawer-host')) {
+        return;
+      }
+      const href = el.getAttribute('href') || el.dataset.drawerUrl;
+      if (!href) {
+        return;
+      }
+      window.clearTimeout(drawerPrefetchHoverTimer);
+      drawerPrefetchHoverTimer = window.setTimeout(() => {
+        drawerPrefetchHoverTimer = null;
+        issueDrawerPrefetch(href);
+      }, 320);
+    },
+    true
+  );
 
   overlayEl.addEventListener('click', () => {
     closeDrawer();
