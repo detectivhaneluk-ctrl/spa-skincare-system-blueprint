@@ -2883,6 +2883,61 @@ body:has(.calendar-workspace) {
   width: 100%;
 }
 
+/* Day calendar premium top bar: one control chrome (no nested tray + flat buttons mismatch). */
+.appts-calendar-control-surface--premium .appts-command-strip--premium.appts-command-strip {
+  gap: var(--ds-space-3);
+  padding-bottom: var(--ds-space-3);
+}
+
+.appts-calendar-control-surface--premium .appts-command-strip__trail {
+  gap: var(--ds-space-3);
+}
+
+.appts-calendar-control-surface--premium .appts-cal-toolbar-date-heading:hover {
+  color: var(--ds-color-text);
+  background: var(--ds-color-accent-muted);
+}
+
+.appts-calendar-control-surface--premium .appts-cal-context-anchor {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  min-height: 0;
+  gap: var(--ds-space-2);
+  border-radius: 0;
+}
+
+.appts-calendar-control-surface--premium .appts-cal-context-anchor--active {
+  border: none;
+  box-shadow: none;
+}
+
+.appts-calendar-control-surface--premium .appts-cal-toolbar-ghost-btn {
+  min-height: var(--ds-control-height-lg);
+  padding: 0 var(--ds-space-3);
+  border-radius: var(--ds-radius-pill);
+  border: 1px solid var(--ds-color-border-light);
+  background: var(--ds-color-bg-canvas);
+  box-shadow: var(--ds-shadow-control-rest);
+  letter-spacing: normal;
+}
+
+.appts-calendar-control-surface--premium .appts-cal-toolbar-ghost-btn:hover {
+  background: var(--ds-color-bg-subtle);
+  color: var(--ds-color-text);
+  border-color: var(--ds-color-border-light);
+  box-shadow: var(--ds-shadow-control-rest);
+}
+
+.appts-calendar-control-surface--premium .appts-cal-toolbar-ghost-btn:active {
+  background: var(--ds-color-bg-muted);
+}
+
+.appts-calendar-control-surface--premium .appts-cal-tools-toggle.appts-cal-toolbar-ghost-btn[aria-expanded='true'] {
+  box-shadow: var(--ds-shadow-control-rest);
+}
+
 .appts-command-strip__lead {
   display: flex;
   flex-wrap: wrap;
@@ -3099,8 +3154,24 @@ body:has(.calendar-workspace) {
   }
 }
 
+@keyframes appts-cal-live-ping-soft {
+  75%,
+  100% {
+    transform: scale(1.65);
+    opacity: 0;
+  }
+}
+
+.appts-calendar-control-surface--premium .appts-cal-toolbar-branch-pill__dot::after {
+  animation: appts-cal-live-ping-soft 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+  opacity: 0.35;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .appts-cal-toolbar-branch-pill__dot::after {
+    animation: none;
+  }
+  .appts-calendar-control-surface--premium .appts-cal-toolbar-branch-pill__dot::after {
     animation: none;
   }
 }
