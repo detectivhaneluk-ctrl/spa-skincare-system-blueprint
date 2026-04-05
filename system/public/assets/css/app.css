@@ -2874,11 +2874,11 @@ body:has(.calendar-workspace) {
 
 .appts-command-strip--premium.appts-command-strip {
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: var(--ds-space-4) var(--ds-space-3);
   padding-bottom: var(--ds-space-4);
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--ds-color-divider);
   margin-bottom: 0;
   width: 100%;
 }
@@ -2886,15 +2886,15 @@ body:has(.calendar-workspace) {
 .appts-command-strip__lead {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--ds-space-3) var(--ds-space-4);
+  align-items: center;
+  gap: var(--ds-space-3);
   min-width: 0;
 }
 
 .appts-command-strip__trail {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: center;
   justify-content: flex-end;
   gap: var(--ds-space-2);
   margin-left: auto;
@@ -2931,10 +2931,14 @@ body:has(.calendar-workspace) {
 .appts-cal-toolbar-day-nav {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  padding: 4px;
-  border-radius: var(--ds-radius-lg);
-  background: #f9fafb;
+  gap: var(--ds-space-1);
+  padding: var(--ds-space-1);
+  min-height: var(--ds-control-height-lg);
+  box-sizing: border-box;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-color-bg-canvas);
+  border: 1px solid var(--ds-color-border-light);
+  box-shadow: var(--ds-shadow-control-rest);
 }
 
 .appts-cal-toolbar-day-nav__btn {
@@ -2945,16 +2949,16 @@ body:has(.calendar-workspace) {
   height: 2rem;
   padding: 0;
   border: none;
-  border-radius: var(--ds-radius-md);
+  border-radius: var(--ds-radius-pill);
   background: transparent;
-  color: #6b7280;
+  color: var(--ds-color-text-secondary);
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
 }
 
 .appts-cal-toolbar-day-nav__btn:hover {
-  background: #fff;
-  color: #111827;
+  background: var(--ds-color-bg-subtle);
+  color: var(--ds-color-text);
 }
 
 .appts-cal-toolbar-day-nav__btn:focus-visible {
@@ -2962,24 +2966,39 @@ body:has(.calendar-workspace) {
   outline-offset: 1px;
 }
 
+.appts-cal-toolbar-day-nav__ic,
+.appts-cal-toolbar-ghost-btn__ic {
+  display: block;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
 .appts-cal-toolbar-today-btn {
   margin: 0;
-  padding: 0 0.35rem;
-  border: none;
-  border-radius: var(--ds-radius-md);
-  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--ds-space-3);
+  min-height: var(--ds-control-height-lg);
+  box-sizing: border-box;
+  border: 1px solid var(--ds-color-border-light);
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-color-bg-canvas);
+  box-shadow: var(--ds-shadow-control-rest);
   font-family: var(--ds-font-sans);
   font-size: var(--ds-text-sm);
-  font-weight: var(--ds-font-semibold);
-  line-height: 2rem;
-  color: #6b7280;
+  font-weight: var(--ds-font-medium);
+  line-height: var(--ds-leading-tight);
+  color: var(--ds-color-text-secondary);
   cursor: pointer;
-  transition: color 0.15s ease, background 0.15s ease;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
 }
 
 .appts-cal-toolbar-today-btn:hover {
-  color: #111827;
-  background: rgba(0, 0, 0, 0.04);
+  color: var(--ds-color-text);
+  background: var(--ds-color-bg-subtle);
+  border-color: var(--ds-color-border-light);
 }
 
 .appts-cal-toolbar-today-btn:focus-visible {
@@ -2988,36 +3007,38 @@ body:has(.calendar-workspace) {
 }
 
 .appts-cal-toolbar-today-btn--today {
-  color: #dc2626;
+  color: var(--ds-color-danger);
 }
 
 .appts-cal-toolbar-today-btn--today:hover {
-  color: #b91c1c;
-  background: rgba(239, 68, 68, 0.08);
+  color: var(--ds-color-danger);
+  background: var(--ds-color-danger-bg);
+  border-color: var(--ds-color-border-light);
 }
 
 .appts-cal-toolbar-today-btn--today::after {
   content: '';
   display: inline-block;
-  width: 5px;
-  height: 5px;
-  margin-left: 0.35rem;
+  width: 6px;
+  height: 6px;
+  margin-left: var(--ds-space-2);
   border-radius: 50%;
-  background: #ef4444;
-  vertical-align: 0.15em;
+  background: var(--ds-color-danger);
+  vertical-align: 0.1em;
+  flex-shrink: 0;
 }
 
 .appts-cal-toolbar-divider {
-  align-self: stretch;
+  align-self: center;
   width: 1px;
-  min-height: 2rem;
-  background: #e5e7eb;
-  margin: 0 0.15rem;
+  min-height: 1.75rem;
+  background: var(--ds-color-divider);
+  margin: 0 var(--ds-space-2);
 }
 
 .appts-cal-toolbar-branch-pill-wrap {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   min-width: 0;
 }
 
@@ -3025,17 +3046,20 @@ body:has(.calendar-workspace) {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
+  gap: var(--ds-space-2);
+  padding: 0 var(--ds-space-4);
   padding-right: 2.25rem;
+  min-height: var(--ds-control-height-lg);
+  box-sizing: border-box;
   border-radius: var(--ds-radius-pill);
-  background: #f9fafb;
-  border: 1px solid #f3f4f6;
+  background: var(--ds-color-bg-canvas);
+  border: 1px solid var(--ds-color-border-light);
+  box-shadow: var(--ds-shadow-control-rest);
   min-width: 0;
 }
 
 .appts-cal-toolbar-branch-pill--static {
-  padding-right: 1rem;
+  padding-right: var(--ds-space-4);
 }
 
 .appts-cal-toolbar-branch-pill__name {
@@ -3051,10 +3075,10 @@ body:has(.calendar-workspace) {
 .appts-cal-toolbar-branch-pill__dot {
   position: relative;
   flex-shrink: 0;
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: #22c55e;
+  background: var(--ds-color-success);
 }
 
 .appts-cal-toolbar-branch-pill__dot::after {
@@ -3062,7 +3086,8 @@ body:has(.calendar-workspace) {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: #22c55e;
+  background: var(--ds-color-success);
+  opacity: 0.45;
   animation: appts-cal-live-ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
@@ -3109,7 +3134,9 @@ body:has(.calendar-workspace) {
   right: 0.65rem;
   top: 50%;
   transform: translateY(-50%);
-  color: #9ca3af;
+  width: 1rem;
+  height: 1rem;
+  color: var(--ds-color-text-tertiary);
   pointer-events: none;
 }
 
@@ -3118,10 +3145,10 @@ body:has(.calendar-workspace) {
   display: inline-flex;
   align-items: center;
   gap: var(--ds-space-2);
-  min-height: var(--ds-control-height-lg);
-  padding: 0 var(--ds-space-3);
+  min-height: calc(var(--ds-control-height-lg) - 4px);
+  padding: 0 var(--ds-space-2);
   border: 1px solid transparent;
-  border-radius: var(--ds-radius-lg);
+  border-radius: var(--ds-radius-md);
   background: transparent;
   font-family: var(--ds-font-sans);
   font-size: var(--ds-text-sm);
@@ -3141,7 +3168,7 @@ body:has(.calendar-workspace) {
 .appts-cal-toolbar-ghost-btn:hover {
   background: var(--ds-color-bg-subtle);
   color: var(--ds-color-text);
-  border-color: var(--ds-color-border-light);
+  border-color: transparent;
 }
 
 .appts-cal-toolbar-ghost-btn:active {
@@ -3157,7 +3184,7 @@ body:has(.calendar-workspace) {
   background: var(--ds-color-accent-muted);
   color: var(--ds-color-accent);
   border-color: var(--ds-color-accent-border);
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.04);
+  box-shadow: none;
 }
 
 .appts-command-strip__actions--premium {
@@ -3236,32 +3263,22 @@ body:has(.calendar-workspace) {
   /* Sit above .appts-calendar-grid (DOM after toolbar): overlapping dropdown must not paint under sticky .ops-calendar-head */
   z-index: 50;
   display: inline-flex;
-  align-items: flex-end;
+  align-items: center;
   flex-wrap: wrap;
-  gap: var(--ds-space-2);
-  border-radius: var(--ds-radius-lg);
-  /* Always show a calm tray so Blocked time + summary + Tools read as one strip (not only when a menu is open) */
-  padding: 0.2rem 0.4rem 0.28rem;
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.03),
-    0 1px 4px rgba(15, 23, 42, 0.035);
-  backdrop-filter: blur(10px) saturate(160%);
-  -webkit-backdrop-filter: blur(10px) saturate(160%);
-  transition: background 0.2s ease, box-shadow 0.2s ease, backdrop-filter 0.2s ease, border-color 0.2s ease;
+  gap: var(--ds-space-1);
+  border-radius: var(--ds-radius-pill);
+  padding: 2px var(--ds-space-2);
+  min-height: var(--ds-control-height-lg);
+  box-sizing: border-box;
+  background: var(--ds-color-bg-canvas);
+  border: 1px solid var(--ds-color-border-light);
+  box-shadow: var(--ds-shadow-control-rest);
+  transition: background 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .appts-cal-context-anchor--active {
-  background: rgba(255, 255, 255, 0.9);
-  border-color: rgba(0, 0, 0, 0.07);
-  backdrop-filter: blur(18px) saturate(185%);
-  -webkit-backdrop-filter: blur(18px) saturate(185%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.92),
-    0 4px 16px rgba(15, 23, 42, 0.055),
-    0 1px 3px rgba(15, 23, 42, 0.04);
-  padding: 0.22rem 0.42rem 0.32rem;
+  border-color: var(--ds-color-border);
+  box-shadow: var(--ds-shadow-sm);
 }
 
 @media (prefers-reduced-motion: reduce) {

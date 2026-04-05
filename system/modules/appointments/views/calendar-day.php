@@ -169,10 +169,10 @@ ob_start();
                 </button>
                 <div class="appts-cal-toolbar-day-nav" role="group" aria-label="Previous or next day">
                     <button type="button" class="appts-cal-toolbar-day-nav__btn" id="calendar-toolbar-prev-day" aria-label="Previous day" title="Previous day">
-                        <svg class="appts-cal-toolbar-day-nav__ic" width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-chevron-left"/></svg>
+                        <svg class="appts-cal-toolbar-day-nav__ic" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-chevron-left"/></svg>
                     </button>
                     <button type="button" class="appts-cal-toolbar-day-nav__btn" id="calendar-toolbar-next-day" aria-label="Next day" title="Next day">
-                        <svg class="appts-cal-toolbar-day-nav__ic" width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-chevron-right"/></svg>
+                        <svg class="appts-cal-toolbar-day-nav__ic" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-chevron-right"/></svg>
                     </button>
                 </div>
                 <button type="button" class="appts-cal-toolbar-today-btn" id="calendar-toolbar-today-btn" aria-label="Jump to today">Today</button>
@@ -192,7 +192,7 @@ ob_start();
                             <option value="<?= (int) $b['id'] ?>" <?= ((int)($branchId ?? 0) === (int)$b['id']) ? 'selected' : '' ?>><?= htmlspecialchars($b['name']) ?></option>
                             <?php endforeach; ?>
                         </select>
-                        <svg class="appts-cal-toolbar-branch-pill__chev" width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-chevron-down"/></svg>
+                        <svg class="appts-cal-toolbar-branch-pill__chev" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-chevron-down"/></svg>
                     </div>
                     <?php endif; ?>
                 </div>
@@ -206,14 +206,14 @@ ob_start();
             </div>
             <div class="appts-cal-context-anchor" id="cal-toolbar-context-anchor">
                 <button type="button" class="appts-cal-toolbar-ghost-btn" id="calendar-blocked-time-btn">
-                    <svg class="appts-cal-toolbar-ghost-btn__ic" width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-slash-circle"/></svg>
+                    <svg class="appts-cal-toolbar-ghost-btn__ic" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-slash-circle"/></svg>
                     <span>Blocked time</span>
                 </button>
                 <div class="appts-cal-tools-cluster" id="cal-toolbar-tools-cluster">
                 <div id="calendar-toolbar-context" class="appts-cal-toolbar__context" aria-label="Column visibility summary"></div>
                 <div class="appts-cal-tools-dropdown">
                 <button type="button" class="appts-cal-toolbar-ghost-btn appts-cal-tools-toggle" id="cal-toolbar-tools-toggle" aria-expanded="false" aria-controls="cal-toolbar-tools-panel" aria-haspopup="true">
-                    <svg class="appts-cal-toolbar-ghost-btn__ic appts-cal-tools-toggle__icon appts-cal-toolbar__icon appts-cal-toolbar__icon--bi" width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-sliders"/></svg>
+                    <svg class="appts-cal-toolbar-ghost-btn__ic appts-cal-tools-toggle__icon appts-cal-toolbar__icon appts-cal-toolbar__icon--bi" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-sliders"/></svg>
                     <span class="appts-cal-tools-toggle__label" id="cal-toolbar-tools-toggle-text">Tools</span>
                 </button>
                 <div id="cal-toolbar-tools-panel" class="appts-cal-tools-panel" role="region" aria-labelledby="cal-toolbar-tools-toggle-text" hidden>
