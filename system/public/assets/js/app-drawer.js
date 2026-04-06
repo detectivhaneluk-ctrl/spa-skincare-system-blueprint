@@ -116,6 +116,15 @@
     return bodyEl.querySelector('[data-drawer-content-root]');
   }
 
+  function escHtml(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   function readMetadata(root) {
     const title = root && root.dataset.drawerTitle ? root.dataset.drawerTitle : 'Workspace';
     const subtitle = root && root.dataset.drawerSubtitle ? root.dataset.drawerSubtitle : '';
@@ -460,13 +469,19 @@
     if (!form) {
       return;
     }
+
     const branchEl = form.querySelector('#branch_id');
     const clientEl = form.querySelector('#client_id');
+    const clientSearchEl = form.querySelector('#client-search');
+    const clientSearchHintEl = form.querySelector('#client-search-hint');
+    const clientSearchResultsEl = form.querySelector('#client-search-results');
     const serviceEl = form.querySelector('#service_id');
     const dateEl = form.querySelector('#date');
     const staffEl = form.querySelector('#staff_id');
     const roomEl = form.querySelector('#room_id');
     const startEl = form.querySelector('#selected_start_time');
+    const statusEl = form.querySelector('#appointment_status');
+    const statusConfirmEl = form.querySelector('#appointment_status_confirmed');
     const slotsWrap = form.querySelector('#slots-container');
     const statusHintEl = form.querySelector('#slots-status');
     const loadBtn = form.querySelector('#load-slots-btn');
@@ -476,6 +491,7 @@
     const preferredTime = form.dataset.prefillTime || '';
     const defaultSlotMinutes = Math.max(5, Number(form.dataset.slotMinutes || '30') || 30);
     const prefillEndTime = form.dataset.prefillEndTime || '';
+    const createBaseUrl = form.dataset.createBaseUrl || '/appointments/create';
     const clientDetailEls = {
       name: form.querySelector('[data-client-detail="name"]'),
       email: form.querySelector('[data-client-detail="email"]'),
@@ -541,7 +557,170 @@
       if (clientDetailEls.email) clientDetailEls.email.textContent = data.clientEmail || '—';
       if (clientDetailEls.country) clientDetailEls.country.textContent = data.clientCountry || '—';
       if (clientDetailEls.phone) clientDetailEls.phone.textContent = data.clientPhone || '—';
-      if (clientDetailEls.source) clientDetailEls.source.textContent = data.clientSource || 'internal_calendar';
+      if (clientDetailEls.source) clientDetailEls.source.textContent = data.clientSource || '—';
+    };
+
+    const syncClientSearchToSelection = () => {
+      if (!clientSearchEl || !clientEl.options) {
+        return;
+      }
+      const opt = clientEl.options[clientEl.selectedIndex] || null;
+      clientSearchEl.value = opt && opt.value ? String(opt.dataset.clientName || opt.textContent || '').trim() : '';
+    };
+
+    const describeClientOption = (opt) => {
+      const data = opt && opt.dataset ? opt.dataset : {};
+      const name = String(data.clientName || opt.textContent || '').trim();
+      const meta = [data.clientEmail || '', data.clientPhone || '', data.clientCountry || ''].filter(Boolean);
+      return {
+        id: String(opt.value || '').trim(),
+        name,
+        meta: meta.join(' · '),
+        haystack: [
+          String(opt.value || '').trim(),
+          String(opt.textContent || '').trim(),
+          String(data.clientName || '').trim(),
+          String(data.clientEmail || '').trim(),
+          String(data.clientPhone || '').trim(),
+          String(data.clientCountry || '').trim(),
+          String(data.clientSource || '').trim(),
+        ].filter(Boolean).join(' ').toLowerCase(),
+      };
+    };
+
+    const hideClientSearchResults = () => {
+      if (!clientSearchResultsEl) {
+        return;
+      }
+      clientSearchResultsEl.hidden = true;
+      clientSearchResultsEl.innerHTML = '';
+    };
+
+    const selectClientOption = (opt) => {
+      if (!opt || !opt.value) {
+        return;
+      }
+      clientEl.value = opt.value;
+      updateClientDetails();
+      syncClientSearchToSelection();
+      hideClientSearchResults();
+      if (clientSearchHintEl) {
+        clientSearchHintEl.textContent = 'Client selected.';
+      }
+    };
+
+    const renderClientSearchResults = (matches, query) => {
+      if (!clientSearchResultsEl) {
+        return;
+      }
+      if (query === '') {
+        hideClientSearchResults();
+        return;
+      }
+      if (!matches.length) {
+        clientSearchResultsEl.hidden = false;
+        clientSearchResultsEl.innerHTML = '<div class="appt-create-search-results__empty">No matching clients found.</div>';
+        return;
+      }
+      const visibleMatches = matches.slice(0, 8);
+      clientSearchResultsEl.hidden = false;
+      clientSearchResultsEl.innerHTML = visibleMatches.map((match) => {
+        const summary = match.meta ? '<span class="appt-create-search-results__meta">' + escHtml(match.meta) + '</span>' : '';
+        return '<button type="button" class="appt-create-search-results__item" data-client-result="' + escHtml(match.id) + '">'
+          + '<span class="appt-create-search-results__title">' + escHtml(match.name || ('Client #' + match.id)) + '</span>'
+          + '<span class="appt-create-search-results__id">#' + escHtml(match.id) + '</span>'
+          + summary
+          + '</button>';
+      }).join('');
+      clientSearchResultsEl.querySelectorAll('[data-client-result]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const next = Array.from(clientEl.options || []).find((opt) => opt.value === btn.dataset.clientResult);
+          if (next) {
+            selectClientOption(next);
+          }
+        });
+      });
+    };
+
+    const filterClientOptions = () => {
+      if (!clientSearchEl || !clientEl.options) {
+        return;
+      }
+      const query = clientSearchEl.value.trim().toLowerCase();
+      const matches = [];
+      let exactMatch = null;
+      Array.from(clientEl.options).forEach((opt, index) => {
+        if (index === 0) {
+          return;
+        }
+        const client = describeClientOption(opt);
+        const visible = query === '' || client.haystack.includes(query);
+        if (!visible) {
+          return;
+        }
+        matches.push(client);
+        const exactNeedle = [
+          client.id.toLowerCase(),
+          client.name.toLowerCase(),
+          String(opt.dataset && opt.dataset.clientEmail ? opt.dataset.clientEmail : '').trim().toLowerCase(),
+          String(opt.dataset && opt.dataset.clientPhone ? opt.dataset.clientPhone : '').trim().toLowerCase(),
+        ];
+        if (query !== '' && exactNeedle.includes(query) && exactMatch === null) {
+          exactMatch = opt;
+        }
+      });
+
+      if (query === '') {
+        if (clientSearchHintEl) {
+          clientSearchHintEl.textContent = 'Filter by ID, name, email, or phone.';
+        }
+        hideClientSearchResults();
+        return;
+      }
+
+      renderClientSearchResults(matches, query);
+
+      if (matches.length === 0) {
+        if (clientSearchHintEl) {
+          clientSearchHintEl.textContent = 'No matching clients found.';
+        }
+        return;
+      }
+
+      if (clientSearchHintEl) {
+        clientSearchHintEl.textContent = matches.length === 1
+          ? '1 client match.'
+          : String(matches.length) + ' client matches.';
+      }
+
+      const selectedOpt = clientEl.options[clientEl.selectedIndex] || null;
+      const selectedStillVisible = !!(selectedOpt && selectedOpt.value && matches.some((match) => match.id === selectedOpt.value));
+      const nextOpt = exactMatch || (matches.length === 1 ? Array.from(clientEl.options || []).find((opt) => opt.value === matches[0].id) : null);
+      if (!selectedStillVisible && nextOpt) {
+        clientEl.value = nextOpt.value;
+        updateClientDetails();
+      }
+    };
+
+    const syncStatusFromToggle = () => {
+      if (!statusEl || !statusConfirmEl) {
+        return;
+      }
+      statusEl.value = statusConfirmEl.checked ? 'confirmed' : 'scheduled';
+    };
+
+    const buildReloadUrl = () => {
+      const params = new URLSearchParams();
+      if (branchEl.value) params.set('branch_id', branchEl.value);
+      if (dateEl.value) params.set('date', dateEl.value);
+      const time = String(startEl.value || '').trim().slice(-5);
+      if (/^\d{2}:\d{2}$/.test(time)) {
+        params.set('time', time);
+      } else if (preferredTime) {
+        params.set('time', preferredTime);
+      }
+      params.set('slot_minutes', String(defaultSlotMinutes));
+      return createBaseUrl + (params.toString() ? '?' + params.toString() : '');
     };
 
     async function loadSlots() {
@@ -620,6 +799,55 @@
     }
 
     loadBtn.addEventListener('click', loadSlots);
+    if (clientSearchEl) {
+      clientSearchEl.addEventListener('input', filterClientOptions);
+      clientSearchEl.addEventListener('focus', filterClientOptions);
+      clientSearchEl.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter') {
+          return;
+        }
+        if (!clientSearchResultsEl || clientSearchResultsEl.hidden) {
+          return;
+        }
+        const first = clientSearchResultsEl.querySelector('[data-client-result]');
+        if (!first) {
+          return;
+        }
+        event.preventDefault();
+        first.click();
+      });
+    }
+    clientEl.addEventListener('change', () => {
+      updateClientDetails();
+      syncClientSearchToSelection();
+      if (clientSearchHintEl) {
+        clientSearchHintEl.textContent = 'Filter by ID, name, email, or phone.';
+      }
+      hideClientSearchResults();
+    });
+    document.addEventListener('click', (event) => {
+      const target = event.target;
+      if (!form.contains(target)) {
+        hideClientSearchResults();
+        return;
+      }
+      if (clientSearchEl && target !== clientSearchEl && clientSearchResultsEl && !clientSearchResultsEl.contains(target)) {
+        hideClientSearchResults();
+      }
+    });
+    if (String(branchEl.tagName || '').toUpperCase() === 'SELECT') {
+      branchEl.addEventListener('change', () => {
+        if (!branchEl.value) {
+          return;
+        }
+        if (window.AppDrawer && typeof window.AppDrawer.openUrl === 'function') {
+          window.AppDrawer.openUrl(buildReloadUrl(), { force: true });
+        }
+      });
+    }
+    if (statusConfirmEl) {
+      statusConfirmEl.addEventListener('change', syncStatusFromToggle);
+    }
     form.addEventListener('submit', (event) => {
       if (!startEl.value) {
         event.preventDefault();
@@ -637,10 +865,12 @@
     });
     serviceEl.addEventListener('change', updateServiceDescriptionHint);
     serviceEl.addEventListener('change', computeEstimatedEnd);
-    clientEl.addEventListener('change', updateClientDetails);
     updateServiceDescriptionHint();
     updateSelectedSlotLabel();
+    syncClientSearchToSelection();
+    filterClientOptions();
     updateClientDetails();
+    syncStatusFromToggle();
     computeEstimatedEnd();
   }
 

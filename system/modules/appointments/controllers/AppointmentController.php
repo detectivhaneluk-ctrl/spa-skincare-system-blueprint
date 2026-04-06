@@ -277,6 +277,7 @@ final class AppointmentController
             'service_id' => (int) ($_POST['service_id'] ?? 0),
             'staff_id' => (int) ($_POST['staff_id'] ?? 0),
             'start_time' => trim((string) ($_POST['start_time'] ?? '')),
+            'status' => trim((string) ($_POST['status'] ?? 'scheduled')) ?: 'scheduled',
             'branch_id' => trim((string) ($_POST['branch_id'] ?? '')) !== '' ? (int) $_POST['branch_id'] : null,
             'notes' => trim((string) ($_POST['notes'] ?? '')) ?: null,
             'client_membership_id' => trim((string) ($_POST['client_membership_id'] ?? '')) !== '' ? (int) $_POST['client_membership_id'] : null,
