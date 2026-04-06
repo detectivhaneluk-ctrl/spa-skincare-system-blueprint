@@ -81,6 +81,7 @@
   /** Current day-calendar horizontal scrollports after the latest render. */
   let calendarHorizontalHeadScrollEl = null;
   let calendarHorizontalLanesScrollEl = null;
+  let calendarHorizontalColumnGeometry = [];
   let calendarHorizontalNavStateRaf = null;
   /**
    * Per-tab: user moved time zoom (or applied a saved view) for this branch — block auto-fit until DB row exists.
@@ -499,38 +500,95 @@
     return els;
   }
 
+  function ensureCalendarHorizontalScrollEls() {
+    const headOk = calendarHorizontalHeadScrollEl instanceof HTMLElement && calendarHorizontalHeadScrollEl.isConnected;
+    const lanesOk = calendarHorizontalLanesScrollEl instanceof HTMLElement && calendarHorizontalLanesScrollEl.isConnected;
+    if (headOk && lanesOk) {
+      return {
+        headScroll: calendarHorizontalHeadScrollEl,
+        lanesScroll: calendarHorizontalLanesScrollEl,
+      };
+    }
+    return refreshCalendarHorizontalScrollEls();
+  }
+
+  function collectCalendarHorizontalColumnGeometry() {
+    const els = ensureCalendarHorizontalScrollEls();
+    const headCols = els.headScroll
+      ? Array.from(els.headScroll.querySelectorAll('.ops-staff-head')).filter((el) => el instanceof HTMLElement)
+      : [];
+    const laneCols = els.lanesScroll
+      ? Array.from(els.lanesScroll.querySelectorAll('.ops-lane')).filter((el) => el instanceof HTMLElement)
+      : [];
+    const count = Math.min(headCols.length, laneCols.length || headCols.length);
+    const geometry = [];
+
+    for (let i = 0; i < count; i++) {
+      const head = headCols[i];
+      const lane = laneCols[i] || null;
+      const left = Math.max(0, head.offsetLeft || 0);
+      const width = Math.max(1, head.offsetWidth || lane?.offsetWidth || 1);
+      geometry.push({
+        index: i,
+        staffId: String(head.dataset.staffId || lane?.dataset.staffId || ''),
+        left,
+        width,
+        right: left + width,
+        center: left + (width / 2),
+        headEl: head,
+        laneEl: lane,
+      });
+    }
+
+    calendarHorizontalColumnGeometry = geometry;
+    return geometry;
+  }
+
+  function getCalendarHorizontalTailPaddingPx(geometry, visibleWidth) {
+    if (!Array.isArray(geometry) || geometry.length === 0) return 0;
+    const last = geometry[geometry.length - 1];
+    return Math.max(0, Math.round((visibleWidth || 0) - (last.width || 0)));
+  }
+
   function getCalendarHorizontalScrollState() {
-    const els = calendarHorizontalLanesScrollEl || calendarHorizontalHeadScrollEl
-      ? { headScroll: calendarHorizontalHeadScrollEl, lanesScroll: calendarHorizontalLanesScrollEl }
-      : refreshCalendarHorizontalScrollEls();
-    const primary = els.lanesScroll || els.headScroll;
-    const scrollEl = primary instanceof HTMLElement ? primary : null;
+    const els = ensureCalendarHorizontalScrollEls();
+    const scrollEl = (els.lanesScroll || els.headScroll) instanceof HTMLElement ? (els.lanesScroll || els.headScroll) : null;
     const visibleWidth = scrollEl ? Math.max(1, scrollEl.clientWidth || 0) : 0;
-    const scrollWidth = scrollEl ? Math.max(0, scrollEl.scrollWidth || 0) : 0;
-    const maxScrollLeft = Math.max(0, scrollWidth - visibleWidth);
     const scrollLeft = scrollEl ? Math.max(0, scrollEl.scrollLeft || 0) : 0;
-    const cw = Math.max(1, Math.round(Number(columnWidthPx) || 160));
-    const columnsPerPage = visibleWidth > 0
-      ? Math.max(1, Math.floor(visibleWidth / cw) - 1)
-      : 1;
+    const geometry = collectCalendarHorizontalColumnGeometry();
+    const tailPadPx = getCalendarHorizontalTailPaddingPx(geometry, visibleWidth);
+    const totalWidth = geometry.length > 0 ? geometry[geometry.length - 1].right + tailPadPx : 0;
+    const maxScrollLeft = Math.max(0, totalWidth - visibleWidth);
     return {
       headScroll: els.headScroll,
       lanesScroll: els.lanesScroll,
       scrollEl,
       visibleWidth,
-      scrollWidth,
       maxScrollLeft,
       scrollLeft,
-      columnWidthPx: cw,
-      columnsPerPage,
-      hasOverflow: maxScrollLeft > 1,
+      columns: geometry,
+      tailPadPx,
+      hasOverflow: geometry.length > 1 && maxScrollLeft > 1,
       atStart: maxScrollLeft <= 1 || scrollLeft <= 1,
       atEnd: maxScrollLeft <= 1 || scrollLeft >= maxScrollLeft - 1,
     };
   }
 
+  function applyCalendarHorizontalTailPadding(state) {
+    const headInner = state.headScroll && state.headScroll.querySelector('.ops-calendar-head-inner');
+    const laneWrap = state.lanesScroll && state.lanesScroll.querySelector('.ops-lanes');
+    const padPx = Math.max(0, Number(state.tailPadPx) || 0);
+    if (headInner instanceof HTMLElement) {
+      headInner.style.paddingRight = padPx + 'px';
+    }
+    if (laneWrap instanceof HTMLElement) {
+      laneWrap.style.paddingRight = padPx + 'px';
+    }
+  }
+
   function updateCalendarHorizontalNavState() {
     const state = getCalendarHorizontalScrollState();
+    applyCalendarHorizontalTailPadding(state);
     if (!calendarHorizontalNavControls || !calendarHorizontalNavPrev || !calendarHorizontalNavNext) return state;
 
     const shouldShow = state.hasOverflow;
@@ -546,20 +604,34 @@
     if (calendarHorizontalNavStateRaf != null) return;
     calendarHorizontalNavStateRaf = window.requestAnimationFrame(() => {
       calendarHorizontalNavStateRaf = null;
+      refreshCalendarHorizontalScrollEls();
       updateCalendarHorizontalNavState();
     });
   }
 
-  function scrollCalendarHorizontallyByPage(direction) {
+  function getCalendarHorizontalAnchorIndex(state) {
+    if (!state || !Array.isArray(state.columns) || state.columns.length === 0) return -1;
+    const viewportLeft = Math.max(0, Number(state.scrollLeft) || 0);
+    for (let i = 0; i < state.columns.length; i++) {
+      if (state.columns[i].center >= viewportLeft) {
+        return i;
+      }
+    }
+    return state.columns.length - 1;
+  }
+
+  function scrollCalendarHorizontallyByStaff(direction) {
     const state = updateCalendarHorizontalNavState();
     if (!state.hasOverflow || !state.scrollEl || !Number.isFinite(direction) || direction === 0) return;
-
-    const currentColumn = Math.max(0, Math.floor(state.scrollLeft / state.columnWidthPx));
-    const nextColumn = Math.max(
-      0,
-      currentColumn + (state.columnsPerPage * (direction < 0 ? -1 : 1))
-    );
-    const nextLeft = Math.max(0, Math.min(state.maxScrollLeft, nextColumn * state.columnWidthPx));
+    const anchorIndex = getCalendarHorizontalAnchorIndex(state);
+    if (anchorIndex < 0) return;
+    const nextIndex = Math.max(0, Math.min(state.columns.length - 1, anchorIndex + (direction < 0 ? -1 : 1)));
+    if (nextIndex === anchorIndex) {
+      scheduleCalendarHorizontalNavStateSync();
+      return;
+    }
+    const target = state.columns[nextIndex];
+    const nextLeft = Math.max(0, Math.min(state.maxScrollLeft, Math.round(target.left || 0)));
     const reducedMotion = typeof window.matchMedia === 'function'
       && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const behavior = reducedMotion ? 'auto' : 'smooth';
@@ -3063,6 +3135,7 @@
       const colPat = 'repeat(' + nStaffCols + ', minmax(' + cw + 'px, ' + cw + 'px))';
       headInner.style.gridTemplateColumns = colPat;
     }
+    headInner.style.paddingRight = '0px';
 
     const body = document.createElement('div');
     body.className = 'ops-calendar-body';
@@ -3097,6 +3170,7 @@
       laneWrap.style.gridTemplateColumns =
         'repeat(' + vm.columns.length + ', minmax(' + cw + 'px, ' + cw + 'px))';
     }
+    laneWrap.style.paddingRight = '0px';
     vm.columns.forEach((col) => {
       const lane = document.createElement('div');
       lane.className = 'ops-lane';
@@ -3426,6 +3500,7 @@
     root.appendChild(body);
     wrap.appendChild(root);
     refreshCalendarHorizontalScrollEls();
+    collectCalendarHorizontalColumnGeometry();
     initNowLine(vm);
     updateRailDayMeta(vm, apptCount);
     updateCalendarHorizontalNavState();
@@ -4118,6 +4193,7 @@
         schedulePersistCalendarPrefs();
         if (lastCalendarPayload) renderCalendar(lastCalendarPayload);
         syncCalendarToolbarControls();
+        scheduleCalendarHorizontalNavStateSync();
       });
     }
     const cSl = document.getElementById('cal-toolbar-col-slider');
@@ -4127,6 +4203,7 @@
         schedulePersistCalendarPrefs();
         if (lastCalendarPayload) renderCalendar(lastCalendarPayload);
         syncCalendarToolbarControls();
+        scheduleCalendarHorizontalNavStateSync();
       });
     }
     const ip = document.getElementById('cal-toolbar-in-progress');
@@ -4135,6 +4212,7 @@
         showInProgressAppointments = !!ip.checked;
         schedulePersistCalendarPrefs();
         if (lastCalendarPayload) renderCalendar(lastCalendarPayload);
+        scheduleCalendarHorizontalNavStateSync();
       });
     }
 
@@ -4145,6 +4223,7 @@
       syncCalendarToolbarControls();
       schedulePersistCalendarPrefs();
       if (lastCalendarPayload) renderCalendar(lastCalendarPayload);
+      scheduleCalendarHorizontalNavStateSync();
     });
     document.getElementById('cal-toolbar-zoom-reset')?.addEventListener('click', () => {
       timeZoomPercent = 100;
@@ -4175,6 +4254,7 @@
       tryFitWorkdayToViewport({ explicitUserFit: true });
       syncCalendarToolbarControls();
       commitCalendarPrefsToServerImmediate();
+      scheduleCalendarHorizontalNavStateSync();
     });
 
     document.getElementById('cal-toolbar-staff-apply')?.addEventListener('click', () => {
@@ -4192,10 +4272,12 @@
     });
     document.getElementById('cal-toolbar-staff-all')?.addEventListener('click', () => {
       document.querySelectorAll('#cal-toolbar-staff-fields input[type="checkbox"]').forEach((i) => { i.checked = true; });
+      scheduleCalendarHorizontalNavStateSync();
       updateCalendarHorizontalNavState();
     });
     document.getElementById('cal-toolbar-staff-none')?.addEventListener('click', () => {
       document.querySelectorAll('#cal-toolbar-staff-fields input[type="checkbox"]').forEach((i) => { i.checked = false; });
+      scheduleCalendarHorizontalNavStateSync();
       updateCalendarHorizontalNavState();
     });
     document.getElementById('cal-toolbar-staff-cancel')?.addEventListener('click', () => {
@@ -4644,8 +4726,9 @@
     refreshCalendarSummaries();
     load();
     loadSidePanelData();
+    scheduleCalendarHorizontalNavStateSync();
   });
-    document.addEventListener('fullscreenchange', scheduleCalendarHorizontalNavStateSync);
+  document.addEventListener('fullscreenchange', scheduleCalendarHorizontalNavStateSync);
 
   document.addEventListener('click', (e) => {
     if (!(e.target instanceof Element)) return;
@@ -4701,6 +4784,7 @@
       t = setTimeout(() => {
         if (performance.now() < implicitWorkdayFitSuppressedUntil) return;
         scheduleWorkdayViewportFit();
+        scheduleCalendarHorizontalNavStateSync();
       }, 100);
     });
     ro.observe(gridEl);
@@ -4724,6 +4808,7 @@
     if (mainCol && typeof ResizeObserver !== 'undefined') {
       const ro = new ResizeObserver(() => {
         scheduleSyncCalendarViewportHeight();
+        scheduleCalendarHorizontalNavStateSync();
       });
       ro.observe(mainCol);
     }
@@ -4776,10 +4861,10 @@
     calendarToolbarNextDay.addEventListener('click', () => shiftCalendarDayBy(1));
   }
   if (calendarHorizontalNavPrev) {
-    calendarHorizontalNavPrev.addEventListener('click', () => scrollCalendarHorizontallyByPage(-1));
+    calendarHorizontalNavPrev.addEventListener('click', () => scrollCalendarHorizontallyByStaff(-1));
   }
   if (calendarHorizontalNavNext) {
-    calendarHorizontalNavNext.addEventListener('click', () => scrollCalendarHorizontallyByPage(1));
+    calendarHorizontalNavNext.addEventListener('click', () => scrollCalendarHorizontallyByStaff(1));
   }
   if (calendarToolbarDateFocus && calCard) {
     calendarToolbarDateFocus.addEventListener('click', () => {
