@@ -534,7 +534,6 @@
         left,
         width,
         right: left + width,
-        center: left + (width / 2),
         headEl: head,
         laneEl: lane,
       });
@@ -574,6 +573,55 @@
     };
   }
 
+  function getCalendarHorizontalRepresentativeWidth(state) {
+    const widths = Array.isArray(state && state.columns)
+      ? state.columns.map((col) => Math.max(1, Number(col.width) || 0)).filter((w) => Number.isFinite(w) && w > 0)
+      : [];
+    if (widths.length === 0) {
+      return Math.max(1, Math.round(Number(columnWidthPx) || 160));
+    }
+    widths.sort((a, b) => a - b);
+    const mid = Math.floor(widths.length / 2);
+    return widths.length % 2 === 1 ? widths[mid] : Math.round((widths[mid - 1] + widths[mid]) / 2);
+  }
+
+  function getCalendarHorizontalNearestSnapIndex(state) {
+    if (!state || !Array.isArray(state.columns) || state.columns.length === 0) return -1;
+    const currentScrollLeft = Math.max(0, Number(state.scrollLeft) || 0);
+    let bestIndex = 0;
+    let bestDistance = Infinity;
+    for (let i = 0; i < state.columns.length; i++) {
+      const col = state.columns[i];
+      const distance = Math.abs((Number(col.left) || 0) - currentScrollLeft);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestIndex = i;
+      }
+    }
+    return bestIndex;
+  }
+
+  function getCalendarHorizontalSnapDebug(state, nearestSnapIndex, targetIndex, representativeWidth, minMeaningfulDeltaPx, targetScrollLeft) {
+    const currentScrollLeft = Math.max(0, Number(state && state.scrollLeft) || 0);
+    return {
+      beforeScrollLeft: currentScrollLeft,
+      nearestSnapIndex,
+      finalTargetIndex: targetIndex,
+      targetScrollLeft,
+      deltaPx: Math.abs(targetScrollLeft - currentScrollLeft),
+      representativeWidth,
+      minMeaningfulDeltaPx,
+    };
+  }
+
+  function isCalendarHorizontalSnapDebugEnabled() {
+    try {
+      return new URLSearchParams(window.location.search).get('calendar_snap_debug') === '1';
+    } catch (_e) {
+      return false;
+    }
+  }
+
   function applyCalendarHorizontalTailPadding(state) {
     const headInner = state.headScroll && state.headScroll.querySelector('.ops-calendar-head-inner');
     const laneWrap = state.lanesScroll && state.lanesScroll.querySelector('.ops-lanes');
@@ -609,41 +657,62 @@
     });
   }
 
-  function getCalendarHorizontalAnchorIndex(state) {
-    if (!state || !Array.isArray(state.columns) || state.columns.length === 0) return -1;
-    const viewportLeft = Math.max(0, Number(state.scrollLeft) || 0);
-    for (let i = 0; i < state.columns.length; i++) {
-      if (state.columns[i].center >= viewportLeft) {
-        return i;
-      }
-    }
-    return state.columns.length - 1;
-  }
-
   function scrollCalendarHorizontallyByStaff(direction) {
     const state = updateCalendarHorizontalNavState();
     if (!state.hasOverflow || !state.scrollEl || !Number.isFinite(direction) || direction === 0) return;
-    const anchorIndex = getCalendarHorizontalAnchorIndex(state);
-    if (anchorIndex < 0) return;
-    const nextIndex = Math.max(0, Math.min(state.columns.length - 1, anchorIndex + (direction < 0 ? -1 : 1)));
-    if (nextIndex === anchorIndex) {
+    const nearestSnapIndex = getCalendarHorizontalNearestSnapIndex(state);
+    if (nearestSnapIndex < 0) return;
+    let targetIndex = Math.max(
+      0,
+      Math.min(state.columns.length - 1, nearestSnapIndex + (direction < 0 ? -1 : 1))
+    );
+    const representativeWidth = getCalendarHorizontalRepresentativeWidth(state);
+    const minMeaningfulDeltaPx = Math.max(1, Math.round(representativeWidth * 0.35));
+    const currentScrollLeft = Math.max(0, Number(state.scrollLeft) || 0);
+    let targetScrollLeft = Math.max(0, Math.min(state.maxScrollLeft, Math.round(state.columns[targetIndex].left || 0)));
+    let deltaPx = Math.abs(targetScrollLeft - currentScrollLeft);
+
+    if (direction > 0) {
+      if (deltaPx < minMeaningfulDeltaPx && targetIndex < state.columns.length - 1) {
+        targetIndex += 1;
+        targetScrollLeft = Math.max(0, Math.min(state.maxScrollLeft, Math.round(state.columns[targetIndex].left || 0)));
+        deltaPx = Math.abs(targetScrollLeft - currentScrollLeft);
+      }
+    } else {
+      if (deltaPx < minMeaningfulDeltaPx && targetIndex > 0) {
+        targetIndex -= 1;
+        targetScrollLeft = Math.max(0, Math.min(state.maxScrollLeft, Math.round(state.columns[targetIndex].left || 0)));
+        deltaPx = Math.abs(targetScrollLeft - currentScrollLeft);
+      }
+    }
+
+    if (targetIndex === nearestSnapIndex && targetScrollLeft === currentScrollLeft) {
       scheduleCalendarHorizontalNavStateSync();
       return;
     }
-    const target = state.columns[nextIndex];
-    const nextLeft = Math.max(0, Math.min(state.maxScrollLeft, Math.round(target.left || 0)));
     const reducedMotion = typeof window.matchMedia === 'function'
       && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const behavior = reducedMotion ? 'auto' : 'smooth';
     const scrollTarget = state.lanesScroll || state.headScroll || state.scrollEl;
 
+    if (isCalendarHorizontalSnapDebugEnabled() && window && typeof window.console !== 'undefined' && typeof window.console.debug === 'function') {
+      window.console.debug('calendar-staff-snap-nav', getCalendarHorizontalSnapDebug(
+        state,
+        nearestSnapIndex,
+        targetIndex,
+        representativeWidth,
+        minMeaningfulDeltaPx,
+        targetScrollLeft
+      ));
+    }
+
     closeAllStaffMenus();
     dismissAllActiveSlotPreviews();
 
     if (typeof scrollTarget.scrollTo === 'function') {
-      scrollTarget.scrollTo({ left: nextLeft, behavior });
+      scrollTarget.scrollTo({ left: targetScrollLeft, behavior });
     } else {
-      scrollTarget.scrollLeft = nextLeft;
+      scrollTarget.scrollLeft = targetScrollLeft;
     }
     scheduleCalendarHorizontalNavStateSync();
   }
