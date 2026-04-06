@@ -631,6 +631,33 @@
     return lastLeftAnchorIndex;
   }
 
+  function getCalendarHorizontalMaxUsefulScrollLeft(state) {
+    if (!state || !Array.isArray(state.columns) || state.columns.length === 0) return 0;
+    const viewportWidth = Math.max(1, Number(state.visibleWidth) || 0);
+    const last = state.columns[state.columns.length - 1];
+    return Math.max(0, Math.round((Number(last?.normalizedRight) || 0) - viewportWidth));
+  }
+
+  function clampCalendarHorizontalScrollToSemanticEnd(state) {
+    if (!state || !state.scrollEl || !Array.isArray(state.columns) || state.columns.length === 0) return state;
+    const currentScrollLeft = Math.max(0, Math.round(Number(state.scrollLeft) || 0));
+    const maxUsefulScrollLeft = getCalendarHorizontalMaxUsefulScrollLeft(state);
+    const clamped = Math.max(0, Math.min(maxUsefulScrollLeft, currentScrollLeft));
+    if (Math.abs(clamped - currentScrollLeft) <= 1) {
+      return state;
+    }
+    if (state.headScroll instanceof HTMLElement) {
+      state.headScroll.scrollLeft = clamped;
+    }
+    if (state.lanesScroll instanceof HTMLElement) {
+      state.lanesScroll.scrollLeft = clamped;
+    }
+    if (state.scrollEl instanceof HTMLElement && state.scrollEl !== state.headScroll && state.scrollEl !== state.lanesScroll) {
+      state.scrollEl.scrollLeft = clamped;
+    }
+    return getCalendarHorizontalScrollState();
+  }
+
   function getCalendarHorizontalSemanticNavState(state) {
     if (!state || !Array.isArray(state.columns) || state.columns.length === 0) {
       return {
@@ -678,7 +705,8 @@
   }
 
   function updateCalendarHorizontalNavState() {
-    const state = getCalendarHorizontalScrollState();
+    let state = getCalendarHorizontalScrollState();
+    state = clampCalendarHorizontalScrollToSemanticEnd(state);
     applyCalendarHorizontalTailPadding(state);
     if (!calendarHorizontalNavControls || !calendarHorizontalNavPrev || !calendarHorizontalNavNext) return state;
 
