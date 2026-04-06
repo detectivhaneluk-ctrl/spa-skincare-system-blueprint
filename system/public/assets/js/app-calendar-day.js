@@ -772,9 +772,9 @@
       scheduleCalendarHorizontalNavStateSync();
       return;
     }
-    const reducedMotion = typeof window.matchMedia === 'function'
-      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const behavior = reducedMotion ? 'auto' : 'smooth';
+    // Snap to the exact next/prev staff anchor immediately.
+    // Smooth animation could look like tiny drift under repeated clicks.
+    const behavior = 'auto';
     const scrollTarget = state.lanesScroll || state.headScroll || state.scrollEl;
 
     closeAllStaffMenus();
