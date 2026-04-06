@@ -212,6 +212,16 @@ ob_start();
                     <svg class="appts-cal-toolbar-ghost-btn__ic" id="calendar-fullscreen-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-fullscreen"/></svg>
                     <span class="appts-cal-fullscreen-label">Full screen</span>
                 </button>
+                <div class="appts-cal-staff-pan" id="calendar-staff-pan-controls" role="group" aria-label="Scroll staff columns">
+                    <button type="button" class="appts-cal-toolbar-ghost-btn appts-cal-staff-pan__btn" id="calendar-staff-pan-prev" aria-label="Previous staff columns" title="Previous staff columns">
+                        <svg class="appts-cal-toolbar-ghost-btn__ic" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-chevron-left"/></svg>
+                        <span class="visually-hidden">Previous staff columns</span>
+                    </button>
+                    <button type="button" class="appts-cal-toolbar-ghost-btn appts-cal-staff-pan__btn" id="calendar-staff-pan-next" aria-label="Next staff columns" title="Next staff columns">
+                        <svg class="appts-cal-toolbar-ghost-btn__ic" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-chevron-right"/></svg>
+                        <span class="visually-hidden">Next staff columns</span>
+                    </button>
+                </div>
                 <div class="appts-cal-tools-cluster" id="cal-toolbar-tools-cluster">
                 <div id="calendar-toolbar-context" class="appts-cal-toolbar__context" aria-label="Column visibility summary"></div>
                 <div class="appts-cal-tools-dropdown">

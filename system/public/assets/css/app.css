@@ -48,9 +48,9 @@
   width: min(100vw, 760px);
   height: 100vh;
   font-family: var(--ds-font-sans);
-  /* Same surface law as main workspace: canvas white + token drawer elevation. */
-  background: var(--ds-color-bg-canvas);
+  background: #fff;
   box-shadow: var(--ds-shadow-drawer);
+  border-left: 1px solid color-mix(in srgb, var(--ds-color-border-light) 88%, white);
   transform: translate3d(100%, 0, 0) scale(0.988);
   transition: transform var(--drawer-t) var(--drawer-ease);
   will-change: transform;
@@ -82,13 +82,13 @@
   align-items: center;
   gap: var(--ds-space-3);
   padding: var(--ds-space-4) var(--ds-space-5);
-  background: var(--ds-color-bg-canvas);
-  border-bottom: 1px solid var(--ds-color-border-light);
+  background: #fff;
+  border-bottom: 1px solid color-mix(in srgb, var(--ds-color-border-light) 88%, white);
   flex-shrink: 0;
 }
 
 .app-drawer__footer {
-  border-top: 1px solid var(--ds-color-border-light);
+  border-top: 1px solid color-mix(in srgb, var(--ds-color-border-light) 88%, white);
   border-bottom: 0;
   justify-content: space-between;
 }
@@ -123,9 +123,9 @@
 }
 
 .app-drawer__close {
-  border: 1px solid var(--ds-color-border);
-  border-radius: var(--ds-radius-md);
-  background: var(--ds-color-bg-subtle);
+  border: 1px solid color-mix(in srgb, var(--ds-color-border) 88%, white);
+  border-radius: 0.95rem;
+  background: #fafbfd;
   color: var(--ds-color-text-secondary);
   width: var(--ds-control-height-lg);
   height: var(--ds-control-height-lg);
@@ -145,8 +145,8 @@
 .app-drawer__status {
   padding: var(--ds-space-3) var(--ds-space-5);
   font-size: var(--ds-text-md);
-  border-bottom: 1px solid var(--ds-color-border-light);
-  background: var(--ds-color-bg-subtle);
+  border-bottom: 1px solid color-mix(in srgb, var(--ds-color-border-light) 88%, white);
+  background: #fbfcfe;
   color: var(--ds-color-text-secondary);
 }
 
@@ -169,7 +169,7 @@
   flex: 1;
   overflow: auto;
   padding: var(--ds-space-5) var(--ds-space-5) var(--ds-space-8);
-  background: var(--ds-color-bg-page);
+  background: #f6f8fb;
   color: var(--ds-color-text);
   -webkit-font-smoothing: antialiased;
 }
@@ -379,6 +379,364 @@
   color: var(--ds-color-text);
 }
 
+.drawer-workspace--appointment-create {
+  gap: var(--ds-space-3);
+}
+
+.drawer-workspace--appointment-create .drawer-workspace__intro {
+  max-width: 34rem;
+  font-size: 0.9rem;
+}
+
+.appt-create-tabs-shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-3);
+}
+
+.drawer-workspace--appointment-create .appt-create-tabs {
+  display: inline-flex;
+  width: fit-content;
+  padding: 0.22rem;
+  border: 1px solid color-mix(in srgb, var(--ds-color-border-light) 90%, white);
+  border-radius: 999px;
+  background: #eef2f6;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.drawer-workspace--appointment-create .appt-create-tabs .drawer-tab {
+  padding: 0.42rem 0.95rem;
+  border: none;
+  background: transparent;
+  color: var(--ds-color-text-secondary);
+}
+
+.drawer-workspace--appointment-create .appt-create-tabs .drawer-tab.is-active {
+  background: #fff;
+  color: var(--ds-color-text);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+.appt-create-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ds-space-2);
+}
+
+.appt-create-panel {
+  padding: 1.1rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--ds-color-border-light) 88%, white);
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
+}
+
+.appt-create-panel__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 650;
+  color: var(--ds-color-text);
+}
+
+.appt-create-panel__sub {
+  margin: 0.18rem 0 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--ds-color-text-secondary);
+}
+
+.appt-create-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ds-space-2);
+  margin-bottom: 0.9rem;
+}
+
+.appt-create-card__header > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.appt-create-card__controls {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 0.9rem;
+}
+
+.appt-create-slot-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ds-space-2);
+  margin-bottom: var(--ds-space-2);
+}
+
+.appt-create-slot-summary__item {
+  padding: 0.8rem 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--ds-color-border-light) 90%, white);
+  border-radius: 0.9rem;
+  background: #fcfdff;
+}
+
+.appt-create-slot-summary__label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ds-color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.appt-create-slot-summary__value {
+  display: block;
+  min-height: 1.2rem;
+  color: var(--ds-color-text);
+}
+
+.appt-create-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem 1rem;
+}
+
+.appt-create-mini-grid > .form-row {
+  margin-bottom: 0;
+}
+
+.appt-create-confirm-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ds-color-text);
+  font-size: 0.78rem;
+  font-weight: var(--ds-font-semibold);
+  white-space: nowrap;
+}
+
+.appt-create-confirm-toggle input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  border: 0;
+}
+
+.appt-create-confirm-toggle__switch {
+  position: relative;
+  width: 2.35rem;
+  height: 1.45rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--ds-color-border) 88%, white);
+  background: #e8edf4;
+  box-shadow: inset 0 1px 1px rgba(15, 23, 42, 0.04);
+  transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  flex: 0 0 auto;
+}
+
+.appt-create-confirm-toggle__switch::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: calc(1.45rem - 4px);
+  height: calc(1.45rem - 4px);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.14);
+  transition: transform 0.18s ease;
+}
+
+.appt-create-confirm-toggle__label {
+  color: var(--ds-color-text);
+  font-size: 0.84rem;
+}
+
+.appt-create-confirm-toggle input:checked + .appt-create-confirm-toggle__switch {
+  background: color-mix(in srgb, var(--ds-color-accent) 82%, white);
+  border-color: color-mix(in srgb, var(--ds-color-accent) 88%, white);
+}
+
+.appt-create-confirm-toggle input:checked + .appt-create-confirm-toggle__switch::after {
+  transform: translateX(0.9rem);
+}
+
+.appt-create-confirm-toggle input:focus-visible + .appt-create-confirm-toggle__switch {
+  box-shadow: 0 0 0 3px var(--ds-color-focus-ring);
+}
+
+.appt-create-static-value {
+  display: flex;
+  align-items: center;
+  min-height: var(--ds-control-height);
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--ds-color-border);
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-color-bg-subtle);
+  color: var(--ds-color-text-secondary);
+  font-size: var(--ds-text-sm);
+}
+
+.appt-create-contact-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ds-space-2);
+  margin-top: 0;
+}
+
+.appt-create-contact-list > div {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 0.75rem;
+  min-width: 0;
+  padding: 0.62rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--ds-color-border-light) 88%, white);
+  background: transparent;
+}
+
+.appt-create-contact-list > div:first-child {
+  grid-column: auto;
+  border-top: 1px solid color-mix(in srgb, var(--ds-color-border-light) 88%, white);
+}
+
+.appt-create-contact-list dt {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ds-color-text-secondary);
+}
+
+.appt-create-contact-list dd {
+  font-size: var(--ds-text-sm);
+  word-break: break-word;
+}
+
+.appt-create-search-row {
+  position: relative;
+  margin-bottom: 0;
+}
+
+.app-drawer__body .appt-create-form .appt-create-search-row input[type="search"] {
+  min-height: 2.8rem;
+  border-radius: 0.95rem;
+  background: #fff;
+}
+
+.appt-create-search-row .hint {
+  display: block;
+  margin-top: 0.45rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.appt-create-client-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--ds-color-border-light) 90%, white);
+  border-radius: 0.95rem;
+  background: #fbfcfe;
+}
+
+.appt-create-search-results {
+  margin-top: 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--ds-color-border) 82%, white);
+  border-radius: 0.9rem;
+  background: #fff;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+.appt-create-search-results__item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.1rem 0.75rem;
+  padding: 0.8rem 0.95rem;
+  border: none;
+  border-top: 1px solid color-mix(in srgb, var(--ds-color-border-light) 65%, white);
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.appt-create-search-results__item:first-child {
+  border-top: none;
+}
+
+.appt-create-search-results__item:hover,
+.appt-create-search-results__item:focus-visible {
+  background: #f7faff;
+  outline: none;
+}
+
+.appt-create-search-results__title {
+  min-width: 0;
+  font-size: var(--ds-text-sm);
+  font-weight: var(--ds-font-semibold);
+  color: var(--ds-color-text);
+}
+
+.appt-create-search-results__id {
+  font-size: var(--ds-text-xs);
+  color: var(--ds-color-text-secondary);
+}
+
+.appt-create-search-results__meta {
+  grid-column: 1 / -1;
+  min-width: 0;
+  font-size: var(--ds-text-xs);
+  color: var(--ds-color-text-secondary);
+}
+
+.appt-create-search-results__empty {
+  padding: 0.8rem 0.95rem;
+  font-size: var(--ds-text-sm);
+  color: var(--ds-color-text-secondary);
+}
+
+@media (max-width: 960px) {
+  .appt-create-card__controls {
+    justify-content: stretch;
+  }
+
+  .app-drawer__body .appt-create-form .appt-create-card__controls .appt-create-confirm-toggle {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .appt-create-slot-summary,
+  .appt-create-mini-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .appt-create-card__header {
+    align-items: stretch;
+  }
+
+  .app-drawer__body .appt-create-form .appt-create-confirm-toggle {
+    white-space: normal;
+  }
+
+  .appt-create-contact-list {
+    grid-template-columns: 1fr;
+  }
+
+  .appt-create-contact-list > div {
+    grid-template-columns: 92px minmax(0, 1fr);
+  }
+}
+
 /* —— Drawer body: same section / field laws as appointments workspace (design-tokens only) —— */
 .app-drawer__body .form-errors,
 .app-drawer__body .appt-create-errors {
@@ -459,20 +817,128 @@
 }
 
 .app-drawer__body .appt-create-form .form-row {
-  margin-bottom: var(--ds-space-3);
+  margin-bottom: 0.9rem;
 }
 
 .app-drawer__body .appt-create-form .form-row:last-child {
   margin-bottom: 0;
 }
 
+.app-drawer__body .appt-create-row--inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 0.8rem;
+}
+
+.app-drawer__body .appt-create-row--inline .appt-create-slots-status {
+  margin: 0;
+  flex: 1;
+  min-width: 8rem;
+  font-size: 0.84rem;
+}
+
+.app-drawer__body .appt-create-slots-grid {
+  margin-top: 0;
+  padding: 0.55rem 0.6rem;
+  min-height: 2.75rem;
+  border: 1px solid color-mix(in srgb, var(--ds-color-border) 88%, white);
+  border-radius: 0.95rem;
+  background: #f9fbfd;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.app-drawer__body .appt-create-slots-grid .hint {
+  color: var(--ds-color-text-secondary);
+}
+
+.app-drawer__body .appt-create-slots-grid .slot-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 4.25rem;
+  min-height: 2.2rem;
+  padding: 0.4rem 0.78rem;
+  margin: 0;
+  border: 1px solid color-mix(in srgb, var(--ds-color-border) 88%, white);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ds-color-text);
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease, box-shadow 0.14s ease, color 0.14s ease;
+}
+
+.app-drawer__body .appt-create-slots-grid .slot-btn:hover,
+.app-drawer__body .appt-create-slots-grid .slot-btn:focus-visible {
+  border-color: color-mix(in srgb, var(--ds-color-accent) 50%, white);
+  background: #f6fbff;
+  color: var(--ds-color-text);
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.06);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.app-drawer__body .appt-create-slots-grid .slot-btn.is-active {
+  border-color: color-mix(in srgb, var(--ds-color-accent) 78%, white);
+  background: #eefaf6;
+  color: #0f766e;
+  box-shadow: 0 4px 12px rgba(15, 118, 110, 0.1);
+}
+
+.app-drawer__body .appt-create-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.25rem;
+  padding: 0.4rem 0.95rem;
+  font-size: var(--ds-text-sm);
+  font-weight: var(--ds-font-semibold);
+  border-radius: 0.95rem;
+  cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--ds-color-border) 88%, white);
+  background: #fff;
+  color: var(--ds-color-text);
+}
+
+.app-drawer__body .appt-create-btn--secondary:hover {
+  border-color: var(--ds-color-border);
+  background: #f7f9fc;
+}
+
+.app-drawer__body .appt-create-card--client .form-row:last-of-type {
+  margin-bottom: 0;
+}
+
 .app-drawer__body .appt-create-form label {
   display: block;
   margin-bottom: var(--ds-space-1);
-  font-size: var(--ds-text-sm);
-  font-weight: var(--ds-font-semibold);
+  font-size: 0.82rem;
+  font-weight: 650;
   color: var(--ds-color-text);
-  letter-spacing: var(--ds-tracking-tight);
+  letter-spacing: 0;
+}
+
+.app-drawer__body .appt-create-form .appt-create-confirm-toggle {
+  display: inline-flex;
+  width: auto;
+  margin-bottom: 0;
+  align-items: center;
+  justify-content: flex-start;
+  vertical-align: middle;
+  letter-spacing: 0;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
+.app-drawer__body .appt-create-form .appt-create-confirm-toggle span {
+  display: inline-block;
 }
 
 .app-drawer__body .appt-create-form input[type="date"],
@@ -490,12 +956,12 @@
   max-width: 100%;
   box-sizing: border-box;
   min-height: var(--ds-control-height);
-  padding: 0.45rem 0.55rem;
+  padding: 0.5rem 0.72rem;
   font-size: var(--ds-text-sm);
   font-family: var(--ds-font-sans);
-  border: 1px solid var(--ds-color-border);
-  border-radius: var(--ds-radius-md);
-  background: var(--ds-color-bg-canvas);
+  border: 1px solid color-mix(in srgb, var(--ds-color-border) 90%, white);
+  border-radius: 0.95rem;
+  background: #fff;
   color: var(--ds-color-text);
   transition: border-color 0.12s ease, box-shadow 0.12s ease;
 }
@@ -525,29 +991,32 @@
   line-height: var(--ds-leading-normal);
 }
 
-.app-drawer__body .slot-btn {
-  padding: 0.4rem 0.65rem;
-  margin: 0 var(--ds-space-1) var(--ds-space-1) 0;
-  border: 1px solid var(--ds-color-border);
-  border-radius: var(--ds-radius-md);
-  background: var(--ds-color-bg-canvas);
-  font-size: var(--ds-text-sm);
-  font-weight: var(--ds-font-medium);
-  font-family: var(--ds-font-sans);
-  color: var(--ds-color-text);
-  cursor: pointer;
-  transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
+.drawer-workspace--appointment-create .drawer-actions-row--appointment {
+  margin-top: var(--ds-space-2);
+  padding: 0.85rem 0 0;
+  border-top: 1px solid color-mix(in srgb, var(--ds-color-border-light) 90%, white);
 }
 
-.app-drawer__body .slot-btn:hover {
-  border-color: var(--ds-color-accent-border);
-  background: var(--ds-color-accent-muted);
+.drawer-workspace--appointment-create .drawer-submit {
+  border-color: #1f2937;
+  background: #1f2937;
+  box-shadow: none;
 }
 
-.app-drawer__body .slot-btn.is-active {
-  border-color: var(--ds-color-accent-border);
-  background: var(--ds-color-accent-muted);
-  font-weight: var(--ds-font-semibold);
+.drawer-workspace--appointment-create .drawer-submit:hover {
+  background: #111827;
+}
+
+.drawer-workspace--appointment-create .drawer-secondary-btn {
+  border-color: color-mix(in srgb, var(--ds-color-border) 90%, white);
+  background: #fff;
+}
+
+@media (max-width: 639px) {
+  .appt-create-slot-summary,
+  .appt-create-mini-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .app-drawer__body .entity-form .form-actions {
@@ -3295,6 +3764,32 @@ body:has(.calendar-workspace) {
   gap: var(--ds-space-3);
 }
 
+.appts-calendar-control-surface--premium .appts-cal-staff-pan {
+  display: none;
+}
+
+.appts-calendar-control-surface--premium .appts-cal-staff-pan__btn {
+  width: 2.25rem;
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  padding: 0;
+  justify-content: center;
+  gap: 0;
+  border-radius: var(--ds-radius-md);
+  flex: 0 0 auto;
+}
+
+.appts-calendar-control-surface--premium .appts-cal-staff-pan__btn:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.appts-calendar-control-surface--premium .appts-cal-staff-pan__btn:disabled:hover {
+  background: transparent;
+  color: var(--ds-color-text-secondary);
+  border-color: var(--ds-color-border-light);
+}
+
 .appts-calendar-control-surface--premium .appts-cal-toolbar-date-heading:hover {
   color: var(--ds-color-text);
   background: var(--ds-color-accent-muted);
@@ -3431,6 +3926,15 @@ body:has(.calendar-workspace) {
   width: 1rem;
   height: 1rem;
   flex-shrink: 0;
+}
+
+@media (min-width: 1180px) and (hover: hover) and (pointer: fine) {
+  .appts-calendar-control-surface--premium .appts-cal-staff-pan {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ds-space-1);
+    flex: 0 0 auto;
+  }
 }
 
 .appts-cal-toolbar-today-btn {
@@ -4755,7 +5259,7 @@ a.appts-cal-toolbar__menu-item:hover {
 }
 .calendar-day-wrap {
   margin: 0;
-  min-width: min-content;
+  min-width: 0;
   overflow: visible;
   flex: 1 1 auto;
   min-height: 0;
@@ -4947,6 +5451,7 @@ body.calendar-is-fullscreen .app-shell__main.calendar-main-is-immersive {
   display: grid;
   /* Column widths set in JS to match .ops-lanes (minmax per staff). */
   grid-auto-rows: minmax(2.85rem, auto);
+  width: max-content;
   min-width: min-content;
   box-sizing: border-box;
 }
@@ -5181,6 +5686,7 @@ body.calendar-is-fullscreen .app-shell__main.calendar-main-is-immersive {
   display: flex;
   flex-direction: row;
   align-items: stretch;
+  min-width: 0;
   /* flex-shrink: 0 is required: the body height is set to vm.height px by JS.
      Without this, the flex algorithm shrinks the body to fit the grid's viewport height,
      preventing #appts-calendar-grid from ever scrolling.  That forces
@@ -5205,20 +5711,27 @@ body.calendar-is-fullscreen .app-shell__main.calendar-main-is-immersive {
      without creating a scroll container, so vertical scrolling stays at the grid level
      where time labels and lanes scroll together. */
   overflow-y: clip;
-  scrollbar-width: none;
-  scrollbar-color: transparent transparent;
-  -ms-overflow-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(15, 23, 42, 0.22) transparent;
+  -ms-overflow-style: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
 }
-.ops-calendar-lanes-scroll::-webkit-scrollbar,
-.ops-calendar-lanes-scroll::-webkit-scrollbar-track,
-.ops-calendar-lanes-scroll::-webkit-scrollbar-thumb,
+.ops-calendar-lanes-scroll::-webkit-scrollbar {
+  height: 10px;
+}
+.ops-calendar-lanes-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.ops-calendar-lanes-scroll::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.18);
+  border-radius: 999px;
+}
+.ops-calendar-lanes-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 23, 42, 0.28);
+}
 .ops-calendar-lanes-scroll::-webkit-scrollbar-button {
   display: none;
-  width: 0 !important;
-  height: 0 !important;
-  background: transparent !important;
-  -webkit-appearance: none;
-  appearance: none;
 }
 .ops-time-labels {
   flex: 0 0 84px;
@@ -5299,6 +5812,7 @@ body.calendar-is-fullscreen .app-shell__main.calendar-main-is-immersive {
   /* One row fills parent height so each .ops-lane stretches with full vertical borders. */
   grid-template-rows: minmax(0, 1fr);
   position: relative;
+  width: max-content;
   min-width: min-content;
   min-height: 0;
   height: 100%;

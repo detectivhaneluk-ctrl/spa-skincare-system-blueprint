@@ -35,6 +35,9 @@
   const wrap = document.getElementById('calendar-day-wrap');
   const newAppointmentBtns = document.querySelectorAll('[data-calendar-new-appt]');
   const blockedTimeBtn = document.getElementById('calendar-blocked-time-btn');
+  const calendarHorizontalNavControls = document.getElementById('calendar-staff-pan-controls');
+  const calendarHorizontalNavPrev = document.getElementById('calendar-staff-pan-prev');
+  const calendarHorizontalNavNext = document.getElementById('calendar-staff-pan-next');
   const summaryRailEl = document.getElementById('appts-cal-summary-status');
   const BASE_PIXELS_PER_MINUTE = 1.4;
   /** Canonical min/max time zoom — must match CalendarToolbarUiService + calendar-day.php range input. */
@@ -75,6 +78,10 @@
   let appliedDefaultViewConfigFromBootstrap = false;
   /** Hidden staff ids deferred until /calendar/day staff[] exists (same-branch validation). */
   let pendingDeferredHiddenStaffIds = null;
+  /** Current day-calendar horizontal scrollports after the latest render. */
+  let calendarHorizontalHeadScrollEl = null;
+  let calendarHorizontalLanesScrollEl = null;
+  let calendarHorizontalNavStateRaf = null;
   /**
    * Per-tab: user moved time zoom (or applied a saved view) for this branch — block auto-fit until DB row exists.
    * Survives refresh within the session; keyed by branch in sessionStorage.
@@ -438,23 +445,135 @@
   function bindOpsCalendarHorizontalScrollSync(a, b) {
     if (!(a instanceof HTMLElement) || !(b instanceof HTMLElement)) return;
     let lock = false;
+
     function syncFrom(src, dst) {
       if (lock || src.scrollLeft === dst.scrollLeft) return;
       lock = true;
       dst.scrollLeft = src.scrollLeft;
-      requestAnimationFrame(() => {
-        lock = false;
-      });
+      requestAnimationFrame(() => { lock = false; });
     }
+
+    function onWheelPan(e) {
+      if (!(e.currentTarget instanceof HTMLElement)) return;
+      const horizontalDelta = Math.abs(e.deltaX) > 0 ? e.deltaX : (e.shiftKey ? e.deltaY : 0);
+      if (horizontalDelta === 0) return;
+      e.preventDefault();
+      e.currentTarget.scrollLeft += horizontalDelta;
+      closeAllStaffMenus();
+      dismissAllActiveSlotPreviews();
+      scheduleCalendarHorizontalNavStateSync();
+    }
+
     a.addEventListener('scroll', () => {
       syncFrom(a, b);
       closeAllStaffMenus();
       dismissAllActiveSlotPreviews();
+      scheduleCalendarHorizontalNavStateSync();
     }, { passive: true });
     b.addEventListener('scroll', () => {
       syncFrom(b, a);
       dismissAllActiveSlotPreviews();
+      scheduleCalendarHorizontalNavStateSync();
     }, { passive: true });
+    a.addEventListener('wheel', onWheelPan, { passive: false });
+    b.addEventListener('wheel', onWheelPan, { passive: false });
+
+    // Drag-to-pan: intentionally not implemented on the header strip to avoid
+    // interfering with staff-head click → dropdown. Horizontal panning is
+    // available via the bottom scrollbar, Shift+wheel, and touchpad swipe.
+  }
+
+  function getCalendarHorizontalScrollEls() {
+    const headScroll = document.querySelector('.ops-calendar-head-scroll');
+    const lanesScroll = document.querySelector('.ops-calendar-lanes-scroll');
+    return {
+      headScroll: headScroll instanceof HTMLElement ? headScroll : null,
+      lanesScroll: lanesScroll instanceof HTMLElement ? lanesScroll : null,
+    };
+  }
+
+  function refreshCalendarHorizontalScrollEls() {
+    const els = getCalendarHorizontalScrollEls();
+    calendarHorizontalHeadScrollEl = els.headScroll;
+    calendarHorizontalLanesScrollEl = els.lanesScroll;
+    return els;
+  }
+
+  function getCalendarHorizontalScrollState() {
+    const els = calendarHorizontalLanesScrollEl || calendarHorizontalHeadScrollEl
+      ? { headScroll: calendarHorizontalHeadScrollEl, lanesScroll: calendarHorizontalLanesScrollEl }
+      : refreshCalendarHorizontalScrollEls();
+    const primary = els.lanesScroll || els.headScroll;
+    const scrollEl = primary instanceof HTMLElement ? primary : null;
+    const visibleWidth = scrollEl ? Math.max(1, scrollEl.clientWidth || 0) : 0;
+    const scrollWidth = scrollEl ? Math.max(0, scrollEl.scrollWidth || 0) : 0;
+    const maxScrollLeft = Math.max(0, scrollWidth - visibleWidth);
+    const scrollLeft = scrollEl ? Math.max(0, scrollEl.scrollLeft || 0) : 0;
+    const cw = Math.max(1, Math.round(Number(columnWidthPx) || 160));
+    const columnsPerPage = visibleWidth > 0
+      ? Math.max(1, Math.floor(visibleWidth / cw) - 1)
+      : 1;
+    return {
+      headScroll: els.headScroll,
+      lanesScroll: els.lanesScroll,
+      scrollEl,
+      visibleWidth,
+      scrollWidth,
+      maxScrollLeft,
+      scrollLeft,
+      columnWidthPx: cw,
+      columnsPerPage,
+      hasOverflow: maxScrollLeft > 1,
+      atStart: maxScrollLeft <= 1 || scrollLeft <= 1,
+      atEnd: maxScrollLeft <= 1 || scrollLeft >= maxScrollLeft - 1,
+    };
+  }
+
+  function updateCalendarHorizontalNavState() {
+    const state = getCalendarHorizontalScrollState();
+    if (!calendarHorizontalNavControls || !calendarHorizontalNavPrev || !calendarHorizontalNavNext) return state;
+
+    const shouldShow = state.hasOverflow;
+    calendarHorizontalNavControls.hidden = !shouldShow;
+    calendarHorizontalNavControls.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
+    calendarHorizontalNavPrev.disabled = !shouldShow || state.atStart;
+    calendarHorizontalNavNext.disabled = !shouldShow || state.atEnd;
+
+    return state;
+  }
+
+  function scheduleCalendarHorizontalNavStateSync() {
+    if (calendarHorizontalNavStateRaf != null) return;
+    calendarHorizontalNavStateRaf = window.requestAnimationFrame(() => {
+      calendarHorizontalNavStateRaf = null;
+      updateCalendarHorizontalNavState();
+    });
+  }
+
+  function scrollCalendarHorizontallyByPage(direction) {
+    const state = updateCalendarHorizontalNavState();
+    if (!state.hasOverflow || !state.scrollEl || !Number.isFinite(direction) || direction === 0) return;
+
+    const currentColumn = Math.max(0, Math.floor(state.scrollLeft / state.columnWidthPx));
+    const nextColumn = Math.max(
+      0,
+      currentColumn + (state.columnsPerPage * (direction < 0 ? -1 : 1))
+    );
+    const nextLeft = Math.max(0, Math.min(state.maxScrollLeft, nextColumn * state.columnWidthPx));
+    const reducedMotion = typeof window.matchMedia === 'function'
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const behavior = reducedMotion ? 'auto' : 'smooth';
+    const scrollTarget = state.lanesScroll || state.headScroll || state.scrollEl;
+
+    closeAllStaffMenus();
+    dismissAllActiveSlotPreviews();
+
+    if (typeof scrollTarget.scrollTo === 'function') {
+      scrollTarget.scrollTo({ left: nextLeft, behavior });
+    } else {
+      scrollTarget.scrollLeft = nextLeft;
+    }
+    scheduleCalendarHorizontalNavStateSync();
   }
 
   /**
@@ -2787,6 +2906,7 @@
   function renderCalendar(payload) {
     lastCalendarPayload = payload && typeof payload === 'object' ? payload : null;
     flushDeferredHiddenStaffIdsIfReady();
+    refreshCalendarHorizontalScrollEls();
     const gridHost = document.getElementById('appts-calendar-grid');
     const cw = Math.max(96, Math.min(420, Number(columnWidthPx) || 160));
     if (gridHost) {
@@ -2811,6 +2931,7 @@
       wrap.innerHTML = '<p class="calendar-empty-hint">No active staff for this branch and date.</p>';
       destroyNowLine();
       updateRailDayMeta(vm, apptCount);
+      updateCalendarHorizontalNavState();
       window.dispatchEvent(new CustomEvent('calendar-workspace:grid-updated'));
       return;
     }
@@ -2939,7 +3060,7 @@
     });
     const nStaffCols = vm.columns.length;
     if (nStaffCols > 0) {
-      const colPat = 'repeat(' + nStaffCols + ', minmax(' + cw + 'px, 1fr))';
+      const colPat = 'repeat(' + nStaffCols + ', minmax(' + cw + 'px, ' + cw + 'px))';
       headInner.style.gridTemplateColumns = colPat;
     }
 
@@ -2974,7 +3095,7 @@
     laneWrap.className = 'ops-lanes';
     if (vm.columns.length > 0) {
       laneWrap.style.gridTemplateColumns =
-        'repeat(' + vm.columns.length + ', minmax(' + cw + 'px, 1fr))';
+        'repeat(' + vm.columns.length + ', minmax(' + cw + 'px, ' + cw + 'px))';
     }
     vm.columns.forEach((col) => {
       const lane = document.createElement('div');
@@ -3304,8 +3425,11 @@
     root.appendChild(head);
     root.appendChild(body);
     wrap.appendChild(root);
+    refreshCalendarHorizontalScrollEls();
     initNowLine(vm);
     updateRailDayMeta(vm, apptCount);
+    updateCalendarHorizontalNavState();
+    scheduleCalendarHorizontalNavStateSync();
     window.dispatchEvent(new CustomEvent('calendar-workspace:grid-updated'));
   }
 
@@ -4063,13 +4187,16 @@
       setHiddenStaffIds(hidden);
       closeCalendarToolbarPopovers();
       if (lastCalendarPayload) renderCalendar(lastCalendarPayload);
+      updateCalendarHorizontalNavState();
       commitCalendarPrefsToServerImmediate();
     });
     document.getElementById('cal-toolbar-staff-all')?.addEventListener('click', () => {
       document.querySelectorAll('#cal-toolbar-staff-fields input[type="checkbox"]').forEach((i) => { i.checked = true; });
+      updateCalendarHorizontalNavState();
     });
     document.getElementById('cal-toolbar-staff-none')?.addEventListener('click', () => {
       document.querySelectorAll('#cal-toolbar-staff-fields input[type="checkbox"]').forEach((i) => { i.checked = false; });
+      updateCalendarHorizontalNavState();
     });
     document.getElementById('cal-toolbar-staff-cancel')?.addEventListener('click', () => {
       closeCalendarToolbarPopovers(true);
@@ -4518,8 +4645,10 @@
     load();
     loadSidePanelData();
   });
+    document.addEventListener('fullscreenchange', scheduleCalendarHorizontalNavStateSync);
 
   document.addEventListener('click', (e) => {
+    if (!(e.target instanceof Element)) return;
     if (!e.target.closest('.ops-staff-head')) closeAllStaffMenus();
     if (!e.target.closest('#cal-appt-ctx-menu')) closeApptContextMenu();
   });
@@ -4557,6 +4686,7 @@
 
   applyCalendarUiPageBootstrapIfPresent();
   syncCalendarToolbarControls();
+  updateCalendarHorizontalNavState();
 
   initCalendarToolbar();
   updateNowButtonState();
@@ -4599,6 +4729,14 @@
     }
   })();
 
+  (function initCalendarHorizontalNavSync() {
+    updateCalendarHorizontalNavState();
+    window.addEventListener('resize', scheduleCalendarHorizontalNavStateSync, { passive: true });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', scheduleCalendarHorizontalNavStateSync, { passive: true });
+    }
+  })();
+
   initToolsPanel();
   renderClipboardPane();
   initClipboardClearBtn();
@@ -4636,6 +4774,12 @@
   }
   if (calendarToolbarNextDay) {
     calendarToolbarNextDay.addEventListener('click', () => shiftCalendarDayBy(1));
+  }
+  if (calendarHorizontalNavPrev) {
+    calendarHorizontalNavPrev.addEventListener('click', () => scrollCalendarHorizontallyByPage(-1));
+  }
+  if (calendarHorizontalNavNext) {
+    calendarHorizontalNavNext.addEventListener('click', () => scrollCalendarHorizontallyByPage(1));
   }
   if (calendarToolbarDateFocus && calCard) {
     calendarToolbarDateFocus.addEventListener('click', () => {
