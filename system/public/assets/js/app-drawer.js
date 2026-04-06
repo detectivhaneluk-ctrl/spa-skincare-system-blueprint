@@ -890,8 +890,12 @@
     update();
   }
 
+  function closestFromEventTarget(target, selector) {
+    return target instanceof Element ? target.closest(selector) : null;
+  }
+
   function handleDocumentClick(event) {
-    const target = event.target.closest('[data-drawer-url]');
+    const target = closestFromEventTarget(event.target, '[data-drawer-url]');
     if (!target) {
       return;
     }
@@ -941,7 +945,7 @@
   document.addEventListener(
     'pointerenter',
     (event) => {
-      const el = event.target.closest('[data-drawer-url]');
+      const el = closestFromEventTarget(event.target, '[data-drawer-url]');
       if (!el || el.closest('#app-drawer-host')) {
         return;
       }
