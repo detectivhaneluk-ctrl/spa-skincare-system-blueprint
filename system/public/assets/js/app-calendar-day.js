@@ -631,6 +631,40 @@
     return lastLeftAnchorIndex;
   }
 
+  function getCalendarHorizontalSemanticNavState(state) {
+    if (!state || !Array.isArray(state.columns) || state.columns.length === 0) {
+      return {
+        currentLeadingIndex: -1,
+        lastLeftAnchorIndex: -1,
+        semanticAtStart: true,
+        semanticAtEnd: true,
+      };
+    }
+    const currentLeadingIndex = getCalendarHorizontalLeadingIndex(state);
+    const lastLeftAnchorIndex = getCalendarHorizontalLastLeftAnchorIndex(state);
+    return {
+      currentLeadingIndex,
+      lastLeftAnchorIndex,
+      semanticAtStart: currentLeadingIndex <= 0,
+      semanticAtEnd: currentLeadingIndex >= lastLeftAnchorIndex,
+    };
+  }
+
+  function isCalendarHorizontalNavDevLogEnabled() {
+    try {
+      return new URLSearchParams(window.location.search).get('calendar_staff_nav_debug') === '1';
+    } catch (_e) {
+      return false;
+    }
+  }
+
+  function logCalendarHorizontalNavDebug(stage, payload) {
+    if (!isCalendarHorizontalNavDevLogEnabled()) return;
+    if (window && window.console && typeof window.console.debug === 'function') {
+      window.console.debug('calendar-staff-nav-' + stage, payload);
+    }
+  }
+
   function applyCalendarHorizontalTailPadding(state) {
     const headInner = state.headScroll && state.headScroll.querySelector('.ops-calendar-head-inner');
     const laneWrap = state.lanesScroll && state.lanesScroll.querySelector('.ops-lanes');
@@ -649,10 +683,20 @@
     if (!calendarHorizontalNavControls || !calendarHorizontalNavPrev || !calendarHorizontalNavNext) return state;
 
     const shouldShow = state.hasOverflow;
+    const semantic = getCalendarHorizontalSemanticNavState(state);
     calendarHorizontalNavControls.hidden = !shouldShow;
     calendarHorizontalNavControls.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
-    calendarHorizontalNavPrev.disabled = !shouldShow || state.atStart;
-    calendarHorizontalNavNext.disabled = !shouldShow || state.atEnd;
+    calendarHorizontalNavPrev.disabled = !shouldShow || semantic.semanticAtStart;
+    calendarHorizontalNavNext.disabled = !shouldShow || semantic.semanticAtEnd;
+
+    logCalendarHorizontalNavDebug('state', {
+      currentLeadingIndex: semantic.currentLeadingIndex,
+      lastLeftAnchorIndex: semantic.lastLeftAnchorIndex,
+      semanticAtStart: semantic.semanticAtStart,
+      semanticAtEnd: semantic.semanticAtEnd,
+      scrollLeft: state.scrollLeft,
+      maxScrollLeft: state.maxScrollLeft,
+    });
 
     return state;
   }
@@ -666,12 +710,49 @@
     });
   }
 
+  function refreshCalendarHorizontalNavStateAfterSettle(scrollTarget) {
+    if (!(scrollTarget instanceof HTMLElement)) {
+      scheduleCalendarHorizontalNavStateSync();
+      return;
+    }
+    if ('onscrollend' in scrollTarget) {
+      const onScrollEnd = () => {
+        scrollTarget.removeEventListener('scrollend', onScrollEnd);
+        scheduleCalendarHorizontalNavStateSync();
+      };
+      scrollTarget.addEventListener('scrollend', onScrollEnd, { once: true });
+      return;
+    }
+    let stableCount = 0;
+    let last = Math.max(0, Math.round(scrollTarget.scrollLeft || 0));
+    let checks = 0;
+    const poll = () => {
+      checks += 1;
+      const now = Math.max(0, Math.round(scrollTarget.scrollLeft || 0));
+      if (now === last) {
+        stableCount += 1;
+      } else {
+        stableCount = 0;
+        last = now;
+      }
+      if (stableCount >= 2 || checks >= 24) {
+        scheduleCalendarHorizontalNavStateSync();
+        return;
+      }
+      window.setTimeout(() => {
+        window.requestAnimationFrame(poll);
+      }, 32);
+    };
+    window.requestAnimationFrame(poll);
+  }
+
   function scrollCalendarHorizontallyByStaff(direction) {
     const state = updateCalendarHorizontalNavState();
     if (!state.hasOverflow || !state.scrollEl || !Number.isFinite(direction) || direction === 0) return;
-    const leadingIndex = getCalendarHorizontalLeadingIndex(state);
-    if (leadingIndex < 0) return;
-    const lastLeftAnchorIndex = getCalendarHorizontalLastLeftAnchorIndex(state);
+    const semantic = getCalendarHorizontalSemanticNavState(state);
+    const leadingIndex = semantic.currentLeadingIndex;
+    const lastLeftAnchorIndex = semantic.lastLeftAnchorIndex;
+    if (leadingIndex < 0 || lastLeftAnchorIndex < 0) return;
     const targetIndex = Math.max(
       0,
       Math.min(lastLeftAnchorIndex, leadingIndex + (direction < 0 ? -1 : 1))
@@ -679,6 +760,15 @@
     const currentScrollLeft = Math.max(0, Number(state.scrollLeft) || 0);
     const targetScrollLeft = Math.max(0, Math.min(state.maxScrollLeft, Math.round(state.columns[targetIndex].normalizedLeft || 0)));
     if (targetIndex === leadingIndex && Math.abs(targetScrollLeft - currentScrollLeft) <= 1) {
+      logCalendarHorizontalNavDebug('noop-end', {
+        currentLeadingIndex: leadingIndex,
+        lastLeftAnchorIndex,
+        semanticAtStart: semantic.semanticAtStart,
+        semanticAtEnd: semantic.semanticAtEnd,
+        scrollLeft: state.scrollLeft,
+        maxScrollLeft: state.maxScrollLeft,
+        targetIndex,
+      });
       scheduleCalendarHorizontalNavStateSync();
       return;
     }
@@ -695,7 +785,17 @@
     } else {
       scrollTarget.scrollLeft = targetScrollLeft;
     }
-    scheduleCalendarHorizontalNavStateSync();
+    logCalendarHorizontalNavDebug('scroll', {
+      currentLeadingIndex: leadingIndex,
+      lastLeftAnchorIndex,
+      semanticAtStart: semantic.semanticAtStart,
+      semanticAtEnd: semantic.semanticAtEnd,
+      scrollLeft: state.scrollLeft,
+      maxScrollLeft: state.maxScrollLeft,
+      targetIndex,
+      targetScrollLeft,
+    });
+    refreshCalendarHorizontalNavStateAfterSettle(scrollTarget);
   }
 
   /**
