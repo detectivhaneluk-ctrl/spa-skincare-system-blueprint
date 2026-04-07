@@ -1,5 +1,5 @@
 <?php
-$title = 'Packages';
+$title = 'Package plan definitions';
 $mainClass = 'sales-workspace-page';
 ob_start();
 $salesWorkspaceShellModifier = 'workspace-shell--list';
@@ -8,7 +8,7 @@ $salesWorkspaceShellTitle = 'Package plans';
 $salesWorkspaceShellSub = 'Catalog package plans (templates). Client-held records: Clients. Checkout may sell a plan assignment: Sales — not the home for definitions or held records.';
 require base_path('modules/sales/views/partials/sales-workspace-shell.php');
 ?>
-<h2 class="sales-workspace-section-title">Packages</h2>
+<h2 class="sales-workspace-section-title">Package plan definitions</h2>
 <p class="hint" style="margin-top:0;"><strong>Catalog</strong> — Package plan definitions (sessions, validity, price): templates, not rows a client already holds. Client-held packages are managed in Clients (main navigation), not on this screen.</p>
 <?php if ($flash && is_array($flash)): $t = array_key_first($flash); ?>
 <div class="flash flash-<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($flash[$t] ?? '') ?></div>

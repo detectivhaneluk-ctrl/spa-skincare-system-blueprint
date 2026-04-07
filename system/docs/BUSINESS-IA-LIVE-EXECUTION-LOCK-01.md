@@ -305,6 +305,8 @@ Phase **3.2** is **complete** only when all of the following are true:
 
 **Delivered (copy/surfacing only; routes and POST bodies unchanged):** Package **plan definition** views (`definitions/*`) consistently teach **Catalog** templates vs **Clients**-held records and **Sales** checkout as commercial flow only. **Client-held** views (`client-packages/*`) teach **client-owned records**, plan templates in Catalog, links to client profile and package plans list. Branch column wording **Organisation-wide** aligned on definitions + client-held lists. Clients list/show micro-copy and **Plan name** column headers aligned. `verify_catalog_growth_subsection_business_clarity_03.php` extended (**H10–H16**, **I9–I16**). Mandatory verifier bundle + `verify_package_ownership_ia_phase3_01.php` + `verify_no_duplicate_first_class_owner_surfaces_phase5_01.php` exited **0**.
 
+**Micro sterile heading closure (2026-04-07):** task **`BUSINESS-IA-PHASE-4-2-STERILE-HEADING-CLOSURE-MICRO-01`** — list-only: definitions index h2 + `$title` **Package plan definitions**; client-held index h2 + shell title + `$title` **Client-held packages**; `verify_catalog_growth_subsection_business_clarity_03.php` **H1** + **I17**; `verify_business_nav_entry_clarity_safe_lane_02.php` **H1**; mandatory verifier bundle re-run **0** each.
+
 ---
 
 ## Document control

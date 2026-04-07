@@ -97,7 +97,7 @@ chk('G1: Membership Plans title in definitions index', $memIdx, "Membership Plan
 chk('G2: old Membership Definitions title absent', $memIdx, 'Membership Definitions', false);
 
 // ── H. Packages title business-first ─────────────────────────────────────────
-chk('H1: Packages h2 present', $pkgIdx, '<h2 class="sales-workspace-section-title">Packages</h2>');
+chk('H1: Package plan definitions h2 present', $pkgIdx, '<h2 class="sales-workspace-section-title">Package plan definitions</h2>');
 chk('H2: Package Definitions h2 absent', $pkgIdx, 'Package Definitions', false);
 
 // ── I. Marketing nav cleanup ──────────────────────────────────────────────────

@@ -73,7 +73,7 @@ Exit code must be `0` for each.
 
 **Live closure note (2026-04-07, `BUSINESS-IA-PHASE-4-1-SALES-MONEY-LIABILITY-COPY-CLOSURE-01`):** Task **4.1** closed — Sales shell default copy + Reports gift-card liability link; register/payment/cashier + gift-card view ledes; routes unchanged. Mandatory verifier bundle exited **0** each: `verify_business_nav_entry_clarity_safe_lane_02.php`, `verify_catalog_growth_subsection_business_clarity_03.php`, `verify_admin_ia_business_first_truth_01.php`.
 
-**Live closure note (2026-04-07, `BUSINESS-IA-PHASE-4-2-PACKAGE-PLACEMENT-STERILE-CLOSURE-01`):** Task **4.2** closed — package definitions vs client-held placement copy; adjacent Clients list/show alignment; `verify_catalog_growth_subsection_business_clarity_03.php` **H10–H16** / **I9–I16**; mandatory verifier bundle **0** each; `verify_package_ownership_ia_phase3_01.php` and `verify_no_duplicate_first_class_owner_surfaces_phase5_01.php` **0**.
+**Live closure note (2026-04-07, `BUSINESS-IA-PHASE-4-2-PACKAGE-PLACEMENT-STERILE-CLOSURE-01`):** Task **4.2** closed — package definitions vs client-held placement copy; adjacent Clients list/show alignment; `verify_catalog_growth_subsection_business_clarity_03.php` **H10–H16** / **I9–I16**; mandatory verifier bundle **0** each; `verify_package_ownership_ia_phase3_01.php` and `verify_no_duplicate_first_class_owner_surfaces_phase5_01.php` **0**. **Sterile heading micro (`BUSINESS-IA-PHASE-4-2-STERILE-HEADING-CLOSURE-MICRO-01`):** list headings **Package plan definitions** / **Client-held packages** + verifier **H1** / **I17** / nav **H1**; bundle **0**.
 
 ---
 

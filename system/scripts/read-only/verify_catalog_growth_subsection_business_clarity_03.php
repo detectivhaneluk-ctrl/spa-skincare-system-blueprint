@@ -122,7 +122,7 @@ chk('G7: /memberships/client-memberships/assign route unchanged', $memCli, '/mem
 chk('G8: Organisation-wide filter in client memberships', $memCli, 'Organisation-wide only');
 
 // ── H. Package plans subscreen ───────────────────────────────────────────────
-chk('H1: Packages h2 present', $pkgDef, 'sales-workspace-section-title">Packages</h2>');
+chk('H1: Package plan definitions h2 present', $pkgDef, 'sales-workspace-section-title">Package plan definitions</h2>');
 chk('H2: Package Definitions h2 absent', $pkgDef, 'Package Definitions', false);
 chk('H3: plan description hint present', $pkgDef, 'Package plan definitions');
 chk('H4: New package plan CTA', $pkgDef, 'New package plan');
@@ -143,6 +143,7 @@ chk('H16: old Global branch option absent on definitions create', $pkgDefCreate,
 
 // ── I. Client packages subscreen ─────────────────────────────────────────────
 chk('I1: Client packages hint present', $pkgCli, 'Packages currently held by clients');
+chk('I17: client-held packages list h2 present', $pkgCli, 'sales-workspace-section-title">Client-held packages</h2>');
 chk('I2: Package plans back link', $pkgCli, '← Package plans');
 chk('I3: old Package Definitions back link absent', $pkgCli, 'Package Definitions', false);
 chk('I4: assign CTA lowercase', $pkgCli, 'Assign package to client');
