@@ -4,6 +4,8 @@ $mainClass = 'sales-workspace-page';
 ob_start();
 $salesWorkspaceShellModifier = 'workspace-shell--list';
 $salesWorkspaceActiveTab = 'packages';
+$salesWorkspaceShellTitle = 'Client packages';
+$salesWorkspaceShellSub = 'Packages clients hold — main nav: Clients. Plan definitions: Catalog. Checkout: Sales.';
 require base_path('modules/sales/views/partials/sales-workspace-shell.php');
 ?>
 <h2 class="sales-workspace-section-title">Client Package #<?= (int) $clientPackage['id'] ?></h2>

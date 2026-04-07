@@ -253,9 +253,9 @@ $hasAnyOperationalLink = $canViewBranchesLink
                     <?php if ($canViewPackagesLink): ?>
                     <div class="settings-op-card">
                         <h3 class="settings-op-card__title">Packages</h3>
-                        <p class="settings-op-card__desc">Prepaid service packages and session bundles.</p>
-                        <a class="settings-op-card__link" href="/packages">View packages</a>
-                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/packages/create">Add package</a>
+                        <p class="settings-op-card__desc">Shortcuts: package <strong>plan definitions</strong> live in <strong>Catalog</strong>; packages attached to clients live under <strong>Clients</strong>. Checkout and invoices live under <strong>Sales</strong>.</p>
+                        <a class="settings-op-card__link" href="/packages">Package plans (Catalog)</a>
+                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/packages/client-packages">Client packages</a>
                     </div>
                     <?php endif; ?>
 

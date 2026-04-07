@@ -82,22 +82,26 @@
     }
 
     $navIsClientsMemberships = str_starts_with($navPath, '/memberships/client-memberships');
+    $navIsClientsPackages = str_starts_with($navPath, '/packages/client-packages');
     $navIsCatalog = str_starts_with($navPath, '/services-resources')
         || (
             str_starts_with($navPath, '/memberships')
             && ! $navIsClientsMemberships
             && ! str_starts_with($navPath, '/memberships/refund-review')
+        )
+        || (
+            str_starts_with($navPath, '/packages')
+            && ! $navIsClientsPackages
         );
     $navIsReports = str_starts_with($navPath, '/reports');
     $navIsTeam = str_starts_with($navPath, '/staff') || str_starts_with($navPath, '/payroll');
 
     $navIsSales = str_starts_with($navPath, '/sales')
-        || str_starts_with($navPath, '/gift-cards')
-        || str_starts_with($navPath, '/packages');
+        || str_starts_with($navPath, '/gift-cards');
     $navItems = [
         ['/dashboard', 'Overview', $navPath === '/' || str_starts_with($navPath, '/dashboard')],
         ['/appointments/calendar/day', 'Calendar', $navIsAppointments],
-        ['/clients', 'Clients', str_starts_with($navPath, '/clients') || $navIsClientsMemberships],
+        ['/clients', 'Clients', str_starts_with($navPath, '/clients') || $navIsClientsMemberships || $navIsClientsPackages],
         ['/staff', 'Team', $navIsTeam],
         ['/services-resources', 'Catalog', $navIsCatalog],
         ['/sales', 'Sales', $navIsSales],

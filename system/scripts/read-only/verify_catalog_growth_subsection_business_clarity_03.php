@@ -45,7 +45,8 @@ chk('A8: module launchers absent from sidebar', $shell, 'data-group="branches"',
 // ── B. Lane-02 regression guard ──────────────────────────────────────────────
 chk('B1: Catalog hub exists', $svcHub, 'catalog-hub');
 chk('B2: navIsSales covers /gift-cards', $navB, "str_starts_with(\$navPath, '/gift-cards')");
-chk('B3: navIsSales covers /packages', $navB, "str_starts_with(\$navPath, '/packages')");
+chk('B3: navIsSales is only /sales and /gift-cards', $navB, "\$navIsSales = str_starts_with(\$navPath, '/sales')\n        || str_starts_with(\$navPath, '/gift-cards');");
+chk('B3b: client packages nav split variable', $navB, '$navIsClientsPackages');
 chk('B4: /memberships not in Admin-only settingsActivePrefixes', $navB, "        '/memberships',", false);
 chk('B4b: membership client records use navIsClientsMemberships', $navB, '$navIsClientsMemberships');
 chk('B5: Catalog active-state via navIsCatalog (/services-resources)', $navB, '$navIsCatalog');

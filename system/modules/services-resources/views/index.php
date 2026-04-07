@@ -25,10 +25,10 @@ ob_start();
 
         <div class="catalog-hub-card">
             <h2 class="catalog-hub-card__title">Packages</h2>
-            <p class="catalog-hub-card__desc">Pre-paid session bundles. Create package plans, then assign them to clients or sell through checkout.</p>
+            <p class="catalog-hub-card__desc">Package <strong>plan definitions</strong> only (what you sell). Packages clients hold are listed under <a href="/clients">Clients</a> &rarr; client packages. Selling happens in <a href="/sales">Sales</a> checkout.</p>
             <div class="catalog-hub-card__links">
-                <a class="catalog-hub-card__link" href="/packages">View packages</a>
-                <a class="catalog-hub-card__link catalog-hub-card__link--secondary" href="/packages/client-packages">Client packages</a>
+                <a class="catalog-hub-card__link" href="/packages">View package plans</a>
+                <a class="catalog-hub-card__link catalog-hub-card__link--secondary" href="/packages/create">New package plan</a>
             </div>
         </div>
 

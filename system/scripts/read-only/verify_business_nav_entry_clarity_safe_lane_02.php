@@ -66,7 +66,9 @@ chk('B6: /marketing/campaigns in navItems', $navB, "'/marketing/campaigns'");
 
 // ── C. Sales family active grouping preserved ────────────────────────────────
 chk('C1: navIsSales covers /gift-cards', $navB, "str_starts_with(\$navPath, '/gift-cards')");
-chk('C2: navIsSales covers /packages', $navB, "str_starts_with(\$navPath, '/packages')");
+chk('C2: navIsSales is only /sales and /gift-cards', $navB, "\$navIsSales = str_starts_with(\$navPath, '/sales')\n        || str_starts_with(\$navPath, '/gift-cards');");
+chk('C2b: Catalog includes package plan paths', $navB, "str_starts_with(\$navPath, '/packages')\n            && ! \$navIsClientsPackages");
+chk('C2c: client packages highlight variable', $navB, '$navIsClientsPackages');
 chk('C3: navIsSales covers /sales', $navB, "str_starts_with(\$navPath, '/sales')");
 
 // ── D. Catalog discovery surface exists ──────────────────────────────────────
