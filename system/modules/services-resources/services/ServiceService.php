@@ -63,6 +63,7 @@ final class ServiceService
                 $this->normalizedNullableVatRateId($data['vat_rate_id'] ?? null),
                 $serviceBranch
             );
+            $this->assertSkuNotDuplicate(null, $data['sku'] ?? null);
             $groupIds = $this->normalizeStaffGroupIdsStrict($rawGroups);
             $this->staffGroups->assertIdsAssignableToService($serviceBranch, $groupIds);
             $data['staff_group_ids'] = $groupIds;
@@ -105,6 +106,7 @@ final class ServiceService
                 $this->normalizedNullableVatRateId($mergedForVat['vat_rate_id'] ?? null),
                 $this->branchIdFromRow($mergedForVat)
             );
+            $this->assertSkuNotDuplicate($id, $payload['sku'] ?? $current['sku'] ?? null);
             $beforeGroups = array_values(array_unique(array_map('intval', $current['staff_group_ids'] ?? [])));
             sort($beforeGroups);
             $newBranch = $this->branchIdFromRow($mergedForVat);
@@ -147,6 +149,9 @@ final class ServiceService
         }, 'service update');
     }
 
+    /**
+     * Move a live service to trash (soft delete with retention).
+     */
     public function delete(int $id): void
     {
         $this->transactional(function () use ($id): void {
@@ -155,13 +160,222 @@ final class ServiceService
             $this->authorizer->requireAuthorized($ctx, ResourceAction::SERVICE_MANAGE, ResourceRef::instance('service', $id));
             $this->tenantScopeGuard->requireResolvedTenantScope();
             $svc = $this->repo->find($id);
-            if (!$svc) throw new \RuntimeException('Not found');
+            if (!$svc) {
+                throw new \RuntimeException('Not found');
+            }
             $this->branchContext->assertBranchMatchOrGlobalEntity($svc['branch_id'] !== null && $svc['branch_id'] !== '' ? (int) $svc['branch_id'] : null);
-            $this->repo->softDelete($id);
-            $this->audit->log('service_deleted', 'service', $id, $this->userId(), $svc['branch_id'] ?? null, [
+            $purgeAt = $this->purgeAfterMysqlDatetime();
+            $n = $this->repo->trash($id, $this->userId(), $purgeAt);
+            if ($n !== 1) {
+                throw new \DomainException('Could not move this service to trash (it may have already been removed).');
+            }
+            $this->audit->log('service_trashed', 'service', $id, $this->userId(), $svc['branch_id'] ?? null, [
+                'service' => $svc,
+                'purge_after_at' => $purgeAt,
+            ]);
+        }, 'service trash');
+    }
+
+    /**
+     * Bulk move visible/active services to trash (tenant-scoped via repository WHERE).
+     *
+     * @param list<int> $ids
+     */
+    public function bulkTrash(array $ids): int
+    {
+        return $this->transactional(function () use ($ids): int {
+            $ctx = $this->contextHolder->requireContext();
+            $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::SERVICE_MANAGE, ResourceRef::collection('service'));
+            $this->tenantScopeGuard->requireResolvedTenantScope();
+            $purgeAt = $this->purgeAfterMysqlDatetime();
+
+            return $this->repo->bulkTrash($ids, $this->userId(), $purgeAt);
+        }, 'service bulk trash');
+    }
+
+    /**
+     * Restore a trashed service. Fails with {@see \DomainException} on SKU conflict with another live service.
+     */
+    public function restore(int $id): void
+    {
+        $this->transactional(function () use ($id): void {
+            $ctx = $this->contextHolder->requireContext();
+            $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::SERVICE_MANAGE, ResourceRef::instance('service', $id));
+            $this->tenantScopeGuard->requireResolvedTenantScope();
+            $svc = $this->repo->findTrashed($id);
+            if (!$svc) {
+                throw new \RuntimeException('Not found');
+            }
+            $this->branchContext->assertBranchMatchOrGlobalEntity($svc['branch_id'] !== null && $svc['branch_id'] !== '' ? (int) $svc['branch_id'] : null);
+            $this->assertSkuNotDuplicate($id, $svc['sku'] ?? null);
+            $n = $this->repo->restore($id);
+            if ($n !== 1) {
+                throw new \DomainException('Could not restore this service.');
+            }
+            $this->audit->log('service_restored', 'service', $id, $this->userId(), $svc['branch_id'] ?? null, [
                 'service' => $svc,
             ]);
-        }, 'service delete');
+        }, 'service restore');
+    }
+
+    /**
+     * Permanently delete a trashed service (operator action from Trash only in UI).
+     */
+    public function permanentlyDelete(int $id): void
+    {
+        $this->transactional(function () use ($id): void {
+            $ctx = $this->contextHolder->requireContext();
+            $ctx->requireResolvedTenant();
+            $this->authorizer->requireAuthorized($ctx, ResourceAction::SERVICE_MANAGE, ResourceRef::instance('service', $id));
+            $this->tenantScopeGuard->requireResolvedTenantScope();
+            $svc = $this->repo->findTrashed($id);
+            if (!$svc) {
+                throw new \DomainException('Only trashed services can be permanently deleted.');
+            }
+            $this->branchContext->assertBranchMatchOrGlobalEntity($svc['branch_id'] !== null && $svc['branch_id'] !== '' ? (int) $svc['branch_id'] : null);
+            if ($this->repo->countAppointmentSeriesForService($id) > 0) {
+                throw new \DomainException(
+                    'This service cannot be permanently deleted because it is still linked to appointment series. Remove or change those series first.'
+                );
+            }
+            try {
+                $n = $this->repo->hardDeleteTrashed($id);
+            } catch (\PDOException $e) {
+                if ($e->getCode() === '23000' || str_contains(strtolower($e->getMessage()), 'foreign key')) {
+                    throw new \DomainException(
+                        'This service cannot be permanently deleted because other records still reference it.'
+                    );
+                }
+                throw $e;
+            }
+            if ($n !== 1) {
+                throw new \DomainException('Could not permanently delete this service.');
+            }
+            $this->audit->log('service_permanently_deleted', 'service', $id, $this->userId(), $svc['branch_id'] ?? null, [
+                'service' => $svc,
+            ]);
+        }, 'service permanent delete');
+    }
+
+    /**
+     * Cron/CLI only: purge trashed services past retention in the **current** resolved tenant scope.
+     * Caller must set organization (+ branch) context like other tenant CLI scripts.
+     *
+     * @return array{purged: int, skipped_blocked: int, skipped_error: int}
+     */
+    public function purgeExpiredTrashedBatch(int $batchLimit, ?\DateTimeInterface $now = null): array
+    {
+        $now = $now ?? new \DateTimeImmutable('now', new \DateTimeZone((string) config('app.timezone', 'UTC')));
+        $purged = 0;
+        $skippedBlocked = 0;
+        $skippedError = 0;
+        $ids = $this->repo->listTrashedIdsEligibleForPurge($now, $batchLimit);
+        foreach ($ids as $sid) {
+            if ($this->repo->countAppointmentSeriesForService($sid) > 0) {
+                $skippedBlocked++;
+                if (function_exists('slog')) {
+                    \slog('warning', 'services.trash_purge', 'skipped_appointment_series', ['service_id' => $sid]);
+                }
+                continue;
+            }
+            try {
+                $n = $this->repo->hardDeleteTrashed($sid);
+                if ($n === 1) {
+                    $purged++;
+                    $this->audit->log('service_purged', 'service', $sid, null, null, ['purged_at' => $now->format(\DateTimeInterface::ATOM)]);
+                }
+            } catch (\PDOException $e) {
+                $skippedError++;
+                if (function_exists('slog')) {
+                    \slog('warning', 'services.trash_purge', 'pdo_skip', ['service_id' => $sid, 'err' => $e->getMessage()]);
+                }
+            }
+        }
+
+        return ['purged' => $purged, 'skipped_blocked' => $skippedBlocked, 'skipped_error' => $skippedError];
+    }
+
+    /**
+     * @return non-empty-string MySQL datetime for purge_after_at
+     */
+    private function purgeAfterMysqlDatetime(): string
+    {
+        $days = (int) config('services.trash_retention_days', 30);
+        if ($days < 1) {
+            $days = 1;
+        }
+        $tz = new \DateTimeZone((string) config('app.timezone', 'UTC'));
+
+        return (new \DateTimeImmutable('now', $tz))->modify('+' . $days . ' days')->format('Y-m-d H:i:s');
+    }
+
+    /**
+     * @param list<int> $ids
+     */
+    public function bulkRestore(array $ids): int
+    {
+        $ctx = $this->contextHolder->requireContext();
+        $ctx->requireResolvedTenant();
+        $this->authorizer->requireAuthorized($ctx, ResourceAction::SERVICE_MANAGE, ResourceRef::collection('service'));
+        $this->tenantScopeGuard->requireResolvedTenantScope();
+        $restored = 0;
+        foreach ($ids as $raw) {
+            $id = (int) $raw;
+            if ($id <= 0) {
+                continue;
+            }
+            try {
+                $this->restore($id);
+                $restored++;
+            } catch (\DomainException | \RuntimeException) {
+                // Per-row outcome; continue (SKU conflict, not found, etc.)
+            }
+        }
+
+        return $restored;
+    }
+
+    /**
+     * @param list<int> $ids
+     */
+    public function bulkPermanentlyDelete(array $ids): int
+    {
+        $ctx = $this->contextHolder->requireContext();
+        $ctx->requireResolvedTenant();
+        $this->authorizer->requireAuthorized($ctx, ResourceAction::SERVICE_MANAGE, ResourceRef::collection('service'));
+        $this->tenantScopeGuard->requireResolvedTenantScope();
+        $deleted = 0;
+        foreach ($ids as $raw) {
+            $id = (int) $raw;
+            if ($id <= 0) {
+                continue;
+            }
+            try {
+                $this->permanentlyDelete($id);
+                $deleted++;
+            } catch (\DomainException) {
+                // skip blocked / not trashed / FK
+            }
+        }
+
+        return $deleted;
+    }
+
+    /**
+     * Throws DomainException if another live service already uses this SKU.
+     * $excludeId = null on create, the current service id on update.
+     */
+    private function assertSkuNotDuplicate(?int $excludeId, mixed $sku): void
+    {
+        if ($sku === null || $sku === '') {
+            return;
+        }
+        $existing = $this->repo->findBySkuExcluding((string) $sku, $excludeId);
+        if ($existing !== null) {
+            throw new \DomainException('SKU "' . $sku . '" is already used by another service.');
+        }
     }
 
     private function userId(): ?int

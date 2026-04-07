@@ -560,26 +560,45 @@ CREATE TABLE equipment (
 
 CREATE TABLE services (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    service_type ENUM('service','package_item','other') NOT NULL DEFAULT 'service' COMMENT 'Canonical service classification.',
     category_id BIGINT UNSIGNED NULL,
     name VARCHAR(200) NOT NULL,
     description TEXT NULL,
+    sku VARCHAR(100) NULL COMMENT 'Optional unique service SKU/code.',
+    barcode VARCHAR(100) NULL COMMENT 'Optional barcode reference.',
     duration_minutes INT NOT NULL DEFAULT 60,
     buffer_before_minutes INT NOT NULL DEFAULT 0,
     buffer_after_minutes INT NOT NULL DEFAULT 0,
+    processing_time_required TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Service has a processing phase during which staff can be freed.',
+    add_on TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Service can be booked as an add-on.',
+    requires_two_staff_members TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Service requires two staff concurrently.',
+    applies_to_employee TINYINT(1) NOT NULL DEFAULT 1 COMMENT 'Booking occupies an employee time slot.',
+    applies_to_room TINYINT(1) NOT NULL DEFAULT 1 COMMENT 'Booking occupies a room slot.',
+    requires_equipment TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Service requires equipment (flag; assignment is Step 2).',
     price DECIMAL(10,2) NOT NULL DEFAULT 0,
     vat_rate_id BIGINT UNSIGNED NULL,
     is_active TINYINT(1) NOT NULL DEFAULT 1,
+    show_in_online_menu TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Visible in public/online booking menu.',
+    staff_fee_mode ENUM('none','percentage','amount') NOT NULL DEFAULT 'none' COMMENT 'Staff commission mode.',
+    staff_fee_value DECIMAL(10,2) NULL COMMENT 'Staff fee value; NULL when mode=none.',
+    allow_on_gift_voucher_sale TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'Can be used in gift voucher sales.',
+    billing_code VARCHAR(50) NULL COMMENT 'External billing or reference code.',
     branch_id BIGINT UNSIGNED NULL,
     created_by BIGINT UNSIGNED NULL,
     updated_by BIGINT UNSIGNED NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL,
+    deleted_by BIGINT UNSIGNED NULL COMMENT 'User who moved the service to trash.',
+    purge_after_at DATETIME NULL COMMENT 'When a trashed row becomes eligible for physical purge.',
     FOREIGN KEY (category_id) REFERENCES service_categories(id) ON DELETE SET NULL,
     FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE SET NULL,
     FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
     FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL,
-    INDEX idx_services_deleted (deleted_at)
+    FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL,
+    UNIQUE KEY uk_services_sku (sku),
+    INDEX idx_services_deleted (deleted_at),
+    INDEX idx_services_trash_purge (purge_after_at, deleted_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE service_staff (
@@ -658,6 +677,22 @@ CREATE TABLE service_equipment (
     PRIMARY KEY (service_id, equipment_id),
     FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE,
     FOREIGN KEY (equipment_id) REFERENCES equipment(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- migration 141
+CREATE TABLE service_products (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    service_id BIGINT UNSIGNED NOT NULL,
+    product_id BIGINT UNSIGNED NOT NULL,
+    quantity_used DECIMAL(12,3) NOT NULL DEFAULT 1.000
+        COMMENT 'Amount of this product consumed per service delivery.',
+    unit_cost_snapshot DECIMAL(12,2) NULL
+        COMMENT 'Copy of product cost_price at time of assignment (informational; not kept live).',
+    UNIQUE KEY uq_service_product (service_id, product_id),
+    INDEX idx_service_products_service (service_id),
+    INDEX idx_service_products_product (product_id),
+    FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE appointment_series (
