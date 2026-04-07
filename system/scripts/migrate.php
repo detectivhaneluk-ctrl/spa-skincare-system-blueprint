@@ -28,6 +28,7 @@ declare(strict_types=1);
 
 require dirname(__DIR__) . '/bootstrap.php';
 require __DIR__ . '/migrate_end_state_verify.php';
+require_once __DIR__ . '/sql_statement_split.php';
 
 use Core\App\MigrationBaseline;
 
@@ -53,17 +54,7 @@ function createMigrationsTable(PDO $pdo): void
 
 function parseSqlStatements(string $sql): array
 {
-    $sql = preg_replace('~/\*.*?\*/~s', '', $sql) ?? $sql;
-    $lines = preg_split('/\R/', $sql) ?: [];
-    $clean = [];
-    foreach ($lines as $line) {
-        if (preg_match('/^\s*(--|#)/', $line)) {
-            continue;
-        }
-        $clean[] = $line;
-    }
-    $sqlNoComments = implode("\n", $clean);
-    return array_values(array_filter(array_map('trim', explode(';', $sqlNoComments)), static fn ($s) => $s !== ''));
+    return spa_split_sql_statements($sql);
 }
 
 function isLegacyAlreadyAppliedError(Throwable $e): bool

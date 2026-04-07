@@ -41,19 +41,11 @@ if (!is_file($schemaPath)) {
     throw new RuntimeException('Canonical schema not found: ' . $schemaPath);
 }
 
+require_once dirname(__DIR__) . '/sql_statement_split.php';
+
 function parseSqlStatementsForReset(string $sql): array
 {
-    $sql = preg_replace('~/\*.*?\*/~s', '', $sql) ?? $sql;
-    $lines = preg_split('/\R/', $sql) ?: [];
-    $clean = [];
-    foreach ($lines as $line) {
-        if (preg_match('/^\s*(--|#)/', $line)) {
-            continue;
-        }
-        $clean[] = $line;
-    }
-    $raw = implode("\n", $clean);
-    return array_values(array_filter(array_map('trim', explode(';', $raw)), static fn ($s) => $s !== ''));
+    return spa_split_sql_statements($sql);
 }
 
 echo "Resetting database in env={$env} ...\n";
