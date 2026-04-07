@@ -653,8 +653,8 @@ PHASE 4 (Polish) runs after all PHASE 3 EPICs reach their MVP milestone.
 
 ### PHASE 2 — Navigation Architecture Restructure
 
-**Status: IN PROGRESS**
-**Goal:** Restructure primary nav from 10 homes → 7 homes. No new features. Only navigation, active-state, and copy changes.
+**Status: CLOSED**
+**Goal:** Restructure primary nav from 10 homes -> 7 homes. No new features. Only navigation, active-state, and copy changes.
 
 | Task | EPIC | Story | Priority | Status |
 |------|------|-------|----------|--------|
@@ -663,7 +663,7 @@ PHASE 4 (Polish) runs after all PHASE 3 EPICs reach their MVP milestone.
 | Remove Reports from primary nav; surface inside CASHIER and HOME | EPIC-05 | STORY-05.4.7 | P0 | **DONE** (`verify_story_05_4_7_reports_out_of_primary_nav_01.php`) |
 | Deep links from clients list + profile (Phase 5.2 carried over) | EPIC-03 | STORY-03.2.11 | P0 | **DONE** (`verify_story_03_2_11_client_profile_deep_links_01.php`) |
 | Role-aware 7-module nav (hide dead homes by permission) | EPIC-01 | STORY-01.5.1..5 | P1 | **DONE** (`verify_ollira_7module_nav_structure_01.php`, `verify_ollira_role_nav_visibility_01.php`) |
-| Update verifier bundle for 7-module nav structure | EPIC-P4 | FEAT-P4.4 | P1 | OPEN |
+| Update verifier bundle for 7-module nav structure | EPIC-P4 | FEAT-P4.4 | P1 | **DONE** (`verify_catalog_under_settings_01.php`) |
 
 **Phase 2 done when:**
 - Primary nav has exactly 7 items for all roles
@@ -796,7 +796,11 @@ adds **Services & Pricing** → `/services-resources` (gated by `services-resour
 
 **Closed (2026-04-08):** `STORY-01.5.1..5` — Role-aware 7-module primary nav. `\` in `base.php` gates each home by permission key (null for Home; `appointments.view` / `clients.view` / `staff.view` / `sales.view` / `inventory.view` / `settings.view` for the rest). Labels renamed to canonical 7-module names: Home / Calendar / Clients / Team / Cashier / Stock / Settings. Verifiers: `verify_ollira_7module_nav_structure_01.php`, `verify_ollira_role_nav_visibility_01.php` (both exit 0).
 
-**Current single live task:** **PHASE 2** — `FEAT-P4.4` (verifier bundle extension for 7-module IA). All P0 and P1 nav relocation stories are **closed**.
+**Closed (2026-04-08):** `FEAT-P4.4` — Final verifier bundle for Phase 2. Created `verify_catalog_under_settings_01.php` (25 checks, exits 0). All 11 nav/IA verifiers exit 0. Phase 2 exit criteria met.
+
+**PHASE 2 STATUS: CLOSED.**
+
+**Current single live task:** **PHASE 3** — Core module build-out. Start with any Phase 3 P0 story. Phase 2 is fully sealed.
 
 **Done bar (STORY-03.2.11 — met):**
 1. Clients **list** row and **client profile** expose working links to membership, package, and gift card **index** surfaces using **`client_id`** (exact filter; not display-name search).
@@ -823,12 +827,12 @@ php system/scripts/read-only/verify_marketing_under_clients_01.php
 php system/scripts/read-only/verify_story_05_4_7_reports_out_of_primary_nav_01.php
 ```
 
-### To be created in Phase 2
+### Created in Phase 2 (FEAT-P4.4 — all exit 0)
 
 ```
-verify_ollira_7module_nav_structure_01.php   — asserts exactly 7 primary nav homes
-verify_ollira_role_nav_visibility_01.php     — asserts receptionist sees 4, stylist 3, manager 7
-verify_catalog_under_settings_01.php         — asserts /services-resources active state under SETTINGS family
+verify_ollira_7module_nav_structure_01.php   — asserts exactly 7 primary nav homes (37 checks)
+verify_ollira_role_nav_visibility_01.php     — asserts role-aware nav visibility / permission gates (17 checks)
+verify_catalog_under_settings_01.php         — asserts /services-resources active state under SETTINGS family (25 checks)
 ```
 
 ---
