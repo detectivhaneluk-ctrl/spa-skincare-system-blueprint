@@ -23,6 +23,77 @@ ob_start();
                 </dl>
             </section>
 
+            <?php
+            $ps = is_array($packageSummary ?? null) ? $packageSummary : [];
+            $rp = is_array($recentPackages ?? null) ? $recentPackages : [];
+            $gs = is_array($giftCardSummary ?? null) ? $giftCardSummary : [];
+            $rg = is_array($recentGiftCards ?? null) ? $recentGiftCards : [];
+            $clientBranchId = (int) ($client['branch_id'] ?? 0);
+            ?>
+            <section class="client-ref-block client-ref-block--primary" id="client-ref-owned-value" aria-labelledby="client-ref-owned-heading">
+                <h2 id="client-ref-owned-heading" class="client-ref-block-title">Owned value</h2>
+                <p class="hint" style="margin-top:0;">Packages and gift cards assigned to this client. Plan definitions stay in Catalog; held records are owned here in Clients.</p>
+                <?php if ($clientBranchId <= 0): ?>
+                <p class="hint" role="status">Set a branch on this client to load package and gift-card summaries (branch-scoped read model).</p>
+                <?php endif; ?>
+
+                <h3 class="client-ref-subblock-title">Packages held</h3>
+                <dl class="client-ref-inline-dl">
+                    <dt>Total</dt><dd><?= (int) ($ps['total'] ?? 0) ?></dd>
+                    <dt>Active</dt><dd><?= (int) ($ps['active'] ?? 0) ?></dd>
+                    <dt>Used</dt><dd><?= (int) ($ps['used'] ?? 0) ?></dd>
+                    <dt>Expired</dt><dd><?= (int) ($ps['expired'] ?? 0) ?></dd>
+                    <dt>Cancelled</dt><dd><?= (int) ($ps['cancelled'] ?? 0) ?></dd>
+                    <dt>Remaining sessions (all)</dt><dd><?= (int) ($ps['total_remaining_sessions'] ?? 0) ?></dd>
+                </dl>
+                <?php if ($rp === []): ?>
+                <p class="hint">No package assignments in the recent list.</p>
+                <?php else: ?>
+                <table class="index-table">
+                    <thead><tr><th>Package</th><th>Status</th><th>Sessions</th><th>Expires</th><th></th></tr></thead>
+                    <tbody>
+                    <?php foreach ($rp as $row): ?>
+                    <tr>
+                        <td><?= htmlspecialchars((string) ($row['package_name'] ?? '')) ?></td>
+                        <td><?= htmlspecialchars((string) ($row['status'] ?? '')) ?></td>
+                        <td><?= (int) ($row['remaining_sessions'] ?? 0) ?> / <?= (int) ($row['assigned_sessions'] ?? 0) ?></td>
+                        <td><?= htmlspecialchars((string) ($row['expires_at'] ?? '—')) ?></td>
+                        <td><a href="/packages/client-packages/<?= (int) ($row['id'] ?? 0) ?>">Open</a></td>
+                    </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <?php endif; ?>
+
+                <h3 class="client-ref-subblock-title">Gift cards</h3>
+                <dl class="client-ref-inline-dl">
+                    <dt>Cards</dt><dd><?= (int) ($gs['total'] ?? 0) ?></dd>
+                    <dt>Active</dt><dd><?= (int) ($gs['active'] ?? 0) ?></dd>
+                    <dt>Combined balance</dt><dd><?= number_format((float) ($gs['total_balance'] ?? 0), 2) ?></dd>
+                </dl>
+                <?php if ($rg === []): ?>
+                <p class="hint">No gift cards in the recent list.</p>
+                <?php else: ?>
+                <table class="index-table">
+                    <thead><tr><th>Code</th><th>Status</th><th>Balance</th><th>Expires</th><th></th></tr></thead>
+                    <tbody>
+                    <?php foreach ($rg as $row): ?>
+                    <tr>
+                        <td><code><?= htmlspecialchars((string) ($row['code'] ?? '')) ?></code></td>
+                        <td><?= htmlspecialchars((string) ($row['status'] ?? '')) ?></td>
+                        <td><?= number_format((float) ($row['current_balance'] ?? 0), 2) ?></td>
+                        <td><?= htmlspecialchars((string) ($row['expires_at'] ?? '—')) ?></td>
+                        <td><a href="/gift-cards/<?= (int) ($row['id'] ?? 0) ?>">View</a></td>
+                    </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <?php endif; ?>
+
+                <h3 class="client-ref-subblock-title">Memberships</h3>
+                <p class="hint" style="margin-bottom:0;">Active membership enrollments are not summarized on this profile yet — the client profile read layer has no membership provider wired. Use <strong>Active client memberships</strong> on the Clients list or the memberships module for that workspace.</p>
+            </section>
+
             <div class="client-ref-actions-row">
                 <a class="btn" href="/clients/<?= $clientId ?>/edit">Edit profile</a>
                 <a class="btn" href="/clients/merge?primary_id=<?= $clientId ?>">Merge / duplicates</a>
