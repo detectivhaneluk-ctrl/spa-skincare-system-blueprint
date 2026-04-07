@@ -2,18 +2,26 @@
 $title = 'Inventory';
 ob_start();
 ?>
-<h1>Inventory</h1>
-<p class="hint">Foundation module for products, suppliers, stock movements, and inventory counts.</p>
-<div class="inventory-links">
-    <a class="btn" href="/inventory/products">Products</a>
-    <a class="btn" href="/inventory/product-categories">Product categories</a>
-    <a class="btn" href="/inventory/product-brands">Product brands</a>
-    <a class="btn" href="/inventory/suppliers">Suppliers</a>
-    <a class="btn" href="/inventory/movements">Stock Movements</a>
-    <a class="btn" href="/inventory/counts">Inventory Counts</a>
+<div class="inventory-hub">
+    <header class="inventory-hub__header">
+        <h1 class="inventory-hub__title">Inventory</h1>
+        <p class="inventory-hub__lead">Products, stock movements, and supplier records for your business.</p>
+    </header>
+    <div class="inventory-hub__links">
+        <a class="inventory-hub__link" href="/inventory/products">Products</a>
+        <a class="inventory-hub__link" href="/inventory/product-categories">Product categories</a>
+        <a class="inventory-hub__link" href="/inventory/product-brands">Brands</a>
+        <a class="inventory-hub__link" href="/inventory/suppliers">Suppliers</a>
+        <a class="inventory-hub__link" href="/inventory/movements">Stock movements</a>
+        <a class="inventory-hub__link" href="/inventory/counts">Stock counts</a>
+    </div>
 </div>
-<p class="hint">
-    Branch behavior is explicit: use branch filters to scope records.
-    Global records are managed with branch set to "Global".
-</p>
+<style>
+.inventory-hub__header { margin-bottom: 1.25rem; }
+.inventory-hub__title { margin: 0 0 0.25rem; font-size: 1.35rem; font-weight: 700; color: #111827; }
+.inventory-hub__lead { margin: 0; font-size: 0.87rem; color: #4b5563; }
+.inventory-hub__links { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.inventory-hub__link { padding: 0.5rem 1rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; background: #f9fafb; font-size: 0.87rem; color: #111827; text-decoration: none; }
+.inventory-hub__link:hover { background: #f3f4f6; }
+</style>
 <?php $content = ob_get_clean(); require shared_path('layout/base.php'); ?>

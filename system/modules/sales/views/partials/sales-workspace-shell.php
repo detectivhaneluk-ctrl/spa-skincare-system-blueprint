@@ -17,7 +17,7 @@ if ($salesWorkspaceShellModifier !== '') {
     <header class="workspace-module-head">
         <div class="workspace-module-head__text">
             <h1 class="workspace-module-head__title">Sales</h1>
-            <p class="workspace-module-head__sub">Staff checkout, orders, gift cards, packages, and register.</p>
+            <p class="workspace-module-head__sub">Invoices, checkout, payments, gift cards, and register.</p>
         </div>
     </header>
     <nav class="ds-segmented ds-segmented--ios ds-segmented--pill-track ds-segmented--thumb" aria-label="Sales workspace" data-ds-segmented-thumb>

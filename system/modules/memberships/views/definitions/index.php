@@ -1,8 +1,8 @@
 <?php
-$title = 'Membership Definitions';
+$title = 'Membership Plans';
 ob_start();
 ?>
-<h1>Membership Definitions</h1>
+<h1>Membership Plans</h1>
 <?php if ($flash && is_array($flash)): $t = array_key_first($flash); ?>
 <div class="flash flash-<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($flash[$t] ?? '') ?></div>
 <?php endif; ?>

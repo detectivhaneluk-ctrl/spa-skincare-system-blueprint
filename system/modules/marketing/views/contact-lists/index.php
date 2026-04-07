@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 $title = $title ?? 'Contact Lists';
 $mainClass = 'marketing-contact-lists-page';
-$marketingTopActive = 'email_campaigns';
+$marketingTopActive = 'contact_lists';
 $marketingRailActive = 'lists';
 $read = is_array($read ?? null) ? $read : [];
 $contacts = is_array($read['contacts'] ?? null) ? $read['contacts'] : [];

@@ -6,7 +6,7 @@ $salesWorkspaceShellModifier = 'workspace-shell--list';
 $salesWorkspaceActiveTab = 'packages';
 require base_path('modules/sales/views/partials/sales-workspace-shell.php');
 ?>
-<h2 class="sales-workspace-section-title">Package Definitions</h2>
+<h2 class="sales-workspace-section-title">Packages</h2>
 <?php if ($flash && is_array($flash)): $t = array_key_first($flash); ?>
 <div class="flash flash-<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($flash[$t] ?? '') ?></div>
 <?php endif; ?>
