@@ -548,7 +548,7 @@ Status vocabulary: `DONE` | `IN PROGRESS` | `NEXT` | `OPEN` | `DEFERRED`
 | STORY-07.3.6 | Membership plan definitions | DONE | `/memberships/definitions` |
 | STORY-07.3.7 | Spaces / Rooms setup (link to services) | DONE | `/services-resources/rooms/*` |
 | STORY-07.3.8 | Equipment management | DONE | `/services-resources/equipment/*` |
-| STORY-07.3.9 | **Navigation**: Services & Pricing is a sub-section of SETTINGS, not a primary nav home. Update `base.php` active-state logic. | OPEN | Key change from old plan |
+| STORY-07.3.9 | **Navigation**: Services & Pricing is a sub-section of SETTINGS, not a primary nav home. Update `base.php` active-state logic. | DONE | 2026-04-08: primary nav item removed; Admin active on `/services-resources` + plan defs; sidebar link; `verify_story_07_3_9_catalog_out_of_primary_nav_01.php` |
 
 #### FEAT-07.4: Roles & Permissions
 
@@ -658,7 +658,7 @@ PHASE 4 (Polish) runs after all PHASE 3 EPICs reach their MVP milestone.
 
 | Task | EPIC | Story | Priority | Status |
 |------|------|-------|----------|--------|
-| Remove Catalog from primary nav; add to SETTINGS sidebar | EPIC-07 | STORY-07.3.9 | P0 | **NEXT** |
+| Remove Catalog from primary nav; add to SETTINGS sidebar | EPIC-07 | STORY-07.3.9 | P0 | **DONE** (`verify_story_07_3_9_catalog_out_of_primary_nav_01.php`) |
 | Remove Marketing from primary nav; surface inside CLIENTS | EPIC-03 | STORY-03.6.7 | P0 | OPEN |
 | Remove Reports from primary nav; surface inside CASHIER and HOME | EPIC-05 | STORY-05.4.7 | P0 | OPEN |
 | Deep links from clients list + profile (Phase 5.2 carried over) | EPIC-03 | STORY-03.2.11 | P0 | **DONE** (`verify_story_03_2_11_client_profile_deep_links_01.php`) |
@@ -741,7 +741,7 @@ PHASE 4 (Polish) runs after all PHASE 3 EPICs reach their MVP milestone.
 
 | Priority | Story | Dependency |
 |----------|-------|------------|
-| P0 | STORY-07.3.9 (Services & Pricing nav — Phase 2 task) | Phase 2 |
+| P0 | STORY-07.3.9 (Services & Pricing nav — Phase 2 task) | DONE (2026-04-08) |
 | P0 | STORY-07.4.4..5 (Permission → home map) | Phase 2 complete |
 | P1 | STORY-07.5.6..7 (Booking templates + buffer time) | Phase 2 complete |
 | P1 | STORY-07.6.1..3 (Notification templates) | Phase 2 complete |
@@ -786,8 +786,11 @@ to client-held surfaces with stable **`client_id`** query params:
 `/memberships/client-memberships?client_id=…`, `/packages/client-packages?client_id=…`,
 `/gift-cards?client_id=…`. Permission gates: `memberships.view`, `packages.view`, `gift_cards.view`.
 
-**Current single live task:** **PHASE 2 navigation restructure** — start with `STORY-07.3.9` (remove Catalog from
-primary nav; integrate under SETTINGS > Services & Pricing).
+**Closed (2026-04-08):** `STORY-07.3.9` — Catalog removed from primary nav; **Admin** tab stays active on
+`/services-resources`, `/memberships/*` (plan definitions), `/packages/*` (plan definitions). **SETTINGS** sidebar
+adds **Services & Pricing** → `/services-resources` (gated by `services-resources.view`).
+
+**Current single live task:** **PHASE 2 navigation restructure** — `STORY-03.6.7` (Marketing under CLIENTS).
 
 **Done bar (STORY-03.2.11 — met):**
 1. Clients **list** row and **client profile** expose working links to membership, package, and gift card **index** surfaces using **`client_id`** (exact filter; not display-name search).
@@ -795,7 +798,7 @@ primary nav; integrate under SETTINGS > Services & Pricing).
 3. `php system/scripts/read-only/verify_story_03_2_11_client_profile_deep_links_01.php` exits `0` (run locally after pull).
 4. No route paths or POST contracts changed.
 
-**Next (Phase 2):** `STORY-07.3.9` and remaining §PHASE 2 table rows until Phase 2 exit criteria are met.
+**Next (Phase 2):** `STORY-03.6.7`, `STORY-05.4.7`, and remaining §PHASE 2 table rows until Phase 2 exit criteria are met.
 
 ---
 
@@ -809,6 +812,7 @@ php system/scripts/read-only/verify_catalog_growth_subsection_business_clarity_0
 php system/scripts/read-only/verify_admin_ia_business_first_truth_01.php
 php system/scripts/read-only/verify_story_03_2_11_client_profile_deep_links_01.php
 php system/scripts/read-only/verify_story_03_2_12_client_profile_quick_book_01.php
+php system/scripts/read-only/verify_story_07_3_9_catalog_out_of_primary_nav_01.php
 ```
 
 ### To be created in Phase 2

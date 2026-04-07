@@ -83,6 +83,7 @@
 
     $navIsClientsMemberships = str_starts_with($navPath, '/memberships/client-memberships');
     $navIsClientsPackages = str_starts_with($navPath, '/packages/client-packages');
+    /** Definition/policy surfaces (old “Catalog” family): highlight Admin in primary nav, not a separate home. */
     $navIsCatalog = str_starts_with($navPath, '/services-resources')
         || (
             str_starts_with($navPath, '/memberships')
@@ -93,6 +94,7 @@
             str_starts_with($navPath, '/packages')
             && ! $navIsClientsPackages
         );
+    $navIsSettings = $navIsSettings || $navIsCatalog;
     $navIsReports = str_starts_with($navPath, '/reports');
     $navIsTeam = str_starts_with($navPath, '/staff') || str_starts_with($navPath, '/payroll');
 
@@ -103,7 +105,6 @@
         ['/appointments/calendar/day', 'Calendar', $navIsAppointments],
         ['/clients', 'Clients', str_starts_with($navPath, '/clients') || $navIsClientsMemberships || $navIsClientsPackages],
         ['/staff', 'Team', $navIsTeam],
-        ['/services-resources', 'Catalog', $navIsCatalog],
         ['/sales', 'Sales', $navIsSales],
         ['/inventory', 'Inventory', str_starts_with($navPath, '/inventory')],
         ['/marketing/campaigns', 'Marketing', str_starts_with($navPath, '/marketing')],
@@ -115,7 +116,6 @@
         'M8 2v4 M16 2v4 M3 10h18 M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2',
         'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75',
         'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M12 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
-        'M3 3h7v7H3z M14 3h7v7h-7z M14 14h7v7h-7z M3 14h7v7H3z',
         'M12 20V10 M18 20V4 M6 20v-4',
         'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z',
         'M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9 M13 13h3a5 5 0 0 0 5-5v-1',

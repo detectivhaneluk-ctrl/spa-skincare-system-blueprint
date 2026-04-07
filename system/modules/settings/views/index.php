@@ -528,7 +528,7 @@ if (in_array($activeSection, ['establishment', 'cancellation', 'payments'], true
                 <input type="hidden" name="section" value="memberships">
                 <section class="settings-card">
                     <h2>Membership defaults</h2>
-                    <p class="settings-card__help">Policy text and timing defaults only. Plan definitions live in Catalog; enrolled clients live in Clients.</p>
+                    <p class="settings-card__help">Policy text and timing defaults only. Plan definitions live under Services &amp; Pricing in Admin; enrolled clients live in Clients.</p>
                     <div class="settings-grid">
                         <div class="setting-row"><label for="memberships-terms_text">Terms and conditions (membership signup)</label><textarea id="memberships-terms_text" name="settings[memberships.terms_text]" rows="4" maxlength="5000"><?= htmlspecialchars($membership['terms_text'] ?? '') ?></textarea></div>
                         <div class="setting-row"><label for="memberships-renewal_reminder_days">Renewal reminder (days before expiry)</label><input type="number" id="memberships-renewal_reminder_days" name="settings[memberships.renewal_reminder_days]" min="0" value="<?= (int) ($membership['renewal_reminder_days'] ?? 7) ?>"></div>

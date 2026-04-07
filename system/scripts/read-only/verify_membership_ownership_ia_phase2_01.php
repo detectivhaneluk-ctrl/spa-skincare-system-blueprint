@@ -1,7 +1,7 @@
 <?php
 /**
  * Read-only verifier: MEMBERSHIP-OWNERSHIP-IA-PHASE2-01
- * Plan definitions → Catalog; client-held records → Clients; refund-review + settings policy → Admin (no Settings launcher hub).
+ * Plan definitions → Services & Pricing (Admin sidebar); client-held records → Clients; refund-review + settings policy → Admin (no Settings launcher hub).
  *
  * Run: php system/scripts/read-only/verify_membership_ownership_ia_phase2_01.php
  */
@@ -43,8 +43,8 @@ mchk('M5: settingsActivePrefixes has only settings + branches', $navB, "'/settin
 mchk('M6: catalog hub does not link client-memberships as secondary hub card', $hub, 'href="/memberships/client-memberships"', false);
 mchk('M7: catalog hub links Clients for held-membership discovery', $hub, 'href="/clients"');
 mchk('M8: catalog hub still links plan list', $hub, 'href="/memberships"');
-mchk('M9: membership defaults (settings index) names Catalog + Clients without outbound links', $setIdx, 'definitions are managed in Catalog');
-mchk('M9b: membership defaults names Clients enrollment home in prose', $setIdx, 'enrollments are managed in Clients');
+mchk('M9: membership defaults names Services & Pricing (Admin) for plan definitions', $setIdx, 'Plan definitions live under Services &amp; Pricing in Admin');
+mchk('M9b: membership defaults names Clients enrollment home in prose', $setIdx, 'enrolled clients live in Clients');
 mchk('M10: clients list toolbar links active memberships', $clIdx, 'href="/memberships/client-memberships"');
 
 echo "\nVERIFIER: verify_membership_ownership_ia_phase2_01\n";

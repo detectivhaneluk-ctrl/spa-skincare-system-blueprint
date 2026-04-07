@@ -2,7 +2,7 @@
 
 $settingsPageTitle = (string) ($settingsPageTitle ?? 'Admin');
 
-$settingsPageSubtitle = (string) ($settingsPageSubtitle ?? 'Organization policies, defaults, and controls only. Day-to-day work stays in the main navigation — Calendar, Clients, Catalog, Sales, Team, and the rest.');
+$settingsPageSubtitle = (string) ($settingsPageSubtitle ?? 'Organization policies, defaults, and controls only. Day-to-day work stays in the main navigation — Calendar, Clients, Sales, Team, and the rest. Service definitions and pricing structures live under Services & Pricing below.');
 
 $activeSection = (string) ($activeSettingsSection ?? 'establishment');
 
@@ -29,6 +29,8 @@ $canViewPriceModificationReasonsLink = !empty($canViewPriceModificationReasonsLi
 $canViewVatRatesLink = !empty($canViewVatRatesLink);
 
 $canViewSettingsLink = !empty($canViewSettingsLink);
+
+$canViewServicesResourcesLink = !empty($canViewServicesResourcesLink);
 
 $settingsUrl = static function (string $section, ?int $onlineBookingBranchIdParam = null, ?int $appointmentsBranchIdParam = null): string {
 
@@ -114,7 +116,19 @@ $activeDirectoryGroup = $isNativeActive ? 'general' : '';
 
             <nav class="settings-sidebar__nav">
 
+                <?php if ($canViewServicesResourcesLink): ?>
+
+                <p class="settings-sidebar__section-label">Services &amp; pricing</p>
+
+                <a class="settings-sidebar__services-pricing-link" href="/services-resources">Services &amp; Pricing</a>
+
                 <p class="settings-sidebar__section-label">Policies and defaults</p>
+
+                <?php else: ?>
+
+                <p class="settings-sidebar__section-label">Policies and defaults</p>
+
+                <?php endif; ?>
 
                 <details class="settings-tree" data-group="general" <?= $activeDirectoryGroup === 'general' ? 'open' : '' ?>>
 
@@ -201,6 +215,28 @@ $activeDirectoryGroup = $isNativeActive ? 'general' : '';
         letter-spacing: 0.03em;
 
         color: #6b7280;
+
+    }
+
+    .settings-sidebar__services-pricing-link {
+
+        display: block;
+
+        margin: 0 0 0.5rem;
+
+        font-size: 0.9rem;
+
+        font-weight: 600;
+
+        color: #2563eb;
+
+        text-decoration: none;
+
+    }
+
+    .settings-sidebar__services-pricing-link:hover {
+
+        text-decoration: underline;
 
     }
 

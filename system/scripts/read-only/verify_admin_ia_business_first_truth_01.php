@@ -103,6 +103,7 @@ assert_contains('F8: Marketing Defaults label present', $shellPhp, 'Marketing De
 assert_contains('F9: Waitlist Rules label present', $shellPhp, 'Waitlist Rules');
 assert_contains('F10: Online Channels label present', $shellPhp, 'Online Channels');
 assert_contains('F11: Membership Defaults label present', $shellPhp, 'Membership Defaults');
+assert_contains('F23: Services & Pricing entry in Admin sidebar', $shellPhp, 'href="/services-resources">Services &amp; Pricing</a>');
 
 // Old mixed-scope labels must be gone from sidebar
 assert_contains('F12: old Establishment Information label absent from sidebar', $shellPhp, 'Establishment Information - Mixed scope', false);
@@ -158,15 +159,16 @@ assert_contains('K4: WAITLIST_BRANCH_PARAM constant present', $ctrlPhp, "WAITLIS
 assert_contains('K5: MARKETING_BRANCH_PARAM constant present', $ctrlPhp, "MARKETING_BRANCH_PARAM");
 
 // ──────────────────────────────────────────────────────────────────────────────
-// L. Admin active prefixes = control plane; payroll/catalog/reports have primary homes
+// L. Admin active: control-plane prefixes; catalog definitions fold into Admin active (no Catalog primary tab)
 // ──────────────────────────────────────────────────────────────────────────────
 assert_contains('L1: /settings prefix in settingsActivePrefixes', $basePhp, "'/settings'");
 assert_contains('L2: /memberships not listed in settingsActivePrefixes (plan/client surfaces have primary homes)', $basePhp, "        '/memberships',", false);
 assert_contains('L3: /branches prefix in settingsActivePrefixes', $basePhp, "'/branches'");
 assert_contains('L4: client-held memberships nav split present', $basePhp, '$navIsClientsMemberships');
-assert_contains('L5: Catalog split via navIsCatalog', $basePhp, '$navIsCatalog');
+assert_contains('L5: Catalog family split via navIsCatalog', $basePhp, '$navIsCatalog');
 assert_contains('L6: Reports split via navIsReports', $basePhp, '$navIsReports');
 assert_contains('L7: Team active includes payroll operations prefix', $basePhp, "str_starts_with(\$navPath, '/payroll')");
+assert_contains('L8: Admin primary tab active on catalog definition surfaces', $basePhp, '$navIsSettings = $navIsSettings || $navIsCatalog');
 
 // ──────────────────────────────────────────────────────────────────────────────
 // M. Page title changed to Admin in index.php
