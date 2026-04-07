@@ -30,10 +30,10 @@ $mktNav= $base . '/modules/marketing/views/partials/marketing-top-nav.php';
 $clIdx = $base . '/modules/marketing/views/contact-lists/index.php';
 
 // ── A. REGRESSION: Admin IA lane (7fafa71) still intact ──────────────────────
-chk('A1: top-nav Overview', $navB, "'Overview'");
+chk('A1: top-nav Home (was Overview)', $navB, "'Home'");
 chk('A2: top-nav Calendar', $navB, "'Calendar'");
 chk('A3: top-nav Team', $navB, "'Team'");
-chk('A4: top-nav Admin', $navB, "'Admin'");
+chk('A4: top-nav Settings (was Admin)', $navB, "'Settings'");
 chk('A5: /settings href in navItems', $navB, "'/settings'");
 chk('A6: settingsActivePrefixes /settings', $navB, "'/settings'");
 chk('A7: settingsActivePrefixes excludes /memberships (Catalog/Clients own surfaces)', $navB, "        '/memberships',", false);

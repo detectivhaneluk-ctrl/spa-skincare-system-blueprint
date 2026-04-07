@@ -38,7 +38,7 @@ $shell = $base . '/modules/settings/views/partials/shell.php';
 c79('N1: no primary nav tuple for Catalog home', $nav, "'/services-resources', 'Catalog'", false);
 c79('N2: navIsCatalog still defined for active-state merge', $nav, '$navIsCatalog');
 c79('N3: Admin tab active includes catalog definition URLs', $nav, '$navIsSettings = $navIsSettings || $navIsCatalog');
-c79('N4: primary nav still targets real /settings for Admin', $nav, "'/settings', 'Admin'");
+c79('N4: primary nav still targets real /settings for Settings', $nav, "'/settings', 'Settings'");
 c79('S1: settings shell exposes Services & Pricing → /services-resources', $shell, 'href="/services-resources">Services &amp; Pricing</a>');
 c79('S2: link gated by canViewServicesResourcesLink', $shell, '<?php if ($canViewServicesResourcesLink): ?>');
 c79('S3: section label Services & pricing', $shell, 'Services &amp; pricing</p>');

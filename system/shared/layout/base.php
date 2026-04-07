@@ -100,24 +100,32 @@
 
     $navIsSales = str_starts_with($navPath, '/sales')
         || str_starts_with($navPath, '/gift-cards');
-    $navItems = [
-        ['/dashboard', 'Overview', $navPath === '/' || str_starts_with($navPath, '/dashboard') || $navIsReports],
-        ['/appointments/calendar/day', 'Calendar', $navIsAppointments],
-        ['/clients', 'Clients', str_starts_with($navPath, '/clients') || $navIsClientsMemberships || $navIsClientsPackages || str_starts_with($navPath, '/marketing')],
-        ['/staff', 'Team', $navIsTeam],
-        ['/sales', 'Sales', $navIsSales],
-        ['/inventory', 'Inventory', str_starts_with($navPath, '/inventory')],
-        ['/settings', 'Admin', $navIsSettings],
+    // 5-element tuples: [href, label, active, permission_gate|null, icon_path]
+    // permission_gate: null = always visible; string = PermissionService::has() key required
+    $navAllItems = [
+        ['/dashboard', 'Home', $navPath === '/' || str_starts_with($navPath, '/dashboard') || $navIsReports, null, 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10'],
+        ['/appointments/calendar/day', 'Calendar', $navIsAppointments, 'appointments.view', 'M8 2v4 M16 2v4 M3 10h18 M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2'],
+        ['/clients', 'Clients', str_starts_with($navPath, '/clients') || $navIsClientsMemberships || $navIsClientsPackages || str_starts_with($navPath, '/marketing'), 'clients.view', 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75'],
+        ['/staff', 'Team', $navIsTeam, 'staff.view', 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M12 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'],
+        ['/sales', 'Cashier', $navIsSales, 'sales.view', 'M12 20V10 M18 20V4 M6 20v-4'],
+        ['/inventory', 'Stock', str_starts_with($navPath, '/inventory'), 'inventory.view', 'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z'],
+        ['/settings', 'Settings', $navIsSettings, 'settings.view', 'M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'],
     ];
-    $navSideIcons = [
-        'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10',
-        'M8 2v4 M16 2v4 M3 10h18 M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2',
-        'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75',
-        'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M12 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
-        'M12 20V10 M18 20V4 M6 20v-4',
-        'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z',
-        'M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
-    ];
+    // Filter to only homes the current user has permission to see.
+    if ($navUser !== null) {
+        $navPerm = \Core\App\Application::container()->get(\Core\Permissions\PermissionService::class);
+        $navUid = (int) ($navUser['id'] ?? 0);
+        $navAllItems = array_values(array_filter(
+            $navAllItems,
+            static function (array $item) use ($navPerm, $navUid): bool {
+                $gate = $item[3] ?? null;
+                return $gate === null || $navPerm->has($navUid, (string) $gate);
+            }
+        ));
+    }
+    // Split into the 3-element render array and the parallel icon array.
+    $navItems = array_map(static fn (array $i): array => [$i[0], $i[1], $i[2]], $navAllItems);
+    $navSideIcons = array_map(static fn (array $i): string => (string) ($i[4] ?? 'M4 6h16M4 12h16M4 18h16'), $navAllItems);
     $mainClassAttr = 'app-shell__main main'
         . (!empty($hideNav) ? ' app-shell__main--auth' : '')
         . (!empty($mainClass) ? ' ' . htmlspecialchars((string) $mainClass) : '');

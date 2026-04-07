@@ -43,9 +43,9 @@ $gcRdm   = $base . '/modules/gift-cards/views/redeem.php';
 $mktCL   = $base . '/modules/marketing/views/contact-lists/index.php';
 
 // ── A. Lane-01 regression guard ──────────────────────────────────────────────
-chk('A1: top-nav Overview', $navB, "'Overview'");
+chk('A1: top-nav Home (was Overview)', $navB, "'Home'");
 chk('A2: top-nav Calendar', $navB, "'Calendar'");
-chk('A3: top-nav Admin', $navB, "'Admin'");
+chk('A3: top-nav Settings (was Admin)', $navB, "'Settings'");
 chk('A4: /settings in navItems', $navB, "'/settings'");
 chk('A5: sidebar Business Setup', $shell, 'Business Setup');
 chk('A6: sidebar Booking Rules', $shell, 'Booking Rules');

@@ -48,16 +48,16 @@ $ctrlPhp   = $base . '/modules/settings/controllers/SettingsController.php';
 // ──────────────────────────────────────────────────────────────────────────────
 // A. Top nav labels
 // ──────────────────────────────────────────────────────────────────────────────
-assert_contains('A1: top-nav label Overview present', $basePhp, "'Overview'");
+assert_contains('A1: top-nav label Home present', $basePhp, "'Home'");
 assert_contains('A2: top-nav label Calendar present', $basePhp, "'Calendar'");
 assert_contains('A3: top-nav label Team present', $basePhp, "'Team'");
-assert_contains('A4: top-nav label Admin present', $basePhp, "'Admin'");
+assert_contains('A4: top-nav label Settings present', $basePhp, "'Settings'");
 
 // Old nav labels must be gone from the navItems array
 assert_contains('A5: old nav label Dashboard absent from navItems', $basePhp, "'Dashboard'", false);
 assert_contains('A6: old nav label Appointments absent from navItems', $basePhp, "'Appointments'", false);
 assert_contains('A7: old nav label Staff absent from navItems', $basePhp, "'Staff'", false);
-assert_contains('A8: old nav label Settings absent from navItems', $basePhp, "'Settings'", false);
+assert_contains('A8: old nav label Admin absent from navItems (renamed to Settings)', $basePhp, "'Admin'", false);
 
 // ──────────────────────────────────────────────────────────────────────────────
 // B. /settings path is still the nav target for Admin

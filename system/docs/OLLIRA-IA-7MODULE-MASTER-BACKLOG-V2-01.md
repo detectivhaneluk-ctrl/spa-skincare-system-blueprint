@@ -1,4 +1,4 @@
-# OLLIRA — 7-Module Information Architecture Master Backlog (Program V2-01)
+﻿# OLLIRA — 7-Module Information Architecture Master Backlog (Program V2-01)
 
 **Program:** `OLLIRA-IA-7MODULE-REBUILD-PROGRAM-V2-01`
 **Status:** ACTIVE — This is the **sole authoritative product backlog** for Ollira UI/IA work.
@@ -173,11 +173,11 @@ Status vocabulary: `DONE` | `IN PROGRESS` | `NEXT` | `OPEN` | `DEFERRED`
 
 | Story ID | Story | Status | Notes |
 |----------|-------|--------|-------|
-| STORY-01.5.1 | Primary nav renders only permitted homes per user role | OPEN | Absorbed from old Task 8.2 |
-| STORY-01.5.2 | Receptionist nav: [HOME, CALENDAR, CLIENTS, CASHIER] | OPEN | |
-| STORY-01.5.3 | Stylist/Therapist nav: [HOME, CALENDAR, CLIENTS (read)] | OPEN | |
-| STORY-01.5.4 | Manager/Owner nav: all 7 homes | OPEN | |
-| STORY-01.5.5 | Permission → home map configuration in SETTINGS > Roles & Permissions | OPEN | Absorbed from old Task 8.1 |
+| STORY-01.5.1 | Primary nav renders only permitted homes per user role | **DONE** | Absorbed from old Task 8.2 |
+| STORY-01.5.2 | Receptionist nav: [HOME, CALENDAR, CLIENTS, CASHIER] | **DONE** | Gates: null / `appointments.view` / `clients.view` / `sales.view` |
+| STORY-01.5.3 | Stylist/Therapist nav: [HOME, CALENDAR, CLIENTS (read)] | **DONE** | A user without `sales.view`/`staff.view`/`inventory.view`/`settings.view` sees [HOME, CALENDAR, CLIENTS] only |
+| STORY-01.5.4 | Manager/Owner nav: all 7 homes | **DONE** | Owner has `*` wildcard; PermissionService::has() short-circuits to true for all gates |
+| STORY-01.5.5 | Permission → home map configuration in SETTINGS > Roles & Permissions | **DONE** | Implemented via permission keys on each nav tuple; verifiers: `verify_ollira_7module_nav_structure_01.php`, `verify_ollira_role_nav_visibility_01.php` |
 
 #### FEAT-01.6: Management Analytics Panels (Manager/Owner Only)
 
@@ -662,7 +662,7 @@ PHASE 4 (Polish) runs after all PHASE 3 EPICs reach their MVP milestone.
 | Remove Marketing from primary nav; surface inside CLIENTS | EPIC-03 | STORY-03.6.7 | P0 | **DONE** (`verify_marketing_under_clients_01.php`) |
 | Remove Reports from primary nav; surface inside CASHIER and HOME | EPIC-05 | STORY-05.4.7 | P0 | **DONE** (`verify_story_05_4_7_reports_out_of_primary_nav_01.php`) |
 | Deep links from clients list + profile (Phase 5.2 carried over) | EPIC-03 | STORY-03.2.11 | P0 | **DONE** (`verify_story_03_2_11_client_profile_deep_links_01.php`) |
-| Role-aware 7-module nav (hide dead homes by permission) | EPIC-01 | STORY-01.5.1..5 | P1 | OPEN |
+| Role-aware 7-module nav (hide dead homes by permission) | EPIC-01 | STORY-01.5.1..5 | P1 | **DONE** (`verify_ollira_7module_nav_structure_01.php`, `verify_ollira_role_nav_visibility_01.php`) |
 | Update verifier bundle for 7-module nav structure | EPIC-P4 | FEAT-P4.4 | P1 | OPEN |
 
 **Phase 2 done when:**
@@ -794,7 +794,9 @@ adds **Services & Pricing** → `/services-resources` (gated by `services-resour
 
 **Closed (2026-04-08):** `STORY-05.4.7` — **Reports** removed from primary nav (seven top-level items). **`/reports`** is reachable from the **Sales** workspace **Reports** tab and from **Overview** Quick access (**Reports & analytics**), both gated by `reports.view`. **Overview** stays the active primary tab on `/reports`. Routes unchanged. Verifier: `verify_story_05_4_7_reports_out_of_primary_nav_01.php`.
 
-**Current single live task:** **PHASE 2** — remaining **P1** rows: `STORY-01.5.1..5` (role-aware 7-module nav) and `FEAT-P4.4` (verifier bundle extension). **P0** navigation relocation slice (Catalog, Marketing, Reports) is **closed**.
+**Closed (2026-04-08):** `STORY-01.5.1..5` — Role-aware 7-module primary nav. `\` in `base.php` gates each home by permission key (null for Home; `appointments.view` / `clients.view` / `staff.view` / `sales.view` / `inventory.view` / `settings.view` for the rest). Labels renamed to canonical 7-module names: Home / Calendar / Clients / Team / Cashier / Stock / Settings. Verifiers: `verify_ollira_7module_nav_structure_01.php`, `verify_ollira_role_nav_visibility_01.php` (both exit 0).
+
+**Current single live task:** **PHASE 2** — `FEAT-P4.4` (verifier bundle extension for 7-module IA). All P0 and P1 nav relocation stories are **closed**.
 
 **Done bar (STORY-03.2.11 — met):**
 1. Clients **list** row and **client profile** expose working links to membership, package, and gift card **index** surfaces using **`client_id`** (exact filter; not display-name search).
@@ -802,7 +804,7 @@ adds **Services & Pricing** → `/services-resources` (gated by `services-resour
 3. `php system/scripts/read-only/verify_story_03_2_11_client_profile_deep_links_01.php` exits `0` (run locally after pull).
 4. No route paths or POST contracts changed.
 
-**Next (Phase 2):** `STORY-01.5.1..5`, then `FEAT-P4.4`, until Phase 2 exit criteria (seven visible homes per role, no dead nav, verifiers green) are met.
+**Next (Phase 2):** `FEAT-P4.4` — extend verifier bundle for 7-module IA structure until Phase 2 exit criteria (seven visible homes per role, no dead nav, all verifiers green) are met.
 
 ---
 
