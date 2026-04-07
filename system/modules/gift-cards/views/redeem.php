@@ -7,6 +7,7 @@ $salesWorkspaceActiveTab = 'gift_cards';
 require base_path('modules/sales/views/partials/sales-workspace-shell.php');
 ?>
 <h2 class="sales-workspace-section-title">Redeem: <?= htmlspecialchars($giftCard['code'] ?? '') ?></h2>
+<p class="hint">Sales — draw down stored value on this card (standalone redemption). Applying value to an open invoice is done from that invoice&rsquo;s screen.</p>
 <?php if (!empty($errors)): ?>
 <ul class="form-errors">
     <?php if (!empty($errors['_general'])): ?><li><?= htmlspecialchars($errors['_general']) ?></li><?php endif; ?>

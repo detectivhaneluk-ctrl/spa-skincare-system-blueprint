@@ -7,6 +7,7 @@ $salesWorkspaceActiveTab = 'manage_sales';
 require base_path('modules/sales/views/partials/sales-workspace-shell.php');
 ?>
 <h2 class="sales-workspace-section-title">Record Payment</h2>
+<p class="hint">Apply a payment to this invoice&rsquo;s balance due — part of the same Sales money workspace as checkout and invoices. Cash drawer movements stay under <strong>Register</strong>.</p>
 <?php if (!empty($errors)): ?>
 <ul class="form-errors">
     <?php if (!empty($errors['_general'])): ?><li class="error"><?= htmlspecialchars($errors['_general']) ?></li><?php endif; ?>

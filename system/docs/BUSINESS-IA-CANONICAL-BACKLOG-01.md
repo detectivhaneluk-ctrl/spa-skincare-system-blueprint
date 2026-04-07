@@ -71,6 +71,8 @@ Exit code must be `0` for each.
 | 4.1 | Sales workspace shell copy | Invoices, checkout, payments, gift cards, packages — **wording** reflects money + liability | `modules/sales/views/partials/sales-workspace-shell.php`, gift-card views using shell | Invoice POST field renames | `verify_business_nav_entry_clarity_safe_lane_02.php` |
 | 4.2 | Package/gift-card placement | Ensure definitions vs client-packages language matches law (routes unchanged) | `modules/packages/views/` | DB | Manual + verifiers |
 
+**Live closure note (2026-04-07, `BUSINESS-IA-PHASE-4-1-SALES-MONEY-LIABILITY-COPY-CLOSURE-01`):** Task **4.1** closed — Sales shell default copy + Reports gift-card liability link; register/payment/cashier + gift-card view ledes; routes unchanged. Mandatory verifier bundle exited **0** each: `verify_business_nav_entry_clarity_safe_lane_02.php`, `verify_catalog_growth_subsection_business_clarity_03.php`, `verify_admin_ia_business_first_truth_01.php`.
+
 ---
 
 ## Phase 5 — Client value aggregation

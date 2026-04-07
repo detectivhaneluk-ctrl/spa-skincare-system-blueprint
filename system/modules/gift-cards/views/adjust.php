@@ -16,7 +16,7 @@ require base_path('modules/sales/views/partials/sales-workspace-shell.php');
 </ul>
 <?php endif; ?>
 <p><strong>Current Balance:</strong> <?= number_format((float)$currentBalance, 2) ?> <?= htmlspecialchars($giftCard['currency'] ?? '') ?></p>
-<p class="hint">Use positive amount to increase balance, negative to decrease. Balance cannot go below zero.</p>
+<p class="hint">Sales — correct stored value with a clear note. Use a positive amount to add balance, negative to remove; balance cannot go below zero.</p>
 <form method="post" action="/gift-cards/<?= (int)$giftCard['id'] ?>/adjust" class="entity-form">
     <input type="hidden" name="<?= htmlspecialchars(config('app.csrf_token_name', 'csrf_token')) ?>" value="<?= htmlspecialchars($csrf) ?>">
     <div class="form-row"><label for="amount">Adjustment Amount *</label><input type="number" step="0.01" id="amount" name="amount" required value="<?= htmlspecialchars((string)($adjustment['amount'] ?? '')) ?>"></div>

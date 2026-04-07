@@ -189,7 +189,7 @@ foreach (($invoice['items'] ?? []) as $it) {
                 <div>
                     <h2>Ordered Articles</h2>
                 </div>
-                <button type="button" data-tab-target="tab-products">Browse catalog</button>
+                <button type="button" data-tab-target="tab-products">Browse branch sellables</button>
             </div>
 
             <div class="cashier-ops-strip">
@@ -231,7 +231,7 @@ foreach (($invoice['items'] ?? []) as $it) {
             </section>
 
             <section id="tab-deferred" data-tab-panel style="display:none;" data-cashier-deferred-root>
-                <p class="hint">Choose a submode. Gift card and series run extra domain steps on <strong>invoice create</strong> only (not on edit).</p>
+                <p class="hint">Pick stored-value or package sale lines. Gift cards and package series are finalized when you <strong>first save</strong> the invoice (not when editing an existing draft).</p>
                 <?php if (!empty($deferredPersistedRows)): ?>
                 <div class="cashier-deferred-persisted" aria-label="Persisted deferred lines on this invoice">
                     <strong>On this invoice</strong>
@@ -282,7 +282,7 @@ foreach (($invoice['items'] ?? []) as $it) {
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <p class="hint">Posts <code>gift_voucher</code> line; optional <code>source_id</code> must match a branch product when set.</p>
+                        <p class="hint">Adds a gift voucher line. If you tie it to a product, that product must exist on this branch&rsquo;s sellable list.</p>
                         <button type="button" id="cashier-add-voucher">Add voucher line</button>
                     </div>
                     <div id="cashier-deferred-panel-gift_card" class="cashier-deferred-panel" data-deferred-panel="gift_card" style="display:none;" role="tabpanel">
@@ -290,13 +290,14 @@ foreach (($invoice['items'] ?? []) as $it) {
                             <label for="cashier-gift-card-amount">Face value <span aria-label="required">*</span></label>
                             <input type="number" id="cashier-gift-card-amount" min="0.01" step="0.01" value="" required>
                         </div>
-                        <p class="hint">Posts <code>gift_card</code> line (0% tax). On save, issues a gift card and stores its id in line meta.</p>
+                        <p class="hint">Adds a gift card line (no tax on the line). When you save a <strong>new</strong> invoice, the system issues the card and links it to this sale.</p>
                         <button type="button" id="cashier-add-gift-card">Add gift card line</button>
                     </div>
                     <div id="cashier-deferred-panel-series" class="cashier-deferred-panel" data-deferred-panel="series" style="display:none;" role="tabpanel">
-                        <p id="cashier-series-client-hint" class="hint"><?= $clientId <= 0 ? 'Select a client on the invoice before adding a series line.' : 'Client is set; series can be added.' ?></p>
+                        <p id="cashier-series-client-hint" class="hint"><?= $clientId <= 0 ? 'Choose a client on this invoice before selling a package series.' : 'Client is set; you can sell a package series to them here.' ?></p>
+                        <p class="hint">Package <strong>plans</strong> are defined in Catalog; this checkout sells a plan and creates the client&rsquo;s held package.</p>
                         <div class="form-row">
-                            <label for="cashier-series-package-id">Package <span aria-label="required">*</span></label>
+                            <label for="cashier-series-package-id">Package plan <span aria-label="required">*</span></label>
                             <select id="cashier-series-package-id">
                                 <option value="0">— Select package —</option>
                                 <?php foreach ($packages as $p): ?>
@@ -308,11 +309,11 @@ foreach (($invoice['items'] ?? []) as $it) {
                             <label for="cashier-series-sessions">Sessions to assign <span aria-label="required">*</span></label>
                             <input type="number" id="cashier-series-sessions" min="1" step="1" value="1" required>
                         </div>
-                        <p class="hint">Posts <code>series</code> line; on create, assigns the package to the invoice client.</p>
+                        <p class="hint">Adds a package series line. On first save, the sessions are assigned to the client on this invoice.</p>
                         <button type="button" id="cashier-add-series" <?= $clientId <= 0 ? 'disabled' : '' ?>>Add series line</button>
                     </div>
                     <div id="cashier-deferred-panel-client_account" class="cashier-deferred-panel" data-deferred-panel="client_account" style="display:none;" role="tabpanel">
-                        <p class="hint"><strong>Client account</strong> is not available: there is no AR / house-account ledger yet. There is no submit path here; the server rejects <code>client_account</code> lines if posted manually.</p>
+                        <p class="hint"><strong>Client account</strong> is not available yet — there is no house-account balance to charge. You cannot post this line type from the till.</p>
                     </div>
                 </div>
             </section>
@@ -337,7 +338,7 @@ foreach (($invoice['items'] ?? []) as $it) {
                     <label for="membership_starts_at">Membership start (optional YYYY-MM-DD)</label>
                     <input type="text" id="membership_starts_at" name="membership_starts_at" placeholder="YYYY-MM-DD" value="<?= htmlspecialchars((string) ($invoice['membership_starts_at'] ?? '')) ?>">
                 </div>
-                <p class="hint">Membership checkout remains standalone.</p>
+                <p class="hint">Membership is sold from this block on a <strong>new</strong> invoice; changing plan here does not replace Catalog membership definitions.</p>
                 <?php endif; ?>
             </section>
 
@@ -771,8 +772,8 @@ foreach (($invoice['items'] ?? []) as $it) {
         var btn = document.getElementById('cashier-add-series');
         if (hint) {
             hint.textContent = cid <= 0
-                ? 'Select a client on the invoice before adding a series line.'
-                : 'Client is set; series can be added.';
+                ? 'Choose a client on this invoice before selling a package series.'
+                : 'Client is set; you can sell a package series to them here.';
         }
         if (btn) {
             btn.disabled = cid <= 0;

@@ -7,6 +7,7 @@ $salesWorkspaceActiveTab = 'register';
 require base_path('modules/sales/views/partials/sales-workspace-shell.php');
 ?>
 <h2 class="sales-workspace-section-title">Register Sessions</h2>
+<p class="hint">Cash drawer control: open and close sessions, record cash in/out, and reconcile physical cash. This is <strong>not</strong> checkout — use <strong>New sale</strong> for invoicing and taking payment on a sale.</p>
 <?php if ($flash && is_array($flash)): $t = array_key_first($flash); ?>
 <div class="flash flash-<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($flash[$t] ?? '') ?></div>
 <?php endif; ?>

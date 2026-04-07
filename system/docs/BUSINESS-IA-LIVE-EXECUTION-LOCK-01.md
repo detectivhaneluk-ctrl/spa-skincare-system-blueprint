@@ -2,13 +2,13 @@
 
 **Artifact:** single live cleanup, stale-task elimination, and **one** ordered execution lane for `BUSINESS-IA-CANONICAL-REBUILD-PROGRAM-01`.  
 **Audit anchored:** 2026-04-07 against repo files under `system/` (no archive authority).  
-**Status:** DONE — **2026-04-08:** Phase **3.2** **closed** (`BUSINESS-IA-PHASE-3-2-CATALOG-WAYFINDING-CLOSURE-01`); **next** single lane **Phase 4.1** (see §5–§6).
+**Status:** DONE — **2026-04-07:** Phase **4.1** **closed** (`BUSINESS-IA-PHASE-4-1-SALES-MONEY-LIABILITY-COPY-CLOSURE-01`); **next** single lane **Phase 4.2** (see §5–§6, §11).
 
 ---
 
 ## 1. STATUS
 
-**DONE** — Audit + elimination log remain valid. **2026-04-08:** Phase **3.2** **closed** (catalog wayfinding / §10 prep delivered); next **implementation** slice is **4.1** only (Sales workspace copy — per backlog).
+**DONE** — Audit + elimination log remain valid. **2026-04-07:** Phase **4.1** **closed** (Sales workspace + gift-card + register/payment/cashier copy — §11); next **implementation** slice is **4.2** only (packages views language — per backlog).
 
 ---
 
@@ -85,7 +85,7 @@
 | `system/routes/web/register_payroll.php` | KEEP-AS-LIVE | Payroll ops routes; highlight under Team in `base.php`. |
 | `system/routes/web/register_reports.php` | KEEP-AS-LIVE | `GET /reports` + JSON report GETs; real endpoints only. |
 | `system/modules/services-resources/views/index.php` | KEEP-AS-LIVE | **2026-04-07:** Lead + gift-card card = Sales discovery; definitions vs Sales explicit. |
-| `system/modules/sales/views/partials/sales-workspace-shell.php` | KEEP-AS-LIVE | **2026-04-07:** Subtitle reinforces money/stored-value home; verifier substring retained. |
+| `system/modules/sales/views/partials/sales-workspace-shell.php` | KEEP-AS-LIVE | **2026-04-07:** Default subtitle = one financial workspace; second line links Reports gift-card liability (measurement); `Invoices, checkout, payments` substring retained for `verify_business_nav_entry_clarity_safe_lane_02.php` **E1**. |
 | `system/modules/clients/views/` (tree) | KEEP-AS-LIVE | No fake report routes found; Phase 5 aggregation still open. |
 | `system/modules/packages/views/` | KEEP-AS-LIVE | Definitions vs client-packages split exists; Phase 4.2 polish optional. |
 | `system/modules/memberships/` (views used by routes) | KEEP-AS-LIVE | Plan vs client-membership surfaces separated in nav state. |
@@ -139,8 +139,8 @@ Strict **phase order**; within a phase, row order. Status applies to **remaining
 | 1 | 2.2 | Section honesty pass — each `section=` area describes policy/control; no new sections without allowlist task | 2 | **CLOSED** (2026-04-07) |
 | 2 | 3.1 | Catalog hub: lead + cards — definitions vs client-record vs Sales (gift cards de-emphasized / discovery per law) | 3 | **CLOSED** (2026-04-07) |
 | 3 | 3.2 | Secondary “back to catalog” / breadcrumb consistency | 3 | **CLOSED** (2026-04-08) |
-| 4 | 4.1 | Sales workspace copy tightening (if any gaps after 3.x) | 4 | **NEXT** |
-| 5 | 4.2 | Packages views: definition vs client-package language | 4 | **LATER** |
+| 4 | 4.1 | Sales workspace copy tightening (if any gaps after 3.x) | 4 | **CLOSED** (2026-04-07) |
+| 5 | 4.2 | Packages views: definition vs client-package language | 4 | **NEXT** |
 | 6 | 5.1 | Client profile: aggregate memberships / packages / gift cards / balance **where data exists** | 5 | **LATER** |
 | 7 | 5.2 | Deep links from client row to client-held surfaces | 5 | **LATER** |
 | 8 | 6.2 | Admin payroll **policy** copy alignment (runs stay Team) | 6 | **LATER** |
@@ -153,15 +153,15 @@ Strict **phase order**; within a phase, row order. Status applies to **remaining
 | 15 | 10.1 | Empty states / misleading CTAs | 10 | **LATER** |
 | 16 | 10.2 | Final verifier sweep | 10 | **LATER** |
 
-**Blocked-by-prior-slice:** none — through **3.2** closed; execute **4.1** next.
+**Blocked-by-prior-slice:** none — through **4.1** closed; execute **4.2** next.
 
 ---
 
 ## 6. SINGLE LIVE EXECUTION LANE
 
-**Next task (only):** **Phase 4.1** — Sales workspace shell copy (money + liability framing) per [`BUSINESS-IA-CANONICAL-BACKLOG-01.md`](BUSINESS-IA-CANONICAL-BACKLOG-01.md) row **4.1**. Re-audit first: `system/modules/sales/views/partials/sales-workspace-shell.php`, gift-card views that use the shell (see backlog).
+**Next task (only):** **Phase 4.2** — Package/gift-card placement (definitions vs client-packages language) per [`BUSINESS-IA-CANONICAL-BACKLOG-01.md`](BUSINESS-IA-CANONICAL-BACKLOG-01.md) row **4.2**. Re-audit: `system/modules/packages/views/` (see backlog).
 
-**Previous slice (closed):** Phase **3.2** — specification and checklist preserved in **§10** (including **§10.7** closure).
+**Previous slice (closed):** Phase **4.1** — closure record **§11**. Prior: Phase **3.2** — **§10** (including **§10.7**).
 
 ---
 
@@ -174,7 +174,7 @@ Until a **new** scoped task explicitly permits them, Cursor / implementers **mus
 - Treating `archive/*` or root `docs/ARCHITECTURE-RESET-*` as authority for **Business IA** task selection.
 - Re-adding **module launcher hubs** inside Admin settings sidebar (regresses `verify_admin_ia_business_first_truth_01.php`).
 - Inventing report URLs or dashboard metrics not backed by `register_reports.php`.
-- Running a **second** parallel Business IA lane (e.g. Phase 5 while **4.1** is the named next slice) — finish **4.1** first unless re-scoped.
+- Running a **second** parallel Business IA lane (e.g. Phase 5 while **4.2** is the named next slice) — finish **4.2** first unless re-scoped.
 
 ---
 
@@ -192,7 +192,7 @@ php system/scripts/read-only/verify_admin_ia_business_first_truth_01.php
 
 ## 9. FINAL EXECUTION RECOMMENDATION
 
-Execute **only** **Phase 4.1** next per backlog. **§10** documents the closed **3.2** prep + outcome (**§10.7**); do not re-run **3.2** unless a regression task is explicitly opened.
+Execute **only** **Phase 4.2** next per backlog. **§11** documents closed **4.1**; **§10** documents closed **3.2** (**§10.7**).
 
 ---
 
@@ -288,6 +288,14 @@ Phase **3.2** is **complete** only when all of the following are true:
 **Delivered:** Catalog hub label **Catalog** on service **show** + **wizard** breadcrumbs; categories index **← Catalog**; spaces detail **← Back to Spaces**; services list column **Spaces**; wizard step **4** label + step-4 copy + service show “spaces assigned” block aligned to **Spaces**; `verify_catalog_growth_subsection_business_clarity_03.php` anchors **C6–C14**, **E8–E9**. Routes and POST targets unchanged. Mandatory verifier bundle + `verify_settings_control_plane_no_operational_launcher_hub_01.php` exited **0**.
 
 **Sterile micro (`BUSINESS-IA-PHASE-3-2-STERILE-CLOSURE-MICRO-01`):** Service detail **Applies to room** → **Applies to space** (same `applies_to_room` field); unnamed list fallbacks **Space #** (not **Room #**); verifier **C7b–C7d**.
+
+---
+
+## 11. PHASE 4.1 — CLOSURE RECORD
+
+**Closed:** 2026-04-07 — task **`BUSINESS-IA-PHASE-4-1-SALES-MONEY-LIABILITY-COPY-CLOSURE-01`**.
+
+**Delivered (copy/surfacing only; routes and POST contracts unchanged):** Sales workspace default subtitle reframed as **one financial workspace** (charge, collect, refund, reconcile; register = cash drawer vs checkout); default shell adds honest **Reports → Gift card liability** link for **measurement** (not operations). Register index and invoice payment form clarify **register vs checkout**. Cashier (`_cashier_workspace.php`) operator language for deferred lines, package series (Catalog plan definitions vs sell+assign), membership note, and branch sellables browse. Gift-card index/show/issue/redeem/adjust ledes aligned to **Sales stored value** + Reports for liability measurement. Mandatory verifier bundle exited **0** each: `verify_business_nav_entry_clarity_safe_lane_02.php`, `verify_catalog_growth_subsection_business_clarity_03.php`, `verify_admin_ia_business_first_truth_01.php`.
 
 ---
 

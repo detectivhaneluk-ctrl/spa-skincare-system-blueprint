@@ -2,7 +2,11 @@
 $salesWorkspaceShellModifier = isset($salesWorkspaceShellModifier) ? trim((string) $salesWorkspaceShellModifier) : '';
 $salesWorkspaceActiveTab = isset($salesWorkspaceActiveTab) ? (string) $salesWorkspaceActiveTab : '';
 $salesWorkspaceShellTitle = isset($salesWorkspaceShellTitle) ? trim((string) $salesWorkspaceShellTitle) : 'Sales';
-$salesWorkspaceShellSub = isset($salesWorkspaceShellSub) ? trim((string) $salesWorkspaceShellSub) : 'Invoices, checkout, payments, gift cards, and register — money movement and stored value live here.';
+$salesWorkspaceShellSubIn = isset($salesWorkspaceShellSub) ? trim((string) $salesWorkspaceShellSub) : '';
+$salesWorkspaceShellUsesDefaultSub = ($salesWorkspaceShellSubIn === '');
+$salesWorkspaceShellSub = $salesWorkspaceShellUsesDefaultSub
+    ? 'One financial workspace: charge, collect, refund, and reconcile. Invoices, checkout, payments, gift cards (stored value), and register (cash drawer sessions — not the same as checkout).'
+    : $salesWorkspaceShellSubIn;
 $tabs = [
     ['id' => 'manage_sales', 'label' => 'Manage Sales', 'url' => '/sales/invoices'],
     ['id' => 'staff_checkout', 'label' => 'New sale', 'url' => '/sales'],
@@ -19,6 +23,9 @@ if ($salesWorkspaceShellModifier !== '') {
         <div class="workspace-module-head__text">
             <h1 class="workspace-module-head__title"><?= htmlspecialchars($salesWorkspaceShellTitle, ENT_QUOTES, 'UTF-8') ?></h1>
             <p class="workspace-module-head__sub"><?= htmlspecialchars($salesWorkspaceShellSub, ENT_QUOTES, 'UTF-8') ?></p>
+            <?php if (!empty($salesWorkspaceShellUsesDefaultSub)): ?>
+            <p class="workspace-module-head__sub workspace-module-head__sub--minor">Gift card liability is <strong>measured</strong> in Reports — <a href="/reports/gift-card-liability">Gift card liability</a> — not on this workspace.</p>
+            <?php endif; ?>
         </div>
     </header>
     <nav class="ds-segmented ds-segmented--ios ds-segmented--pill-track ds-segmented--thumb" aria-label="Sales workspace" data-ds-segmented-thumb>

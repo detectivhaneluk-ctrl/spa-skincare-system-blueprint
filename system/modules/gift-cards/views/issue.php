@@ -7,6 +7,7 @@ $salesWorkspaceActiveTab = 'gift_cards';
 require base_path('modules/sales/views/partials/sales-workspace-shell.php');
 ?>
 <h2 class="sales-workspace-section-title">Issue Gift Card</h2>
+<p class="hint">Sales — create new stored value. Assign a client now or leave unassigned; branch or organisation-wide as needed.</p>
 <?php if (!empty($errors)): ?>
 <ul class="form-errors">
     <?php if (!empty($errors['_general'])): ?><li><?= htmlspecialchars($errors['_general']) ?></li><?php endif; ?>

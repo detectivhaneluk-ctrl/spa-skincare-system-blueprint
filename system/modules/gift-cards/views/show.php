@@ -7,6 +7,7 @@ $salesWorkspaceActiveTab = 'gift_cards';
 require base_path('modules/sales/views/partials/sales-workspace-shell.php');
 ?>
 <h2 class="sales-workspace-section-title">Gift Card <?= htmlspecialchars($giftCard['code'] ?? '') ?></h2>
+<p class="hint">Sales — stored value for this card. Use Redeem or Adjust for balance movements; liability reporting stays in Reports.</p>
 <div class="entity-actions">
     <?php if (($giftCard['status'] ?? '') === 'active'): ?>
     <a class="btn" href="/gift-cards/<?= (int)$giftCard['id'] ?>/redeem">Redeem</a>
