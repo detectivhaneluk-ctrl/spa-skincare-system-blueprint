@@ -55,6 +55,7 @@ $paymentMethodsEffective = isset($paymentMethodsEffective) && is_array($paymentM
 $paymentEdit = (string) ($paymentEdit ?? '');
 $canCreateStaffLink = !empty($canCreateStaffLink);
 $canViewReportsLink = !empty($canViewReportsLink);
+$canViewSalesLink = !empty($canViewSalesLink);
 $selectedBranchName = '';
 $waitlistBranchName = '';
 $marketingBranchName = '';
@@ -540,7 +541,7 @@ if (in_array($activeSection, ['establishment', 'cancellation', 'payments'], true
                 <input type="hidden" name="section" value="memberships">
                 <section class="settings-card">
                     <h2>Membership defaults</h2>
-                    <p class="settings-card__help">Saves <strong>organization default</strong> only here. Terms, renewal reminder, and grace are still read with branch merge in membership lifecycle paths. Catalog and enrollments live under <a href="/memberships">Memberships</a>.</p>
+                    <p class="settings-card__help">Saves <strong>organization default</strong> only here. Terms, renewal reminder, and grace are still read with branch merge in membership lifecycle paths. Plan definitions → <a href="/memberships">Membership plans (Catalog)</a>. Active client enrollments → <a href="/memberships/client-memberships">Active client memberships (Clients)</a>.</p>
                     <div class="settings-grid">
                         <div class="setting-row"><label for="memberships-terms_text">Terms and conditions (membership signup)</label><textarea id="memberships-terms_text" name="settings[memberships.terms_text]" rows="4" maxlength="5000"><?= htmlspecialchars($membership['terms_text'] ?? '') ?></textarea></div>
                         <div class="setting-row"><label for="memberships-renewal_reminder_days">Renewal reminder (days before expiry)</label><input type="number" id="memberships-renewal_reminder_days" name="settings[memberships.renewal_reminder_days]" min="0" value="<?= (int) ($membership['renewal_reminder_days'] ?? 7) ?>"></div>
@@ -687,7 +688,7 @@ if (in_array($activeSection, ['establishment', 'cancellation', 'payments'], true
 <?php
 $settingsWorkspaceContent = (string) ob_get_clean();
 $settingsPageTitle = 'Admin';
-$settingsPageSubtitle = 'Configure your business. Use the sidebar to navigate editable settings areas.';
+$settingsPageSubtitle = 'Policies, controls, and defaults. Sidebar: editable Admin settings. Cross-links below open Catalog, Clients, Team, Sales, or Reports — not Admin-owned operational CRUD.';
 $settingsFlash = $flash ?? null;
 ob_start();
 require base_path('modules/settings/views/partials/shell.php');

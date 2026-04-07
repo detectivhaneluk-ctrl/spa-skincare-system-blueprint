@@ -30,6 +30,7 @@ final class SettingsShellSidebar
             'canViewStaffLink' => false,
             'canCreateStaffLink' => false,
             'canViewReportsLink' => false,
+            'canViewSalesLink' => false,
         ];
         if ($user === null) {
             return $defaults;
@@ -52,6 +53,7 @@ final class SettingsShellSidebar
             'canViewStaffLink' => $perm->has($uid, 'staff.view'),
             'canCreateStaffLink' => $perm->has($uid, 'staff.create'),
             'canViewReportsLink' => $perm->has($uid, 'reports.view'),
+            'canViewSalesLink' => $perm->has($uid, 'sales.view'),
         ];
     }
 }

@@ -2,7 +2,7 @@
 
 $settingsPageTitle = (string) ($settingsPageTitle ?? 'Admin');
 
-$settingsPageSubtitle = (string) ($settingsPageSubtitle ?? 'Configure your business settings from the sidebar.');
+$settingsPageSubtitle = (string) ($settingsPageSubtitle ?? 'Policies, controls, and defaults. Use the sidebar for editable Admin settings; cross-links below open other workspaces (Catalog, Clients, Team, Sales, Reports) — Admin does not own those operational surfaces.');
 
 $activeSection = (string) ($activeSettingsSection ?? 'establishment');
 
@@ -45,6 +45,10 @@ $canViewSettingsLink = !empty($canViewSettingsLink);
 $canViewStaffLink = !empty($canViewStaffLink);
 
 $canCreateStaffLink = !empty($canCreateStaffLink);
+
+$canViewReportsLink = !empty($canViewReportsLink);
+
+$canViewSalesLink = !empty($canViewSalesLink);
 
 $settingsUrl = static function (string $section, ?int $onlineBookingBranchIdParam = null, ?int $appointmentsBranchIdParam = null): string {
 
@@ -108,7 +112,10 @@ $hasAnyOperationalLink = $canViewBranchesLink
     || $canViewServicesResourcesLink
     || ($canViewStaffLink || $canCreateStaffLink || $canViewPayrollLink)
     || $canViewPackagesLink
-    || $canViewMembershipsLink;
+    || $canViewMembershipsLink
+    || $canViewReportsLink
+    || $canViewGiftCardsLink
+    || $canViewSalesLink;
 
 ?>
 
@@ -198,73 +205,95 @@ $hasAnyOperationalLink = $canViewBranchesLink
 
         </aside>
 
-        <section class="settings-workspace" aria-label="Admin workspace">
+        <section class="settings-workspace" aria-label="Admin settings workspace">
 
             <?= $settingsWorkspaceContent ?>
 
             <?php if ($hasAnyOperationalLink): ?>
-            <div class="settings-operational-areas" role="complementary" aria-label="Manage operational areas">
-                <h2 class="settings-operational-areas__title">Manage operational areas</h2>
-                <p class="settings-operational-areas__lead">These are separate operational modules, not editable settings.</p>
+            <div class="settings-operational-areas" role="complementary" aria-label="Shortcuts to other workspaces">
+                <h2 class="settings-operational-areas__title">Shortcuts to other workspaces</h2>
+                <p class="settings-operational-areas__lead">Admin is policy, controls, and defaults only. These links jump to Catalog, Clients, Team, Sales, or Reports — they are not Admin-owned CRUD surfaces.</p>
                 <div class="settings-operational-areas__grid">
 
                     <?php if ($canViewBranchesLink): ?>
                     <div class="settings-op-card">
-                        <h3 class="settings-op-card__title">Branches</h3>
-                        <p class="settings-op-card__desc">Manage physical locations and their configurations.</p>
-                        <a class="settings-op-card__link" href="/branches">Manage branches</a>
+                        <h3 class="settings-op-card__title">Branches registry (Admin)</h3>
+                        <p class="settings-op-card__desc">Organisation locations — branch list and configuration live here; primary nav highlights Admin on <code>/branches</code>.</p>
+                        <a class="settings-op-card__link" href="/branches">Open branches registry</a>
                     </div>
                     <?php endif; ?>
 
                     <?php if ($canViewStaffLink || $canCreateStaffLink || $canViewPayrollLink): ?>
                     <div class="settings-op-card">
                         <h3 class="settings-op-card__title">Team</h3>
-                        <p class="settings-op-card__desc">Staff profiles, groups, schedules, and payroll.</p>
+                        <p class="settings-op-card__desc">People and delivery capacity — primary home is <strong>Team</strong> in the main nav. Payroll <em>runs</em> are operations, not Admin policy.</p>
                         <?php if ($canViewStaffLink): ?>
-                        <a class="settings-op-card__link" href="/staff">View team</a>
+                        <a class="settings-op-card__link" href="/staff">Team directory (Team)</a>
                         <?php endif; ?>
                         <?php if ($canCreateStaffLink): ?>
-                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/staff/create">Add member</a>
+                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/staff/create">Add team member (Team)</a>
                         <?php endif; ?>
                         <?php if ($canViewPayrollLink): ?>
-                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/payroll/runs">Staff hours &amp; payroll</a>
+                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/payroll/runs">Payroll runs (Team)</a>
                         <?php endif; ?>
                     </div>
                     <?php endif; ?>
 
                     <?php if ($canViewServicesResourcesLink): ?>
                     <div class="settings-op-card">
-                        <h3 class="settings-op-card__title">Services</h3>
-                        <p class="settings-op-card__desc">Service catalog, categories, and pricing.</p>
-                        <a class="settings-op-card__link" href="/services-resources/services">View services</a>
-                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/services-resources/services/create">Add service</a>
+                        <h3 class="settings-op-card__title">Service catalog (Catalog)</h3>
+                        <p class="settings-op-card__desc">Services and categories — owned by <strong>Catalog</strong>, not Admin.</p>
+                        <a class="settings-op-card__link" href="/services-resources/services">View services (Catalog)</a>
+                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/services-resources/services/create">New service (Catalog)</a>
                     </div>
                     <?php endif; ?>
 
                     <?php if ($canViewServicesResourcesLink): ?>
                     <div class="settings-op-card">
-                        <h3 class="settings-op-card__title">Spaces &amp; Equipment</h3>
-                        <p class="settings-op-card__desc">Treatment rooms, spaces, and equipment resources.</p>
-                        <a class="settings-op-card__link" href="/services-resources/rooms">Spaces</a>
-                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/services-resources/equipment">Equipment</a>
+                        <h3 class="settings-op-card__title">Spaces &amp; equipment (Catalog)</h3>
+                        <p class="settings-op-card__desc">Rooms and equipment resources — <strong>Catalog</strong> definitions.</p>
+                        <a class="settings-op-card__link" href="/services-resources/rooms">Spaces (Catalog)</a>
+                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/services-resources/equipment">Equipment (Catalog)</a>
                     </div>
                     <?php endif; ?>
 
                     <?php if ($canViewPackagesLink): ?>
                     <div class="settings-op-card">
                         <h3 class="settings-op-card__title">Packages</h3>
-                        <p class="settings-op-card__desc">Shortcuts: package <strong>plan definitions</strong> live in <strong>Catalog</strong>; packages attached to clients live under <strong>Clients</strong>. Checkout and invoices live under <strong>Sales</strong>.</p>
+                        <p class="settings-op-card__desc">Plan definitions → <strong>Catalog</strong>. Packages clients hold → <strong>Clients</strong>. Checkout and invoices → <strong>Sales</strong>.</p>
                         <a class="settings-op-card__link" href="/packages">Package plans (Catalog)</a>
-                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/packages/client-packages">Client packages</a>
+                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/packages/client-packages">Client packages (Clients)</a>
                     </div>
                     <?php endif; ?>
 
                     <?php if ($canViewMembershipsLink): ?>
                     <div class="settings-op-card">
                         <h3 class="settings-op-card__title">Memberships</h3>
-                        <p class="settings-op-card__desc">Shortcuts: plan definitions live in <strong>Catalog</strong>; records attached to clients live under <strong>Clients</strong>. Policy and default renewal text live under <a href="<?= htmlspecialchars($settingsUrl('memberships')) ?>">Membership Defaults</a>.</p>
+                        <p class="settings-op-card__desc">Plan definitions → <strong>Catalog</strong>. Client-held records → <strong>Clients</strong>. Default terms and policy text → <a href="<?= htmlspecialchars($settingsUrl('memberships')) ?>">Membership Defaults</a> (this Admin section).</p>
                         <a class="settings-op-card__link" href="/memberships">Membership plans (Catalog)</a>
-                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/memberships/client-memberships">Active client memberships</a>
+                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/memberships/client-memberships">Active client memberships (Clients)</a>
+                    </div>
+                    <?php endif; ?>
+
+                    <?php if ($canViewSalesLink || $canViewGiftCardsLink): ?>
+                    <div class="settings-op-card">
+                        <h3 class="settings-op-card__title">Sales</h3>
+                        <p class="settings-op-card__desc">Money movement, checkout, invoices, and stored-value — primary home is <strong>Sales</strong> in the main nav.</p>
+                        <?php if ($canViewSalesLink): ?>
+                        <a class="settings-op-card__link" href="/sales">Checkout (Sales)</a>
+                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/sales/invoices">Invoices (Sales)</a>
+                        <?php endif; ?>
+                        <?php if ($canViewGiftCardsLink): ?>
+                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/gift-cards">Gift cards (Sales)</a>
+                        <?php endif; ?>
+                    </div>
+                    <?php endif; ?>
+
+                    <?php if ($canViewReportsLink): ?>
+                    <div class="settings-op-card">
+                        <h3 class="settings-op-card__title">Reports</h3>
+                        <p class="settings-op-card__desc">Measurement and JSON report endpoints — primary home is <strong>Reports</strong>, not an Admin report center.</p>
+                        <a class="settings-op-card__link" href="/reports">Reports home (Reports)</a>
                     </div>
                     <?php endif; ?>
 
