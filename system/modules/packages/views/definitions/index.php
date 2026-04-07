@@ -5,11 +5,11 @@ ob_start();
 $salesWorkspaceShellModifier = 'workspace-shell--list';
 $salesWorkspaceActiveTab = '';
 $salesWorkspaceShellTitle = 'Package plans';
-$salesWorkspaceShellSub = 'Definitions — main nav: Catalog. Client-held packages: Clients. Checkout: Sales.';
+$salesWorkspaceShellSub = 'Catalog package plans (templates). Client-held records: Clients. Checkout may sell a plan assignment: Sales — not the home for definitions or held records.';
 require base_path('modules/sales/views/partials/sales-workspace-shell.php');
 ?>
 <h2 class="sales-workspace-section-title">Packages</h2>
-<p class="hint" style="margin-top:0;">Package plan definitions — session counts, validity, and price. Packages clients hold are managed in Clients (main navigation), not on this screen.</p>
+<p class="hint" style="margin-top:0;"><strong>Catalog</strong> — Package plan definitions (sessions, validity, price): templates, not rows a client already holds. Client-held packages are managed in Clients (main navigation), not on this screen.</p>
 <?php if ($flash && is_array($flash)): $t = array_key_first($flash); ?>
 <div class="flash flash-<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($flash[$t] ?? '') ?></div>
 <?php endif; ?>
@@ -58,7 +58,7 @@ require base_path('modules/sales/views/partials/sales-workspace-shell.php');
         <td><?= (int) $p['total_sessions'] ?></td>
         <td><?= $p['validity_days'] !== null ? (int) $p['validity_days'] : '—' ?></td>
         <td><?= $p['price'] !== null ? number_format((float) $p['price'], 2) : '—' ?></td>
-        <td><?= $p['branch_id'] ? ('#' . (int) $p['branch_id']) : 'Global' ?></td>
+        <td><?= $p['branch_id'] ? ('#' . (int) $p['branch_id']) : 'Organisation-wide' ?></td>
         <td><a href="/packages/<?= (int) $p['id'] ?>/edit">Edit</a></td>
     </tr>
     <?php endforeach; ?>

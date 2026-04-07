@@ -1,14 +1,15 @@
 <?php
-$title = 'Edit Package Definition';
+$title = 'Edit package plan (Catalog)';
 $mainClass = 'sales-workspace-page';
 ob_start();
 $salesWorkspaceShellModifier = 'workspace-shell--list';
 $salesWorkspaceActiveTab = '';
 $salesWorkspaceShellTitle = 'Package plans';
-$salesWorkspaceShellSub = 'Definitions — main nav: Catalog. Client-held packages: Clients. Checkout: Sales.';
+$salesWorkspaceShellSub = 'Catalog package plans (templates). Client-held records: Clients. Checkout may sell a plan assignment: Sales — not the home for definitions or held records.';
 require base_path('modules/sales/views/partials/sales-workspace-shell.php');
 ?>
-<h2 class="sales-workspace-section-title">Edit Package Definition</h2>
+<h2 class="sales-workspace-section-title">Edit package plan</h2>
+<p class="hint" style="margin-top:0;"><strong>Catalog</strong> — you are editing the <strong>plan template</strong>. Rows a client already holds stay under <strong>Clients</strong> (client-held packages), not here.</p>
 <?php if (!empty($errors)): ?>
 <ul class="form-errors">
     <?php if (!empty($errors['_general'])): ?><li><?= htmlspecialchars($errors['_general']) ?></li><?php endif; ?>
@@ -41,12 +42,12 @@ require base_path('modules/sales/views/partials/sales-workspace-shell.php');
     <div class="form-row">
         <label for="branch_id">Branch</label>
         <select id="branch_id" name="branch_id">
-            <option value="">Global</option>
+            <option value="">Organisation-wide</option>
             <?php foreach ($branches as $b): ?>
             <option value="<?= (int) $b['id'] ?>" <?= ((string) ($package['branch_id'] ?? '') === (string) $b['id']) ? 'selected' : '' ?>><?= htmlspecialchars($b['name']) ?></option>
             <?php endforeach; ?>
         </select>
     </div>
-    <div class="form-actions"><button type="submit">Save</button> <a href="/packages">Back</a></div>
+    <div class="form-actions"><button type="submit">Save</button> <a href="/packages">← Package plans</a></div>
 </form>
 <?php $content = ob_get_clean(); require shared_path('layout/base.php'); ?>

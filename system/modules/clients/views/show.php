@@ -50,7 +50,7 @@ ob_start();
                 <p class="hint">No package assignments in the recent list.</p>
                 <?php else: ?>
                 <table class="index-table">
-                    <thead><tr><th>Package</th><th>Status</th><th>Sessions</th><th>Expires</th><th></th></tr></thead>
+                    <thead><tr><th>Plan name</th><th>Status</th><th>Sessions</th><th>Expires</th><th></th></tr></thead>
                     <tbody>
                     <?php foreach ($rp as $row): ?>
                     <tr>

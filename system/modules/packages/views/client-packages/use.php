@@ -1,15 +1,16 @@
 <?php
-$title = 'Use Package Session';
+$title = 'Use package session';
 $mainClass = 'sales-workspace-page';
 ob_start();
 $salesWorkspaceShellModifier = 'workspace-shell--list';
 $salesWorkspaceActiveTab = '';
 $salesWorkspaceShellTitle = 'Client packages';
-$salesWorkspaceShellSub = 'Packages clients hold — main nav: Clients. Plan definitions: Catalog. Checkout: Sales.';
+$salesWorkspaceShellSub = 'Client-held package records (Clients). Plan templates: Catalog. Checkout can sell an assignment: Sales — not where definitions live.';
 require base_path('modules/sales/views/partials/sales-workspace-shell.php');
 ?>
-<h2 class="sales-workspace-section-title">Use Package Session</h2>
-<p><strong>Client Package #<?= (int) $clientPackage['id'] ?></strong> · <?= htmlspecialchars($clientPackage['package_name']) ?> · Remaining: <?= (int) $currentRemaining ?></p>
+<h2 class="sales-workspace-section-title">Use package session</h2>
+<p class="hint" style="margin-top:0;"><strong>Client-held record</strong> — records usage against this client&rsquo;s package; plan definitions stay in <strong>Catalog</strong>.</p>
+<p><strong>Client-held #<?= (int) $clientPackage['id'] ?></strong> · <?= htmlspecialchars($clientPackage['package_name']) ?> · Remaining: <?= (int) $currentRemaining ?></p>
 <?php if (!empty($errors)): ?>
 <ul class="form-errors">
     <?php if (!empty($errors['_general'])): ?><li><?= htmlspecialchars($errors['_general']) ?></li><?php endif; ?>

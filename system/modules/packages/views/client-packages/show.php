@@ -1,28 +1,33 @@
 <?php
-$title = 'Client Package Details';
+$title = 'Client-held package';
 $mainClass = 'sales-workspace-page';
 ob_start();
 $salesWorkspaceShellModifier = 'workspace-shell--list';
 $salesWorkspaceActiveTab = '';
 $salesWorkspaceShellTitle = 'Client packages';
-$salesWorkspaceShellSub = 'Packages clients hold — main nav: Clients. Plan definitions: Catalog. Checkout: Sales.';
+$salesWorkspaceShellSub = 'Client-held package records (Clients). Plan templates: Catalog. Checkout can sell an assignment: Sales — not where definitions live.';
 require base_path('modules/sales/views/partials/sales-workspace-shell.php');
 ?>
-<h2 class="sales-workspace-section-title">Client Package #<?= (int) $clientPackage['id'] ?></h2>
+<h2 class="sales-workspace-section-title">Client-held package #<?= (int) $clientPackage['id'] ?></h2>
+<?php
+$cpClientId = (int) ($clientPackage['client_id'] ?? 0);
+$cpClientProfileHref = $cpClientId > 0 ? '/clients/' . $cpClientId : '/clients';
+?>
+<p class="hint" style="margin-top:0;"><strong>Clients-owned record</strong> — sessions remaining, usage, and expiry for this client. The <strong>package plan</strong> (template) is maintained in <strong>Catalog</strong> (<a href="/packages">Package plans</a>). Open the <a href="<?= htmlspecialchars($cpClientProfileHref, ENT_QUOTES, 'UTF-8') ?>">client profile</a> for the full Clients workspace.</p>
 <?php if (!empty($flash) && is_array($flash)): $t = array_key_first($flash); ?>
 <div class="flash flash-<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($flash[$t] ?? '') ?></div>
 <?php endif; ?>
 <p><strong>Client:</strong> <?= htmlspecialchars($clientPackage['client_display']) ?></p>
-<p><strong>Package:</strong> <?= htmlspecialchars($clientPackage['package_name']) ?></p>
+<p><strong>Plan (template name):</strong> <?= htmlspecialchars($clientPackage['package_name']) ?></p>
 <p><strong>Status:</strong> <span class="badge badge-muted"><?= htmlspecialchars($clientPackage['status']) ?></span></p>
 <p><strong>Assigned:</strong> <?= (int) $clientPackage['assigned_sessions'] ?> | <strong>Remaining:</strong> <span class="badge <?= $currentRemaining <= 0 ? 'badge-warn' : 'badge-success' ?>"><?= (int) $currentRemaining ?></span></p>
 <p><strong>Assigned At:</strong> <?= htmlspecialchars($clientPackage['assigned_at']) ?> | <strong>Expires At:</strong> <?= htmlspecialchars($clientPackage['expires_at'] ?? '—') ?></p>
-<p><strong>Branch:</strong> <?= $clientPackage['branch_id'] ? ('#' . (int) $clientPackage['branch_id']) : 'Global' ?></p>
+<p><strong>Branch:</strong> <?= $clientPackage['branch_id'] ? ('#' . (int) $clientPackage['branch_id']) : 'Organisation-wide' ?></p>
 
 <p>
     <a class="btn" href="/packages/client-packages/<?= (int) $clientPackage['id'] ?>/use">Use Session</a>
     <a class="btn" href="/packages/client-packages/<?= (int) $clientPackage['id'] ?>/adjust">Adjust Sessions</a>
-    <a class="btn" href="/packages/client-packages">Back to List</a>
+    <a class="btn" href="/packages/client-packages">← Client-held packages</a>
 </p>
 
 <h2>Reverse Usage</h2>

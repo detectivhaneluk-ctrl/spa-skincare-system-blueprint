@@ -30,7 +30,13 @@ $rmShow  = $base . '/modules/services-resources/views/rooms/show.php';
 $memDef  = $base . '/modules/memberships/views/definitions/index.php';
 $memCli  = $base . '/modules/memberships/views/client-memberships/index.php';
 $pkgDef  = $base . '/modules/packages/views/definitions/index.php';
+$pkgDefCreate = $base . '/modules/packages/views/definitions/create.php';
+$pkgDefEdit = $base . '/modules/packages/views/definitions/edit.php';
 $pkgCli  = $base . '/modules/packages/views/client-packages/index.php';
+$pkgCliShow = $base . '/modules/packages/views/client-packages/show.php';
+$pkgCliAssign = $base . '/modules/packages/views/client-packages/assign.php';
+$pkgCliAdjust = $base . '/modules/packages/views/client-packages/adjust.php';
+$pkgCliUse = $base . '/modules/packages/views/client-packages/use.php';
 $gcIdx   = $base . '/modules/gift-cards/views/index.php';
 $gcIssue = $base . '/modules/gift-cards/views/issue.php';
 $gcRdm   = $base . '/modules/gift-cards/views/redeem.php';
@@ -127,6 +133,13 @@ chk('H6: Organisation-wide only filter', $pkgDef, 'Organisation-wide only');
 chk('H7: old All branches (explicit mix) absent', $pkgDef, 'All branches (explicit mix)', false);
 chk('H8: business scope hint updated', $pkgDef, 'Organisation-wide plans are available across all branches');
 chk('H9: /packages/create route unchanged', $pkgDef, '/packages/create');
+chk('H10: definitions create teaches Catalog plan template', $pkgDefCreate, 'plan template');
+chk('H11: definitions create h2 New package plan', $pkgDefCreate, 'New package plan');
+chk('H12: definitions create POST /packages unchanged', $pkgDefCreate, 'action="/packages"');
+chk('H13: definitions edit teaches plan template vs held record', $pkgDefEdit, 'plan template');
+chk('H14: definitions edit back link Package plans', $pkgDefEdit, '← Package plans');
+chk('H15: definitions create branch option Organisation-wide', $pkgDefCreate, 'Organisation-wide');
+chk('H16: old Global branch option absent on definitions create', $pkgDefCreate, '>Global</option>', false);
 
 // ── I. Client packages subscreen ─────────────────────────────────────────────
 chk('I1: Client packages hint present', $pkgCli, 'Packages currently held by clients');
@@ -137,6 +150,14 @@ chk('I5: Organisation-wide only filter in client packages', $pkgCli, 'Organisati
 chk('I6: old All branches (explicit mix) absent', $pkgCli, 'All branches (explicit mix)', false);
 chk('I7: branch hint updated (no explicit mix language)', $pkgCli, 'Branch-assigned packages are managed within their branch');
 chk('I8: /packages/client-packages/assign route unchanged', $pkgCli, '/packages/client-packages/assign');
+chk('I9: client-held package show Clients-owned framing', $pkgCliShow, 'Clients-owned record');
+chk('I10: assign teaches client-held vs Catalog plan', $pkgCliAssign, 'client-held');
+chk('I11: assign label Package plan (Catalog)', $pkgCliAssign, 'Package plan (Catalog)');
+chk('I12: assign POST route unchanged', $pkgCliAssign, 'action="/packages/client-packages/assign"');
+chk('I13: adjust teaches client-held not template', $pkgCliAdjust, 'Client-held record');
+chk('I14: use teaches client-held vs Catalog', $pkgCliUse, 'Client-held record');
+chk('I15: show links client profile', $pkgCliShow, 'client profile</a>');
+chk('I16: show back Client-held packages', $pkgCliShow, '← Client-held packages');
 
 // ── J. Gift cards index ───────────────────────────────────────────────────────
 chk('J1: Gift Cards h2 updated', $gcIdx, 'Gift Cards</h2>');

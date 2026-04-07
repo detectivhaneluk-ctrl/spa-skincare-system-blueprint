@@ -1,14 +1,15 @@
 <?php
-$title = 'Assign Package to Client';
+$title = 'Assign package to client';
 $mainClass = 'sales-workspace-page';
 ob_start();
 $salesWorkspaceShellModifier = 'workspace-shell--list';
 $salesWorkspaceActiveTab = '';
 $salesWorkspaceShellTitle = 'Client packages';
-$salesWorkspaceShellSub = 'Packages clients hold — main nav: Clients. Plan definitions: Catalog. Checkout: Sales.';
+$salesWorkspaceShellSub = 'Client-held package records (Clients). Plan templates: Catalog. Checkout can sell an assignment: Sales — not where definitions live.';
 require base_path('modules/sales/views/partials/sales-workspace-shell.php');
 ?>
-<h2 class="sales-workspace-section-title">Assign Package to Client</h2>
+<h2 class="sales-workspace-section-title">Assign package to client</h2>
+<p class="hint" style="margin-top:0;">Creates a <strong>client-held</strong> record from a <strong>Catalog plan</strong> you pick below (administrative assignment). Selling through <strong>New sale</strong> in Sales does the same commercially; neither screen replaces Catalog plan definitions.</p>
 <?php if (!empty($errors)): ?>
 <ul class="form-errors">
     <?php if (!empty($errors['_general'])): ?><li><?= htmlspecialchars($errors['_general']) ?></li><?php endif; ?>
@@ -23,19 +24,19 @@ require base_path('modules/sales/views/partials/sales-workspace-shell.php');
     <div class="form-row">
         <label for="branch_id">Branch</label>
         <select id="branch_id" name="branch_id">
-            <option value="">Global</option>
+            <option value="">Organisation-wide</option>
             <?php foreach ($branches as $b): ?>
             <option value="<?= (int) $b['id'] ?>" <?= ((string) ($assignment['branch_id'] ?? '') === (string) $b['id']) ? 'selected' : '' ?>><?= htmlspecialchars($b['name']) ?></option>
             <?php endforeach; ?>
         </select>
     </div>
     <div class="form-row">
-        <label for="package_id">Package *</label>
+        <label for="package_id">Package plan (Catalog) *</label>
         <select id="package_id" name="package_id" required>
-            <option value="">Select package</option>
+            <option value="">Select plan</option>
             <?php foreach ($packageDefs as $p): ?>
             <option value="<?= (int) $p['id'] ?>" <?= ((string) ($assignment['package_id'] ?? '') === (string) $p['id']) ? 'selected' : '' ?>>
-                <?= htmlspecialchars($p['name']) ?> (<?= (int) $p['total_sessions'] ?> sessions, <?= $p['branch_id'] ? ('branch #' . (int) $p['branch_id']) : 'global' ?>)
+                <?= htmlspecialchars($p['name']) ?> (<?= (int) $p['total_sessions'] ?> sessions, <?= $p['branch_id'] ? ('branch #' . (int) $p['branch_id']) : 'organisation-wide' ?>)
             </option>
             <?php endforeach; ?>
         </select>
