@@ -37,25 +37,12 @@ if ($appointmentsBranchId > 0) {
         }
     }
 }
-$canViewBranchesLink = !empty($canViewBranchesLink);
-$canViewGiftCardsLink = !empty($canViewGiftCardsLink);
-$canViewPackagesLink = !empty($canViewPackagesLink);
-$canViewMembershipsLink = !empty($canViewMembershipsLink);
 $canManageMembershipsLink = !empty($canManageMembershipsLink);
-$canViewPayrollLink = !empty($canViewPayrollLink);
-$canViewServicesResourcesLink = !empty($canViewServicesResourcesLink);
-$canViewPaymentMethodsLink = !empty($canViewPaymentMethodsLink);
-$canViewVatRatesLink = !empty($canViewVatRatesLink);
-$canViewSettingsLink = !empty($canViewSettingsLink);
-$canViewStaffLink = !empty($canViewStaffLink);
 $paymentsBranchId = (int) ($paymentsBranchId ?? 0);
 $waitlistBranchId = (int) ($waitlistBranchId ?? 0);
 $marketingBranchId = (int) ($marketingBranchId ?? 0);
 $paymentMethodsEffective = isset($paymentMethodsEffective) && is_array($paymentMethodsEffective) ? $paymentMethodsEffective : [];
 $paymentEdit = (string) ($paymentEdit ?? '');
-$canCreateStaffLink = !empty($canCreateStaffLink);
-$canViewReportsLink = !empty($canViewReportsLink);
-$canViewSalesLink = !empty($canViewSalesLink);
 $selectedBranchName = '';
 $waitlistBranchName = '';
 $marketingBranchName = '';
@@ -541,7 +528,7 @@ if (in_array($activeSection, ['establishment', 'cancellation', 'payments'], true
                 <input type="hidden" name="section" value="memberships">
                 <section class="settings-card">
                     <h2>Membership defaults</h2>
-                    <p class="settings-card__help">Saves <strong>organization default</strong> only here. Terms, renewal reminder, and grace are still read with branch merge in membership lifecycle paths. Plan definitions → <a href="/memberships">Membership plans (Catalog)</a>. Active client enrollments → <a href="/memberships/client-memberships">Active client memberships (Clients)</a>.</p>
+                    <p class="settings-card__help">Saves <strong>organization default</strong> only here. Terms, renewal reminder, and grace are still read with branch merge in membership lifecycle paths. Membership <em>plan</em> definitions are managed in Catalog. Active client enrollments are managed in Clients.</p>
                     <div class="settings-grid">
                         <div class="setting-row"><label for="memberships-terms_text">Terms and conditions (membership signup)</label><textarea id="memberships-terms_text" name="settings[memberships.terms_text]" rows="4" maxlength="5000"><?= htmlspecialchars($membership['terms_text'] ?? '') ?></textarea></div>
                         <div class="setting-row"><label for="memberships-renewal_reminder_days">Renewal reminder (days before expiry)</label><input type="number" id="memberships-renewal_reminder_days" name="settings[memberships.renewal_reminder_days]" min="0" value="<?= (int) ($membership['renewal_reminder_days'] ?? 7) ?>"></div>
@@ -688,7 +675,7 @@ if (in_array($activeSection, ['establishment', 'cancellation', 'payments'], true
 <?php
 $settingsWorkspaceContent = (string) ob_get_clean();
 $settingsPageTitle = 'Admin';
-$settingsPageSubtitle = 'Policies, controls, and defaults. Sidebar: editable Admin settings. Cross-links below open Catalog, Clients, Team, Sales, or Reports — not Admin-owned operational CRUD.';
+$settingsPageSubtitle = 'Policies, controls, and defaults. Sidebar: editable Admin settings. Use the main navigation for operational workspaces — Admin stays control-plane only.';
 $settingsFlash = $flash ?? null;
 ob_start();
 require base_path('modules/settings/views/partials/shell.php');

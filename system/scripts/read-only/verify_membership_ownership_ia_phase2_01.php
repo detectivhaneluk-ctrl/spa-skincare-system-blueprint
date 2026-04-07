@@ -1,7 +1,7 @@
 <?php
 /**
  * Read-only verifier: MEMBERSHIP-OWNERSHIP-IA-PHASE2-01
- * Plan definitions → Catalog; client-held records → Clients; refund-review + settings → Admin.
+ * Plan definitions → Catalog; client-held records → Clients; refund-review + settings policy → Admin (no Settings launcher hub).
  *
  * Run: php system/scripts/read-only/verify_membership_ownership_ia_phase2_01.php
  */
@@ -32,7 +32,7 @@ function mchk(string $label, string $file, string $needle, bool $want = true): v
 $base = dirname(__DIR__, 2);
 $navB = $base . '/shared/layout/base.php';
 $hub = $base . '/modules/services-resources/views/index.php';
-$shell = $base . '/modules/settings/views/partials/shell.php';
+$setIdx = $base . '/modules/settings/views/index.php';
 $clIdx = $base . '/modules/clients/views/index.php';
 
 mchk('M1: navIsClientsMemberships present', $navB, '$navIsClientsMemberships');
@@ -43,7 +43,8 @@ mchk('M5: settingsActivePrefixes has only settings + branches', $navB, "'/settin
 mchk('M6: catalog hub does not link client-memberships as secondary hub card', $hub, 'href="/memberships/client-memberships"', false);
 mchk('M7: catalog hub links Clients for held-membership discovery', $hub, 'href="/clients"');
 mchk('M8: catalog hub still links plan list', $hub, 'href="/memberships"');
-mchk('M9: settings shell names Catalog + Clients for membership shortcuts', $shell, 'Membership plans (Catalog)');
+mchk('M9: membership defaults (settings index) names Catalog + Clients without outbound links', $setIdx, 'definitions are managed in Catalog');
+mchk('M9b: membership defaults names Clients enrollment home in prose', $setIdx, 'enrollments are managed in Clients');
 mchk('M10: clients list toolbar links active memberships', $clIdx, 'href="/memberships/client-memberships"');
 
 echo "\nVERIFIER: verify_membership_ownership_ia_phase2_01\n";

@@ -83,10 +83,11 @@ assert_contains('D6: Packages launcher node absent from sidebar nav tree', $shel
 assert_contains('D7: Memberships catalog launcher node absent from sidebar nav tree', $shellPhp, "data-group=\"memberships\"", false);
 
 // ──────────────────────────────────────────────────────────────────────────────
-// E. Operational areas block is present in shell (for permission-safe links)
+// E. Settings shell is control-plane only (no second operational launcher hub)
 // ──────────────────────────────────────────────────────────────────────────────
-assert_contains('E1: operational areas block present in shell', $shellPhp, 'settings-operational-areas');
-assert_contains('E2: operational areas block guarded by hasAnyOperationalLink', $shellPhp, '$hasAnyOperationalLink');
+assert_contains('E1: operational shortcuts grid absent from shell', $shellPhp, 'settings-operational-areas', false);
+assert_contains('E2: hasAnyOperationalLink guard absent from shell', $shellPhp, '$hasAnyOperationalLink', false);
+assert_contains('E3: no outbound Sales href in settings shell', $shellPhp, 'href="/sales"', false);
 
 // ──────────────────────────────────────────────────────────────────────────────
 // F. Visible Admin labels updated to business-first names

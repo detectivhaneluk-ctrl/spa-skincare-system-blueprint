@@ -2,7 +2,7 @@
 
 $settingsPageTitle = (string) ($settingsPageTitle ?? 'Admin');
 
-$settingsPageSubtitle = (string) ($settingsPageSubtitle ?? 'Policies, controls, and defaults. Use the sidebar for editable Admin settings; cross-links below open other workspaces (Catalog, Clients, Team, Sales, Reports) — Admin does not own those operational surfaces.');
+$settingsPageSubtitle = (string) ($settingsPageSubtitle ?? 'Policies, controls, and defaults. Use the sidebar for editable Admin settings. Operational work lives under its primary home in the main navigation — Admin is not a second launcher hub.');
 
 $activeSection = (string) ($activeSettingsSection ?? 'establishment');
 
@@ -22,18 +22,6 @@ if ($paymentsBranchId > 0) {
 }
 $settingsPaymentsUrl = '/settings?' . http_build_query($settingsPaymentsQuery);
 
-$canViewBranchesLink = !empty($canViewBranchesLink);
-
-$canViewServicesResourcesLink = !empty($canViewServicesResourcesLink);
-
-$canViewGiftCardsLink = !empty($canViewGiftCardsLink);
-
-$canViewPackagesLink = !empty($canViewPackagesLink);
-
-$canViewMembershipsLink = !empty($canViewMembershipsLink);
-
-$canViewPayrollLink = !empty($canViewPayrollLink);
-
 $canViewPaymentMethodsLink = !empty($canViewPaymentMethodsLink);
 
 $canViewPriceModificationReasonsLink = !empty($canViewPriceModificationReasonsLink);
@@ -41,14 +29,6 @@ $canViewPriceModificationReasonsLink = !empty($canViewPriceModificationReasonsLi
 $canViewVatRatesLink = !empty($canViewVatRatesLink);
 
 $canViewSettingsLink = !empty($canViewSettingsLink);
-
-$canViewStaffLink = !empty($canViewStaffLink);
-
-$canCreateStaffLink = !empty($canCreateStaffLink);
-
-$canViewReportsLink = !empty($canViewReportsLink);
-
-$canViewSalesLink = !empty($canViewSalesLink);
 
 $settingsUrl = static function (string $section, ?int $onlineBookingBranchIdParam = null, ?int $appointmentsBranchIdParam = null): string {
 
@@ -107,15 +87,6 @@ $nativeSections = [
 $isNativeActive = in_array($activeSection, $nativeSections, true);
 
 $activeDirectoryGroup = $isNativeActive ? 'general' : '';
-
-$hasAnyOperationalLink = $canViewBranchesLink
-    || $canViewServicesResourcesLink
-    || ($canViewStaffLink || $canCreateStaffLink || $canViewPayrollLink)
-    || $canViewPackagesLink
-    || $canViewMembershipsLink
-    || $canViewReportsLink
-    || $canViewGiftCardsLink
-    || $canViewSalesLink;
 
 ?>
 
@@ -209,98 +180,6 @@ $hasAnyOperationalLink = $canViewBranchesLink
 
             <?= $settingsWorkspaceContent ?>
 
-            <?php if ($hasAnyOperationalLink): ?>
-            <div class="settings-operational-areas" role="complementary" aria-label="Shortcuts to other workspaces">
-                <h2 class="settings-operational-areas__title">Shortcuts to other workspaces</h2>
-                <p class="settings-operational-areas__lead">Admin is policy, controls, and defaults only. These links jump to Catalog, Clients, Team, Sales, or Reports — they are not Admin-owned CRUD surfaces.</p>
-                <div class="settings-operational-areas__grid">
-
-                    <?php if ($canViewBranchesLink): ?>
-                    <div class="settings-op-card">
-                        <h3 class="settings-op-card__title">Branches registry (Admin)</h3>
-                        <p class="settings-op-card__desc">Organisation locations — branch list and configuration live here; primary nav highlights Admin on <code>/branches</code>.</p>
-                        <a class="settings-op-card__link" href="/branches">Open branches registry</a>
-                    </div>
-                    <?php endif; ?>
-
-                    <?php if ($canViewStaffLink || $canCreateStaffLink || $canViewPayrollLink): ?>
-                    <div class="settings-op-card">
-                        <h3 class="settings-op-card__title">Team</h3>
-                        <p class="settings-op-card__desc">People and delivery capacity — primary home is <strong>Team</strong> in the main nav. Payroll <em>runs</em> are operations, not Admin policy.</p>
-                        <?php if ($canViewStaffLink): ?>
-                        <a class="settings-op-card__link" href="/staff">Team directory (Team)</a>
-                        <?php endif; ?>
-                        <?php if ($canCreateStaffLink): ?>
-                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/staff/create">Add team member (Team)</a>
-                        <?php endif; ?>
-                        <?php if ($canViewPayrollLink): ?>
-                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/payroll/runs">Payroll runs (Team)</a>
-                        <?php endif; ?>
-                    </div>
-                    <?php endif; ?>
-
-                    <?php if ($canViewServicesResourcesLink): ?>
-                    <div class="settings-op-card">
-                        <h3 class="settings-op-card__title">Service catalog (Catalog)</h3>
-                        <p class="settings-op-card__desc">Services and categories — owned by <strong>Catalog</strong>, not Admin.</p>
-                        <a class="settings-op-card__link" href="/services-resources/services">View services (Catalog)</a>
-                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/services-resources/services/create">New service (Catalog)</a>
-                    </div>
-                    <?php endif; ?>
-
-                    <?php if ($canViewServicesResourcesLink): ?>
-                    <div class="settings-op-card">
-                        <h3 class="settings-op-card__title">Spaces &amp; equipment (Catalog)</h3>
-                        <p class="settings-op-card__desc">Rooms and equipment resources — <strong>Catalog</strong> definitions.</p>
-                        <a class="settings-op-card__link" href="/services-resources/rooms">Spaces (Catalog)</a>
-                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/services-resources/equipment">Equipment (Catalog)</a>
-                    </div>
-                    <?php endif; ?>
-
-                    <?php if ($canViewPackagesLink): ?>
-                    <div class="settings-op-card">
-                        <h3 class="settings-op-card__title">Packages</h3>
-                        <p class="settings-op-card__desc">Plan definitions → <strong>Catalog</strong>. Packages clients hold → <strong>Clients</strong>. Checkout and invoices → <strong>Sales</strong>.</p>
-                        <a class="settings-op-card__link" href="/packages">Package plans (Catalog)</a>
-                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/packages/client-packages">Client packages (Clients)</a>
-                    </div>
-                    <?php endif; ?>
-
-                    <?php if ($canViewMembershipsLink): ?>
-                    <div class="settings-op-card">
-                        <h3 class="settings-op-card__title">Memberships</h3>
-                        <p class="settings-op-card__desc">Plan definitions → <strong>Catalog</strong>. Client-held records → <strong>Clients</strong>. Default terms and policy text → <a href="<?= htmlspecialchars($settingsUrl('memberships')) ?>">Membership Defaults</a> (this Admin section).</p>
-                        <a class="settings-op-card__link" href="/memberships">Membership plans (Catalog)</a>
-                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/memberships/client-memberships">Active client memberships (Clients)</a>
-                    </div>
-                    <?php endif; ?>
-
-                    <?php if ($canViewSalesLink || $canViewGiftCardsLink): ?>
-                    <div class="settings-op-card">
-                        <h3 class="settings-op-card__title">Sales</h3>
-                        <p class="settings-op-card__desc">Money movement, checkout, invoices, and stored-value — primary home is <strong>Sales</strong> in the main nav.</p>
-                        <?php if ($canViewSalesLink): ?>
-                        <a class="settings-op-card__link" href="/sales">Checkout (Sales)</a>
-                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/sales/invoices">Invoices (Sales)</a>
-                        <?php endif; ?>
-                        <?php if ($canViewGiftCardsLink): ?>
-                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/gift-cards">Gift cards (Sales)</a>
-                        <?php endif; ?>
-                    </div>
-                    <?php endif; ?>
-
-                    <?php if ($canViewReportsLink): ?>
-                    <div class="settings-op-card">
-                        <h3 class="settings-op-card__title">Reports</h3>
-                        <p class="settings-op-card__desc">Measurement and JSON report endpoints — primary home is <strong>Reports</strong>, not an Admin report center.</p>
-                        <a class="settings-op-card__link" href="/reports">Reports home (Reports)</a>
-                    </div>
-                    <?php endif; ?>
-
-                </div>
-            </div>
-            <?php endif; ?>
-
         </section>
 
     </div>
@@ -348,118 +227,6 @@ $hasAnyOperationalLink = $canViewBranchesLink
     .settings-sidebar__info a {
 
         color: #2563eb;
-
-    }
-
-    .settings-operational-areas {
-
-        margin-top: 2.5rem;
-
-        padding-top: 1.5rem;
-
-        border-top: 2px solid #e5e7eb;
-
-    }
-
-    .settings-operational-areas__title {
-
-        margin: 0 0 0.3rem;
-
-        font-size: 1rem;
-
-        font-weight: 700;
-
-        color: #111827;
-
-    }
-
-    .settings-operational-areas__lead {
-
-        margin: 0 0 1rem;
-
-        font-size: 0.85rem;
-
-        color: #6b7280;
-
-    }
-
-    .settings-operational-areas__grid {
-
-        display: grid;
-
-        grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
-
-        gap: 0.85rem;
-
-    }
-
-    .settings-op-card {
-
-        padding: 0.9rem 1rem;
-
-        border: 1px solid #e5e7eb;
-
-        border-radius: 0.65rem;
-
-        background: #f9fafb;
-
-    }
-
-    .settings-op-card__title {
-
-        margin: 0 0 0.2rem;
-
-        font-size: 0.92rem;
-
-        font-weight: 600;
-
-        color: #111827;
-
-    }
-
-    .settings-op-card__desc {
-
-        margin: 0 0 0.65rem;
-
-        font-size: 0.82rem;
-
-        color: #4b5563;
-
-        line-height: 1.4;
-
-    }
-
-    .settings-op-card__desc a {
-
-        color: #2563eb;
-
-    }
-
-    .settings-op-card__link {
-
-        display: inline-block;
-
-        margin-right: 0.5rem;
-
-        margin-bottom: 0.25rem;
-
-        font-size: 0.83rem;
-
-        color: #2563eb;
-
-        text-decoration: none;
-
-    }
-
-    .settings-op-card__link:hover {
-
-        text-decoration: underline;
-
-    }
-
-    .settings-op-card__link--secondary {
-
-        color: #4b5563;
 
     }
 

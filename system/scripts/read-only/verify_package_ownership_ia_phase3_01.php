@@ -32,7 +32,7 @@ function pchk(string $label, string $file, string $needle, bool $want = true): v
 $base = dirname(__DIR__, 2);
 $navB = $base . '/shared/layout/base.php';
 $hub = $base . '/modules/services-resources/views/index.php';
-$shell = $base . '/modules/settings/views/partials/shell.php';
+$paySet = $base . '/modules/settings/views/partials/payment-settings.php';
 $clIdx = $base . '/modules/clients/views/index.php';
 $salesShell = $base . '/modules/sales/views/partials/sales-workspace-shell.php';
 $pkgDef = $base . '/modules/packages/views/definitions/index.php';
@@ -45,7 +45,8 @@ pchk('P5: catalog hub does not link client-packages as hub secondary', $hub, 'hr
 pchk('P6: catalog hub links Sales for checkout', $hub, 'href="/sales"');
 pchk('P7: catalog hub links Clients for held-package discovery', $hub, 'href="/clients"');
 pchk('P8: catalog hub still links plan list', $hub, 'href="/packages"');
-pchk('P9: settings packages card names Catalog + Clients + Sales', $shell, 'Package plans (Catalog)');
+pchk('P9: payments settings packages subsection names Catalog + Clients (no launcher)', $paySet, 'definitions are managed in Catalog');
+pchk('P9b: payments settings packages subsection names Clients for held packages', $paySet, 'client-held packages are managed in Clients');
 pchk('P10: clients list toolbar links client packages', $clIdx, 'href="/packages/client-packages"');
 pchk('P11: sales workspace shell supports title override', $salesShell, '$salesWorkspaceShellTitle');
 pchk('P12: package definitions view sets Catalog-oriented shell title', $pkgDef, '$salesWorkspaceShellTitle = \'Package plans\'');

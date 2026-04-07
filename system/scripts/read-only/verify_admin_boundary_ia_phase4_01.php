@@ -1,7 +1,7 @@
 <?php
 /**
- * Read-only verifier: ADMIN-BOUNDARY-IA-PHASE4-01
- * Admin shell reads as policy/controls/defaults; cross-links name canonical homes.
+ * Read-only verifier: ADMIN-BOUNDARY-IA-PHASE4-01 (control-plane honesty)
+ * Admin shell is policy/controls/defaults only — no duplicated operational launcher hub.
  *
  * Run: php system/scripts/read-only/verify_admin_boundary_ia_phase4_01.php
  */
@@ -33,21 +33,18 @@ $base = dirname(__DIR__, 2);
 $shell = $base . '/modules/settings/views/partials/shell.php';
 $side = $base . '/modules/settings/Support/SettingsShellSidebar.php';
 $idx = $base . '/modules/settings/views/index.php';
+$pay = $base . '/modules/settings/views/partials/payment-settings.php';
 
 achk('A1: shell default subtitle mentions policies/controls/defaults', $shell, 'Policies, controls, and defaults');
 achk('A2: cross-links section title not "Manage operational areas"', $shell, 'Manage operational areas', false);
-achk('A3: cross-links section is shortcuts framing', $shell, 'Shortcuts to other workspaces');
-achk('A4: payroll link labeled Team home', $shell, 'Payroll runs (Team)');
-achk('A5: client packages link labeled Clients', $shell, 'Client packages (Clients)');
-achk('A6: client memberships link labeled Clients', $shell, 'Active client memberships (Clients)');
-achk('A7: Reports cross-link with Reports home label', $shell, 'Reports home (Reports)');
-achk('A8: Reports href present', $shell, 'href="/reports"');
-achk('A9: Sales shortcuts card when permitted', $shell, 'Checkout (Sales)');
-achk('A10: Invoices Sales cross-link', $shell, 'Invoices (Sales)');
-achk('A11: Gift cards Sales cross-link', $shell, 'Gift cards (Sales)');
-achk('A12: branches card clarifies Admin registry', $shell, 'Branches registry (Admin)');
-achk('A13: SettingsShellSidebar exposes canViewSalesLink', $side, "'canViewSalesLink'");
-achk('A14: main settings index subtitle aligns with boundary', $idx, 'Policies, controls, and defaults');
+achk('A3: no "Shortcuts to other workspaces" launcher block', $shell, 'Shortcuts to other workspaces', false);
+achk('A4: no operational grid class in shell', $shell, 'settings-operational-areas', false);
+achk('A5: main settings index subtitle aligns with control-plane', $idx, 'Policies, controls, and defaults');
+achk('A6: membership defaults help has no /memberships href', $idx, 'href="/memberships"', false);
+achk('A7: payment-settings has no gift-cards launcher', $pay, 'href="/gift-cards"', false);
+achk('A8: payment-settings has no packages launcher', $pay, 'href="/packages"', false);
+achk('A9: payment-settings has no refund-review launcher', $pay, 'href="/memberships/refund-review"', false);
+achk('A10: SettingsShellSidebar still exposes permission flags for controller', $side, "'canViewSalesLink'");
 
 echo "\nVERIFIER: verify_admin_boundary_ia_phase4_01\n";
 echo str_repeat('─', 72) . "\n";

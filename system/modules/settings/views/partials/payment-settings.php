@@ -14,16 +14,10 @@ use Modules\Settings\Support\PaymentSettingsMethodBuckets;
 /** @var bool $canViewPriceModificationReasonsLink */
 /** @var bool $canViewVatRatesLink */
 /** @var bool $canViewSettingsLink */
-/** @var bool $canViewGiftCardsLink */
-/** @var bool $canViewPackagesLink */
-/** @var bool $canViewMembershipsLink */
 /** @var bool $canManageMembershipsLink */
 /** @var array<string, mixed> $receiptInvoice */
 /** @var string $receiptInvoiceFooterPreview */
 
-$canViewGiftCardsLink = !empty($canViewGiftCardsLink);
-$canViewPackagesLink = !empty($canViewPackagesLink);
-$canViewMembershipsLink = !empty($canViewMembershipsLink);
 $canManageMembershipsLink = !empty($canManageMembershipsLink);
 $canViewPriceModificationReasonsLink = !empty($canViewPriceModificationReasonsLink);
 
@@ -238,7 +232,7 @@ $cardsSummaryOther = $methodLines($buckets['other']);
 
         <section class="settings-establishment-card settings-payment-subsection" data-payment-mode="editable">
             <h3 class="settings-establishment-card__title">Gift cards</h3>
-            <p class="settings-establishment-card__help">Ownership moved: public/anonymous gift-card commerce controls live under Public Channels / Public Commerce. Catalog/redemption remains in Gift cards module.</p>
+            <p class="settings-establishment-card__help">Ownership moved: public/anonymous gift-card commerce controls live under Public Channels / Public Commerce. Issue, redemption, and balance operations for gift cards are managed from Sales in the main navigation.</p>
             <div class="settings-establishment-summary">
                 <div class="settings-establishment-summary__row">
                     <span class="settings-establishment-summary__key">Public gift card sales</span>
@@ -251,9 +245,6 @@ $cardsSummaryOther = $methodLines($buckets['other']);
             </div>
             <div class="settings-establishment-actions">
                 <a class="settings-establishment-btn" href="<?= htmlspecialchars($publicChannelsQuery($paymentsBranchId)) ?>">Open public commerce controls</a>
-                <?php if ($canViewGiftCardsLink): ?>
-                    <a class="settings-establishment-btn settings-establishment-btn--muted" href="/gift-cards">Open gift cards</a>
-                <?php endif; ?>
             </div>
         </section>
 
@@ -398,14 +389,7 @@ $cardsSummaryOther = $methodLines($buckets['other']);
 
         <section class="settings-establishment-card settings-payment-subsection settings-payment-subsection--linked settings-payment-subsection--compact-linked" data-payment-mode="linked">
             <h3 class="settings-establishment-card__title">Packages (prepaid series)</h3>
-            <p class="settings-establishment-card__help">No package payment toggles in settings—catalog and client packages live here.</p>
-            <div class="settings-establishment-actions">
-                <?php if ($canViewPackagesLink): ?>
-                    <a class="settings-establishment-btn settings-establishment-btn--muted" href="/packages">Open packages</a>
-                <?php else: ?>
-                    <span class="settings-payment-subsection-unavailable">Not available for your role.</span>
-                <?php endif; ?>
-            </div>
+            <p class="settings-establishment-card__help">No package payment toggles in this section. Package <em>plan</em> definitions are managed in Catalog; client-held packages are managed in Clients — use the main navigation.</p>
         </section>
 
         <section class="settings-establishment-card settings-payment-subsection settings-payment-subsection--linked" data-payment-mode="linked">
@@ -439,10 +423,7 @@ $cardsSummaryOther = $methodLines($buckets['other']);
         <?php if ($canManageMembershipsLink): ?>
         <section class="settings-establishment-card settings-payment-subsection settings-payment-subsection--linked settings-payment-subsection--compact-linked" data-payment-mode="linked">
             <h3 class="settings-establishment-card__title">Membership refund review</h3>
-            <p class="settings-establishment-card__help">Operational queue — not a policy editor.</p>
-            <div class="settings-establishment-actions">
-                <a class="settings-establishment-btn settings-establishment-btn--muted" href="/memberships/refund-review">Open refund review</a>
-            </div>
+            <p class="settings-establishment-card__help">Operational queue — not a policy editor. Open it from the Memberships area in the main navigation when you need to process refunds.</p>
         </section>
         <?php endif; ?>
     </div>
