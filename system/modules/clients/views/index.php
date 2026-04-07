@@ -68,7 +68,7 @@ $rowEnd = $total > 0 ? min($page * $perPage, $total) : 0;
         <aside class="calendar-sidebar" aria-label="Search clients">
             <div class="calendar-sidebar-card">
                 <p class="calendar-sidebar-kicker">Search</p>
-                <p class="clients-ws-sidebar-lead">Match first name, last name, email, or any phone field on file. Open a client’s summary to see <strong>held packages</strong> (client-owned records; plan templates live in Catalog) and gift cards in the Owned value section.</p>
+                <p class="clients-ws-sidebar-lead">Match first name, last name, email, or any phone field on file. Open a client’s summary for <strong>Owned value &amp; obligations</strong>: packages, gift cards, membership counts (branch-scoped), and invoice balance due — plus recent rows where the read model supplies them.</p>
                 <form method="get" action="/clients" class="clients-ws-sidebar-form">
                     <div class="calendar-field">
                         <label for="clients_search">Terms</label>

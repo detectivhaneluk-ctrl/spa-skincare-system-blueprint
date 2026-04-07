@@ -45,6 +45,7 @@ $expectedTopLevel = [
     "'commerce'",
     "'packages'",
     "'gift_cards'",
+    "'memberships'",
     "'audit'",
     "'layout'",
     "'permissions'",

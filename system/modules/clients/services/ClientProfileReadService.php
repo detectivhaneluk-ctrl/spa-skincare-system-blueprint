@@ -15,6 +15,7 @@ use Core\Permissions\PermissionService;
 use Modules\Clients\Repositories\ClientIssueFlagRepository;
 use Modules\Clients\Repositories\ClientRepository;
 use Modules\Clients\Support\ClientNormalizedSearchSchemaReadiness;
+use Modules\Memberships\Repositories\ClientMembershipRepository;
 
 /**
  * Single backend read-composition layer for the main client profile surface ({@see ClientController::show}).
@@ -30,6 +31,7 @@ use Modules\Clients\Support\ClientNormalizedSearchSchemaReadiness;
  * - commerce: recent invoices and payments
  * - packages: summary + recent rows
  * - gift_cards: summary + recent rows
+ * - memberships: summary (counts by status) + recent rows — same branch pin as package/gift satellite reads ({@see profileSatelliteBranchId()})
  * - audit: decoded audit history rows
  * - layout: sidebar layout keys
  * - permissions: can_edit_clients, can_create_appointments
@@ -37,6 +39,9 @@ use Modules\Clients\Support\ClientNormalizedSearchSchemaReadiness;
  */
 final class ClientProfileReadService
 {
+    /** @var list<string> */
+    private const MEMBERSHIP_PROFILE_STATUSES = ['active', 'paused', 'expired', 'cancelled'];
+
     public function __construct(
         private ClientRepository $repo,
         private ClientService $service,
@@ -44,6 +49,7 @@ final class ClientProfileReadService
         private ClientSalesProfileProvider $salesProfile,
         private ClientPackageProfileProvider $packagesProfile,
         private ClientGiftCardProfileProvider $giftCardsProfile,
+        private ClientMembershipRepository $clientMemberships,
         private ClientIssueFlagRepository $issueFlagRepo,
         private SettingsService $settings,
         private BranchContext $branchContext,
@@ -69,6 +75,7 @@ final class ClientProfileReadService
      *   commerce: array{recent_invoices: mixed, recent_payments: mixed},
      *   packages: array{summary: mixed, recent: mixed},
      *   gift_cards: array{summary: mixed, recent: mixed},
+     *   memberships: array{summary: array<string, int>, recent: list<array<string, mixed>>},
      *   audit: array{history: list<array<string, mixed>>},
      *   layout: array{sidebar_layout_keys: mixed},
      *   permissions: array{can_edit_clients: bool, can_create_appointments: bool},
@@ -135,6 +142,25 @@ final class ClientProfileReadService
         $recentGiftCards = $this->giftCardsProfile->listRecent($clientId, 10);
 
         $bump();
+        $membershipBranchId = $this->profileSatelliteBranchId($client);
+        $membershipSummary = [
+            'total' => 0,
+            'active' => 0,
+            'paused' => 0,
+            'expired' => 0,
+            'cancelled' => 0,
+        ];
+        $recentMemberships = [];
+        if ($membershipBranchId !== null) {
+            try {
+                $membershipSummary = $this->membershipProfileSummary($clientId, $membershipBranchId);
+                $recentMemberships = $this->membershipProfileRecent($clientId, $membershipBranchId, 5);
+            } catch (\Throwable) {
+                // Honest empty: visibility or DB edge — do not fake counts
+            }
+        }
+
+        $bump();
         $clientHistory = $this->repo->listAuditHistory($clientId, 20);
         foreach ($clientHistory as &$h) {
             $h['metadata'] = !empty($h['metadata_json']) ? json_decode((string) $h['metadata_json'], true) : null;
@@ -199,6 +225,10 @@ final class ClientProfileReadService
                 'summary' => $giftCardSummary,
                 'recent' => $recentGiftCards,
             ],
+            'memberships' => [
+                'summary' => $membershipSummary,
+                'recent' => $recentMemberships,
+            ],
             'audit' => [
                 'history' => $clientHistory,
             ],
@@ -218,6 +248,61 @@ final class ClientProfileReadService
         $bid = $this->branchContext->getCurrentBranchId();
 
         return $bid !== null && $bid > 0 ? $bid : null;
+    }
+
+    /**
+     * Branch pin for client-held satellite reads (packages, gift cards, memberships): client home branch first, else operator branch context.
+     *
+     * @param array<string, mixed> $clientRow
+     */
+    private function profileSatelliteBranchId(array $clientRow): ?int
+    {
+        $b = (int) ($clientRow['branch_id'] ?? 0);
+        if ($b > 0) {
+            return $b;
+        }
+        $cb = $this->branchContext->getCurrentBranchId();
+
+        return ($cb !== null && $cb > 0) ? $cb : null;
+    }
+
+    /**
+     * @return array{total: int, active: int, paused: int, expired: int, cancelled: int}
+     */
+    private function membershipProfileSummary(int $clientId, int $branchContextId): array
+    {
+        $summary = [
+            'total' => 0,
+            'active' => 0,
+            'paused' => 0,
+            'expired' => 0,
+            'cancelled' => 0,
+        ];
+        $summary['total'] = $this->clientMemberships->countInTenantScope(['client_id' => $clientId], $branchContextId);
+        foreach (self::MEMBERSHIP_PROFILE_STATUSES as $st) {
+            $summary[$st] = $this->clientMemberships->countInTenantScope(
+                ['client_id' => $clientId, 'status' => $st],
+                $branchContextId
+            );
+        }
+
+        return $summary;
+    }
+
+    /**
+     * @return list<array{id: int, definition_name: string, status: string, starts_at: string, ends_at: mixed}>
+     */
+    private function membershipProfileRecent(int $clientId, int $branchContextId, int $limit): array
+    {
+        $rows = $this->clientMemberships->listInTenantScope(['client_id' => $clientId], $branchContextId, max(1, $limit), 0);
+
+        return array_map(static fn (array $r): array => [
+            'id' => (int) ($r['id'] ?? 0),
+            'definition_name' => (string) ($r['definition_name'] ?? ''),
+            'status' => (string) ($r['status'] ?? ''),
+            'starts_at' => (string) ($r['starts_at'] ?? ''),
+            'ends_at' => $r['ends_at'] ?? null,
+        ], $rows);
     }
 
     /**

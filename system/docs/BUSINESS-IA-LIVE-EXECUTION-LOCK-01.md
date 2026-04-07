@@ -2,13 +2,13 @@
 
 **Artifact:** single live cleanup, stale-task elimination, and **one** ordered execution lane for `BUSINESS-IA-CANONICAL-REBUILD-PROGRAM-01`.  
 **Audit anchored:** 2026-04-07 against repo files under `system/` (no archive authority).  
-**Status:** DONE — **2026-04-07:** Phase **4.2** **closed** (`BUSINESS-IA-PHASE-4-2-PACKAGE-PLACEMENT-STERILE-CLOSURE-01`); **next** single lane **Phase 5.1** (see §5–§6, §12).
+**Status:** DONE — **2026-04-07:** Phase **5.1** **closed** (`BUSINESS-IA-PHASE-5-1-CLIENT-PROFILE-OWNED-VALUE-AGGREGATION-01`); **next** single lane **Phase 5.2** (see §5–§6, §13).
 
 ---
 
 ## 1. STATUS
 
-**DONE** — Audit + elimination log remain valid. **2026-04-07:** Phase **4.2** **closed** (package plan vs client-held placement copy — §12); next **implementation** slice is **5.1** only (client profile aggregation — per backlog).
+**DONE** — Audit + elimination log remain valid. **2026-04-07:** Phase **5.1** **closed** (client profile owned value + obligations summary — §13); next **implementation** slice is **5.2** only (deep links — per backlog).
 
 ---
 
@@ -86,7 +86,7 @@
 | `system/routes/web/register_reports.php` | KEEP-AS-LIVE | `GET /reports` + JSON report GETs; real endpoints only. |
 | `system/modules/services-resources/views/index.php` | KEEP-AS-LIVE | **2026-04-07:** Lead + gift-card card = Sales discovery; definitions vs Sales explicit. |
 | `system/modules/sales/views/partials/sales-workspace-shell.php` | KEEP-AS-LIVE | **2026-04-07:** Default subtitle = one financial workspace; second line links Reports gift-card liability (measurement); `Invoices, checkout, payments` substring retained for `verify_business_nav_entry_clarity_safe_lane_02.php` **E1**. |
-| `system/modules/clients/views/` (tree) | KEEP-AS-LIVE | No fake report routes found; Phase 5 aggregation still open. |
+| `system/modules/clients/views/` (tree) | KEEP-AS-LIVE | **2026-04-07:** Profile summary **Owned value & obligations** (packages, gift cards, memberships, invoice rollup); `verify_clients_owned_value_profile_phase6_01.php` + read-model contract verifier. |
 | `system/modules/packages/views/` | KEEP-AS-LIVE | **2026-04-07:** Plan definitions + client-held screens teach Catalog vs Clients vs Sales checkout; `verify_catalog_growth_subsection_business_clarity_03.php` **H10–H16**, **I9–I16**. |
 | `system/modules/memberships/` (views used by routes) | KEEP-AS-LIVE | Plan vs client-membership surfaces separated in nav state. |
 | `system/modules/gift-cards/` | KEEP-AS-LIVE | Sales workspace shell; operational copy consistent with Sales home. |
@@ -141,8 +141,8 @@ Strict **phase order**; within a phase, row order. Status applies to **remaining
 | 3 | 3.2 | Secondary “back to catalog” / breadcrumb consistency | 3 | **CLOSED** (2026-04-08) |
 | 4 | 4.1 | Sales workspace copy tightening (if any gaps after 3.x) | 4 | **CLOSED** (2026-04-07) |
 | 5 | 4.2 | Packages views: definition vs client-package language | 4 | **CLOSED** (2026-04-07) |
-| 6 | 5.1 | Client profile: aggregate memberships / packages / gift cards / balance **where data exists** | 5 | **NEXT** |
-| 7 | 5.2 | Deep links from client row to client-held surfaces | 5 | **LATER** |
+| 6 | 5.1 | Client profile: aggregate memberships / packages / gift cards / balance **where data exists** | 5 | **CLOSED** (2026-04-07) |
+| 7 | 5.2 | Deep links from client row to client-held surfaces | 5 | **NEXT** |
 | 8 | 6.2 | Admin payroll **policy** copy alignment (runs stay Team) | 6 | **LATER** |
 | 9 | 7.1 | Report module audit (inventory actions/templates JSON vs HTML) | 7 | **LATER** |
 | 10 | 7.3 | VAT guide position: Reports vs Admin honesty | 7 | **LATER** |
@@ -153,15 +153,15 @@ Strict **phase order**; within a phase, row order. Status applies to **remaining
 | 15 | 10.1 | Empty states / misleading CTAs | 10 | **LATER** |
 | 16 | 10.2 | Final verifier sweep | 10 | **LATER** |
 
-**Blocked-by-prior-slice:** none — through **4.2** closed; execute **5.1** next.
+**Blocked-by-prior-slice:** none — through **5.1** closed; execute **5.2** next.
 
 ---
 
 ## 6. SINGLE LIVE EXECUTION LANE
 
-**Next task (only):** **Phase 5.1** — Client profile surfaces (aggregates **where data exists**) per [`BUSINESS-IA-CANONICAL-BACKLOG-01.md`](BUSINESS-IA-CANONICAL-BACKLOG-01.md) row **5.1**.
+**Next task (only):** **Phase 5.2** — Deep links from client row to client-held surfaces per [`BUSINESS-IA-CANONICAL-BACKLOG-01.md`](BUSINESS-IA-CANONICAL-BACKLOG-01.md) row **5.2**.
 
-**Previous slice (closed):** Phase **4.2** — closure record **§12**. Prior: **4.1** — **§11**; **3.2** — **§10** (**§10.7**).
+**Previous slice (closed):** Phase **5.1** — closure record **§13**. Prior: **4.2** — **§12**; **4.1** — **§11**; **3.2** — **§10** (**§10.7**).
 
 ---
 
@@ -174,7 +174,7 @@ Until a **new** scoped task explicitly permits them, Cursor / implementers **mus
 - Treating `archive/*` or root `docs/ARCHITECTURE-RESET-*` as authority for **Business IA** task selection.
 - Re-adding **module launcher hubs** inside Admin settings sidebar (regresses `verify_admin_ia_business_first_truth_01.php`).
 - Inventing report URLs or dashboard metrics not backed by `register_reports.php`.
-- Running a **second** parallel Business IA lane (e.g. Phase 6 while **5.1** is the named next slice) — finish **5.1** first unless re-scoped.
+- Running a **second** parallel Business IA lane (e.g. Phase 6 while **5.2** is the named next slice) — finish **5.2** first unless re-scoped.
 
 ---
 
@@ -192,7 +192,7 @@ php system/scripts/read-only/verify_admin_ia_business_first_truth_01.php
 
 ## 9. FINAL EXECUTION RECOMMENDATION
 
-Execute **only** **Phase 5.1** next per backlog. **§12** documents closed **4.2**; **§11** closed **4.1**; **§10** closed **3.2** (**§10.7**).
+Execute **only** **Phase 5.2** next per backlog. **§13** documents closed **5.1**; **§12** closed **4.2**; **§11** closed **4.1**; **§10** closed **3.2** (**§10.7**).
 
 ---
 
@@ -306,6 +306,14 @@ Phase **3.2** is **complete** only when all of the following are true:
 **Delivered (copy/surfacing only; routes and POST bodies unchanged):** Package **plan definition** views (`definitions/*`) consistently teach **Catalog** templates vs **Clients**-held records and **Sales** checkout as commercial flow only. **Client-held** views (`client-packages/*`) teach **client-owned records**, plan templates in Catalog, links to client profile and package plans list. Branch column wording **Organisation-wide** aligned on definitions + client-held lists. Clients list/show micro-copy and **Plan name** column headers aligned. `verify_catalog_growth_subsection_business_clarity_03.php` extended (**H10–H16**, **I9–I16**). Mandatory verifier bundle + `verify_package_ownership_ia_phase3_01.php` + `verify_no_duplicate_first_class_owner_surfaces_phase5_01.php` exited **0**.
 
 **Micro sterile heading closure (2026-04-07):** task **`BUSINESS-IA-PHASE-4-2-STERILE-HEADING-CLOSURE-MICRO-01`** — list-only: definitions index h2 + `$title` **Package plan definitions**; client-held index h2 + shell title + `$title` **Client-held packages**; `verify_catalog_growth_subsection_business_clarity_03.php` **H1** + **I17**; `verify_business_nav_entry_clarity_safe_lane_02.php` **H1**; mandatory verifier bundle re-run **0** each.
+
+---
+
+## 13. PHASE 5.1 — CLOSURE RECORD
+
+**Closed:** 2026-04-07 — task **`BUSINESS-IA-PHASE-5-1-CLIENT-PROFILE-OWNED-VALUE-AGGREGATION-01`**.
+
+**Delivered (read-model + profile copy only; routes, permissions, schema unchanged):** Client profile **`Owned value & obligations`** on `show.php` now groups **invoice rollup** (from existing `ClientSalesProfileProvider::getSummary()` — honest `—` / multi-currency note when totals are null), **packages held**, **gift cards**, and **membership counts + recent rows** wired via `ClientMembershipRepository` in `ClientProfileReadService` (same branch pin as package/gift satellites: client `branch_id` else operator branch context). No per-membership detail route invented; link to existing **`/memberships/client-memberships`**. `register_clients.php` DI extended; `verify_clients_owned_value_profile_phase6_01.php` + `verify_client_profile_read_model_contract_01.php` updated. Mandatory Business IA bundle + `verify_package_ownership_ia_phase3_01.php` + `verify_no_duplicate_first_class_owner_surfaces_phase5_01.php` exited **0**.
 
 ---
 

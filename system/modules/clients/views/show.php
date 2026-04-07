@@ -28,14 +28,30 @@ ob_start();
             $rp = is_array($recentPackages ?? null) ? $recentPackages : [];
             $gs = is_array($giftCardSummary ?? null) ? $giftCardSummary : [];
             $rg = is_array($recentGiftCards ?? null) ? $recentGiftCards : [];
+            $ms = is_array($membershipSummary ?? null) ? $membershipSummary : [];
+            $rm = is_array($recentMemberships ?? null) ? $recentMemberships : [];
+            $ss = is_array($salesSummary ?? null) ? $salesSummary : [];
             $clientBranchId = (int) ($client['branch_id'] ?? 0);
+            $billedMixed = !empty($ss['billed_mixed_currency']);
+            $paidMixed = !empty($ss['paid_mixed_currency']);
             ?>
             <section class="client-ref-block client-ref-block--primary" id="client-ref-owned-value" aria-labelledby="client-ref-owned-heading">
-                <h2 id="client-ref-owned-heading" class="client-ref-block-title">Owned value</h2>
-                <p class="hint" style="margin-top:0;">Packages and gift cards assigned to this client. Plan definitions stay in Catalog; held records are owned here in Clients.</p>
+                <h2 id="client-ref-owned-heading" class="client-ref-block-title">Owned value &amp; obligations</h2>
+                <p class="hint" style="margin-top:0;">One place on this profile for <strong>held value</strong> (packages, gift cards, memberships) and <strong>invoice balance</strong> from Sales. Plan definitions stay in <strong>Catalog</strong>; money movement stays in <strong>Sales</strong>; stored-value liability measurement stays in <strong>Reports</strong> where applicable.</p>
                 <?php if ($clientBranchId <= 0): ?>
-                <p class="hint" role="status">Set a branch on this client to load package and gift-card summaries (branch-scoped read model).</p>
+                <p class="hint" role="status">Set a branch on this client to load package, gift-card, and membership summaries (same branch-scoped read model as the rest of the client workspace).</p>
                 <?php endif; ?>
+
+                <h3 class="client-ref-subblock-title">Invoices &amp; balance</h3>
+                <p class="hint" style="margin-top:0;">Rollup from this client’s invoices (tenant-scoped). When multiple currencies are present, a single “balance due” total is not shown — open Sales for the full list.</p>
+                <dl class="client-ref-inline-dl">
+                    <dt>Invoices</dt><dd><?= (int) ($ss['invoice_count'] ?? 0) ?></dd>
+                    <dt>Total billed</dt><dd><?= ($ss['total_billed'] ?? null) === null ? '—' : number_format((float) $ss['total_billed'], 2) ?></dd>
+                    <dt>Total paid</dt><dd><?= ($ss['total_paid'] ?? null) === null ? '—' : number_format((float) $ss['total_paid'], 2) ?></dd>
+                    <dt>Balance due</dt><dd><?= ($ss['total_due'] ?? null) === null ? '—' : number_format((float) $ss['total_due'], 2) ?><?php if ($billedMixed || $paidMixed): ?> <span class="hint">(multi-currency — see Sales)</span><?php endif; ?></dd>
+                    <dt>Payments recorded</dt><dd><?= (int) ($ss['payment_count'] ?? 0) ?></dd>
+                </dl>
+                <p class="hint" style="margin-bottom:0;"><a href="/clients/<?= $clientId ?>/sales">Open client sales</a> for the searchable invoice list. Issuing and payments stay in the Sales workspace.</p>
 
                 <h3 class="client-ref-subblock-title">Packages held</h3>
                 <dl class="client-ref-inline-dl">
@@ -91,7 +107,36 @@ ob_start();
                 <?php endif; ?>
 
                 <h3 class="client-ref-subblock-title">Memberships</h3>
-                <p class="hint" style="margin-bottom:0;">Active membership enrollments are not summarized on this profile yet — the client profile read layer has no membership provider wired. Use <strong>Active client memberships</strong> on the Clients list or the memberships module for that workspace.</p>
+                <p class="hint" style="margin-top:0;">Client-owned enrollment rows (plan templates: <a href="/memberships">Membership plans</a>). There is no per-membership detail screen in this build — manage from the list below.</p>
+                <?php if ($clientBranchId <= 0): ?>
+                <p class="hint" role="status">Branch is required to count memberships the same way as packages and gift cards.</p>
+                <?php else: ?>
+                <dl class="client-ref-inline-dl">
+                    <dt>Total</dt><dd><?= (int) ($ms['total'] ?? 0) ?></dd>
+                    <dt>Active</dt><dd><?= (int) ($ms['active'] ?? 0) ?></dd>
+                    <dt>Paused</dt><dd><?= (int) ($ms['paused'] ?? 0) ?></dd>
+                    <dt>Expired</dt><dd><?= (int) ($ms['expired'] ?? 0) ?></dd>
+                    <dt>Cancelled</dt><dd><?= (int) ($ms['cancelled'] ?? 0) ?></dd>
+                </dl>
+                <?php if ($rm === []): ?>
+                <p class="hint">No membership enrollments in the recent list for this branch scope.</p>
+                <?php else: ?>
+                <table class="index-table">
+                    <thead><tr><th>Plan</th><th>Status</th><th>Starts</th><th>Ends</th></tr></thead>
+                    <tbody>
+                    <?php foreach ($rm as $row): ?>
+                    <tr>
+                        <td><?= htmlspecialchars((string) ($row['definition_name'] ?? '')) ?></td>
+                        <td><?= htmlspecialchars((string) ($row['status'] ?? '')) ?></td>
+                        <td><?= htmlspecialchars((string) ($row['starts_at'] ?? '—')) ?></td>
+                        <td><?= htmlspecialchars((string) ($row['ends_at'] ?? '—')) ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <?php endif; ?>
+                <p class="hint" style="margin-bottom:0;"><a href="/memberships/client-memberships">Open Active client memberships</a> (branch context required on that screen).</p>
+                <?php endif; ?>
             </section>
 
             <div class="client-ref-actions-row">

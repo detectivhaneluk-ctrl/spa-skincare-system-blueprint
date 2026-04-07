@@ -84,6 +84,8 @@ Exit code must be `0` for each.
 | 5.1 | Client profile surfaces | Single place (tab or section) for memberships/packages/gift cards/balance due **where data exists** | `ClientController`, `register_clients.php`, client views | Fake aggregates | Permission matrix unchanged; feature flagged off if data missing |
 | 5.2 | Deep links | From client row → `/memberships/client-memberships` / `/packages/client-packages` / gift card ledger with client filter **if** supported today | respective modules | New gift card API | 200 + no permission regression |
 
+**Live closure note (2026-04-07, `BUSINESS-IA-PHASE-5-1-CLIENT-PROFILE-OWNED-VALUE-AGGREGATION-01`):** Task **5.1** closed — profile section **Owned value & obligations**; `ClientProfileReadService` **memberships** bucket + invoice summary on `show.php`; `verify_clients_owned_value_profile_phase6_01.php` + `verify_client_profile_read_model_contract_01.php`; mandatory IA verifier bundle **0** each.
+
 ---
 
 ## Phase 6 — Team + payroll ownership

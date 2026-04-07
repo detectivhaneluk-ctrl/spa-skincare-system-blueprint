@@ -234,6 +234,8 @@ final class ClientController
         $recentPackages = $read['packages']['recent'];
         $giftCardSummary = $read['gift_cards']['summary'];
         $recentGiftCards = $read['gift_cards']['recent'];
+        $membershipSummary = $read['memberships']['summary'];
+        $recentMemberships = $read['memberships']['recent'];
         $clientHistory = $read['audit']['history'];
         $perms = $read['permissions'];
         $canEditClients = $perms['can_edit_clients'];
