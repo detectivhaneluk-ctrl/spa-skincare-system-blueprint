@@ -29,14 +29,14 @@ ob_start();
 </p>
 
 <p>
-    <a href="/services-resources" class="btn">← Services &amp; Resources</a>
+    <a href="/services-resources" class="btn">← Catalog</a>
     <?php if (empty($trashView)): ?>
-    <a href="/services-resources/services/create" class="btn">Add Service</a>
+    <a href="/services-resources/services/create" class="btn">New service</a>
     <?php endif; ?>
 </p>
 
 <?php if (empty($services)): ?>
-<p style="color:#64748b;"><?= $trashView ? 'Trash is empty.' : 'No services found.' ?> <?php if (!$trashView): ?><a href="/services-resources/services/create">Add the first one.</a><?php endif; ?></p>
+<p style="color:#64748b;"><?= $trashView ? 'Trash is empty.' : 'No services yet.' ?> <?php if (!$trashView): ?><a href="/services-resources/services/create">Create your first service.</a><?php endif; ?></p>
 <?php else: ?>
 
 <form method="post" action="/services-resources/services/bulk-trash" id="svc-bulk-form" class="svc-bulk-form" style="margin-bottom:0.5rem;">

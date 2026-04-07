@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-$title = $title ?? 'Contact Lists';
+$title = $title ?? 'Audiences & Contact Lists';
 $mainClass = 'marketing-contact-lists-page';
 $marketingTopActive = 'contact_lists';
 $marketingRailActive = 'lists';
@@ -37,7 +37,7 @@ ob_start();
                 <aside class="entity-form" style="max-height:74vh;overflow:auto;">
                     <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
                         <details style="width:100%;">
-                            <summary class="marketing-btn marketing-btn--secondary" style="display:inline-block;cursor:pointer;">+ New Manual List</summary>
+                            <summary class="marketing-btn marketing-btn--secondary" style="display:inline-block;cursor:pointer;">+ New list</summary>
                             <form method="post" action="/marketing/contact-lists/manual-lists/create" style="display:flex;gap:6px;align-items:center;margin-top:6px;">
                                 <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf ?? '') ?>">
                                 <input type="hidden" name="return_selected" value="<?= htmlspecialchars($selectedAudienceState) ?>">
@@ -48,7 +48,7 @@ ob_start();
                         </details>
                     </div>
 
-                    <div style="font-weight:600;margin-bottom:6px;">All Contacts</div>
+                    <div style="font-weight:600;margin-bottom:6px;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.04em;color:#6b7280;">Audiences</div>
                     <nav style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px;">
                         <?php
                         $allKey = \Modules\Marketing\Services\MarketingContactAudienceService::AUDIENCE_ALL_CONTACTS;
@@ -61,7 +61,7 @@ ob_start();
                         </a>
                     </nav>
 
-                    <div style="font-weight:600;margin-bottom:6px;">Smart Lists</div>
+                    <div style="font-weight:600;margin-bottom:6px;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.04em;color:#6b7280;">Smart Segments</div>
                     <nav style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px;">
                         <?php foreach ($smartDefs as $def): ?>
                         <?php $key = (string) ($def['key'] ?? ''); ?>
@@ -74,9 +74,9 @@ ob_start();
                         <?php endforeach; ?>
                     </nav>
 
-                    <div style="font-weight:600;margin-bottom:6px;">Manual Lists</div>
+                    <div style="font-weight:600;margin-bottom:6px;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.04em;color:#6b7280;">Manual Lists</div>
                     <?php if (!$manualListStorageReady): ?>
-                    <p class="hint" style="margin-top:0;">Manual list storage not initialized. Run migrations.</p>
+                    <p class="hint" style="margin-top:0;">Manual lists are not available yet. Contact your system administrator.</p>
                     <?php elseif ($manualLists === []): ?>
                     <p class="hint" style="margin-top:0;">No manual lists yet.</p>
                     <?php else: ?>
@@ -106,7 +106,7 @@ ob_start();
                     ?>
                     <?php if (is_array($activeManual)): ?>
                     <details style="margin-top:8px;">
-                        <summary class="marketing-btn marketing-btn--secondary" style="display:inline-block;cursor:pointer;">Manage Active Manual List</summary>
+                        <summary class="marketing-btn marketing-btn--secondary" style="display:inline-block;cursor:pointer;">Manage this list</summary>
                         <div class="entity-form" style="margin-top:6px;">
                             <form method="post" action="/marketing/contact-lists/manual-lists/rename" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
                                 <input type="hidden" name="_csrf" value="<?= htmlspecialchars($csrf ?? '') ?>">
@@ -188,7 +188,7 @@ ob_start();
                                     <th>First Name</th>
                                     <th>Email</th>
                                     <th>Mobile Phone Number</th>
-                                    <th>Marketing Communications</th>
+                                    <th>Marketing consent</th>
                                 </tr>
                                 </thead>
                                 <tbody>
@@ -208,9 +208,7 @@ ob_start();
                                     <td><?= htmlspecialchars((string) ($contact['email'] ?? '')) ?></td>
                                     <td><?= htmlspecialchars((string) ($contact['mobile_phone'] ?? '')) ?></td>
                                     <td>
-                                        Email: <?= $emailEligible ? 'Eligible' : 'Not Eligible' ?>
-                                        |
-                                        Text: <?= $smsEligible ? 'Eligible' : 'Not Eligible' ?>
+                                        Email: <?= $emailEligible ? 'Yes' : 'No' ?> &middot; SMS: <?= $smsEligible ? 'Yes' : 'No' ?>
                                     </td>
                                 </tr>
                                 <?php endforeach; ?>

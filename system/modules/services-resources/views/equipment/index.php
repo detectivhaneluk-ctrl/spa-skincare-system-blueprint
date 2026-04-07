@@ -6,7 +6,8 @@ ob_start();
 <?php if ($flash && is_array($flash)): $t = array_key_first($flash); ?>
 <div class="flash flash-<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($flash[$t] ?? '') ?></div>
 <?php endif; ?>
-<p><a href="/services-resources" class="btn">← Services & Resources</a> <a href="/services-resources/equipment/create" class="btn">Add Equipment</a></p>
+<p class="hint" style="margin-top:0;">Equipment resources used during services. Assign equipment to services to track resource usage and prevent double-booking.</p>
+<p><a href="/services-resources" class="btn">← Catalog</a> <a href="/services-resources/equipment/create" class="btn">New equipment</a></p>
 <?php
 $rows = $equipment;
 $headers = [

@@ -1,12 +1,13 @@
 <?php
-$title = 'Rooms';
+$title = 'Spaces';
 ob_start();
 ?>
-<h1>Rooms</h1>
+<h1>Spaces</h1>
+<p class="hint" style="margin-top:0;">Treatment rooms and bookable spaces. Assign spaces to services to control room availability on the calendar.</p>
 <?php if ($flash && is_array($flash)): $t = array_key_first($flash); ?>
 <div class="flash flash-<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($flash[$t] ?? '') ?></div>
 <?php endif; ?>
-<p><a href="/services-resources" class="btn">← Services & Resources</a> <a href="/services-resources/rooms/create" class="btn">Add Room</a></p>
+<p><a href="/services-resources" class="btn">← Catalog</a> <a href="/services-resources/rooms/create" class="btn">New space</a></p>
 <?php
 $rows = $rooms;
 $headers = [

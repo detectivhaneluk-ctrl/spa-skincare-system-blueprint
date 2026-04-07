@@ -34,8 +34,8 @@ $canCancel = !empty($canCancelGiftCards);
 $canCreate = !empty($canCreateGiftCards);
 $bulkFormId = 'gift-cards-bulk-expiry-form';
 ?>
-<h2 class="sales-workspace-section-title">Gift cards</h2>
-<p class="hint">List and manage stored-value gift cards for your organization. This screen is gift-card data only (no separate &ldquo;checks&rdquo; product). Row actions match routes that exist today; full history lives on the card detail page.</p>
+<h2 class="sales-workspace-section-title">Gift Cards</h2>
+<p class="hint">View and manage gift cards issued to clients. Each card carries a stored value — issue, redeem, or adjust the balance. Full transaction history is available on the card detail page.</p>
 <?php if ($flash && is_array($flash)): $t = array_key_first($flash); ?>
 <div class="flash flash-<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($flash[$t] ?? '') ?></div>
 <?php endif; ?>
@@ -67,10 +67,10 @@ $bulkFormId = 'gift-cards-bulk-expiry-form';
         <input id="gc-to" type="date" name="issued_to" value="<?= $getv('issued_to') ?>">
     </div>
     <div>
-        <label for="gc-list-branch">Card scope</label><br>
+        <label for="gc-list-branch">Branch</label><br>
         <select id="gc-list-branch" name="list_branch">
-            <option value="" <?= $listBranchApplied === '' ? 'selected' : '' ?>>Branch cards + org-wide (client) cards — list as workspace branch (<?= $workspaceBranchLabel ?>)</option>
-            <option value="global" <?= $listBranchApplied === 'global' ? 'selected' : '' ?>>Organization-wide cards only (no branch row)</option>
+            <option value="" <?= $listBranchApplied === '' ? 'selected' : '' ?>>Current branch + organisation-wide cards (<?= $workspaceBranchLabel ?>)</option>
+            <option value="global" <?= $listBranchApplied === 'global' ? 'selected' : '' ?>>Organisation-wide cards only</option>
             <?php foreach ($branches as $b): ?>
             <?php $bid = (int) ($b['id'] ?? 0); ?>
             <option value="<?= $bid ?>" <?= ($listBranchApplied !== '' && $listBranchApplied !== 'global' && (int) $listBranchApplied === $bid) ? 'selected' : '' ?>>
@@ -128,7 +128,7 @@ $bulkFormId = 'gift-cards-bulk-expiry-form';
         <td><span class="badge <?= ((float) $g['current_balance'] <= 0) ? 'badge-warn' : 'badge-success' ?>"><?= number_format((float) $g['current_balance'], 2) ?></span></td>
         <td><span class="badge badge-muted"><?= htmlspecialchars($gstatus) ?></span></td>
         <td><?= htmlspecialchars($g['expires_at'] ?? '—') ?></td>
-        <td><?= $g['branch_id'] ? ('#' . (int) $g['branch_id']) : 'Org-wide' ?></td>
+        <td><?= $g['branch_id'] ? ('#' . (int) $g['branch_id']) : 'Organisation-wide' ?></td>
         <td class="gift-cards-actions">
             <a href="/gift-cards/<?= $gid ?>">View</a>
             <?php if ($isActive && $canRedeem): ?>
@@ -161,16 +161,16 @@ $bulkFormId = 'gift-cards-bulk-expiry-form';
     <?php if ((int) $page > 1): ?><input type="hidden" name="ret_page" value="<?= (int) $page ?>"><?php endif; ?>
 
     <fieldset>
-        <legend>Bulk expiration (active cards only)</legend>
-        <p class="hint">Checkboxes apply to <strong>this page only</strong>, not the full filtered result set.</p>
-        <label for="bulk-expires-at">New expiration date</label>
+        <legend>Update expiry date (active cards only)</legend>
+        <p class="hint">Selection applies to this page only. Scroll and repeat for additional pages.</p>
+        <label for="bulk-expires-at">New expiry date</label>
         <input id="bulk-expires-at" type="date" name="bulk_expires_at" value="">
-        <label><input type="checkbox" name="clear_expiry" value="1"> Clear expiration (no expiry date)</label>
+        <label><input type="checkbox" name="clear_expiry" value="1"> Remove expiry (cards never expire)</label>
         <button type="submit" name="bulk_expiry_submit" value="1">Apply to selected</button>
     </fieldset>
 </form>
 <?php else: ?>
-<p class="hint">Bulk expiration and balance adjustments require the <strong>Adjust gift cards</strong> permission.</p>
+<p class="hint">Updating expiry dates and balance adjustments require the <strong>Adjust gift cards</strong> permission.</p>
 <?php endif; ?>
 
 <?php if ($total > 0): ?>
@@ -191,7 +191,7 @@ $bulkFormId = 'gift-cards-bulk-expiry-form';
 <p class="hint">No gift cards match these filters.</p>
 <?php endif; ?>
 
-<p class="hint">Filters apply only to fields above. <strong>Card scope</strong> chooses which branch is used for branch-owned rows (validated against your organization). &ldquo;Organization-wide&rdquo; limits the list to cards without a branch assignment.</p>
+<p class="hint">Use the Branch filter to narrow results to a specific location, or show only organisation-wide cards (those with no branch assignment).</p>
 <style>
 .gift-cards-actions { white-space: nowrap; }
 .gift-cards-inline-cancel { display: inline; margin: 0; padding: 0; }

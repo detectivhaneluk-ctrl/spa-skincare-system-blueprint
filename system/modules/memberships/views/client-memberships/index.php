@@ -1,8 +1,9 @@
 <?php
-$title = 'Client Memberships';
+$title = 'Active Client Memberships';
 ob_start();
 ?>
-<h1>Client Memberships</h1>
+<h1>Active Client Memberships</h1>
+<p class="hint" style="margin-top:0;">Client-owned membership records. Use filters to find active, paused, or cancelled memberships. To manage plan definitions, see <a href="/memberships">Membership plans</a>.</p>
 <?php if ($flash && is_array($flash)): $t = array_key_first($flash); ?>
 <div class="flash flash-<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($flash[$t] ?? '') ?></div>
 <?php endif; ?>
@@ -17,7 +18,7 @@ ob_start();
     </select>
     <select name="branch_id">
         <option value="">All branches</option>
-        <option value="global" <?= ($branchRaw === 'global') ? 'selected' : '' ?>>Global only</option>
+        <option value="global" <?= ($branchRaw === 'global') ? 'selected' : '' ?>>Organisation-wide only</option>
         <?php foreach ($branches as $b): ?>
         <option value="<?= (int) $b['id'] ?>" <?= ($branchRaw !== 'global' && $branchRaw !== '' && (int) $branchRaw === (int) $b['id']) ? 'selected' : '' ?>><?= htmlspecialchars($b['name']) ?></option>
         <?php endforeach; ?>
@@ -26,9 +27,9 @@ ob_start();
 </form>
 
 <p>
-    <a class="btn" href="/memberships/client-memberships/assign">Assign Membership to Client</a>
-    <a class="btn" href="/memberships/refund-review">Refund review inbox</a>
-    <a class="btn" href="/memberships">Membership Definitions</a>
+    <a class="btn" href="/memberships/client-memberships/assign">Enrol client in membership</a>
+    <a class="btn" href="/memberships/refund-review">Refund review</a>
+    <a class="btn" href="/memberships">← Membership plans</a>
 </p>
 
 <table class="index-table">

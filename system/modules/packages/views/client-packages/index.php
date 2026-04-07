@@ -7,6 +7,7 @@ $salesWorkspaceActiveTab = 'packages';
 require base_path('modules/sales/views/partials/sales-workspace-shell.php');
 ?>
 <h2 class="sales-workspace-section-title">Client Packages</h2>
+<p class="hint" style="margin-top:0;">Packages currently held by clients — sessions assigned, remaining, and expiry. To manage package plans, see <a href="/packages">Package plans</a>.</p>
 <?php if ($flash && is_array($flash)): $t = array_key_first($flash); ?>
 <div class="flash flash-<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($flash[$t] ?? '') ?></div>
 <?php endif; ?>
@@ -20,8 +21,8 @@ require base_path('modules/sales/views/partials/sales-workspace-shell.php');
         <?php endforeach; ?>
     </select>
     <select name="branch_id">
-        <option value="">All branches (explicit mix)</option>
-        <option value="global" <?= (($_GET['branch_id'] ?? '') === 'global') ? 'selected' : '' ?>>Global only</option>
+        <option value="">All branches</option>
+        <option value="global" <?= (($_GET['branch_id'] ?? '') === 'global') ? 'selected' : '' ?>>Organisation-wide only</option>
         <?php foreach ($branches as $b): ?>
         <option value="<?= (int) $b['id'] ?>" <?= (($_GET['branch_id'] ?? '') !== 'global' && (int) ($_GET['branch_id'] ?? 0) === (int) $b['id']) ? 'selected' : '' ?>>
             <?= htmlspecialchars($b['name']) ?>
@@ -32,8 +33,8 @@ require base_path('modules/sales/views/partials/sales-workspace-shell.php');
 </form>
 
 <p>
-    <a class="btn" href="/packages/client-packages/assign">Assign Package to Client</a>
-    <a class="btn" href="/packages">Package Definitions</a>
+    <a class="btn" href="/packages/client-packages/assign">Assign package to client</a>
+    <a class="btn" href="/packages">← Package plans</a>
 </p>
 
 <table class="index-table">
@@ -69,5 +70,5 @@ require base_path('modules/sales/views/partials/sales-workspace-shell.php');
 <p class="pagination">Page <?= $page ?> · <?= $total ?> total</p>
 <?php endif; ?>
 
-<p class="hint">Branch behavior is explicit. Branch-owned client packages require matching explicit branch context for state-changing actions.</p>
+<p class="hint">Branch-assigned packages are managed within their branch. Organisation-wide packages have no branch restriction.</p>
 <?php $content = ob_get_clean(); require shared_path('layout/base.php'); ?>

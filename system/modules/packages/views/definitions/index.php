@@ -7,6 +7,7 @@ $salesWorkspaceActiveTab = 'packages';
 require base_path('modules/sales/views/partials/sales-workspace-shell.php');
 ?>
 <h2 class="sales-workspace-section-title">Packages</h2>
+<p class="hint" style="margin-top:0;">Package plan definitions — session counts, validity, and price. To view packages sold to clients, see <a href="/packages/client-packages">Client packages</a>.</p>
 <?php if ($flash && is_array($flash)): $t = array_key_first($flash); ?>
 <div class="flash flash-<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($flash[$t] ?? '') ?></div>
 <?php endif; ?>
@@ -20,8 +21,8 @@ require base_path('modules/sales/views/partials/sales-workspace-shell.php');
         <?php endforeach; ?>
     </select>
     <select name="branch_id">
-        <option value="">All branches (explicit mix)</option>
-        <option value="global" <?= (($_GET['branch_id'] ?? '') === 'global') ? 'selected' : '' ?>>Global only</option>
+        <option value="">All branches</option>
+        <option value="global" <?= (($_GET['branch_id'] ?? '') === 'global') ? 'selected' : '' ?>>Organisation-wide only</option>
         <?php foreach ($branches as $b): ?>
         <option value="<?= (int) $b['id'] ?>" <?= (($_GET['branch_id'] ?? '') !== 'global' && (int) ($_GET['branch_id'] ?? 0) === (int) $b['id']) ? 'selected' : '' ?>>
             <?= htmlspecialchars($b['name']) ?>
@@ -32,8 +33,8 @@ require base_path('modules/sales/views/partials/sales-workspace-shell.php');
 </form>
 
 <p>
-    <a class="btn" href="/packages/create">Create Package Definition</a>
-    <a class="btn" href="/packages/client-packages">Client Packages</a>
+    <a class="btn" href="/packages/create">New package plan</a>
+    <a class="btn" href="/packages/client-packages">Client packages</a>
 </p>
 
 <table class="index-table">
@@ -67,5 +68,5 @@ require base_path('modules/sales/views/partials/sales-workspace-shell.php');
 <p class="pagination">Page <?= $page ?> · <?= $total ?> total</p>
 <?php endif; ?>
 
-<p class="hint">Branch behavior is explicit. Use filters to avoid unintentionally mixing global and branch-scoped definitions.</p>
+<p class="hint">Plans scoped to a branch are only available at that branch. Organisation-wide plans are available across all branches.</p>
 <?php $content = ob_get_clean(); require shared_path('layout/base.php'); ?>

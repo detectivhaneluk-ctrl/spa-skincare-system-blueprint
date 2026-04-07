@@ -3,12 +3,13 @@ $title = 'Membership Plans';
 ob_start();
 ?>
 <h1>Membership Plans</h1>
+<p class="hint" style="margin-top:0;">These are the plan definitions — duration, price, and availability. To view or manage plans enrolled to clients, use <a href="/memberships/client-memberships">Active client memberships</a>.</p>
 <?php if ($flash && is_array($flash)): $t = array_key_first($flash); ?>
 <div class="flash flash-<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($flash[$t] ?? '') ?></div>
 <?php endif; ?>
 
 <form method="get" class="search-form">
-    <input type="text" name="search" placeholder="Search name..." value="<?= htmlspecialchars($search) ?>">
+    <input type="text" name="search" placeholder="Search plan name..." value="<?= htmlspecialchars($search) ?>">
     <select name="status">
         <option value="">All statuses</option>
         <?php foreach (\Modules\Memberships\Services\MembershipService::DEFINITION_STATUSES as $st): ?>
@@ -17,7 +18,7 @@ ob_start();
     </select>
     <select name="branch_id">
         <option value="">All branches</option>
-        <option value="global" <?= ($branchRaw === 'global') ? 'selected' : '' ?>>Global only</option>
+        <option value="global" <?= ($branchRaw === 'global') ? 'selected' : '' ?>>Organisation-wide only</option>
         <?php foreach ($branches as $b): ?>
         <option value="<?= (int) $b['id'] ?>" <?= ($branchRaw !== 'global' && $branchRaw !== '' && (int) $branchRaw === (int) $b['id']) ? 'selected' : '' ?>><?= htmlspecialchars($b['name']) ?></option>
         <?php endforeach; ?>
@@ -26,8 +27,8 @@ ob_start();
 </form>
 
 <p>
-    <a class="btn" href="/memberships/create">Create Membership Definition</a>
-    <a class="btn" href="/memberships/client-memberships">Client Memberships</a>
+    <a class="btn" href="/memberships/create">New membership plan</a>
+    <a class="btn" href="/memberships/client-memberships">Active client memberships</a>
 </p>
 
 <table class="index-table">
