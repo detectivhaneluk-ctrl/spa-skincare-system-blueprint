@@ -2,7 +2,7 @@
 
 Production-ready skeleton. Single root under `/system`.
 
-**Maintainer truth index:** `docs/MAINTAINER-RUNTIME-TRUTH.md` (canonical map of live docs vs `archive/`). Repository root `README.md` is introductory; archived blueprint lives under `archive/blueprint-reference/`.
+**Maintainer truth index:** `system/docs/MAINTAINER-RUNTIME-TRUTH.md` (canonical map of live docs vs `archive/`). Repository root `README.md` is introductory; archived blueprint lives under `archive/blueprint-reference/`.
 
 ## Structure
 

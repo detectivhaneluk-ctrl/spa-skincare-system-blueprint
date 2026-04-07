@@ -1,6 +1,7 @@
 # Business IA — Execution Backlog (Program 01)
 
 **Source law:** [`BUSINESS-IA-CANONICAL-LAW-01.md`](BUSINESS-IA-CANONICAL-LAW-01.md)  
+**Live cleanup / single execution lane:** [`BUSINESS-IA-LIVE-EXECUTION-LOCK-01.md`](BUSINESS-IA-LIVE-EXECUTION-LOCK-01.md)  
 **Rule:** One bounded task per execution slice; re-audit listed files **before** editing; commit + push after green verifiers.
 
 **Regression bundle (run after any nav/shell/catalog/admin surfacing change):**
@@ -129,7 +130,9 @@ Exit code must be `0` for each.
 
 ---
 
-## Open decisions (resolve in Phase 1 before coding)
+## Open decisions (Phase 1 — **resolved in live repo**, 2026-04-07)
 
-1. **Reports primary href:** new `GET /reports` index vs first existing report path — prefer **dedicated index** listing all `register_reports.php` GETs.  
-2. **Catalog active family:** whether `/services-resources` stays tied to Admin highlight until Phase 1.2 completes — default per law: **Catalog** gets its own `navIsCatalog` when primary item exists.
+Reconciled against `base.php` + `register_reports.php` + `BUSINESS-IA-LIVE-EXECUTION-LOCK-01.md`. Do not re-open unless a later task intentionally changes behavior.
+
+1. **Reports primary href:** **Resolved:** dedicated `GET /reports` index (`ReportController::index`) lists only real report GET paths. Primary nav uses `href="/reports"`.  
+2. **Catalog active family:** **Resolved:** `$navIsCatalog` drives Catalog highlight; `settingsActivePrefixes` does not include `/memberships` plan URLs; client-held membership/package paths use `$navIsClientsMemberships` / `$navIsClientsPackages`.

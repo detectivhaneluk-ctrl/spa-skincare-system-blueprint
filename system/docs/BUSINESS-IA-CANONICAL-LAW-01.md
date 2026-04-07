@@ -120,9 +120,10 @@ Paths below are **current** unless marked *(planned)*. Tasks may add shells or l
 
 - **Report endpoints (real, JSON-backed reporting):**  
   `GET /reports/revenue-summary`, `/reports/payments-by-method`, `/reports/refunds-summary`, `/reports/appointments-volume`, `/reports/new-clients`, `/reports/staff-appointment-count`, `/reports/gift-card-liability`, `/reports/inventory-movements`, `/reports/vat-distribution` — `register_reports.php`, permission `reports.view`.  
+- **Reports HTML hub (live):** `GET /reports` — `ReportController::index` + `modules/reports/views/index.php`; lists only the same GET paths (no fabricated metrics).  
 - Settings **read-only** operator guide (not a report UI): `GET /settings/vat-distribution-guide` — `VatDistributionController` / `SettingsController::vatDistributionGuide` commentary.  
-- **Current gap:** no entry in `$navItems` in `base.php`.  
-- **Target:** top-level **Reports** home listing **only** destinations that exist; optional staged **shell** landing if index is not yet implemented (Phase 7 backlog).
+- **Primary nav (live):** `$navItems` in `base.php` includes `['/reports', 'Reports', $navIsReports]`; `$navIsReports` = prefix `/reports`.  
+- **Target (ongoing polish):** keep the Reports home honest; Phase 7 backlog covers audit/copy cross-links (e.g. VAT guide positioning), not inventing new metrics.
 
 ### 3.10 Admin (policies / controls / defaults)
 
@@ -201,7 +202,7 @@ Aligned to program execution order; each phase is a **bounded** task with verifi
 
 | Phase | Goal |
 |-------|------|
-| 1 | Primary nav: add **Catalog** and **Reports** entries safely; reconcile `$navItems` with `$navSideIcons` length; adjust **active-state prefixes** so Catalog/Team/Admin families match law without breaking `is-active`. |
+| 1 | Primary nav: **maintain** the ten-home rail (**Catalog**, **Reports**, and the rest) and icon parity; adjust **active-state prefixes** only when a bounded task requires it — live `base.php` already implements `$navIsCatalog`, `$navIsReports`, Team includes `/payroll`, Admin prefixes exclude catalog plan URLs (verify with read-only scripts). |
 | 2 | Admin boundary: settings shell + side links — operational entities **read** as Catalog/Sales/Clients/Team; preserve `SettingsController` contracts. |
 | 3 | Catalog finalization: hub copy + links; definitions only; gift cards de-emphasized or discovery-only. |
 | 4 | Sales finalization: workspace copy and grouping; gift card + invoice flows unchanged at route level unless a task proves migration. |
