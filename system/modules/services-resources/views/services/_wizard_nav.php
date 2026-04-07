@@ -13,12 +13,12 @@ $steps   = [
     1 => ['Definition',   $svcId ? '/services-resources/services/' . $svcId . '/edit'   : null],
     2 => ['Products',     $svcId ? '/services-resources/services/' . $svcId . '/step-2' : null],
     3 => ['Employees',    $svcId ? '/services-resources/services/' . $svcId . '/step-3' : null],
-    4 => ['Rooms',        $svcId ? '/services-resources/services/' . $svcId . '/step-4' : null],
+    4 => ['Spaces',       $svcId ? '/services-resources/services/' . $svcId . '/step-4' : null],
 ];
 ?>
 <div class="svc-step-header">
     <div class="svc-step-breadcrumb">
-        <a href="/services-resources">Services &amp; Resources</a>
+        <a href="/services-resources">Catalog</a>
         <span class="svc-step-breadcrumb-sep">›</span>
         <a href="/services-resources/services">Services</a>
         <?php if ($svcName): ?>

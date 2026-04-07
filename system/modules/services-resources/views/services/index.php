@@ -71,7 +71,7 @@ ob_start();
             <th>Duration</th>
             <th>Price</th>
             <th>Staff</th>
-            <th>Rooms</th>
+            <th>Spaces</th>
             <th>Products</th>
             <th>Status</th>
             <th>Actions</th>

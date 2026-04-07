@@ -34,7 +34,7 @@ function _svcFlag(mixed $val, string $yes = 'Yes', string $no = 'No'): string
 ?>
 <div class="svc-step-header">
     <div class="svc-step-breadcrumb">
-        <a href="/services-resources">Services &amp; Resources</a>
+        <a href="/services-resources">Catalog</a>
         <span class="svc-step-breadcrumb-sep">›</span>
         <a href="/services-resources/services">Services</a>
         <span class="svc-step-breadcrumb-sep">›</span>
@@ -208,16 +208,16 @@ $staffIds = $service['staff_ids'] ?? [];
 </div>
 
 <?php
-// Rooms section
+// Spaces (catalog subsection) linked to this service
 $roomIds = $service['room_ids'] ?? [];
 ?>
 <div class="svc-step-section" style="max-width:700px; margin-bottom:1rem;">
     <p class="svc-step-section-title" style="display:flex; align-items:center; justify-content:space-between;">
-        <span>Rooms (<?= count($roomIds) ?>)</span>
+        <span>Spaces (<?= count($roomIds) ?>)</span>
         <a href="/services-resources/services/<?= (int) $service['id'] ?>/step-4" style="font-size:0.8rem; color:#2563eb;">Edit</a>
     </p>
     <?php if (empty($roomIds)): ?>
-    <p style="font-size:0.875rem; color:#94a3b8;">No rooms directly assigned (any available room may be used).</p>
+    <p style="font-size:0.875rem; color:#94a3b8;">No spaces directly assigned (any available space may be used).</p>
     <?php else: ?>
     <?php
     $roomNameMap = [];

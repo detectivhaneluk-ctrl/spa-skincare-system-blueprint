@@ -1,5 +1,5 @@
 <?php
-$title       = 'New Service: Select Rooms (Step 4 of 4)';
+$title       = 'New Service: Select Spaces (Step 4 of 4)';
 ob_start();
 $currentStep = 4;
 require __DIR__ . '/_wizard_nav.php';
@@ -23,14 +23,14 @@ $csrf  = $csrf ?? '';
     <input type="hidden" name="<?= htmlspecialchars(config('app.csrf_token_name', 'csrf_token')) ?>" value="<?= htmlspecialchars($csrf) ?>">
 
     <div class="svc-step-section">
-        <p class="svc-step-section-title">Rooms</p>
+        <p class="svc-step-section-title">Spaces</p>
         <p style="font-size:0.875rem; color:#64748b; margin-bottom:1rem;">
-            Select which rooms can be used for this service.
-            Leave all unchecked to allow any room.
+            Select which spaces can be used for this service.
+            Leave all unchecked to allow any space.
         </p>
 
         <?php if (empty($rooms)): ?>
-        <p style="color:#94a3b8; font-style:italic;">No rooms found in the current branch.</p>
+        <p style="color:#94a3b8; font-style:italic;">No spaces found in the current branch.</p>
         <?php else: ?>
 
         <div style="margin-bottom:0.75rem; display:flex; gap:1rem;">

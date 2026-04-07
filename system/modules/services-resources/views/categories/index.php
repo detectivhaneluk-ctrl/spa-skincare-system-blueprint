@@ -55,7 +55,7 @@ $totalCount = count($treeRows);
     <!-- ── Page header ─────────────────────────────────────────────────── -->
     <div class="taxmgr-header">
         <div class="taxmgr-header-left">
-            <a href="/services-resources" class="taxmgr-back-link">← Services &amp; Resources</a>
+            <a href="/services-resources" class="taxmgr-back-link">← Catalog</a>
             <h1 class="taxmgr-title">
                 Service Categories
                 <?php if ($totalCount > 0): ?>

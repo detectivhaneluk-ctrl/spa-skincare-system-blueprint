@@ -15,5 +15,5 @@ ob_start();
         </form>
     </div>
 </div>
-<p><a href="/services-resources/rooms">← Back to Rooms</a></p>
+<p><a href="/services-resources/rooms">← Back to Spaces</a></p>
 <?php $content = ob_get_clean(); require shared_path('layout/base.php'); ?>

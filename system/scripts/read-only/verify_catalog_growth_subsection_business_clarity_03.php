@@ -21,8 +21,12 @@ $shell   = $base . '/modules/settings/views/partials/shell.php';
 $ctrl    = $base . '/modules/settings/controllers/SettingsController.php';
 $svcHub  = $base . '/modules/services-resources/views/index.php';
 $svcIdx  = $base . '/modules/services-resources/views/services/index.php';
+$svcShow = $base . '/modules/services-resources/views/services/show.php';
+$wizNav  = $base . '/modules/services-resources/views/services/_wizard_nav.php';
+$catIdxV = $base . '/modules/services-resources/views/categories/index.php';
 $eqIdx   = $base . '/modules/services-resources/views/equipment/index.php';
 $rmIdx   = $base . '/modules/services-resources/views/rooms/index.php';
+$rmShow  = $base . '/modules/services-resources/views/rooms/show.php';
 $memDef  = $base . '/modules/memberships/views/definitions/index.php';
 $memCli  = $base . '/modules/memberships/views/client-memberships/index.php';
 $pkgDef  = $base . '/modules/packages/views/definitions/index.php';
@@ -57,6 +61,15 @@ chk('C2: old Services & Resources backlink absent', $svcIdx, '← Services &amp;
 chk('C3: CTA says New service', $svcIdx, 'New service');
 chk('C4: old Add Service CTA absent', $svcIdx, 'Add Service', false);
 chk('C5: route /services-resources/services/create unchanged', $svcIdx, '/services-resources/services/create');
+chk('C6: service show breadcrumb hub says Catalog', $svcShow, 'href="/services-resources">Catalog</a>');
+chk('C7: service show legacy hub label absent', $svcShow, 'Services &amp; Resources', false);
+chk('C8: wizard nav hub says Catalog', $wizNav, 'href="/services-resources">Catalog</a>');
+chk('C9: wizard nav legacy hub absent', $wizNav, 'Services &amp; Resources', false);
+chk('C10: wizard step 4 label Spaces', $wizNav, "4 => ['Spaces',");
+chk('C11: categories index back link Catalog', $catIdxV, '← Catalog');
+chk('C12: categories index legacy back absent', $catIdxV, '← Services &amp; Resources', false);
+chk('C13: services list Spaces column header', $svcIdx, '<th>Spaces</th>');
+chk('C14: services list old Rooms column absent', $svcIdx, '<th>Rooms</th>', false);
 
 // ── D. Equipment subscreen ───────────────────────────────────────────────────
 chk('D1: equipment backlink says Catalog', $eqIdx, '← Catalog');
@@ -74,6 +87,8 @@ chk('E4: old Services & Resources backlink absent from rooms', $rmIdx, '← Serv
 chk('E5: CTA says New space', $rmIdx, 'New space');
 chk('E6: old Add Room CTA absent', $rmIdx, 'Add Room', false);
 chk('E7: rooms route unchanged', $rmIdx, '/services-resources/rooms/create');
+chk('E8: space detail back link says Spaces', $rmShow, '← Back to Spaces');
+chk('E9: space detail old Back to Rooms absent', $rmShow, '← Back to Rooms', false);
 
 // ── F. Membership plans subscreen ────────────────────────────────────────────
 chk('F1: Membership Plans h1 present', $memDef, '<h1>Membership Plans</h1>');
