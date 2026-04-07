@@ -80,9 +80,8 @@ ob_start();
                     </tbody>
                 </table>
                 <?php endif; ?>
-                <?php $clientDisplayName = (string) ($client['display_name'] ?? ''); ?>
                 <p class="hint" style="margin-bottom:0;">
-                    <a href="/packages/client-packages?search=<?= urlencode($clientDisplayName) ?>">View all packages for this client</a>
+                    <a href="/packages/client-packages?client_id=<?= $clientId ?>">View all packages for this client</a>
                     &nbsp;·&nbsp;
                     <a href="/packages/client-packages/assign">Assign new package</a>
                 </p>
@@ -112,7 +111,7 @@ ob_start();
                 </table>
                 <?php endif; ?>
                 <p class="hint" style="margin-bottom:0;">
-                    <a href="/gift-cards?client_name=<?= urlencode($clientDisplayName) ?>">View all gift cards for this client</a>
+                    <a href="/gift-cards?client_id=<?= $clientId ?>">View all gift cards for this client</a>
                     &nbsp;·&nbsp;
                     <a href="/gift-cards/issue">Issue new gift card</a>
                 </p>
@@ -146,12 +145,12 @@ ob_start();
                     </tbody>
                 </table>
                 <?php endif; ?>
+                <?php endif; ?>
                 <p class="hint" style="margin-bottom:0;">
-                    <a href="/memberships/client-memberships?search=<?= urlencode($clientDisplayName) ?>">View all memberships for this client</a>
+                    <a href="/memberships/client-memberships?client_id=<?= $clientId ?>">View all memberships for this client</a>
                     &nbsp;·&nbsp;
                     <a href="/memberships/client-memberships/assign">Enrol in membership</a>
                 </p>
-                <?php endif; ?>
             </section>
 
             <div class="client-ref-actions-row">

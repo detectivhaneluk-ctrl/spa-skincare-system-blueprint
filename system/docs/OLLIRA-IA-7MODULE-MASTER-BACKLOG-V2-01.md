@@ -52,7 +52,7 @@ Every task from the old program is assigned one of four verdicts:
 | 4.1 | Sales workspace shell copy | **CLOSED-KEPT** | CLOSED 2026-04-07. Module renamed to CASHIER in new IA. |
 | 4.2 | Package/gift-card placement | **CLOSED-KEPT** | CLOSED 2026-04-07. Packages → CLIENTS. Gift Cards → CASHIER. |
 | 5.1 | Client profile owned-value aggregation | **CLOSED-KEPT** | CLOSED 2026-04-07. Absorbed into EPIC-03 CLIENTS baseline. |
-| 5.2 | Deep links from client row to client-held surfaces | **ABSORBED** → EPIC-03 CLIENTS, FEAT-03.2, STORY-03.2.11 | Still open; re-homed to CLIENTS module. |
+| 5.2 | Deep links from clients list + profile to client-held surfaces | **ABSORBED** → EPIC-03 CLIENTS, FEAT-03.2, STORY-03.2.11 | **DONE** (2026-04-07); `client_id` on list + profile; verifier `verify_story_03_2_11_client_profile_deep_links_01.php`. |
 | 6.1 | Payroll highlights Team in nav | **CLOSED-KEPT** | CLOSED (old plan). Compatible. |
 | 6.2 | Admin payroll policy copy alignment | **ABSORBED** → EPIC-07 SETTINGS, FEAT-07.4 | Payroll policy belongs in SETTINGS > Roles & Payroll Policy |
 | 7.1 | Report module audit | **ELIMINATED** | Reports embedded in HOME analytics. No standalone Reports primary nav. |
@@ -296,7 +296,7 @@ Status vocabulary: `DONE` | `IN PROGRESS` | `NEXT` | `OPEN` | `DEFERRED`
 | STORY-03.2.8 | Owned Value tab (loyalty points, memberships, packages, gift card balances, invoice rollup) | DONE | CLOSED Phase 5.1 |
 | STORY-03.2.9 | Invoices & Payments tab (full financial ledger per client) | DONE | Existing |
 | STORY-03.2.10 | Documents tab (signed consents, prescriptions for clinics) | OPEN | |
-| STORY-03.2.11 | **Deep links from client row** to client-held surfaces: `/memberships/client-memberships`, `/packages/client-packages`, gift card ledger with client filter | NEXT | Absorbed from old Task 5.2 |
+| STORY-03.2.11 | **Deep links from clients list + client profile** to client-held surfaces: `/memberships/client-memberships`, `/packages/client-packages`, `/gift-cards` with **`client_id`** filter (exact client scope) | DONE | 2026-04-07: `/clients` index + `clients/views/show.php`; `verify_story_03_2_11_client_profile_deep_links_01.php` exits 0 |
 | STORY-03.2.12 | [Quick Book] button always visible on client profile; opens CALENDAR booking drawer with client pre-filled | OPEN | |
 
 #### FEAT-03.3: Loyalty Programme
@@ -658,10 +658,10 @@ PHASE 4 (Polish) runs after all PHASE 3 EPICs reach their MVP milestone.
 
 | Task | EPIC | Story | Priority | Status |
 |------|------|-------|----------|--------|
-| Remove Catalog from primary nav; add to SETTINGS sidebar | EPIC-07 | STORY-07.3.9 | P0 | OPEN |
+| Remove Catalog from primary nav; add to SETTINGS sidebar | EPIC-07 | STORY-07.3.9 | P0 | **NEXT** |
 | Remove Marketing from primary nav; surface inside CLIENTS | EPIC-03 | STORY-03.6.7 | P0 | OPEN |
 | Remove Reports from primary nav; surface inside CASHIER and HOME | EPIC-05 | STORY-05.4.7 | P0 | OPEN |
-| Deep links from client profile (Phase 5.2 carried over) | EPIC-03 | STORY-03.2.11 | P0 | **NEXT** |
+| Deep links from clients list + profile (Phase 5.2 carried over) | EPIC-03 | STORY-03.2.11 | P0 | **DONE** (`verify_story_03_2_11_client_profile_deep_links_01.php`) |
 | Role-aware 7-module nav (hide dead homes by permission) | EPIC-01 | STORY-01.5.1..5 | P1 | OPEN |
 | Update verifier bundle for 7-module nav structure | EPIC-P4 | FEAT-P4.4 | P1 | OPEN |
 
@@ -701,7 +701,7 @@ PHASE 4 (Polish) runs after all PHASE 3 EPICs reach their MVP milestone.
 
 | Priority | Story | Dependency |
 |----------|-------|------------|
-| P0 | STORY-03.2.11 (Deep links — NEXT task) | Phase 2 complete |
+| P0 | STORY-03.2.11 (Deep links) | DONE (2026-04-07) |
 | P0 | STORY-03.2.1 (Profile overview tab) | Phase 2 complete |
 | P0 | STORY-03.6.1..3 (Campaign builder) | CLIENTS nav change done |
 | P1 | STORY-03.3.1..5 (Loyalty Programme) | Profile tabs done |
@@ -781,28 +781,21 @@ PHASE 4 (Polish) runs after all PHASE 3 EPICs reach their MVP milestone.
 
 ## §6 — LIVE EXECUTION LANE (replaces BUSINESS-IA-LIVE-EXECUTION-LOCK-01.md)
 
-**Current single live task:** `STORY-03.2.11` — Deep links from client profile row to
-client-held surfaces (`/memberships/client-memberships`, `/packages/client-packages`, gift card
-ledger with client filter).
+**Closed (2026-04-07):** `STORY-03.2.11` — Deep links from **`/clients` index row** and **client profile** (`modules/clients/views/show.php`)
+to client-held surfaces with stable **`client_id`** query params:
+`/memberships/client-memberships?client_id=…`, `/packages/client-packages?client_id=…`,
+`/gift-cards?client_id=…`. Permission gates: `memberships.view`, `packages.view`, `gift_cards.view`.
 
-**This was Phase 5.2 in the old plan. It is still the correct next task.**
+**Current single live task:** **PHASE 2 navigation restructure** — start with `STORY-07.3.9` (remove Catalog from
+primary nav; integrate under SETTINGS > Services & Pricing).
 
-**Blocked-by:** None. Execute immediately.
-
-**Done bar:**
-1. Client show page has working links to client-scoped membership, package, and gift card surfaces.
+**Done bar (STORY-03.2.11 — met):**
+1. Clients **list** row and **client profile** expose working links to membership, package, and gift card **index** surfaces using **`client_id`** (exact filter; not display-name search).
 2. Links respect existing permission gates (no 403 regression).
-3. Mandatory verifier bundle exits `0`:
-   ```
-   php system/scripts/read-only/verify_business_nav_entry_clarity_safe_lane_02.php
-   php system/scripts/read-only/verify_catalog_growth_subsection_business_clarity_03.php
-   php system/scripts/read-only/verify_admin_ia_business_first_truth_01.php
-   ```
+3. `php system/scripts/read-only/verify_story_03_2_11_client_profile_deep_links_01.php` exits `0` (run locally after pull).
 4. No route paths or POST contracts changed.
 
-**After STORY-03.2.11 closes:**
-Next task → **PHASE 2 navigation restructure**: start with `STORY-07.3.9` (remove Catalog from
-primary nav; integrate under SETTINGS > Services & Pricing).
+**Next (Phase 2):** `STORY-07.3.9` and remaining §PHASE 2 table rows until Phase 2 exit criteria are met.
 
 ---
 
@@ -814,6 +807,7 @@ primary nav; integrate under SETTINGS > Services & Pricing).
 php system/scripts/read-only/verify_business_nav_entry_clarity_safe_lane_02.php
 php system/scripts/read-only/verify_catalog_growth_subsection_business_clarity_03.php
 php system/scripts/read-only/verify_admin_ia_business_first_truth_01.php
+php system/scripts/read-only/verify_story_03_2_11_client_profile_deep_links_01.php
 ```
 
 ### To be created in Phase 2
