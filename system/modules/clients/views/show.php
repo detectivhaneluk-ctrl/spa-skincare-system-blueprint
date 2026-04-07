@@ -80,6 +80,12 @@ ob_start();
                     </tbody>
                 </table>
                 <?php endif; ?>
+                <?php $clientDisplayName = (string) ($client['display_name'] ?? ''); ?>
+                <p class="hint" style="margin-bottom:0;">
+                    <a href="/packages/client-packages?search=<?= urlencode($clientDisplayName) ?>">View all packages for this client</a>
+                    &nbsp;·&nbsp;
+                    <a href="/packages/client-packages/assign">Assign new package</a>
+                </p>
 
                 <h3 class="client-ref-subblock-title">Gift cards</h3>
                 <dl class="client-ref-inline-dl">
@@ -105,6 +111,11 @@ ob_start();
                     </tbody>
                 </table>
                 <?php endif; ?>
+                <p class="hint" style="margin-bottom:0;">
+                    <a href="/gift-cards?client_name=<?= urlencode($clientDisplayName) ?>">View all gift cards for this client</a>
+                    &nbsp;·&nbsp;
+                    <a href="/gift-cards/issue">Issue new gift card</a>
+                </p>
 
                 <h3 class="client-ref-subblock-title">Memberships</h3>
                 <p class="hint" style="margin-top:0;">Client-owned enrollment rows (plan templates: <a href="/memberships">Membership plans</a>). There is no per-membership detail screen in this build — manage from the list below.</p>
@@ -135,7 +146,11 @@ ob_start();
                     </tbody>
                 </table>
                 <?php endif; ?>
-                <p class="hint" style="margin-bottom:0;"><a href="/memberships/client-memberships">Open Active client memberships</a> (branch context required on that screen).</p>
+                <p class="hint" style="margin-bottom:0;">
+                    <a href="/memberships/client-memberships?search=<?= urlencode($clientDisplayName) ?>">View all memberships for this client</a>
+                    &nbsp;·&nbsp;
+                    <a href="/memberships/client-memberships/assign">Enrol in membership</a>
+                </p>
                 <?php endif; ?>
             </section>
 
