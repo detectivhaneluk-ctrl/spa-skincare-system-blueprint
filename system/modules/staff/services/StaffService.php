@@ -220,7 +220,9 @@ final class StaffService
                 throw $e;
             }
             if ($n !== 1) {
-                throw new \DomainException('Could not permanently delete this staff member.');
+                throw new \DomainException(
+                    'This staff member cannot be permanently deleted because related records still exist.'
+                );
             }
             $this->audit->log('staff_permanently_deleted', 'staff', $id, $this->currentUserId(), $row['branch_id'] ?? null, [
                 'staff' => $row,
@@ -290,12 +292,16 @@ final class StaffService
     }
 
     /**
-     * @param list<int> $ids
+     * Bulk permanent delete with per-row outcomes (never swallows failures silently).
+     *
+     * @param list<int|string> $ids
+     * @return array{deleted: int, blocked: list<array{id: int, label: string, reason: string}>}
      */
-    public function bulkPermanentlyDelete(array $ids): int
+    public function bulkPermanentlyDelete(array $ids): array
     {
         $this->tenantScopeGuard->requireResolvedTenantScope();
         $deleted = 0;
+        $blocked = [];
         foreach ($ids as $raw) {
             $id = (int) $raw;
             if ($id <= 0) {
@@ -304,23 +310,28 @@ final class StaffService
             try {
                 $this->permanentlyDelete($id);
                 $deleted++;
-            } catch (\DomainException) {
+            } catch (\DomainException $e) {
+                $blocked[] = [
+                    'id' => $id,
+                    'label' => $this->staffLabelForBulkOutcome($id),
+                    'reason' => $e->getMessage(),
+                ];
             }
         }
 
-        return $deleted;
+        return ['deleted' => $deleted, 'blocked' => $blocked];
     }
 
     private function assertHardDeleteDependenciesAllow(int $staffId): void
     {
         if ($this->repo->countAppointmentSeriesForStaff($staffId) > 0) {
             throw new \DomainException(
-                'This staff member cannot be permanently deleted because they are linked to appointment series. Cancel or reassign those series first.'
+                'This staff member cannot be permanently deleted because active or historical appointment series still reference them. Cancel or reassign those series first.'
             );
         }
         if ($this->repo->countPayrollCommissionLinesForStaff($staffId) > 0) {
             throw new \DomainException(
-                'This staff member cannot be permanently deleted because payroll commission lines still reference them.'
+                'This staff member cannot be permanently deleted because payroll commission lines still reference them. Remove or reassign those lines first.'
             );
         }
     }
@@ -367,7 +378,28 @@ final class StaffService
             if ($e instanceof \DomainException || $e instanceof \RuntimeException || $e instanceof \InvalidArgumentException) {
                 throw $e;
             }
+            if ($action === 'staff permanent delete') {
+                throw new \DomainException(
+                    'This staff member cannot be permanently deleted because related records still exist.',
+                    0,
+                    $e
+                );
+            }
             throw new \DomainException('Staff operation failed.');
         }
+    }
+
+    private function staffLabelForBulkOutcome(int $id): string
+    {
+        $row = $this->repo->find($id, true);
+        if ($row === null) {
+            return '#' . $id;
+        }
+        $name = $this->getDisplayName($row);
+        if ($name !== '') {
+            return '#' . $id . ' ' . $name;
+        }
+
+        return '#' . $id;
     }
 }

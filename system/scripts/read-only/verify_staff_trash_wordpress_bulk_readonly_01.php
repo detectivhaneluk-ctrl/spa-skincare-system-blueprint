@@ -18,6 +18,8 @@ $svc    = (string) file_get_contents($system . '/modules/staff/services/StaffSer
 $idx    = (string) file_get_contents($system . '/modules/staff/views/index.php');
 $mig    = (string) file_get_contents($system . '/data/migrations/143_staff_trash_metadata.sql');
 $cli    = (string) file_get_contents($system . '/scripts/purge_staff_trash_cli_01.php');
+$httpPf = (string) file_get_contents($system . '/scripts/dev-only/smoke_staff_trash_http_permanent_delete_proof_01.php');
+$bulkOut = (string) file_get_contents($system . '/scripts/dev-only/smoke_staff_bulk_permanent_outcome_01.php');
 $cfg    = (string) file_get_contents($system . '/config/staff.php');
 
 $checks = [
@@ -63,6 +65,18 @@ $checks = [
         && str_contains($svc, 'countPayrollCommissionLinesForStaff'),
     'StaffRepository hardDeleteTrashed issues physical DELETE on trashed rows only' =>
         str_contains($repo, 'DELETE s FROM staff s WHERE s.id = ? AND s.deleted_at IS NOT NULL'),
+    'StaffService bulkPermanentlyDelete returns deleted + blocked outcomes' =>
+        str_contains($svc, "'deleted'")
+        && str_contains($svc, "'blocked'")
+        && str_contains($svc, 'staffLabelForBulkOutcome'),
+    'StaffController formats bulk partial permanent-delete flash (warning + summaries)' =>
+        str_contains($ctl, 'formatBulkPermanentPartialSummary')
+        && str_contains($ctl, 'formatBulkPermanentAllBlockedSummary'),
+    'HTTP permanent-delete proof orchestrator exists' =>
+        str_contains($httpPf, 'smoke_staff_trash_http_permanent_delete_proof_01')
+        && str_contains($httpPf, '_staff_trash_http_proof_case.php'),
+    'Bulk permanent outcome CLI proof exists' =>
+        str_contains($bulkOut, 'bulkPermanentlyDelete'),
 ];
 
 $fail = false;
