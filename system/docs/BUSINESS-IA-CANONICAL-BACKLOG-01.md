@@ -1,4 +1,19 @@
-# Business IA — Execution Backlog (Program 01)
+> **⛔ SUPERSEDED — 2026-04-07**
+> This backlog (`BUSINESS-IA-CANONICAL-BACKLOG-01.md`) was the task list for the 10-module IA program.
+>
+> **New authoritative backlog:** `system/docs/OLLIRA-IA-7MODULE-MASTER-BACKLOG-V2-01.md`
+>
+> **Purge decisions:** See §1.3 of the new document for each old task's verdict (ELIMINATED / ABSORBED / CLOSED-KEPT / FOUNDATION-ONLY).
+>
+> **Summary of what was already delivered (CLOSED-KEPT):** Tasks 2.2, 3.1, 3.2, 4.1, 4.2, 5.1 — all delivered work remains valid and compatible with the new 7-module IA.
+>
+> **Summary of what was killed (ELIMINATED):** Tasks 1.0, 1.1, 1.2, 1.3, 7.1, 7.2 — these tasks added Catalog and Reports as standalone primary nav homes; the new IA removes those as primary homes.
+>
+> **Summary of what was re-homed (ABSORBED):** Tasks 5.2, 6.2, 7.3, 8.1, 8.2, 9.1, 9.2, 10.1, 10.2 — still valid work; now tracked in the new backlog under their correct Ollira module.
+
+---
+
+# Business IA — Execution Backlog (Program 01) — HISTORICAL RECORD
 
 **Source law:** [`BUSINESS-IA-CANONICAL-LAW-01.md`](BUSINESS-IA-CANONICAL-LAW-01.md)  
 **Live cleanup / single execution lane:** [`BUSINESS-IA-LIVE-EXECUTION-LOCK-01.md`](BUSINESS-IA-LIVE-EXECUTION-LOCK-01.md)  

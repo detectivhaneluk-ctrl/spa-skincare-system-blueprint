@@ -1,4 +1,17 @@
-# Business IA — Canonical Law (Program 01)
+> **⛔ SUPERSEDED — 2026-04-07**
+> This document (`BUSINESS-IA-CANONICAL-LAW-01.md`) defined the 10-module IA law (Overview, Calendar, Clients, Team, Catalog, Sales, Inventory, Marketing, Reports, Admin).
+>
+> That architecture has been **superseded** by the **Ollira 7-Module IA**.
+>
+> **New authoritative law:** `system/docs/OLLIRA-IA-7MODULE-MASTER-BACKLOG-V2-01.md` §2
+>
+> **Key changes:** Catalog → SETTINGS > Services & Pricing | Marketing → CLIENTS > Marketing | Reports → HOME analytics + CASHIER financial reports | Admin → SETTINGS | Sales → CASHIER | Inventory → STOCK
+>
+> This file is retained as a **historical record** only. Do not use it to make new architecture or navigation decisions.
+
+---
+
+# Business IA — Canonical Law (Program 01) — HISTORICAL RECORD
 
 **Program:** `BUSINESS-IA-CANONICAL-REBUILD-PROGRAM-01`  
 **Artifact:** authoritative read-first spec. **Does not replace code.**  

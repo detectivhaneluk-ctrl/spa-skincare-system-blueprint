@@ -1,4 +1,15 @@
-# Business IA — Live Execution Lock (Program 01)
+> **⛔ SUPERSEDED — 2026-04-07**
+> This document (`BUSINESS-IA-LIVE-EXECUTION-LOCK-01.md`) and the entire `BUSINESS-IA-CANONICAL-REBUILD-PROGRAM-01` (10-module IA plan) have been **superseded** by the new **Ollira 7-Module IA Master Backlog**.
+>
+> **New authoritative document:** `system/docs/OLLIRA-IA-7MODULE-MASTER-BACKLOG-V2-01.md`
+>
+> **Current live task:** `STORY-03.2.11` (deep links from client profile) — see §6 of the new document.
+>
+> **Do not execute new work from this file.** It is kept as a historical record of what was delivered in the 10-module program (Phases 1–5.1 closed). The closed work (2.2, 3.1, 3.2, 4.1, 4.2, 5.1) remains valid and compatible with the new 7-module plan.
+
+---
+
+# Business IA — Live Execution Lock (Program 01) — HISTORICAL RECORD
 
 **Artifact:** single live cleanup, stale-task elimination, and **one** ordered execution lane for `BUSINESS-IA-CANONICAL-REBUILD-PROGRAM-01`.  
 **Audit anchored:** 2026-04-07 against repo files under `system/` (no archive authority).  
