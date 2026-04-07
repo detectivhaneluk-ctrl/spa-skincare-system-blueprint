@@ -2,13 +2,13 @@
 
 **Artifact:** single live cleanup, stale-task elimination, and **one** ordered execution lane for `BUSINESS-IA-CANONICAL-REBUILD-PROGRAM-01`.  
 **Audit anchored:** 2026-04-07 against repo files under `system/` (no archive authority).  
-**Status:** DONE — lane advanced 2026-04-07: **2.2** + **3.1** copy closures shipped (`BUSINESS-IA-SEQUENTIAL-LANE-CLOSURE-02-TO-03-01`); **next** slice **3.2** (see §6).
+**Status:** DONE — **2026-04-08:** root `README.md` Armenian drift fenced (`README-DRIFT-CLEANUP-AND-PHASE-3-2-PREP-01`); **Phase 3.2** next-lane spec locked in **§10** (see also §6 summary).
 
 ---
 
 ## 1. STATUS
 
-**DONE** — Audit + elimination log remain valid. **Execution lock updated:** Phase **2.2** and **3.1** are **closed** in live UI/docs; next bounded slice is **3.2** only.
+**DONE** — Audit + elimination log remain valid. **2026-04-08:** Phase **3.2** prep locked in **§10**; next **implementation** slice is **3.2** only (per §10).
 
 ---
 
@@ -55,7 +55,7 @@
 | `system/docs/BUSINESS-IA-CANONICAL-LAW-01.md` | UPDATE-LABELING | **Patched 2026-04-07:** §3.9 and §8 Phase 1 row aligned to live `base.php` + `GET /reports` (removed stale “no Reports in nav” gap). |
 | `system/docs/BUSINESS-IA-CANONICAL-BACKLOG-01.md` | UPDATE-LABELING | **Patched:** link to this lock doc; Phase 1 open decisions marked resolved against live repo. |
 | `system/docs/MAINTAINER-RUNTIME-TRUTH.md` | KEEP-AS-LIVE | Matches “code wins”; read-only script guidance consistent. |
-| `README.md` (root) | UPDATE-LABELING | **2026-04-07:** English Maintainers block adds ten-home IA + Admin control-plane pointer (`BUSINESS-IA-CANONICAL-LAW-01.md`). |
+| `README.md` (root) | KEEP-AS-LIVE | **2026-04-08:** English fence above Armenian body; goals header marked historical; aligns with ten-home law (no settings-centered execution read). |
 | `system/README.md` | CLEANUP-REFERENCES | **Patched:** maintainer path now `system/docs/MAINTAINER-RUNTIME-TRUTH.md` (was broken `docs/…`). |
 
 ### B. Primary nav / shell
@@ -159,14 +159,9 @@ Strict **phase order**; within a phase, row order. Status applies to **remaining
 
 ## 6. SINGLE LIVE EXECUTION LANE
 
-**Next task (only):** **Backlog 3.2 — Secondary “back to catalog” consistency** (`BUSINESS-IA-CANONICAL-BACKLOG-01.md`).
+**Next task (only):** **Phase 3.2** — full specification in **§10** (single source for the next Cursor implementation task).
 
-**Why this is next:** **2.2** and **3.1** are complete in live copy; Phase 3’s remaining row is **3.2** before Phase 4.
-
-**Re-audit before touching:**  
-`modules/services-resources/views/services/`, `…/rooms/`, `…/equipment/`, and any catalog-adjacent partials that render back links; extend or satisfy `verify_catalog_*` as applicable.
-
-**Non-goals for 3.2:** No wizard route renames; no deep link breakage; no new catalog URLs.
+**Summary:** Replace remaining **Services & Resources** / pre–Business-IA wayfinding under `services-resources` with honest **Catalog** hierarchy and `GET /services-resources` hub alignment, without breaking wizard URLs or `verify_catalog_*` / `verify_business_nav_*` anchors.
 
 ---
 
@@ -197,7 +192,94 @@ php system/scripts/read-only/verify_admin_ia_business_first_truth_01.php
 
 ## 9. FINAL EXECUTION RECOMMENDATION
 
-Execute **only** backlog task **3.2** next: audit services, spaces, and equipment subsection views so every “back to catalog” path names the canonical Catalog hub honestly, without breaking deep links or wizard routes, then run the three read-only verifiers until they exit zero.
+Execute **only** **§10 Phase 3.2** next. Do not interpret scope beyond that section.
+
+---
+
+## 10. PHASE 3.2 — NEXT LANE PREP (locked)
+
+*Prep locked: 2026-04-08 (`README-DRIFT-CLEANUP-AND-PHASE-3-2-PREP-01`). Implementation of 3.2 is a **separate** task; this section is the execution contract.*
+
+### 10.1 NEXT SINGLE TASK
+
+| Field | Value |
+|--------|--------|
+| **Phase / ID** | Phase **3** — Backlog row **3.2** |
+| **Task name** | Secondary “back to catalog” / breadcrumb consistency |
+| **Business goal** | Every catalog-subsection surface that lifts the operator back toward the hub must name **Catalog** and `GET /services-resources` honestly, with no resurrected **Services & Resources** product label on live wayfinding. |
+
+### 10.2 EXACT FILES TO RE-AUDIT BEFORE TOUCHING
+
+Read each file fully before editing; order is suggestion only.
+
+1. `system/modules/services-resources/views/services/index.php`  
+2. `system/modules/services-resources/views/services/show.php`  
+3. `system/modules/services-resources/views/services/_wizard_nav.php`  
+4. `system/modules/services-resources/views/services/edit.php`  
+5. `system/modules/services-resources/views/services/create.php`  
+6. `system/modules/services-resources/views/services/step2.php`  
+7. `system/modules/services-resources/views/services/step3.php`  
+8. `system/modules/services-resources/views/services/step4.php`  
+9. `system/modules/services-resources/views/services/_step1_form.php`  
+10. `system/modules/services-resources/views/rooms/index.php`  
+11. `system/modules/services-resources/views/rooms/show.php`  
+12. `system/modules/services-resources/views/rooms/create.php`  
+13. `system/modules/services-resources/views/rooms/edit.php`  
+14. `system/modules/services-resources/views/equipment/index.php`  
+15. `system/modules/services-resources/views/equipment/show.php`  
+16. `system/modules/services-resources/views/equipment/create.php`  
+17. `system/modules/services-resources/views/equipment/edit.php`  
+18. `system/modules/services-resources/views/categories/index.php`  
+19. `system/modules/services-resources/views/categories/show.php`  
+20. `system/modules/services-resources/views/categories/create.php`  
+21. `system/modules/services-resources/views/categories/edit.php`  
+22. `system/modules/services-resources/views/index.php` (hub — only if a subsection change requires hub copy alignment)  
+23. `system/scripts/read-only/verify_catalog_growth_subsection_business_clarity_03.php` (if new string anchors are added)
+
+### 10.3 EXACT CONTRADICTIONS TO REMOVE
+
+Each item is a **live** string or pattern observed in §10.2 files as of prep date; fix means **copy/wayfinding only** (hub target remains `GET /services-resources` unless law explicitly allows otherwise).
+
+- **Breadcrumb / parent label `Services & Resources`** on service **show** and **wizard** chrome — contradicts primary nav label **Catalog** and hub title **Catalog** (`services/show.php`, `_wizard_nav.php`).
+- **Back link text `← Services & Resources`** on **categories** index — contradicts Catalog naming (`categories/index.php`).
+- **Internal “Back to …”-only chains** (e.g. detail → list without a **Catalog** hop) where the operator expectation per law is **Catalog → subsection → entity** — evaluate `rooms/show.php`, `rooms/edit.php`, `rooms/create.php`, `equipment/show.php`, `equipment/edit.php`, `equipment/create.php` for an optional **Catalog** uplink consistent with index pages (index pages already use `← Catalog` per verifier).
+- **Any new** reintroduction of `← Services & Resources` or plain `Services & Resources` as the **product** name on user-visible wayfinding in these paths — forbidden; use **Catalog** for hub-level naming.
+
+### 10.4 EXACT NON-GOALS
+
+- No changes to `section=` / `SettingsController` / POST allowlists / permission keys / route path strings in `system/routes/web/register_*.php` (except fixing typos only if unrelated — **prefer no route edits**).
+- No renaming of wizard path segments (`/step-2`, `/edit`, service id patterns) or POST action URLs.
+- No scope expansion into **packages**, **memberships**, **gift-cards**, **sales**, **reports**, or **Admin** modules for this slice.
+- No new pages or new GET routes; only copy and optional **additional** `a href="/services-resources"` (or existing paths) where it clarifies hierarchy.
+- No reliance on `archive/*`, `handoff/*`, or `docs/ARCHITECTURE-RESET-2026-CANONICAL-ROADMAP.md` for decisions.
+
+### 10.5 EXACT VERIFIER BUNDLE
+
+**Mandatory after any `services-resources` view change in this slice (exit code `0` each):**
+
+```bash
+php system/scripts/read-only/verify_business_nav_entry_clarity_safe_lane_02.php
+php system/scripts/read-only/verify_catalog_growth_subsection_business_clarity_03.php
+php system/scripts/read-only/verify_admin_ia_business_first_truth_01.php
+```
+
+**Adjacent (recommended same PR if `shell.php` untouched — optional):**
+
+```bash
+php system/scripts/read-only/verify_settings_control_plane_no_operational_launcher_hub_01.php
+```
+
+If **new** copy anchors are introduced (e.g. extended breadcrumb tests), **update** `verify_catalog_growth_subsection_business_clarity_03.php` in the **same** change set as the UI change ([MAINTAINER-RUNTIME-TRUTH.md](MAINTAINER-RUNTIME-TRUTH.md): living scripts track the codebase).
+
+### 10.6 DONE BAR
+
+Phase **3.2** is **complete** only when all of the following are true:
+
+1. No user-visible **Services & Resources** string remains on catalog subsection **wayfinding** in the files listed in §10.2 (breadcrumb, back links, wizard top chrome) — **Catalog** is the hub name for those surfaces.  
+2. `← Catalog` remains on `services/index.php`, `equipment/index.php`, `rooms/index.php` (verifier **C1 / D1 / E3** still pass).  
+3. Deep links and wizard **URLs** behave as before (no broken POST targets; smoke mentally or via existing tests).  
+4. Mandatory verifier bundle (§10.5) exits **`0`** for all three scripts.  
+5. `system/docs/BUSINESS-IA-CANONICAL-LAW-01.md` §3.5 Catalog hub sentence still matches UI (update law **only** if hub copy changes in the same task).
 
 ---
 

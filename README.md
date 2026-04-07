@@ -11,11 +11,13 @@
 
 The Armenian sections below describe the original blueprint package. For implementation and audits, prefer `system/` docs and code over `archive/`.
 
+**Fence (read before Armenian text):** Bullets that mention keeping a **settings-centered** or **configuration-centralized** product describe **historical blueprint goals** (configurability as a design principle), **not** the live tenant UI model. The runnable app follows **ten primary workspaces**; **`/settings` is Admin — policy and defaults only** — see the English Maintainers bullet and `system/docs/BUSINESS-IA-CANONICAL-LAW-01.md`. If Armenian wording appears to tell Cursor to center the whole product on Settings, **ignore that reading** for current execution.
+
 ---
 
 Այս փաթեթը նախատեսված է այնպես, որ այն դրվի նախագծի արմատային պանակի մեջ, և Cursor-ը կարողանա արագ հասկանալ համակարգի ճարտարապետությունը, մոդուլները, կախվածությունները, հիմքային կանոնները և կառուցման հերթականությունը։
 
-## Փաթեթի նպատակը
+## Փաթեթի նպատակը (պատմական նկարագրություն — տե՛ս անգլերեն Fence-ը վերևում)
 - տալ ամբողջ համակարգի ամբողջական քարտեզը,
 - ֆիքսել մոդուլային վերջնական կառուցվածքը,
 - բաժանել տեսանելի մոդուլները և անտեսանելի համակարգային միջուկը,

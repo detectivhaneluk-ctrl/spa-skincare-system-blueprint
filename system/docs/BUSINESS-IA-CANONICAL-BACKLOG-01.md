@@ -54,7 +54,7 @@ Exit code must be `0` for each.
 | ID | Task name | Purpose | Re-audit first | Non-goals | Acceptance proof |
 |----|-----------|---------|----------------|-----------|------------------|
 | 3.1 | Hub copy + card order | Align `catalog-hub` lead/cards with definition vs client-record law; gift cards **Sales**, client packages/memberships **Clients** | `modules/services-resources/views/index.php` | Changing `/gift-cards` path | `verify_catalog_growth_subsection_business_clarity_03.php` |
-| 3.2 | Secondary “back to catalog” consistency | Breadcrumbs or back links point to canonical Catalog without breaking deep links | Services/rooms/equipment views | Wizard route changes | Read-only grep verifier or extend `verify_catalog_*` |
+| 3.2 | Secondary “back to catalog” consistency | Breadcrumbs or back links point to canonical Catalog without breaking deep links | **Exact file list:** `system/docs/BUSINESS-IA-LIVE-EXECUTION-LOCK-01.md` §10.2 | Wizard route changes; new routes | Mandatory verifier bundle in §10.5; extend `verify_catalog_growth_subsection_business_clarity_03.php` if new anchors |
 
 **Live closure note (2026-04-07, `BUSINESS-IA-SEQUENTIAL-LANE-CLOSURE-02-TO-03-01`):** Task **3.1** hub lead + gift-card card aligned to Sales ownership; `verify_catalog_growth_subsection_business_clarity_03.php` green.
 
