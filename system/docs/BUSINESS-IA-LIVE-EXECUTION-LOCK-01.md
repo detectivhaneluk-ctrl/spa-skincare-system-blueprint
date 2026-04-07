@@ -287,6 +287,8 @@ Phase **3.2** is **complete** only when all of the following are true:
 
 **Delivered:** Catalog hub label **Catalog** on service **show** + **wizard** breadcrumbs; categories index **← Catalog**; spaces detail **← Back to Spaces**; services list column **Spaces**; wizard step **4** label + step-4 copy + service show “spaces assigned” block aligned to **Spaces**; `verify_catalog_growth_subsection_business_clarity_03.php` anchors **C6–C14**, **E8–E9**. Routes and POST targets unchanged. Mandatory verifier bundle + `verify_settings_control_plane_no_operational_launcher_hub_01.php` exited **0**.
 
+**Sterile micro (`BUSINESS-IA-PHASE-3-2-STERILE-CLOSURE-MICRO-01`):** Service detail **Applies to room** → **Applies to space** (same `applies_to_room` field); unnamed list fallbacks **Space #** (not **Room #**); verifier **C7b–C7d**.
+
 ---
 
 ## Document control

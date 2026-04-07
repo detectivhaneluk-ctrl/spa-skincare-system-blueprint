@@ -99,7 +99,7 @@ function _svcFlag(mixed $val, string $yes = 'Yes', string $no = 'No'): string
         <dd><?= _svcFlag($service['requires_two_staff_members']) ?></dd>
         <dt>Applies to employee</dt>
         <dd><?= _svcFlag($service['applies_to_employee'] ?? 1) ?></dd>
-        <dt>Applies to room</dt>
+        <dt>Applies to space</dt>
         <dd><?= _svcFlag($service['applies_to_room'] ?? 1) ?></dd>
         <dt>Requires equipment</dt>
         <dd><?= _svcFlag($service['requires_equipment']) ?></dd>
@@ -224,13 +224,13 @@ $roomIds = $service['room_ids'] ?? [];
     try {
         $roomRepo2 = \Core\App\Application::container()->get(\Modules\ServicesResources\Repositories\RoomRepository::class);
         foreach ($roomRepo2->list() as $rm) {
-            $roomNameMap[(int) $rm['id']] = $rm['name'] ?? ('Room #' . $rm['id']);
+            $roomNameMap[(int) $rm['id']] = $rm['name'] ?? ('Space #' . $rm['id']);
         }
     } catch (\Throwable $e) {}
     ?>
     <ul style="margin:0; padding-left:1.25rem; font-size:0.875rem;">
         <?php foreach ($roomIds as $rid): ?>
-        <li><?= htmlspecialchars($roomNameMap[(int) $rid] ?? ('Room #' . (int) $rid)) ?></li>
+        <li><?= htmlspecialchars($roomNameMap[(int) $rid] ?? ('Space #' . (int) $rid)) ?></li>
         <?php endforeach; ?>
     </ul>
     <?php endif; ?>

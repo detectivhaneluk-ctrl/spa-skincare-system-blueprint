@@ -58,6 +58,8 @@ Exit code must be `0` for each.
 
 **Live closure note (2026-04-08, `BUSINESS-IA-PHASE-3-2-CATALOG-WAYFINDING-CLOSURE-01`):** Task **3.2** closed — legacy **Services & Resources** hub labels removed from audited catalog views; **Spaces** naming aligned on services list, wizard step 4, service show, space detail; verifier extended (**C6–C14**, **E8–E9**); all mandatory + adjacent Business IA verifiers green.
 
+**Sterile micro (`BUSINESS-IA-PHASE-3-2-STERILE-CLOSURE-MICRO-01`):** Service detail **Applies to room** / **Room #** user copy aligned to **space** / **Space #**; verifier **C7b–C7d**.
+
 **Live closure note (2026-04-07, `BUSINESS-IA-SEQUENTIAL-LANE-CLOSURE-02-TO-03-01`):** Task **3.1** hub lead + gift-card card aligned to Sales ownership; `verify_catalog_growth_subsection_business_clarity_03.php` green.
 
 ---
