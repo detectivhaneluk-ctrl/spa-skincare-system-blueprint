@@ -34,5 +34,8 @@ id_rsa
 # image-pipeline dependencies — install with npm ci in workers/image-pipeline (not canonical source)
 workers/image-pipeline/node_modules/
 
+# Accidental npm at repository root (do not commit)
+/node_modules/
+
 # Optional Playwright deps for system/scripts/dev-only/calendar_screenshot_once.mjs (npm install playwright)
 system/scripts/dev-only/node_modules/

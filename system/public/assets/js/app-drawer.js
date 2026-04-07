@@ -476,6 +476,7 @@
     const clientSearchHintEl = form.querySelector('#client-search-hint');
     const clientSearchResultsEl = form.querySelector('#client-search-results');
     const serviceEl = form.querySelector('#service_id');
+    const categoryEl = form.querySelector('#service_category_id');
     const dateEl = form.querySelector('#date');
     const staffEl = form.querySelector('#staff_id');
     const roomEl = form.querySelector('#room_id');
@@ -485,6 +486,7 @@
     const slotsWrap = form.querySelector('#slots-container');
     const statusHintEl = form.querySelector('#slots-status');
     const loadBtn = form.querySelector('#load-slots-btn');
+    const categoryHintEl = form.querySelector('#category-hint');
     const selectedSlotLabelEl = form.querySelector('[data-selected-slot-label]');
     const estimatedEndLabelEl = form.querySelector('[data-estimated-end-label]');
     const serviceHintEl = form.querySelector('#service-description-hint');
@@ -492,6 +494,8 @@
     const defaultSlotMinutes = Math.max(5, Number(form.dataset.slotMinutes || '30') || 30);
     const prefillEndTime = form.dataset.prefillEndTime || '';
     const createBaseUrl = form.dataset.createBaseUrl || '/appointments/create';
+    const staffServicesUrl = form.dataset.staffServicesUrl || '/appointments/staff-services';
+    const staffScopedMode = form.dataset.staffScoped === '1';
     const clientDetailEls = {
       name: form.querySelector('[data-client-detail="name"]'),
       email: form.querySelector('[data-client-detail="email"]'),
@@ -502,6 +506,116 @@
 
     if (!branchEl || !clientEl || !serviceEl || !dateEl || !staffEl || !startEl || !slotsWrap || !statusHintEl || !loadBtn) {
       return;
+    }
+
+    // ── Staff-scoped category-first data ────────────────────────────────────
+    // staffCatalog[categoryKey] = { id, name, services: [{id, name, duration_minutes, description}] }
+    let staffCatalog = null;
+
+    const populateCategorySelect = (categories) => {
+      if (!categoryEl) return;
+      categoryEl.innerHTML = '';
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = '— Choose category —';
+      categoryEl.appendChild(placeholder);
+      categories.forEach((cat) => {
+        const opt = document.createElement('option');
+        opt.value = cat.id !== null ? String(cat.id) : '__uncat__';
+        opt.textContent = cat.name;
+        categoryEl.appendChild(opt);
+      });
+      categoryEl.disabled = false;
+      if (categoryHintEl) categoryHintEl.hidden = true;
+      // Auto-select if only one category
+      if (categories.length === 1) {
+        categoryEl.value = categoryEl.options[1].value;
+        categoryEl.dispatchEvent(new Event('change'));
+      }
+    };
+
+    const populateServiceSelect = (services) => {
+      serviceEl.innerHTML = '';
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = services.length === 0 ? '— No services in category —' : '— Choose service —';
+      serviceEl.appendChild(placeholder);
+      services.forEach((svc) => {
+        const opt = document.createElement('option');
+        opt.value = String(svc.id);
+        opt.dataset.serviceDuration = String(svc.duration_minutes || 0);
+        if (svc.description) opt.title = svc.description;
+        opt.textContent = svc.name + ' (' + (svc.duration_minutes || 0) + ' min)';
+        serviceEl.appendChild(opt);
+      });
+      serviceEl.disabled = services.length === 0;
+      // Auto-select if only one service
+      if (services.length === 1) {
+        serviceEl.value = serviceEl.options[1].value;
+        serviceEl.dispatchEvent(new Event('change'));
+      }
+    };
+
+    const onCategoryChange = () => {
+      if (!staffCatalog || !categoryEl) return;
+      const selectedKey = categoryEl.value;
+      serviceEl.value = '';
+      computeEstimatedEnd();
+      if (!selectedKey) {
+        serviceEl.innerHTML = '<option value="">— Choose category first —</option>';
+        serviceEl.disabled = true;
+        return;
+      }
+      const cat = staffCatalog.find((c) => (c.id !== null ? String(c.id) : '__uncat__') === selectedKey);
+      if (cat) {
+        populateServiceSelect(cat.services || []);
+      } else {
+        serviceEl.innerHTML = '<option value="">— No services available —</option>';
+        serviceEl.disabled = true;
+      }
+    };
+
+    async function loadStaffCatalog() {
+      if (!staffScopedMode || !staffEl.value || !branchEl.value) return;
+      if (categoryEl && categoryHintEl) {
+        categoryEl.disabled = true;
+        categoryHintEl.textContent = 'Loading…';
+        categoryHintEl.hidden = false;
+      }
+      const params = new URLSearchParams();
+      params.set('staff_id', staffEl.value);
+      params.set('branch_id', branchEl.value);
+      const ac = new AbortController();
+      const tid = bindAbortDeadline(ac, DRAWER_FETCH_TIMEOUT_MS);
+      try {
+        const res = await fetch(staffServicesUrl + '?' + params.toString(), {
+          headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+          credentials: 'same-origin',
+          signal: ac.signal,
+        });
+        const payload = await res.json();
+        if (!res.ok || !payload.success) {
+          if (categoryEl && categoryHintEl) {
+            categoryHintEl.textContent = (payload.error && payload.error.message) ? payload.error.message : 'Could not load categories.';
+            categoryHintEl.hidden = false;
+          }
+          return;
+        }
+        staffCatalog = Array.isArray(payload.data && payload.data.categories) ? payload.data.categories : [];
+        populateCategorySelect(staffCatalog);
+      } catch (err) {
+        if (categoryEl && categoryHintEl) {
+          categoryHintEl.textContent = (err && err.name === 'AbortError') ? 'Request timed out.' : 'Could not load categories.';
+          categoryHintEl.hidden = false;
+        }
+      } finally {
+        clearTimeout(tid);
+      }
+    }
+
+    if (staffScopedMode && categoryEl) {
+      categoryEl.addEventListener('change', onCategoryChange);
+      loadStaffCatalog();
     }
 
     const updateServiceDescriptionHint = () => {

@@ -307,6 +307,26 @@ final class AppointmentController
             exit;
         }
 
+        // Direct service-staff assignment tamper protection.
+        // If this service has explicit staff assignments (service_staff pivot), submitted staff_id must be one of them.
+        // This runs in addition to the group-based check inside AppointmentService::createFromSlot.
+        $serviceIdForCheck = (int) ($data['service_id'] ?? 0);
+        $staffIdForCheck = (int) ($data['staff_id'] ?? 0);
+        if ($serviceIdForCheck > 0 && $staffIdForCheck > 0 && $this->serviceHasAnyDirectStaffAssignment($serviceIdForCheck)) {
+            $serviceRepo = Application::container()->get(\Modules\ServicesResources\Repositories\ServiceRepository::class);
+            $directAssigned = $serviceRepo->listAssignedServiceIdsForStaff($staffIdForCheck);
+            if (!in_array($serviceIdForCheck, $directAssigned, true)) {
+                $errMsg = 'Selected service is not assigned to the selected staff member.';
+                if ($this->wantsJsonRequest()) {
+                    $this->respondJson(['success' => false, 'error' => ['message' => $errMsg]], 422);
+                }
+                flash('error', $errMsg);
+                $branchForRedirect = isset($data['branch_id']) && $data['branch_id'] !== null ? (int) $data['branch_id'] : 0;
+                header('Location: /appointments/create' . ($branchForRedirect > 0 ? '?branch_id=' . $branchForRedirect : ''));
+                exit;
+            }
+        }
+
         try {
             $id = $this->service->createFromSlot($data);
             if ($this->wantsJsonRequest()) {
@@ -2123,6 +2143,102 @@ final class AppointmentController
 
         /** @var array<string, mixed> */
         return $_POST;
+    }
+
+    /**
+     * GET /appointments/staff-services
+     * Returns categories + services that a specific staff member is allowed to perform for the given branch.
+     * Used by the quick-drawer category-first flow.
+     * Response shape:
+     *   { success: true, data: { staff_id: int, branch_id: int, categories: [{ id, name, services: [{ id, name, duration_minutes, description }] }] } }
+     */
+    public function staffServices(): void
+    {
+        $staffId = (int) ($_GET['staff_id'] ?? 0);
+        if ($staffId <= 0) {
+            $this->respondJson(['success' => false, 'error' => ['message' => 'staff_id is required.']], 422);
+        }
+        try {
+            $branchId = $this->resolveAppointmentBranchFromGetOrFail();
+        } catch (\Core\Errors\AccessDeniedException $e) {
+            $this->respondJson(['success' => false, 'error' => ['message' => 'Branch access denied.']], 403);
+        } catch (\DomainException $e) {
+            $this->respondJson(['success' => false, 'error' => ['message' => $e->getMessage()]], 422);
+        }
+
+        $allServices = $this->serviceList->list($branchId);
+
+        // Resolve which service IDs the staff member is directly assigned to (service_staff pivot).
+        $serviceRepo = Application::container()->get(\Modules\ServicesResources\Repositories\ServiceRepository::class);
+        $directAssigned = $serviceRepo->listAssignedServiceIdsForStaff($staffId);
+        $directAssignedSet = array_flip($directAssigned);
+
+        // Build eligibility service for group-based check.
+        $eligibility = Application::container()->get(\Modules\ServicesResources\Services\ServiceStaffGroupEligibilityService::class);
+
+        // Filter: keep only services allowed for this staff+branch.
+        // A service is allowed when EITHER the service has no direct-assignment list (backward-compat)
+        // OR the staff is in the direct-assignment list, AND passes group eligibility.
+        $allowed = [];
+        foreach ($allServices as $svc) {
+            $svcId = (int) ($svc['id'] ?? 0);
+            if ($svcId <= 0) {
+                continue;
+            }
+            // Direct assignment check: if any direct assignments exist for this service, staff must be in them.
+            $hasDirectLinks = $this->serviceHasAnyDirectStaffAssignment($svcId);
+            if ($hasDirectLinks && !isset($directAssignedSet[$svcId])) {
+                continue;
+            }
+            // Group-based eligibility: if the service has group restrictions, staff must pass.
+            if (!$eligibility->isStaffAllowedForService($svcId, $staffId, $branchId)) {
+                continue;
+            }
+            $allowed[] = $svc;
+        }
+
+        // Group into categories.
+        $categories = [];
+        $uncatKey = '__uncat__';
+        foreach ($allowed as $svc) {
+            $catId = $svc['category_id'] !== null ? (int) $svc['category_id'] : null;
+            $catName = $svc['category_name'] ?? null;
+            $key = $catId !== null ? (string) $catId : $uncatKey;
+            if (!isset($categories[$key])) {
+                $categories[$key] = [
+                    'id' => $catId,
+                    'name' => $catName !== null && $catName !== '' ? $catName : 'Other',
+                    'services' => [],
+                ];
+            }
+            $categories[$key]['services'][] = [
+                'id' => (int) $svc['id'],
+                'name' => (string) ($svc['name'] ?? ''),
+                'duration_minutes' => (int) ($svc['duration_minutes'] ?? 0),
+                'description' => $svc['description'] ?? null,
+            ];
+        }
+
+        $this->respondJson([
+            'success' => true,
+            'data' => [
+                'staff_id' => $staffId,
+                'branch_id' => $branchId,
+                'categories' => array_values($categories),
+            ],
+        ]);
+    }
+
+    /**
+     * True when the services table has at least one row in service_staff for this service_id.
+     * Used to distinguish services with explicit staff lists from open (no-restriction) services.
+     */
+    private function serviceHasAnyDirectStaffAssignment(int $serviceId): bool
+    {
+        $db = Application::container()->get(\Core\App\Database::class);
+        $row = $db->fetchOne('SELECT 1 FROM service_staff WHERE service_id = ? LIMIT 1', [$serviceId]);
+
+        return $row !== null;
     }
 
     public function slots(): void
