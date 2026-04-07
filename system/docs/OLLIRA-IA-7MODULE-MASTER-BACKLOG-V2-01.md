@@ -343,7 +343,7 @@ Status vocabulary: `DONE` | `IN PROGRESS` | `NEXT` | `OPEN` | `DEFERRED`
 | STORY-03.6.4 | Automation triggers: appointment reminder (24h + 2h), post-visit thank you + review request | OPEN | Marketing automations worker exists |
 | STORY-03.6.5 | Automation triggers: rebooking nudge (X days after last visit), birthday offer, lapsed client win-back | OPEN | |
 | STORY-03.6.6 | Automation triggers: package expiry warning, membership renewal reminder | OPEN | |
-| STORY-03.6.7 | Marketing nav item visible inside CLIENTS module sidebar (not as a primary nav home) | OPEN | Key navigation change |
+| STORY-03.6.7 | Marketing nav item visible inside CLIENTS module sidebar (not as a primary nav home) | **DONE** | **2026-04-07:** Primary nav tuple removed; Clients workspace tab + `marketing.view` gate; Clients active on `/marketing/*`. Verifier: `verify_marketing_under_clients_01.php`. |
 
 #### FEAT-03.7: Consultation Forms Manager
 
@@ -659,7 +659,7 @@ PHASE 4 (Polish) runs after all PHASE 3 EPICs reach their MVP milestone.
 | Task | EPIC | Story | Priority | Status |
 |------|------|-------|----------|--------|
 | Remove Catalog from primary nav; add to SETTINGS sidebar | EPIC-07 | STORY-07.3.9 | P0 | **DONE** (`verify_story_07_3_9_catalog_out_of_primary_nav_01.php`) |
-| Remove Marketing from primary nav; surface inside CLIENTS | EPIC-03 | STORY-03.6.7 | P0 | OPEN |
+| Remove Marketing from primary nav; surface inside CLIENTS | EPIC-03 | STORY-03.6.7 | P0 | **DONE** (`verify_marketing_under_clients_01.php`) |
 | Remove Reports from primary nav; surface inside CASHIER and HOME | EPIC-05 | STORY-05.4.7 | P0 | OPEN |
 | Deep links from clients list + profile (Phase 5.2 carried over) | EPIC-03 | STORY-03.2.11 | P0 | **DONE** (`verify_story_03_2_11_client_profile_deep_links_01.php`) |
 | Role-aware 7-module nav (hide dead homes by permission) | EPIC-01 | STORY-01.5.1..5 | P1 | OPEN |
@@ -790,7 +790,9 @@ to client-held surfaces with stable **`client_id`** query params:
 `/services-resources`, `/memberships/*` (plan definitions), `/packages/*` (plan definitions). **SETTINGS** sidebar
 adds **Services & Pricing** → `/services-resources` (gated by `services-resources.view`).
 
-**Current single live task:** **PHASE 2 navigation restructure** — `STORY-03.6.7` (Marketing under CLIENTS).
+**Closed (2026-04-07):** `STORY-03.6.7` — Marketing removed from primary nav; **Clients** workspace pill nav includes **Marketing** → `/marketing/campaigns` (gated by `marketing.view`); **Clients** primary tab stays active on `/marketing/*`.
+
+**Current single live task:** **PHASE 2 navigation restructure** — `STORY-05.4.7` (Reports under CASHIER and HOME).
 
 **Done bar (STORY-03.2.11 — met):**
 1. Clients **list** row and **client profile** expose working links to membership, package, and gift card **index** surfaces using **`client_id`** (exact filter; not display-name search).
@@ -798,7 +800,7 @@ adds **Services & Pricing** → `/services-resources` (gated by `services-resour
 3. `php system/scripts/read-only/verify_story_03_2_11_client_profile_deep_links_01.php` exits `0` (run locally after pull).
 4. No route paths or POST contracts changed.
 
-**Next (Phase 2):** `STORY-03.6.7`, `STORY-05.4.7`, and remaining §PHASE 2 table rows until Phase 2 exit criteria are met.
+**Next (Phase 2):** `STORY-05.4.7`, and remaining §PHASE 2 table rows until Phase 2 exit criteria are met.
 
 ---
 
@@ -813,6 +815,7 @@ php system/scripts/read-only/verify_admin_ia_business_first_truth_01.php
 php system/scripts/read-only/verify_story_03_2_11_client_profile_deep_links_01.php
 php system/scripts/read-only/verify_story_03_2_12_client_profile_quick_book_01.php
 php system/scripts/read-only/verify_story_07_3_9_catalog_out_of_primary_nav_01.php
+php system/scripts/read-only/verify_marketing_under_clients_01.php
 ```
 
 ### To be created in Phase 2
@@ -822,7 +825,6 @@ verify_ollira_7module_nav_structure_01.php   — asserts exactly 7 primary nav h
 verify_ollira_role_nav_visibility_01.php     — asserts receptionist sees 4, stylist 3, manager 7
 verify_catalog_under_settings_01.php         — asserts /services-resources active state under SETTINGS family
 verify_reports_under_cashier_and_home_01.php — asserts no standalone /reports in primary nav
-verify_marketing_under_clients_01.php        — asserts /marketing active state under CLIENTS family
 ```
 
 ---

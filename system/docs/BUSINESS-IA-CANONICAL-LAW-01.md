@@ -126,8 +126,8 @@ Paths below are **current** unless marked *(planned)*. Tasks may add shells or l
 
 ### 3.8 Marketing
 
-- Primary nav href today: `/marketing/campaigns` — `register_marketing.php`  
-- Active family: prefix `/marketing`
+- **Primary nav:** Marketing is **not** a top-level home; reach campaigns via **CLIENTS** workspace tab → `/marketing/campaigns` (gated by `marketing.view`). On `/marketing/*`, the **Clients** primary tab stays active (`base.php`).  
+- **Routes:** `/marketing/*` — `register_marketing.php` (unchanged).
 
 ### 3.9 Reports
 

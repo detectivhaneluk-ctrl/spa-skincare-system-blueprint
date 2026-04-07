@@ -65,7 +65,8 @@ chk('B2: /appointments/calendar/day in navItems', $navB, "'/appointments/calenda
 chk('B3: /staff in navItems', $navB, "'/staff'");
 chk('B4: /sales in navItems', $navB, "'/sales'");
 chk('B5: /inventory in navItems', $navB, "'/inventory'");
-chk('B6: /marketing/campaigns in navItems', $navB, "'/marketing/campaigns'");
+chk('B6: Marketing not a primary nav home (no /marketing/campaigns tuple)', $navB, "'/marketing/campaigns', 'Marketing'", false);
+chk('B6b: Clients primary nav active includes /marketing family', $navB, "str_starts_with(\$navPath, '/marketing')");
 
 // ── C. Sales family active grouping preserved ────────────────────────────────
 chk('C1: navIsSales covers /gift-cards', $navB, "str_starts_with(\$navPath, '/gift-cards')");
