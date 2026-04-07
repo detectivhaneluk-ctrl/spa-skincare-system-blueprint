@@ -6,6 +6,7 @@ namespace Modules\Dashboard\Services;
 
 use Core\Branch\BranchContext;
 use Core\Branch\BranchDirectory;
+use Core\Permissions\PermissionService;
 use Modules\Dashboard\Repositories\DashboardReadRepository;
 
 /**
@@ -21,7 +22,8 @@ final class TenantOperatorDashboardService
         private DashboardShellSummaryService $shellSummary,
         private DashboardReadRepository $reads,
         private BranchContext $branchContext,
-        private BranchDirectory $branchDirectory
+        private BranchDirectory $branchDirectory,
+        private PermissionService $permissionService
     ) {
     }
 
@@ -108,15 +110,7 @@ final class TenantOperatorDashboardService
             'attention' => $attention,
             'upcoming' => $this->normalizeUpcomingRows($rawUpcoming, $tz, $now, $showBranchColumn),
             'show_branch_column' => $showBranchColumn,
-            'quick_links' => [
-                ['href' => '/appointments/calendar/day', 'label' => 'Appointments', 'hint' => 'Calendar'],
-                ['href' => '/clients', 'label' => 'Clients', 'hint' => 'CRM'],
-                ['href' => '/staff', 'label' => 'Staff', 'hint' => 'Team'],
-                ['href' => '/services-resources', 'label' => 'Services', 'hint' => 'Catalog'],
-                ['href' => '/sales', 'label' => 'Sales', 'hint' => 'Staff checkout & orders'],
-                ['href' => '/inventory', 'label' => 'Inventory', 'hint' => 'Stock'],
-                ['href' => '/settings', 'label' => 'Settings', 'hint' => 'Workspace'],
-            ],
+            'quick_links' => $this->buildQuickLinks($userId),
         ];
     }
 
@@ -258,5 +252,30 @@ final class TenantOperatorDashboardService
             'no_show' => 'No show',
             default => $raw,
         };
+    }
+
+    /**
+     * @return list<array{href: string, label: string, hint: string}>
+     */
+    private function buildQuickLinks(int $userId): array
+    {
+        $links = [
+            ['href' => '/appointments/calendar/day', 'label' => 'Appointments', 'hint' => 'Calendar'],
+            ['href' => '/clients', 'label' => 'Clients', 'hint' => 'CRM'],
+            ['href' => '/staff', 'label' => 'Staff', 'hint' => 'Team'],
+            ['href' => '/services-resources', 'label' => 'Services', 'hint' => 'Catalog'],
+            ['href' => '/sales', 'label' => 'Sales', 'hint' => 'Staff checkout & orders'],
+            ['href' => '/inventory', 'label' => 'Inventory', 'hint' => 'Stock'],
+        ];
+        if ($this->permissionService->has($userId, 'reports.view')) {
+            $links[] = [
+                'href' => '/reports',
+                'label' => 'Reports & analytics',
+                'hint' => 'Measurement endpoints (management view)',
+            ];
+        }
+        $links[] = ['href' => '/settings', 'label' => 'Settings', 'hint' => 'Workspace'];
+
+        return $links;
     }
 }

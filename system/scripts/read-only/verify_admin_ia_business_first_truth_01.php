@@ -167,6 +167,7 @@ assert_contains('L3: /branches prefix in settingsActivePrefixes', $basePhp, "'/b
 assert_contains('L4: client-held memberships nav split present', $basePhp, '$navIsClientsMemberships');
 assert_contains('L5: Catalog family split via navIsCatalog', $basePhp, '$navIsCatalog');
 assert_contains('L6: Reports split via navIsReports', $basePhp, '$navIsReports');
+assert_contains('L6b: Overview nav active includes /reports measurement hub', $basePhp, "str_starts_with(\$navPath, '/dashboard') || \$navIsReports");
 assert_contains('L7: Team active includes payroll operations prefix', $basePhp, "str_starts_with(\$navPath, '/payroll')");
 assert_contains('L8: Admin primary tab active on catalog definition surfaces', $basePhp, '$navIsSettings = $navIsSettings || $navIsCatalog');
 

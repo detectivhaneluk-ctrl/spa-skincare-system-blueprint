@@ -2,6 +2,7 @@
     <header class="reports-hub__header">
         <h1 class="reports-hub__title">Reports</h1>
         <p class="reports-hub__lead">Measurement endpoints already available in this build. Each link returns JSON; add <code>date_from</code> and <code>date_to</code> (<code>Y-m-d</code>) and optional <code>branch_id</code> where your role allows.</p>
+        <p class="reports-hub__lead">Reach this hub from <strong>Overview</strong> (Quick access) or the <strong>Sales</strong> workspace (<strong>Reports</strong> tab) when your role includes report access.</p>
     </header>
     <ul class="reports-hub__list">
         <li><a class="reports-hub__link" href="/reports/revenue-summary">Revenue summary</a></li>

@@ -40,9 +40,11 @@ $checks['workspace_shell_has_sales_tabs'] = mustContain($salesShell, 'Manage Sal
     && mustContain($salesShell, 'New sale')
     && mustContain($salesShell, "'id' => 'staff_checkout'")
     && mustContain($salesShell, 'Gift cards')
-    && mustContain($salesShell, 'Packages')
     && mustContain($salesShell, 'Register')
     && mustContain($salesShell, "'url' => '/sales/register'");
+$checks['workspace_shell_reports_tab_gated'] = mustContain($salesShell, "'id' => 'reports'")
+    && mustContain($salesShell, "'url' => '/reports'")
+    && mustContain($salesShell, 'reports.view');
 $checks['workspace_manage_sales_points_to_orders_list'] = mustContain($salesShell, "'url' => '/sales/invoices'")
     && mustContain($salesShell, "'label' => 'Manage Sales'");
 $checks['cashier_partial_has_no_legacy_cashier_subnav'] = !mustContain($cashierWorkspace, 'cashier-subnav');

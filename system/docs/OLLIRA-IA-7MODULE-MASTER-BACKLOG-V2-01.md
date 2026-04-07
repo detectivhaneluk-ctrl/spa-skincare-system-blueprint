@@ -457,7 +457,7 @@ Status vocabulary: `DONE` | `IN PROGRESS` | `NEXT` | `OPEN` | `DEFERRED`
 | STORY-05.4.4 | Commission payroll report | DONE | |
 | STORY-05.4.5 | Gift voucher liability report | DONE | `/reports/gift-card-liability` |
 | STORY-05.4.6 | Export reports to CSV / PDF / accounting software (Xero, QuickBooks link) | OPEN | |
-| STORY-05.4.7 | Reports accessible from CASHIER module sidebar (not a separate primary nav home) | OPEN | Key navigation change |
+| STORY-05.4.7 | Reports accessible from CASHIER module sidebar (not a separate primary nav home) | **DONE** | `verify_story_05_4_7_reports_out_of_primary_nav_01.php`; primary nav has no Reports tab; `/reports` via Sales workspace + Overview quick access (both gated `reports.view`); Overview active on `/reports` |
 
 ---
 
@@ -660,7 +660,7 @@ PHASE 4 (Polish) runs after all PHASE 3 EPICs reach their MVP milestone.
 |------|------|-------|----------|--------|
 | Remove Catalog from primary nav; add to SETTINGS sidebar | EPIC-07 | STORY-07.3.9 | P0 | **DONE** (`verify_story_07_3_9_catalog_out_of_primary_nav_01.php`) |
 | Remove Marketing from primary nav; surface inside CLIENTS | EPIC-03 | STORY-03.6.7 | P0 | **DONE** (`verify_marketing_under_clients_01.php`) |
-| Remove Reports from primary nav; surface inside CASHIER and HOME | EPIC-05 | STORY-05.4.7 | P0 | OPEN |
+| Remove Reports from primary nav; surface inside CASHIER and HOME | EPIC-05 | STORY-05.4.7 | P0 | **DONE** (`verify_story_05_4_7_reports_out_of_primary_nav_01.php`) |
 | Deep links from clients list + profile (Phase 5.2 carried over) | EPIC-03 | STORY-03.2.11 | P0 | **DONE** (`verify_story_03_2_11_client_profile_deep_links_01.php`) |
 | Role-aware 7-module nav (hide dead homes by permission) | EPIC-01 | STORY-01.5.1..5 | P1 | OPEN |
 | Update verifier bundle for 7-module nav structure | EPIC-P4 | FEAT-P4.4 | P1 | OPEN |
@@ -724,7 +724,7 @@ PHASE 4 (Polish) runs after all PHASE 3 EPICs reach their MVP milestone.
 | P0 | STORY-05.1.4..5 (Discount + split payment) | Phase 2 complete |
 | P0 | STORY-05.1.9 (Loyalty points at checkout) | STORY-03.3.1 done |
 | P1 | STORY-05.3.2..3 (Cash drawer close shift) | Phase 2 complete |
-| P1 | STORY-05.4.7 (Reports in CASHIER sidebar, not primary nav) | Phase 2 complete |
+| P1 | STORY-05.4.7 (Reports in CASHIER sidebar, not primary nav) | **DONE** (2026-04-08); Phase 2 P0 nav relocations closed |
 | P2 | STORY-05.4.6 (Export to CSV/PDF/accounting) | Reports surfacing done |
 
 #### Phase 3F — STOCK (MVP)
@@ -792,7 +792,9 @@ adds **Services & Pricing** → `/services-resources` (gated by `services-resour
 
 **Closed (2026-04-07):** `STORY-03.6.7` — Marketing removed from primary nav; **Clients** workspace pill nav includes **Marketing** → `/marketing/campaigns` (gated by `marketing.view`); **Clients** primary tab stays active on `/marketing/*`.
 
-**Current single live task:** **PHASE 2 navigation restructure** — `STORY-05.4.7` (Reports under CASHIER and HOME).
+**Closed (2026-04-08):** `STORY-05.4.7` — **Reports** removed from primary nav (seven top-level items). **`/reports`** is reachable from the **Sales** workspace **Reports** tab and from **Overview** Quick access (**Reports & analytics**), both gated by `reports.view`. **Overview** stays the active primary tab on `/reports`. Routes unchanged. Verifier: `verify_story_05_4_7_reports_out_of_primary_nav_01.php`.
+
+**Current single live task:** **PHASE 2** — remaining **P1** rows: `STORY-01.5.1..5` (role-aware 7-module nav) and `FEAT-P4.4` (verifier bundle extension). **P0** navigation relocation slice (Catalog, Marketing, Reports) is **closed**.
 
 **Done bar (STORY-03.2.11 — met):**
 1. Clients **list** row and **client profile** expose working links to membership, package, and gift card **index** surfaces using **`client_id`** (exact filter; not display-name search).
@@ -800,7 +802,7 @@ adds **Services & Pricing** → `/services-resources` (gated by `services-resour
 3. `php system/scripts/read-only/verify_story_03_2_11_client_profile_deep_links_01.php` exits `0` (run locally after pull).
 4. No route paths or POST contracts changed.
 
-**Next (Phase 2):** `STORY-05.4.7`, and remaining §PHASE 2 table rows until Phase 2 exit criteria are met.
+**Next (Phase 2):** `STORY-01.5.1..5`, then `FEAT-P4.4`, until Phase 2 exit criteria (seven visible homes per role, no dead nav, verifiers green) are met.
 
 ---
 
@@ -816,6 +818,7 @@ php system/scripts/read-only/verify_story_03_2_11_client_profile_deep_links_01.p
 php system/scripts/read-only/verify_story_03_2_12_client_profile_quick_book_01.php
 php system/scripts/read-only/verify_story_07_3_9_catalog_out_of_primary_nav_01.php
 php system/scripts/read-only/verify_marketing_under_clients_01.php
+php system/scripts/read-only/verify_story_05_4_7_reports_out_of_primary_nav_01.php
 ```
 
 ### To be created in Phase 2
@@ -824,7 +827,6 @@ php system/scripts/read-only/verify_marketing_under_clients_01.php
 verify_ollira_7module_nav_structure_01.php   — asserts exactly 7 primary nav homes
 verify_ollira_role_nav_visibility_01.php     — asserts receptionist sees 4, stylist 3, manager 7
 verify_catalog_under_settings_01.php         — asserts /services-resources active state under SETTINGS family
-verify_reports_under_cashier_and_home_01.php — asserts no standalone /reports in primary nav
 ```
 
 ---
