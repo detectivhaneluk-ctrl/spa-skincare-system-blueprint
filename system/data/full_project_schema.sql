@@ -458,14 +458,18 @@ CREATE TABLE staff (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL,
+    deleted_by BIGINT UNSIGNED NULL COMMENT 'User who moved the staff row to trash.',
+    purge_after_at DATETIME NULL COMMENT 'When a trashed row becomes eligible for physical purge.',
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
     FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE SET NULL,
     FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
     FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (deleted_by) REFERENCES users(id) ON DELETE SET NULL,
     INDEX idx_staff_branch (branch_id),
     INDEX idx_staff_active (is_active),
     INDEX idx_staff_user (user_id),
-    INDEX idx_staff_deleted (deleted_at)
+    INDEX idx_staff_deleted (deleted_at),
+    INDEX idx_staff_trash_purge (purge_after_at, deleted_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE staff_schedules (

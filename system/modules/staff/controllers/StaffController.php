@@ -49,10 +49,14 @@ final class StaffController
 
     public function index(): void
     {
-        $activeOnly = isset($_GET['active']) ? (bool) $_GET['active'] : true;
+        $trashView = isset($_GET['status']) && $_GET['status'] === 'trash';
+        $activeOnly = !$trashView && (isset($_GET['active']) ? (bool) $_GET['active'] : true);
         $page = max(1, (int) ($_GET['page'] ?? 1));
         $perPage = 20;
-        $filters = $activeOnly ? ['active' => true] : [];
+        $filters = [];
+        if ($activeOnly && !$trashView) {
+            $filters['active'] = true;
+        }
         $branchId = $this->branchContext->getCurrentBranchId();
         if ($branchId === null) {
             $user = Application::container()->get(\Core\Auth\SessionAuth::class)->user();
@@ -66,8 +70,18 @@ final class StaffController
         if ($branchId !== null) {
             $filters['branch_id'] = $branchId;
         }
-        $staff = $this->repo->list($filters, $perPage, ($page - 1) * $perPage);
-        $total = $this->repo->count($filters);
+        $staff = $this->repo->list($filters, $perPage, ($page - 1) * $perPage, $trashView);
+        $total = $this->repo->count($filters, $trashView);
+        $badgeActiveFilters = ['active' => true];
+        if ($branchId !== null) {
+            $badgeActiveFilters['branch_id'] = $branchId;
+        }
+        $countActive = $this->repo->count($badgeActiveFilters, false);
+        $badgeTrashFilters = [];
+        if ($branchId !== null) {
+            $badgeTrashFilters['branch_id'] = $branchId;
+        }
+        $countTrash = $this->repo->count($badgeTrashFilters, true);
         foreach ($staff as &$s) {
             $s['display_name'] = $this->service->getDisplayName($s);
         }
@@ -330,7 +344,12 @@ final class StaffController
 
     public function show(int $id): void
     {
+        $staffIsTrashed = false;
         $staff = $this->repo->find($id);
+        if (!$staff) {
+            $staff = $this->repo->findTrashed($id);
+            $staffIsTrashed = $staff !== null;
+        }
         if (!$staff) {
             Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handle(404);
             return;
@@ -545,9 +564,128 @@ final class StaffController
         if (!$this->ensureBranchAccess($staff)) {
             return;
         }
-        $this->service->delete($id);
-        flash('success', 'Staff member deleted.');
+        try {
+            $this->service->delete($id);
+        } catch (\DomainException $e) {
+            flash('error', $e->getMessage());
+            header('Location: /staff');
+            exit;
+        }
+        flash('success', 'Staff member moved to Trash.');
         header('Location: /staff');
+        exit;
+    }
+
+    public function bulkTrash(): void
+    {
+        $ids = $this->parsePostedStaffIds();
+        if ($ids === []) {
+            flash('error', 'No staff selected.');
+            $this->redirectToStaffIndexPostContext();
+            return;
+        }
+        try {
+            $n = $this->service->bulkTrash($ids);
+        } catch (\DomainException | \RuntimeException $e) {
+            flash('error', $e->getMessage());
+            $this->redirectToStaffIndexPostContext();
+            return;
+        }
+        if ($n === 0) {
+            flash('error', 'No matching staff could be moved to Trash.');
+        } else {
+            flash('success', $n === 1 ? '1 staff member moved to Trash.' : "{$n} staff members moved to Trash.");
+        }
+        $this->redirectToStaffIndexPostContext();
+    }
+
+    public function bulkRestore(): void
+    {
+        $ids = $this->parsePostedStaffIds();
+        if ($ids === []) {
+            flash('error', 'No staff selected.');
+            $this->redirectToStaffIndexPostContext();
+            return;
+        }
+        try {
+            $n = $this->service->bulkRestore($ids);
+        } catch (\DomainException | \RuntimeException $e) {
+            flash('error', $e->getMessage());
+            $this->redirectToStaffIndexPostContext();
+            return;
+        }
+        if ($n === 0) {
+            flash('error', 'No staff could be restored (check duplicates or missing rows).');
+        } else {
+            flash('success', $n === 1 ? '1 staff member restored.' : "{$n} staff members restored.");
+        }
+        $this->redirectToStaffIndexPostContext();
+    }
+
+    public function bulkPermanentDelete(): void
+    {
+        $ids = $this->parsePostedStaffIds();
+        if ($ids === []) {
+            flash('error', 'No staff selected.');
+            $this->redirectToStaffIndexPostContext();
+            return;
+        }
+        try {
+            $n = $this->service->bulkPermanentlyDelete($ids);
+        } catch (\DomainException | \RuntimeException $e) {
+            flash('error', $e->getMessage());
+            $this->redirectToStaffIndexPostContext();
+            return;
+        }
+        if ($n === 0) {
+            flash('error', 'No staff could be permanently deleted (dependencies, Trash-only rule, or permissions).');
+        } else {
+            flash('success', $n === 1 ? '1 staff member permanently deleted.' : "{$n} staff members permanently deleted.");
+        }
+        $this->redirectToStaffIndexPostContext();
+    }
+
+    public function restore(int $id): void
+    {
+        $row = $this->repo->findTrashed($id);
+        if (!$row) {
+            flash('error', 'That trashed staff member was not found.');
+            header('Location: /staff?status=trash');
+            exit;
+        }
+        if (!$this->ensureBranchAccess($row)) {
+            return;
+        }
+        try {
+            $this->service->restore($id);
+            flash('success', 'Staff member restored.');
+            header('Location: /staff');
+            exit;
+        } catch (\DomainException $e) {
+            flash('error', $e->getMessage());
+            header('Location: /staff?status=trash');
+            exit;
+        }
+    }
+
+    public function permanentDelete(int $id): void
+    {
+        $row = $this->repo->findTrashed($id);
+        if (!$row) {
+            flash('error', 'Only trashed staff can be permanently deleted.');
+            header('Location: /staff');
+            exit;
+        }
+        if (!$this->ensureBranchAccess($row)) {
+            return;
+        }
+        try {
+            $this->service->permanentlyDelete($id);
+            flash('success', 'Staff member permanently deleted.');
+        } catch (\DomainException $e) {
+            flash('error', $e->getMessage());
+        }
+        header('Location: /staff?status=trash');
         exit;
     }
 
@@ -903,6 +1041,43 @@ final class StaffController
     // ---------------------------------------------------------------------------
     // Shared helpers
     // ---------------------------------------------------------------------------
+
+    /**
+     * @return list<int>
+     */
+    private function parsePostedStaffIds(): array
+    {
+        $raw = $_POST['staff_ids'] ?? [];
+        if (!is_array($raw)) {
+            return [];
+        }
+        $out = [];
+        foreach ($raw as $v) {
+            $id = (int) $v;
+            if ($id > 0) {
+                $out[] = $id;
+            }
+        }
+
+        return array_values(array_unique($out));
+    }
+
+    private function redirectToStaffIndexPostContext(): void
+    {
+        $q = [];
+        if (!empty($_POST['list_status']) && $_POST['list_status'] === 'trash') {
+            $q[] = 'status=trash';
+        }
+        if (isset($_POST['list_active']) && $_POST['list_active'] === '0') {
+            $q[] = 'active=0';
+        }
+        if (isset($_POST['list_page']) && (int) $_POST['list_page'] > 1) {
+            $q[] = 'page=' . (int) $_POST['list_page'];
+        }
+        $url = '/staff' . ($q !== [] ? ('?' . implode('&', $q)) : '');
+        header('Location: ' . $url);
+        exit;
+    }
 
     private function loadServiceTypes(): array
     {

@@ -34,14 +34,15 @@ final class StaffRepository
         return $this->db->fetchOne($sql, array_merge([$id], $frag['params']));
     }
 
-    public function list(array $filters = [], int $limit = 50, int $offset = 0): array
+    public function list(array $filters = [], int $limit = 50, int $offset = 0, bool $trashOnly = false): array
     {
         $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('s');
         $limit = (int) $limit;
         $offset = (int) $offset;
-        $sql = 'SELECT s.*, u.name as user_name FROM staff s LEFT JOIN users u ON s.user_id = u.id WHERE s.deleted_at IS NULL';
+        $del = $trashOnly ? 's.deleted_at IS NOT NULL' : 's.deleted_at IS NULL';
+        $sql = 'SELECT s.*, u.name as user_name FROM staff s LEFT JOIN users u ON s.user_id = u.id WHERE ' . $del;
         $params = [];
-        if (!empty($filters['active'])) {
+        if (!$trashOnly && !empty($filters['active'])) {
             $sql .= ' AND s.is_active = 1';
         }
         if (array_key_exists('branch_id', $filters) && $filters['branch_id'] !== null) {
@@ -58,12 +59,13 @@ final class StaffRepository
         return $this->db->forRead()->fetchAll($sql, $params);
     }
 
-    public function count(array $filters = []): int
+    public function count(array $filters = [], bool $trashOnly = false): int
     {
         $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('s');
-        $sql = 'SELECT COUNT(*) AS c FROM staff s WHERE s.deleted_at IS NULL';
+        $del = $trashOnly ? 's.deleted_at IS NOT NULL' : 's.deleted_at IS NULL';
+        $sql = 'SELECT COUNT(*) AS c FROM staff s WHERE ' . $del;
         $params = [];
-        if (!empty($filters['active'])) {
+        if (!$trashOnly && !empty($filters['active'])) {
             $sql .= ' AND s.is_active = 1';
         }
         if (array_key_exists('branch_id', $filters) && $filters['branch_id'] !== null) {
@@ -97,14 +99,139 @@ final class StaffRepository
         }
         $vals[] = $id;
         $vals = array_merge($vals, $frag['params']);
-        $this->db->query('UPDATE staff SET ' . implode(', ', $cols) . ' WHERE id = ?' . $frag['sql'], $vals);
+        $this->db->query(
+            'UPDATE staff SET ' . implode(', ', $cols) . ' WHERE id = ? AND deleted_at IS NULL' . $frag['sql'],
+            $vals
+        );
     }
 
-    public function softDelete(int $id): void
+    /**
+     * @param non-empty-string $purgeAfterAtMysql
+     */
+    public function trash(int $id, ?int $deletedBy, string $purgeAfterAtMysql): int
+    {
+        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('staff');
+        $params = array_merge([$deletedBy, $purgeAfterAtMysql, $id], $frag['params']);
+        $stmt = $this->db->query(
+            'UPDATE staff SET deleted_at = NOW(), deleted_by = ?, purge_after_at = ? WHERE id = ? AND deleted_at IS NULL'
+            . $frag['sql'],
+            $params
+        );
+
+        return (int) $stmt->rowCount();
+    }
+
+    /**
+     * @param list<int> $ids
+     * @param non-empty-string $purgeAfterAtMysql
+     */
+    public function bulkTrash(array $ids, ?int $deletedBy, string $purgeAfterAtMysql): int
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn (int $v): bool => $v > 0)));
+        if ($ids === []) {
+            return 0;
+        }
+        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('staff');
+        $ph = implode(', ', array_fill(0, count($ids), '?'));
+        $params = array_merge([$deletedBy, $purgeAfterAtMysql], $ids, $frag['params']);
+        $stmt = $this->db->query(
+            'UPDATE staff SET deleted_at = NOW(), deleted_by = ?, purge_after_at = ? WHERE id IN (' . $ph . ') AND deleted_at IS NULL'
+            . $frag['sql'],
+            $params
+        );
+
+        return (int) $stmt->rowCount();
+    }
+
+    public function findTrashed(int $id): ?array
+    {
+        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('s');
+        $sql = 'SELECT s.*, u.name as user_name FROM staff s LEFT JOIN users u ON s.user_id = u.id WHERE s.id = ? AND s.deleted_at IS NOT NULL';
+        $sql .= $frag['sql'];
+
+        return $this->db->fetchOne($sql, array_merge([$id], $frag['params']));
+    }
+
+    public function restore(int $id): int
     {
         $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('staff');
         $params = array_merge([$id], $frag['params']);
-        $this->db->query('UPDATE staff SET deleted_at = NOW() WHERE id = ?' . $frag['sql'], $params);
+        $stmt = $this->db->query(
+            'UPDATE staff SET deleted_at = NULL, deleted_by = NULL, purge_after_at = NULL WHERE id = ? AND deleted_at IS NOT NULL'
+            . $frag['sql'],
+            $params
+        );
+
+        return (int) $stmt->rowCount();
+    }
+
+    /**
+     * Another non-deleted staff row already linked to this user_id (restore conflict check).
+     */
+    public function existsLiveStaffWithUserIdExcluding(?int $userId, int $excludeStaffId): bool
+    {
+        if ($userId === null || $userId <= 0) {
+            return false;
+        }
+        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('s');
+        $row = $this->db->fetchOne(
+            'SELECT 1 AS x FROM staff s WHERE s.user_id = ? AND s.id != ? AND s.deleted_at IS NULL'
+            . $frag['sql'] . ' LIMIT 1',
+            array_merge([$userId, $excludeStaffId], $frag['params'])
+        );
+
+        return $row !== null;
+    }
+
+    public function countAppointmentSeriesForStaff(int $staffId): int
+    {
+        $row = $this->db->fetchOne(
+            'SELECT COUNT(*) AS c FROM appointment_series WHERE staff_id = ?',
+            [$staffId]
+        );
+
+        return (int) ($row['c'] ?? 0);
+    }
+
+    public function countPayrollCommissionLinesForStaff(int $staffId): int
+    {
+        try {
+            $row = $this->db->fetchOne(
+                'SELECT COUNT(*) AS c FROM payroll_commission_lines WHERE staff_id = ?',
+                [$staffId]
+            );
+        } catch (\Throwable) {
+            return 0;
+        }
+
+        return (int) ($row['c'] ?? 0);
+    }
+
+    public function hardDeleteTrashed(int $id): int
+    {
+        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('s');
+        $params = array_merge([$id], $frag['params']);
+        $stmt = $this->db->query(
+            'DELETE s FROM staff s WHERE s.id = ? AND s.deleted_at IS NOT NULL' . $frag['sql'],
+            $params
+        );
+
+        return (int) $stmt->rowCount();
+    }
+
+    /**
+     * @return list<int>
+     */
+    public function listTrashedIdsEligibleForPurge(\DateTimeInterface $now, int $limit): array
+    {
+        $limit = max(1, min(500, $limit));
+        $frag = $this->orgScope->branchColumnOwnedByResolvedOrganizationExistsClause('s');
+        $nowStr = $now->format('Y-m-d H:i:s');
+        $sql = 'SELECT s.id FROM staff s WHERE s.deleted_at IS NOT NULL AND s.purge_after_at IS NOT NULL '
+            . 'AND s.purge_after_at <= ?' . $frag['sql'] . ' ORDER BY s.purge_after_at ASC, s.id ASC LIMIT ' . $limit;
+        $rows = $this->db->fetchAll($sql, array_merge([$nowStr], $frag['params']));
+
+        return array_map(static fn (array $r): int => (int) $r['id'], $rows);
     }
 
     private function normalize(array $data): array
