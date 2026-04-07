@@ -20,6 +20,10 @@ final class CalendarToolbarUiService
 
     public const MAX_COLUMN_WIDTH = 420;
 
+    public const MIN_STAFF_COLUMNS_PER_VIEW = 1;
+
+    public const MAX_STAFF_COLUMNS_PER_VIEW = 6;
+
     /** Canonical minimum time zoom (matches day calendar slider and DB normalization). */
     public const MIN_TIME_ZOOM_PERCENT = 25;
 
@@ -38,7 +42,9 @@ final class CalendarToolbarUiService
      *   column_width_px:int,
      *   time_zoom_percent:int,
      *   show_in_progress:bool,
-     *   hidden_staff_ids:list<string>
+     *   hidden_staff_ids:list<string>,
+     *   staff_order_scheduled_ids:list<string>,
+     *   staff_order_freelancer_ids:list<string>
      * }
      */
     public function getPreferencesOrDefaults(int $organizationId, int $userId, int $branchId): array
@@ -53,6 +59,9 @@ final class CalendarToolbarUiService
             'time_zoom_percent' => 100,
             'show_in_progress' => true,
             'hidden_staff_ids' => [],
+            'staff_order_scheduled_ids' => [],
+            'staff_order_freelancer_ids' => [],
+            'staff_columns_per_view' => 2,
         ];
     }
 
@@ -72,8 +81,27 @@ final class CalendarToolbarUiService
         $zoom = $current['time_zoom_percent'];
         $sip = $current['show_in_progress'];
         $hidden = $current['hidden_staff_ids'];
+        $schedOrder = $current['staff_order_scheduled_ids'] ?? [];
+        $frOrder = $current['staff_order_freelancer_ids'] ?? [];
+        $staffColsPerView = $current['staff_columns_per_view'] ?? null;
 
-        if (array_key_exists('column_width_px', $patch)) {
+        /* When staff_columns_per_view is present and non-null, column_width_px is a
+           viewport-derived runtime value (can exceed MAX_COLUMN_WIDTH). Skip px validation. */
+        $hasStaffColsPerView = array_key_exists('staff_columns_per_view', $patch) && $patch['staff_columns_per_view'] !== null;
+
+        if (array_key_exists('staff_columns_per_view', $patch)) {
+            if ($patch['staff_columns_per_view'] === null) {
+                $staffColsPerView = null;
+            } else {
+                $scpv = (int) $patch['staff_columns_per_view'];
+                if ($scpv < self::MIN_STAFF_COLUMNS_PER_VIEW || $scpv > self::MAX_STAFF_COLUMNS_PER_VIEW) {
+                    return ['ok' => false, 'error' => 'staff_columns_per_view out of range', 'code' => 'VALIDATION_FAILED'];
+                }
+                $staffColsPerView = $scpv;
+            }
+        }
+
+        if (array_key_exists('column_width_px', $patch) && $patch['column_width_px'] !== null && !$hasStaffColsPerView) {
             $col = (int) $patch['column_width_px'];
             if ($col < self::MIN_COLUMN_WIDTH || $col > self::MAX_COLUMN_WIDTH) {
                 return ['ok' => false, 'error' => 'column_width_px out of range', 'code' => 'VALIDATION_FAILED'];
@@ -102,7 +130,35 @@ final class CalendarToolbarUiService
             }
         }
 
-        $this->prefsRepo->upsert($organizationId, $userId, $branchId, $col, $zoom, $sip, $hidden);
+        if (array_key_exists('staff_order_scheduled_ids', $patch)) {
+            $raw = $patch['staff_order_scheduled_ids'];
+            if (!is_array($raw)) {
+                return ['ok' => false, 'error' => 'staff_order_scheduled_ids must be array', 'code' => 'VALIDATION_FAILED'];
+            }
+            $schedOrder = [];
+            foreach ($raw as $id) {
+                $schedOrder[] = (string) $id;
+            }
+            if (count($schedOrder) > 200) {
+                return ['ok' => false, 'error' => 'too many staff_order_scheduled_ids', 'code' => 'VALIDATION_FAILED'];
+            }
+        }
+
+        if (array_key_exists('staff_order_freelancer_ids', $patch)) {
+            $raw = $patch['staff_order_freelancer_ids'];
+            if (!is_array($raw)) {
+                return ['ok' => false, 'error' => 'staff_order_freelancer_ids must be array', 'code' => 'VALIDATION_FAILED'];
+            }
+            $frOrder = [];
+            foreach ($raw as $id) {
+                $frOrder[] = (string) $id;
+            }
+            if (count($frOrder) > 200) {
+                return ['ok' => false, 'error' => 'too many staff_order_freelancer_ids', 'code' => 'VALIDATION_FAILED'];
+            }
+        }
+
+        $this->prefsRepo->upsert($organizationId, $userId, $branchId, $col, $zoom, $sip, $hidden, $schedOrder, $frOrder, $staffColsPerView);
         $data = $this->getPreferencesOrDefaults($organizationId, $userId, $branchId);
 
         return ['ok' => true, 'data' => $data];
@@ -139,7 +195,14 @@ final class CalendarToolbarUiService
      * Full GET /calendar/ui-preferences payload: never throws; marks which storage shards are usable.
      *
      * @return array{
-     *   preferences: array{column_width_px:int,time_zoom_percent:int,show_in_progress:bool,hidden_staff_ids:list<string>},
+     *   preferences: array{
+     *     column_width_px:int,
+     *     time_zoom_percent:int,
+     *     show_in_progress:bool,
+     *     hidden_staff_ids:list<string>,
+     *     staff_order_scheduled_ids:list<string>,
+     *     staff_order_freelancer_ids:list<string>
+     *   },
      *   preferences_persisted: bool,
      *   default_view_config: array<string,mixed>|null,
      *   views: list<array<string,mixed>>,
@@ -153,6 +216,8 @@ final class CalendarToolbarUiService
             'time_zoom_percent' => 100,
             'show_in_progress' => true,
             'hidden_staff_ids' => [],
+            'staff_order_scheduled_ids' => [],
+            'staff_order_freelancer_ids' => [],
         ];
         $preferences = $defaults;
         $preferencesPersisted = false;
@@ -303,6 +368,12 @@ final class CalendarToolbarUiService
     {
         $out = [];
         // Same-branch-only contract: do not persist branch_id (views apply in current branch context only).
+        if (isset($config['staff_columns_per_view'])) {
+            $scpv = (int) $config['staff_columns_per_view'];
+            if ($scpv >= self::MIN_STAFF_COLUMNS_PER_VIEW && $scpv <= self::MAX_STAFF_COLUMNS_PER_VIEW) {
+                $out['staff_columns_per_view'] = $scpv;
+            }
+        }
         if (isset($config['column_width_px'])) {
             $c = (int) $config['column_width_px'];
             if ($c >= self::MIN_COLUMN_WIDTH && $c <= self::MAX_COLUMN_WIDTH) {

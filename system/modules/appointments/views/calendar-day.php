@@ -35,14 +35,22 @@ ob_start();
             <div class="appts-cal-card__header-row">
                 <p class="appts-cal-card__title-month" id="appts-cal-context-month" aria-live="polite">—</p>
                 <div class="appts-cal-card__nav appts-cal-card__nav--week" id="appts-cal-nav-week" role="group" aria-label="Change week">
-                    <button type="button" class="appts-cal-card__chev" id="appts-cal-prev-week" aria-label="Previous week">‹</button>
+                    <button type="button" class="appts-cal-card__chev" id="appts-cal-prev-week" aria-label="Previous week">
+                        <svg class="appts-cal-chevron-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-chevron-left"/></svg>
+                    </button>
                     <button type="button" class="appts-cal-card__today" id="appts-cal-today-week">Today</button>
-                    <button type="button" class="appts-cal-card__chev" id="appts-cal-next-week" aria-label="Next week">›</button>
+                    <button type="button" class="appts-cal-card__chev" id="appts-cal-next-week" aria-label="Next week">
+                        <svg class="appts-cal-chevron-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-chevron-right"/></svg>
+                    </button>
                 </div>
                 <div class="appts-cal-card__nav appts-cal-card__nav--month is-cal-hidden" id="appts-cal-nav-month" role="group" aria-label="Change month">
-                    <button type="button" class="appts-cal-card__chev" id="appts-cal-prev-month" aria-label="Previous month">‹</button>
+                    <button type="button" class="appts-cal-card__chev" id="appts-cal-prev-month" aria-label="Previous month">
+                        <svg class="appts-cal-chevron-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-chevron-left"/></svg>
+                    </button>
                     <button type="button" class="appts-cal-card__today" id="appts-cal-today-month">Today</button>
-                    <button type="button" class="appts-cal-card__chev" id="appts-cal-next-month" aria-label="Next month">›</button>
+                    <button type="button" class="appts-cal-card__chev" id="appts-cal-next-month" aria-label="Next month">
+                        <svg class="appts-cal-chevron-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-chevron-right"/></svg>
+                    </button>
                 </div>
             </div>
             <p class="appts-cal-card__summary-status" id="appts-cal-summary-status" role="status" aria-live="polite" hidden></p>
@@ -169,10 +177,10 @@ ob_start();
                 </button>
                 <div class="appts-cal-toolbar-day-nav" role="group" aria-label="Previous or next day">
                     <button type="button" class="appts-cal-toolbar-day-nav__btn" id="calendar-toolbar-prev-day" aria-label="Previous day" title="Previous day">
-                        <svg class="appts-cal-toolbar-day-nav__ic" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-chevron-left"/></svg>
+                        <svg class="appts-cal-chevron-icon appts-cal-toolbar-day-nav__ic" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-chevron-left"/></svg>
                     </button>
                     <button type="button" class="appts-cal-toolbar-day-nav__btn" id="calendar-toolbar-next-day" aria-label="Next day" title="Next day">
-                        <svg class="appts-cal-toolbar-day-nav__ic" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-chevron-right"/></svg>
+                        <svg class="appts-cal-chevron-icon appts-cal-toolbar-day-nav__ic" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-chevron-right"/></svg>
                     </button>
                 </div>
                 <button type="button" class="appts-cal-toolbar-today-btn" id="calendar-toolbar-today-btn" aria-label="Jump to today">Today</button>
@@ -212,13 +220,13 @@ ob_start();
                     <svg class="appts-cal-toolbar-ghost-btn__ic" id="calendar-fullscreen-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-fullscreen"/></svg>
                     <span class="appts-cal-fullscreen-label">Full screen</span>
                 </button>
-                <div class="appts-cal-staff-pan" id="calendar-staff-pan-controls" role="group" aria-label="Scroll staff columns">
+                <div class="appts-cal-staff-pan" id="calendar-staff-pan-controls" role="group" aria-label="Scroll staff columns" hidden style="display:none">
                     <button type="button" class="appts-cal-toolbar-ghost-btn appts-cal-staff-pan__btn" id="calendar-staff-pan-prev" aria-label="Previous staff columns" title="Previous staff columns">
-                        <svg class="appts-cal-toolbar-ghost-btn__ic" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-chevron-left"/></svg>
+                        <svg class="appts-cal-chevron-icon appts-cal-toolbar-ghost-btn__ic" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-chevron-left"/></svg>
                         <span class="visually-hidden">Previous staff columns</span>
                     </button>
                     <button type="button" class="appts-cal-toolbar-ghost-btn appts-cal-staff-pan__btn" id="calendar-staff-pan-next" aria-label="Next staff columns" title="Next staff columns">
-                        <svg class="appts-cal-toolbar-ghost-btn__ic" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-chevron-right"/></svg>
+                        <svg class="appts-cal-chevron-icon appts-cal-toolbar-ghost-btn__ic" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-chevron-right"/></svg>
                         <span class="visually-hidden">Next staff columns</span>
                     </button>
                 </div>
@@ -248,14 +256,18 @@ ob_start();
                 <div class="appts-cal-toolbar__popover appts-cal-toolbar__popover--zoom" id="cal-toolbar-zoom-pop" hidden aria-hidden="true" role="dialog" aria-modal="false" aria-label="Zoom settings">
                     <div class="appts-cal-zoom__group">
                         <div class="appts-cal-zoom__header">
-                            <label class="appts-cal-zoom__label" for="cal-toolbar-col-slider">Column width</label>
+                            <label class="appts-cal-zoom__label">Staff per view</label>
                             <div class="appts-cal-zoom__value-row">
-                                <span class="appts-cal-zoom__value" id="cal-toolbar-col-value" aria-live="polite">160px</span>
-                                <button type="button" class="appts-cal-zoom__reset" id="cal-toolbar-col-reset" aria-label="Reset column width to default" title="Reset to default">&#8635;</button>
+                                <span class="appts-cal-zoom__value" id="cal-toolbar-col-value" aria-live="polite">2 columns</span>
+                                <button type="button" class="appts-cal-zoom__reset" id="cal-toolbar-col-reset" aria-label="Reset staff per view to default" title="Reset to default">&#8635;</button>
                             </div>
                         </div>
-                        <input type="range" id="cal-toolbar-col-slider" class="appts-cal-zoom__range" min="96" max="420" value="160" />
-                        <div class="appts-cal-zoom__hints"><span>Narrow</span><span>Wide</span></div>
+                        <div class="appts-cal-zoom__col-btns" role="group" aria-label="Staff columns visible at once">
+                            <button type="button" class="appts-cal-zoom__col-btn" data-col-count="1" aria-pressed="false">1</button>
+                            <button type="button" class="appts-cal-zoom__col-btn" data-col-count="2" aria-pressed="true">2</button>
+                            <button type="button" class="appts-cal-zoom__col-btn" data-col-count="3" aria-pressed="false">3</button>
+                            <button type="button" class="appts-cal-zoom__col-btn" data-col-count="4" aria-pressed="false">4</button>
+                        </div>
                     </div>
                     <hr class="appts-cal-zoom__sep" aria-hidden="true" />
                     <div class="appts-cal-zoom__group">

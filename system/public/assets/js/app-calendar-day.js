@@ -52,7 +52,11 @@
    */
   let timeZoomPercent = 100;
   let columnWidthPx = 160;
+  /** How many staff columns should fill the visible scroll area. null = legacy free-px mode. */
+  let staffColumnsPerView = 2;
   let showInProgressAppointments = true;
+  let staffOrderScheduledIds = [];
+  let staffOrderFreelancerIds = [];
   let lastCalendarPayload = null;
   let activeSavedViewId = null;
   let calendarToolbarSaveTimer = null;
@@ -83,6 +87,9 @@
   let calendarHorizontalLanesScrollEl = null;
   let calendarHorizontalColumnGeometry = [];
   let calendarHorizontalNavStateRaf = null;
+  let calendarHorizontalNavAnimationRaf = null;
+  let calendarOverlayHeadEl = null;
+  let calendarOverlayHeadScrollEl = null;
   /**
    * Per-tab: user moved time zoom (or applied a saved view) for this branch — block auto-fit until DB row exists.
    * Survives refresh within the session; keyed by branch in sessionStorage.
@@ -469,11 +476,13 @@
       syncFrom(a, b);
       closeAllStaffMenus();
       dismissAllActiveSlotPreviews();
+      syncCalendarOverlayHeadScrollLeft();
       scheduleCalendarHorizontalNavStateSync();
     }, { passive: true });
     b.addEventListener('scroll', () => {
       syncFrom(b, a);
       dismissAllActiveSlotPreviews();
+      syncCalendarOverlayHeadScrollLeft();
       scheduleCalendarHorizontalNavStateSync();
     }, { passive: true });
     a.addEventListener('wheel', onWheelPan, { passive: false });
@@ -498,6 +507,129 @@
     calendarHorizontalHeadScrollEl = els.headScroll;
     calendarHorizontalLanesScrollEl = els.lanesScroll;
     return els;
+  }
+
+  function refreshCalendarOverlayHeadEls() {
+    const grid = document.getElementById('appts-calendar-grid');
+    if (!(grid instanceof HTMLElement)) {
+      calendarOverlayHeadEl = null;
+      calendarOverlayHeadScrollEl = null;
+      return { overlay: null, scroll: null };
+    }
+    const overlay = grid.querySelector('.ops-calendar-head-overlay');
+    const scroll = overlay ? overlay.querySelector('.ops-calendar-head-overlay__scroll') : null;
+    calendarOverlayHeadEl = overlay instanceof HTMLElement ? overlay : null;
+    calendarOverlayHeadScrollEl = scroll instanceof HTMLElement ? scroll : null;
+    return { overlay: calendarOverlayHeadEl, scroll: calendarOverlayHeadScrollEl };
+  }
+
+  function ensureCalendarOverlayHead(vm) {
+    const grid = document.getElementById('appts-calendar-grid');
+    if (!(grid instanceof HTMLElement)) return null;
+    if (!vm || !Array.isArray(vm.columns) || vm.columns.length === 0) {
+      calendarOverlayHeadEl?.remove();
+      calendarOverlayHeadEl = null;
+      calendarOverlayHeadScrollEl = null;
+      return null;
+    }
+    let overlay = grid.querySelector('.ops-calendar-head-overlay');
+    if (!(overlay instanceof HTMLElement)) {
+      overlay = document.createElement('div');
+      overlay.className = 'ops-calendar-head-overlay';
+      overlay.setAttribute('aria-hidden', 'true');
+      /* No inert — the nav slot inside needs real pointer events for the arrow buttons.
+         pointer-events:none is applied via CSS to the time and scroll children only. */
+
+      const t = document.createElement('div');
+      t.className = 'ops-calendar-head-overlay__time ops-time-head';
+      t.textContent = 'Time';
+      overlay.appendChild(t);
+
+      const scroll = document.createElement('div');
+      scroll.className = 'ops-calendar-head-overlay__scroll';
+      const inner = document.createElement('div');
+      inner.className = 'ops-calendar-head-overlay__inner';
+      scroll.appendChild(inner);
+      overlay.appendChild(scroll);
+
+      /* Fixed right slot for the staff nav arrow buttons — same width as .ops-calendar-head-nav-slot.
+         pointer-events:auto (overrides overlay's none) so buttons are clickable. */
+      const navSlot = document.createElement('div');
+      navSlot.className = 'ops-calendar-head-overlay__nav';
+      overlay.appendChild(navSlot);
+
+      grid.insertBefore(overlay, grid.firstChild);
+    }
+
+    const scroll = overlay.querySelector('.ops-calendar-head-overlay__scroll');
+    const inner = overlay.querySelector('.ops-calendar-head-overlay__inner');
+    if (!(scroll instanceof HTMLElement) || !(inner instanceof HTMLElement)) return null;
+
+    inner.innerHTML = '';
+    const overlayCw = staffColumnsPerView != null
+      ? Math.max(64, Number(columnWidthPx) || 160)
+      : Math.max(96, Math.min(420, Number(columnWidthPx) || 160));
+    const nOverlayCols = vm.columns.length;
+    vm.columns.forEach((col) => {
+      const c = document.createElement('div');
+      c.className = 'ops-calendar-head-overlay__cell';
+      c.dataset.staffId = String(col.id);
+      c.setAttribute('role', 'button');
+      c.setAttribute('tabindex', '0');
+      c.setAttribute('aria-haspopup', 'true');
+      c.setAttribute('aria-label', col.label + ', open options menu');
+
+      const name = document.createElement('div');
+      name.className = 'ops-staff-head-name';
+      name.textContent = col.label;
+      c.appendChild(name);
+
+      /* Delegate to the hidden original .ops-staff-head — use the overlay cell's
+         getBoundingClientRect() for menu positioning since the original element
+         is height:0 / visibility:hidden (wrong rect). */
+      c.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const staffId = c.dataset.staffId;
+        const originalHead = wrap.querySelector('.ops-staff-head[data-staff-id="' + staffId + '"]');
+        if (!(originalHead instanceof HTMLElement)) return;
+        const menu = originalHead.querySelector('.ops-staff-menu');
+        if (!(menu instanceof HTMLElement)) return;
+        const wasOpen = menu.classList.contains('ops-staff-menu--open');
+        closeAllStaffMenus();
+        if (!wasOpen) {
+          positionStaffMenuFixed(c, menu);
+          menu.classList.add('ops-staff-menu--open');
+          menu.removeAttribute('inert');
+          menu.setAttribute('aria-hidden', 'false');
+          originalHead.setAttribute('aria-expanded', 'true');
+          originalHead.classList.add('ops-staff-head--open');
+          const first = menu.querySelector('[role="menuitem"]');
+          if (first) requestAnimationFrame(() => first.focus());
+        }
+      });
+      c.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); c.click(); }
+        if (e.key === 'Escape') { closeAllStaffMenus(); c.focus(); }
+      });
+
+      inner.appendChild(c);
+    });
+    if (nOverlayCols > 0) {
+      inner.style.gridTemplateColumns = 'repeat(' + nOverlayCols + ', minmax(' + overlayCw + 'px, ' + overlayCw + 'px))';
+    }
+
+    calendarOverlayHeadEl = overlay;
+    calendarOverlayHeadScrollEl = scroll;
+    return overlay;
+  }
+
+  function syncCalendarOverlayHeadScrollLeft() {
+    const lanes = calendarHorizontalLanesScrollEl;
+    const overlayScroll = calendarOverlayHeadScrollEl;
+    if (!(lanes instanceof HTMLElement) || !(overlayScroll instanceof HTMLElement)) return;
+    const left = Math.max(0, Math.round(lanes.scrollLeft || 0));
+    if (Math.abs((overlayScroll.scrollLeft || 0) - left) <= 1) return;
+    overlayScroll.scrollLeft = left;
   }
 
   function ensureCalendarHorizontalScrollEls() {
@@ -544,9 +676,13 @@
   }
 
   function getCalendarHorizontalTailPaddingPx(geometry, visibleWidth) {
-    if (!Array.isArray(geometry) || geometry.length === 0) return 0;
-    const last = geometry[geometry.length - 1];
-    return Math.max(0, Math.round((visibleWidth || 0) - (last.width || 0)));
+    /* Returning 0 intentionally: non-zero tail padding creates a DOM-scrollable zone
+       beyond the last useful column.  The clamp (clampCalendarHorizontalScrollToSemanticEnd)
+       then fights browser momentum/inertia inside that zone, producing visible name
+       vibration on trackpad scroll.  With tailPadPx = 0 the DOM maxScrollLeft equals
+       maxUsefulScrollLeft exactly — the browser stops at the correct edge on its own. */
+    void geometry; void visibleWidth;
+    return 0;
   }
 
   function getCalendarHorizontalNormalizedColumns(state) {
@@ -669,11 +805,16 @@
     }
     const currentLeadingIndex = getCalendarHorizontalLeadingIndex(state);
     const lastLeftAnchorIndex = getCalendarHorizontalLastLeftAnchorIndex(state);
+    const maxUsefulScrollLeft = getCalendarHorizontalMaxUsefulScrollLeft(state);
+    const currentScrollLeft = Math.max(0, Number(state.scrollLeft) || 0);
+    /* Use scroll-position comparison instead of anchor index comparison so that
+       narrow viewports (where maxUsefulScrollLeft < 1 column width → lastLeftAnchorIndex=0)
+       do not permanently report semanticAtEnd=true and block navigation. */
     return {
       currentLeadingIndex,
       lastLeftAnchorIndex,
-      semanticAtStart: currentLeadingIndex <= 0,
-      semanticAtEnd: currentLeadingIndex >= lastLeftAnchorIndex,
+      semanticAtStart: currentScrollLeft <= 1,
+      semanticAtEnd: maxUsefulScrollLeft <= 1 || currentScrollLeft >= maxUsefulScrollLeft - 1,
     };
   }
 
@@ -704,18 +845,41 @@
     }
   }
 
+  function dockCalendarHorizontalNavNearStaffHeader() {
+    if (!(calendarHorizontalNavControls instanceof HTMLElement)) return;
+    /* Place the arrow buttons into the overlay header's right nav slot so they sit
+       flush at the end of the header row and never overlap the staff name cells. */
+    const grid = document.getElementById('appts-calendar-grid');
+    const overlay = grid ? grid.querySelector('.ops-calendar-head-overlay') : null;
+    const navSlot = overlay ? overlay.querySelector('.ops-calendar-head-overlay__nav') : null;
+    if (navSlot instanceof HTMLElement) {
+      if (calendarHorizontalNavControls.parentElement !== navSlot) {
+        navSlot.appendChild(calendarHorizontalNavControls);
+      }
+      /* Reveal only after successfully placed in the nav slot — keeps display:none
+         (set in HTML) until this point so no toolbar flash occurs. */
+      calendarHorizontalNavControls.style.removeProperty('display');
+      calendarHorizontalNavControls.classList.remove('appts-cal-staff-pan--docked-grid');
+      calendarHorizontalNavControls.classList.add('appts-cal-staff-pan--docked-head-slot');
+    }
+  }
+
   function updateCalendarHorizontalNavState() {
+    dockCalendarHorizontalNavNearStaffHeader();
     let state = getCalendarHorizontalScrollState();
     state = clampCalendarHorizontalScrollToSemanticEnd(state);
     applyCalendarHorizontalTailPadding(state);
+    syncNowLineHorizontalBounds();
     if (!calendarHorizontalNavControls || !calendarHorizontalNavPrev || !calendarHorizontalNavNext) return state;
 
-    const shouldShow = state.hasOverflow;
+    const shouldShow = true;
+    const canPan = state.hasOverflow;
     const semantic = getCalendarHorizontalSemanticNavState(state);
     calendarHorizontalNavControls.hidden = !shouldShow;
     calendarHorizontalNavControls.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
-    calendarHorizontalNavPrev.disabled = !shouldShow || semantic.semanticAtStart;
-    calendarHorizontalNavNext.disabled = !shouldShow || semantic.semanticAtEnd;
+    calendarHorizontalNavControls.classList.toggle('is-inactive', !canPan);
+    calendarHorizontalNavPrev.disabled = !canPan || semantic.semanticAtStart;
+    calendarHorizontalNavNext.disabled = !canPan || semantic.semanticAtEnd;
 
     logCalendarHorizontalNavDebug('state', {
       currentLeadingIndex: semantic.currentLeadingIndex,
@@ -734,6 +898,8 @@
     calendarHorizontalNavStateRaf = window.requestAnimationFrame(() => {
       calendarHorizontalNavStateRaf = null;
       refreshCalendarHorizontalScrollEls();
+      refreshCalendarOverlayHeadEls();
+      syncCalendarOverlayHeadScrollLeft();
       updateCalendarHorizontalNavState();
     });
   }
@@ -774,20 +940,89 @@
     window.requestAnimationFrame(poll);
   }
 
+  function prefersReducedMotion() {
+    try {
+      return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    } catch (_e) {
+      return false;
+    }
+  }
+
+  function stopCalendarHorizontalNavAnimation() {
+    if (calendarHorizontalNavAnimationRaf != null) {
+      window.cancelAnimationFrame(calendarHorizontalNavAnimationRaf);
+      calendarHorizontalNavAnimationRaf = null;
+    }
+  }
+
+  function animateCalendarHorizontalScrollTo(scrollTarget, targetScrollLeft) {
+    if (!(scrollTarget instanceof HTMLElement)) {
+      scheduleCalendarHorizontalNavStateSync();
+      return;
+    }
+    const startLeft = Math.max(0, Number(scrollTarget.scrollLeft) || 0);
+    const endLeft = Math.max(0, Number(targetScrollLeft) || 0);
+    const distance = endLeft - startLeft;
+    if (Math.abs(distance) <= 1 || prefersReducedMotion()) {
+      scrollTarget.scrollLeft = endLeft;
+      refreshCalendarHorizontalNavStateAfterSettle(scrollTarget);
+      return;
+    }
+
+    stopCalendarHorizontalNavAnimation();
+    const durationMs = Math.max(150, Math.min(320, Math.round(180 + Math.abs(distance) * 0.22)));
+    const startedAt = performance.now();
+    const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+
+    const step = (now) => {
+      if (!(scrollTarget instanceof HTMLElement) || !scrollTarget.isConnected) {
+        calendarHorizontalNavAnimationRaf = null;
+        scheduleCalendarHorizontalNavStateSync();
+        return;
+      }
+      const elapsed = now - startedAt;
+      const p = Math.max(0, Math.min(1, elapsed / durationMs));
+      const eased = easeOutCubic(p);
+      const nextLeft = startLeft + distance * eased;
+      scrollTarget.scrollLeft = nextLeft;
+
+      if (p < 1) {
+        calendarHorizontalNavAnimationRaf = window.requestAnimationFrame(step);
+        return;
+      }
+      scrollTarget.scrollLeft = endLeft; // hard snap to exact staff anchor
+      calendarHorizontalNavAnimationRaf = null;
+      refreshCalendarHorizontalNavStateAfterSettle(scrollTarget);
+    };
+
+    calendarHorizontalNavAnimationRaf = window.requestAnimationFrame(step);
+  }
+
   function scrollCalendarHorizontallyByStaff(direction) {
     const state = updateCalendarHorizontalNavState();
     if (!state.hasOverflow || !state.scrollEl || !Number.isFinite(direction) || direction === 0) return;
     const semantic = getCalendarHorizontalSemanticNavState(state);
     const leadingIndex = semantic.currentLeadingIndex;
     const lastLeftAnchorIndex = semantic.lastLeftAnchorIndex;
-    if (leadingIndex < 0 || lastLeftAnchorIndex < 0) return;
-    const targetIndex = Math.max(
-      0,
-      Math.min(lastLeftAnchorIndex, leadingIndex + (direction < 0 ? -1 : 1))
-    );
+    if (leadingIndex < 0) return;
+    const maxUsefulScrollLeft = getCalendarHorizontalMaxUsefulScrollLeft(state);
     const currentScrollLeft = Math.max(0, Number(state.scrollLeft) || 0);
-    const targetScrollLeft = Math.max(0, Math.min(state.maxScrollLeft, Math.round(state.columns[targetIndex].normalizedLeft || 0)));
-    if (targetIndex === leadingIndex && Math.abs(targetScrollLeft - currentScrollLeft) <= 1) {
+
+    let targetScrollLeft;
+    if (direction > 0) {
+      /* Forward: go to next column anchor, but clamp to maxUsefulScrollLeft.
+         If the next anchor would exceed maxUsefulScrollLeft, land exactly at maxUsefulScrollLeft
+         so the last column(s) fill the viewport without empty tail space. */
+      const nextIndex = Math.min(state.columns.length - 1, leadingIndex + 1);
+      const nextAnchor = Math.max(0, Math.round(Number(state.columns[nextIndex].normalizedLeft) || 0));
+      targetScrollLeft = Math.min(maxUsefulScrollLeft, nextAnchor);
+    } else {
+      /* Backward: go to previous column anchor, clamp to 0. */
+      const prevIndex = Math.max(0, leadingIndex - 1);
+      targetScrollLeft = Math.max(0, Math.round(Number(state.columns[prevIndex].normalizedLeft) || 0));
+    }
+
+    if (Math.abs(targetScrollLeft - currentScrollLeft) <= 1) {
       logCalendarHorizontalNavDebug('noop-end', {
         currentLeadingIndex: leadingIndex,
         lastLeftAnchorIndex,
@@ -795,24 +1030,17 @@
         semanticAtEnd: semantic.semanticAtEnd,
         scrollLeft: state.scrollLeft,
         maxScrollLeft: state.maxScrollLeft,
-        targetIndex,
+        targetScrollLeft,
       });
       scheduleCalendarHorizontalNavStateSync();
       return;
     }
-    // Snap to the exact next/prev staff anchor immediately.
-    // Smooth animation could look like tiny drift under repeated clicks.
-    const behavior = 'auto';
     const scrollTarget = state.lanesScroll || state.headScroll || state.scrollEl;
 
     closeAllStaffMenus();
     dismissAllActiveSlotPreviews();
 
-    if (typeof scrollTarget.scrollTo === 'function') {
-      scrollTarget.scrollTo({ left: targetScrollLeft, behavior });
-    } else {
-      scrollTarget.scrollLeft = targetScrollLeft;
-    }
+    animateCalendarHorizontalScrollTo(scrollTarget, targetScrollLeft);
     logCalendarHorizontalNavDebug('scroll', {
       currentLeadingIndex: leadingIndex,
       lastLeftAnchorIndex,
@@ -820,10 +1048,9 @@
       semanticAtEnd: semantic.semanticAtEnd,
       scrollLeft: state.scrollLeft,
       maxScrollLeft: state.maxScrollLeft,
-      targetIndex,
       targetScrollLeft,
+      animated: true,
     });
-    refreshCalendarHorizontalNavStateAfterSettle(scrollTarget);
   }
 
   /**
@@ -1645,11 +1872,23 @@
     document.getElementById('ops-now-label-indicator')?.remove();
   }
 
+  /** Keep now-line horizontally clipped to the visible lanes viewport. */
+  function syncNowLineHorizontalBounds() {
+    const line = document.getElementById('ops-now-line-indicator');
+    if (!(line instanceof HTMLElement)) return;
+    const lanesScroll = wrap.querySelector('.ops-calendar-lanes-scroll');
+    if (!(lanesScroll instanceof HTMLElement)) return;
+    line.style.left = Math.max(0, Math.round(lanesScroll.offsetLeft || 0)) + 'px';
+    line.style.width = Math.max(0, Math.round(lanesScroll.clientWidth || 0)) + 'px';
+    line.style.right = 'auto';
+  }
+
   /** Reposition (or hide) the now-line based on current branch-local time vs selected date. */
   function positionNowLine() {
     const line  = document.getElementById('ops-now-line-indicator');
     const label = document.getElementById('ops-now-label-indicator');
     if (!nowLineVm || !line || !label) return;
+    syncNowLineHorizontalBounds();
     const { minutes: nowMinutes, dateStr: nowDate } = getBranchNow();
     const isToday = dateEl.value === nowDate;
     const inRange = nowMinutes >= nowLineVm.start && nowMinutes <= nowLineVm.end;
@@ -3153,12 +3392,55 @@
     };
   }
 
+  /**
+   * Calculate the pixel column width that makes exactly `n` staff columns (plus a ~23% peek of
+   * the next column) fit within the VISIBLE calendar viewport.
+   *
+   * We deliberately measure from #appts-calendar-grid (the outermost calendar element, which has
+   * overflow-x:hidden and is constrained by the page layout) rather than from lanesScroll /
+   * headScroll. Those elements live inside .ops-calendar which has min-width:860px — reading their
+   * clientWidth returns the *element* width (860px+), not the clipped *visible* width.
+   *
+   * Time gutter (.ops-time-head / .ops-time-labels) is 84px, hardcoded in CSS.
+   */
+  const CAL_TIME_GUTTER_PX = 84;
+  /**
+   * @param {number} n  - User's chosen columns-per-view snap value (1–6).
+   * @param {number} [nVisible] - Actual visible staff count after filtering.
+   *   When nVisible ≤ n, all staff fit on screen → fill the full width with no peek
+   *   (no empty space to the right of the last column).
+   *   When nVisible > n (scrolling needed), use the +0.15 peek divisor so the next
+   *   column's edge is visible, signalling more content.
+   */
+  function computeColumnWidthFromStaffCount(n, nVisible) {
+    const gridEl = document.getElementById('appts-calendar-grid');
+    let viewW = 0;
+    if (gridEl instanceof HTMLElement && gridEl.clientWidth > 10) {
+      viewW = Math.max(100, gridEl.clientWidth - CAL_TIME_GUTTER_PX);
+    } else {
+      viewW = Math.max(200, window.innerWidth - 130);
+    }
+    /* Always divide by exactly N (or fewer if there are fewer staff).
+       No +0.15 peek — columns fill the full viewport width precisely.
+       The ‹ › nav arrows signal scrollability; no partial column needed. */
+    const cols = (nVisible != null && nVisible > 0) ? Math.min(n, nVisible) : n;
+    return Math.max(64, Math.floor(viewW / cols));
+  }
+
   function renderCalendar(payload) {
     lastCalendarPayload = payload && typeof payload === 'object' ? payload : null;
     flushDeferredHiddenStaffIdsIfReady();
     refreshCalendarHorizontalScrollEls();
+    /* Responsive: recalculate column width from current viewport every render. */
+    if (staffColumnsPerView != null) {
+      columnWidthPx = computeColumnWidthFromStaffCount(staffColumnsPerView);
+    }
     const gridHost = document.getElementById('appts-calendar-grid');
-    const cw = Math.max(96, Math.min(420, Number(columnWidthPx) || 160));
+    /* In responsive staff-columns mode the computed width can be larger than the old slider max
+       of 420 px (e.g. n=1 fills most of the viewport). Only the legacy free-px mode is clamped. */
+    const cw = staffColumnsPerView != null
+      ? Math.max(64, Number(columnWidthPx) || 160)
+      : Math.max(96, Math.min(420, Number(columnWidthPx) || 160));
     if (gridHost) {
       gridHost.style.setProperty('--cal-col-min', cw + 'px');
     }
@@ -3174,8 +3456,48 @@
         staff: payload.staff.filter((s) => !hiddenIds.has(String(s.id))),
       });
     }
+    // Apply per-branch staff column order (Scheduled and Freelancers reorder independently).
+    if (payload && Array.isArray(payload.staff)) {
+      const staff = payload.staff.slice(0);
+      const sched = [];
+      const fr = [];
+      staff.forEach((s) => {
+        const st = String(s && s.staff_type ? s.staff_type : 'scheduled');
+        if (st === 'freelancer') fr.push(s);
+        else sched.push(s);
+      });
+      const orderByIds = (list, orderIds) => {
+        const want = Array.isArray(orderIds) ? orderIds.map(String) : [];
+        const byId = new Map(list.map((s) => [String(s.id), s]));
+        const used = new Set();
+        const out = [];
+        want.forEach((id) => {
+          const item = byId.get(String(id));
+          if (!item) return;
+          used.add(String(id));
+          out.push(item);
+        });
+        list.forEach((s) => {
+          const id = String(s.id);
+          if (used.has(id)) return;
+          out.push(s);
+        });
+        return out;
+      };
+      payload = Object.assign({}, payload, {
+        staff: orderByIds(sched, staffOrderScheduledIds).concat(orderByIds(fr, staffOrderFreelancerIds)),
+      });
+    }
     updateHiddenColumnsIndicator();
     const vm = buildCalendarViewModel(payload);
+    /* Precise column-width: now that we know the visible staff count, recalculate.
+       If all staff fit in the chosen N slots, columns fill the full width (no peek, no waste).
+       Re-apply the CSS variable immediately so the layout below uses the correct value. */
+    if (staffColumnsPerView != null && vm.columns.length > 0) {
+      columnWidthPx = computeColumnWidthFromStaffCount(staffColumnsPerView, vm.columns.length);
+      const cwFinal = Math.max(64, columnWidthPx);
+      if (gridHost) gridHost.style.setProperty('--cal-col-min', cwFinal + 'px');
+    }
     renderBranchHoursIndicator(vm.branchHours, vm.closureDate);
     if (!vm.columns.length) {
       wrap.innerHTML = '<p class="calendar-empty-hint">No active staff for this branch and date.</p>';
@@ -3187,7 +3509,7 @@
     }
 
     const root = document.createElement('div');
-    root.className = 'ops-calendar';
+    root.className = 'ops-calendar ops-calendar--overlay-head';
 
     const head = document.createElement('div');
     head.className = 'ops-calendar-head';
@@ -3679,6 +4001,9 @@
     wrap.appendChild(root);
     refreshCalendarHorizontalScrollEls();
     collectCalendarHorizontalColumnGeometry();
+    ensureCalendarOverlayHead(vm);
+    refreshCalendarOverlayHeadEls();
+    syncCalendarOverlayHeadScrollLeft();
     initNowLine(vm);
     updateRailDayMeta(vm, apptCount);
     updateCalendarHorizontalNavState();
@@ -3808,7 +4133,11 @@
 
   function applyViewConfigFields(cfg) {
     if (!cfg || typeof cfg !== 'object') return;
-    if (cfg.column_width_px != null && Number.isFinite(Number(cfg.column_width_px))) {
+    if (cfg.staff_columns_per_view != null && Number.isFinite(Number(cfg.staff_columns_per_view))) {
+      staffColumnsPerView = Math.max(1, Math.min(6, Math.round(Number(cfg.staff_columns_per_view))));
+      /* columnWidthPx will be computed from viewport in the next renderCalendar call */
+    } else if (cfg.column_width_px != null && Number.isFinite(Number(cfg.column_width_px))) {
+      /* Legacy fallback: saved raw px → keep staffColumnsPerView=2, override will recalculate anyway */
       columnWidthPx = Math.max(96, Math.min(420, Number(cfg.column_width_px)));
     }
     if (cfg.time_zoom_percent != null && Number.isFinite(Number(cfg.time_zoom_percent))) {
@@ -3819,6 +4148,28 @@
     }
     if (Array.isArray(cfg.hidden_staff_ids)) {
       applyHiddenStaffIdsFromSavedConfig(cfg.hidden_staff_ids);
+    }
+    if (Array.isArray(cfg.staff_order_scheduled_ids)) {
+      const next = [];
+      const seen = new Set();
+      cfg.staff_order_scheduled_ids.forEach((id) => {
+        const s = String(id);
+        if (s === '' || seen.has(s)) return;
+        seen.add(s);
+        next.push(s);
+      });
+      staffOrderScheduledIds = next;
+    }
+    if (Array.isArray(cfg.staff_order_freelancer_ids)) {
+      const next = [];
+      const seen = new Set();
+      cfg.staff_order_freelancer_ids.forEach((id) => {
+        const s = String(id);
+        if (s === '' || seen.has(s)) return;
+        seen.add(s);
+        next.push(s);
+      });
+      staffOrderFreelancerIds = next;
     }
   }
 
@@ -3840,12 +4191,21 @@
   }
 
   function buildCalendarPrefsPayload() {
-    return {
-      column_width_px: columnWidthPx,
+    /* When in responsive staff-columns mode, columnWidthPx is derived from viewport at runtime
+       and must NOT be sent — it can exceed the server's 96–420 range. Only staff_columns_per_view
+       is saved. column_width_px is included only in legacy free-px fallback mode. */
+    const base = {
+      staff_columns_per_view: staffColumnsPerView,
       time_zoom_percent: timeZoomPercent,
       show_in_progress: showInProgressAppointments,
       hidden_staff_ids: [...getHiddenStaffIds()],
+      staff_order_scheduled_ids: Array.isArray(staffOrderScheduledIds) ? staffOrderScheduledIds.slice(0, 240) : [],
+      staff_order_freelancer_ids: Array.isArray(staffOrderFreelancerIds) ? staffOrderFreelancerIds.slice(0, 240) : [],
     };
+    if (staffColumnsPerView == null) {
+      base.column_width_px = Math.max(96, Math.min(420, columnWidthPx));
+    }
+    return base;
   }
 
   /**
@@ -3880,6 +4240,8 @@
       time_zoom_percent: timeZoomPercent,
       show_in_progress: showInProgressAppointments,
       hidden_staff_ids: [...getHiddenStaffIds()],
+      staff_order_scheduled_ids: Array.isArray(staffOrderScheduledIds) ? staffOrderScheduledIds.slice(0, 240) : [],
+      staff_order_freelancer_ids: Array.isArray(staffOrderFreelancerIds) ? staffOrderFreelancerIds.slice(0, 240) : [],
     };
   }
 
@@ -4114,17 +4476,20 @@
 
   function syncCalendarToolbarControls() {
     const z = document.getElementById('cal-toolbar-zoom-slider');
-    const c = document.getElementById('cal-toolbar-col-slider');
     const ch = document.getElementById('cal-toolbar-in-progress');
     const zv = document.getElementById('cal-toolbar-zoom-value');
     const cv = document.getElementById('cal-toolbar-col-value');
     if (z) z.value = String(timeZoomPercent);
-    if (c) c.value = String(columnWidthPx);
     if (ch) ch.checked = !!showInProgressAppointments;
     if (zv) zv.textContent = String(timeZoomPercent) + '%';
-    if (cv) cv.textContent = String(columnWidthPx) + 'px';
+    if (cv) cv.textContent = String(staffColumnsPerView) + (staffColumnsPerView === 1 ? ' column' : ' columns');
     updateSliderFill(z, 25, 200, timeZoomPercent);
-    updateSliderFill(c, 96, 420, columnWidthPx);
+    document.querySelectorAll('[data-col-count]').forEach((btn) => {
+      const n = parseInt(btn.dataset.colCount, 10);
+      const active = n === staffColumnsPerView;
+      btn.classList.toggle('appts-cal-zoom__col-btn--active', active);
+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
     updateZoomPresetActiveState();
   }
 
@@ -4374,16 +4739,18 @@
         scheduleCalendarHorizontalNavStateSync();
       });
     }
-    const cSl = document.getElementById('cal-toolbar-col-slider');
-    if (cSl) {
-      cSl.addEventListener('input', () => {
-        columnWidthPx = Math.max(96, Math.min(420, parseInt(String(cSl.value), 10) || 160));
+    document.querySelectorAll('[data-col-count]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const n = parseInt(btn.dataset.colCount, 10);
+        if (!Number.isFinite(n) || n < 1) return;
+        staffColumnsPerView = Math.max(1, Math.min(6, n));
+        columnWidthPx = computeColumnWidthFromStaffCount(staffColumnsPerView);
         schedulePersistCalendarPrefs();
         if (lastCalendarPayload) renderCalendar(lastCalendarPayload);
         syncCalendarToolbarControls();
         scheduleCalendarHorizontalNavStateSync();
       });
-    }
+    });
     const ip = document.getElementById('cal-toolbar-in-progress');
     if (ip) {
       ip.addEventListener('change', () => {
@@ -4396,7 +4763,8 @@
 
     // ── Zoom reset buttons ─────────────────────────────────────────────────
     document.getElementById('cal-toolbar-col-reset')?.addEventListener('click', () => {
-      columnWidthPx = 160;
+      staffColumnsPerView = 2;
+      columnWidthPx = computeColumnWidthFromStaffCount(2);
       clearCalendarAutofitTimeZoomLock();
       syncCalendarToolbarControls();
       schedulePersistCalendarPrefs();
@@ -4442,6 +4810,19 @@
       box.querySelectorAll('input[type="checkbox"][data-staff-id]').forEach((inp) => {
         if (!inp.checked) hidden.add(String(inp.dataset.staffId));
       });
+      const readOrder = (section) => {
+        const out = [];
+        const scope = box.querySelector('[data-staff-section="' + section + '"]');
+        if (!scope) return out;
+        scope.querySelectorAll('.appts-cal-staff-modal__row[data-staff-id]').forEach((row) => {
+          if (!(row instanceof HTMLElement)) return;
+          const id = String(row.dataset.staffId || '');
+          if (id) out.push(id);
+        });
+        return out;
+      };
+      staffOrderScheduledIds = readOrder('scheduled');
+      staffOrderFreelancerIds = readOrder('freelancer');
       setHiddenStaffIds(hidden);
       closeCalendarToolbarPopovers();
       if (lastCalendarPayload) renderCalendar(lastCalendarPayload);
@@ -4669,10 +5050,62 @@
       if (!box || !lastCalendarPayload || !Array.isArray(lastCalendarPayload.staff)) return;
       box.innerHTML = '';
       const hidden = getHiddenStaffIds();
+      const staff = lastCalendarPayload.staff.slice(0);
+      const schedStaff = [];
+      const frStaff = [];
+      staff.forEach((s) => {
+        const st = String(s.staff_type || 'scheduled');
+        if (st === 'freelancer') frStaff.push(s);
+        else schedStaff.push(s);
+      });
+      const orderByIds = (list, orderIds) => {
+        const want = Array.isArray(orderIds) ? orderIds.map(String) : [];
+        const byId = new Map(list.map((s) => [String(s.id), s]));
+        const used = new Set();
+        const out = [];
+        want.forEach((id) => {
+          const item = byId.get(String(id));
+          if (!item) return;
+          used.add(String(id));
+          out.push(item);
+        });
+        list.forEach((s) => {
+          const id = String(s.id);
+          if (used.has(id)) return;
+          out.push(s);
+        });
+        return out;
+      };
+      const orderedSched = orderByIds(schedStaff, staffOrderScheduledIds);
+      const orderedFr = orderByIds(frStaff, staffOrderFreelancerIds);
+
+      let dragActiveType = null; // 'scheduled' | 'freelancer'
+      let dragActiveId = '';
+      const clearDropHints = () => {
+        box.querySelectorAll('.appts-cal-staff-modal__row').forEach((r) => r.classList.remove('is-drop-target'));
+      };
+      const syncOrderArraysFromDom = () => {
+        const read = (scope) => {
+          const out = [];
+          scope.querySelectorAll('.appts-cal-staff-modal__row[data-staff-id]').forEach((row) => {
+            if (!(row instanceof HTMLElement)) return;
+            const id = String(row.dataset.staffId || '');
+            if (id) out.push(id);
+          });
+          return out;
+        };
+        const sScope = box.querySelector('[data-staff-section="scheduled"]');
+        const fScope = box.querySelector('[data-staff-section="freelancer"]');
+        if (sScope) staffOrderScheduledIds = read(sScope);
+        if (fScope) staffOrderFreelancerIds = read(fScope);
+      };
+
       const sched = document.createElement('div');
       sched.className = 'appts-cal-staff-modal__col';
+      sched.dataset.staffSection = 'scheduled';
       const fr = document.createElement('div');
       fr.className = 'appts-cal-staff-modal__col';
+      fr.dataset.staffSection = 'freelancer';
       const schedRows = document.createElement('div');
       schedRows.className = 'appts-cal-staff-modal__rows';
       const frRows = document.createElement('div');
@@ -4685,25 +5118,140 @@
       hFr.textContent = 'Freelancers';
       sched.appendChild(hSched);
       fr.appendChild(hFr);
-      lastCalendarPayload.staff.forEach((s) => {
+      const buildRow = (s, staffType) => {
         const id = String(s.id);
         const label = ((s.first_name || '') + ' ' + (s.last_name || '')).trim() || ('Staff #' + id);
         const row = document.createElement('label');
         row.className = 'appts-cal-staff-modal__row';
+        row.dataset.staffId = id;
+        row.dataset.staffType = staffType;
+        row.draggable = true;
+
+        const handle = document.createElement('span');
+        handle.className = 'appts-cal-staff-modal__drag';
+        handle.setAttribute('aria-hidden', 'true');
+        handle.textContent = '⋮⋮';
+        row.appendChild(handle);
+
         const cb = document.createElement('input');
         cb.type = 'checkbox';
         cb.dataset.staffId = id;
         cb.checked = !hidden.has(id);
         row.appendChild(cb);
-        row.appendChild(document.createTextNode(' ' + label));
-        const st = String(s.staff_type || 'scheduled');
-        if (st === 'freelancer') frRows.appendChild(row);
-        else schedRows.appendChild(row);
+
+        const name = document.createElement('span');
+        name.className = 'appts-cal-staff-modal__name';
+        name.textContent = label;
+        row.appendChild(name);
+
+        row.addEventListener('dragstart', (e) => {
+          dragActiveType = staffType;
+          dragActiveId = id;
+          clearDropHints();
+          row.classList.add('is-dragging');
+          try {
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', id);
+          } catch (_err) { /* ignore */ }
+        });
+        row.addEventListener('dragend', () => {
+          row.classList.remove('is-dragging');
+          dragActiveType = null;
+          dragActiveId = '';
+          clearDropHints();
+          syncOrderArraysFromDom();
+        });
+        row.addEventListener('dragover', (e) => {
+          if (!dragActiveType || dragActiveType !== staffType) return;
+          if (!dragActiveId || dragActiveId === id) return;
+          e.preventDefault();
+          clearDropHints();
+          row.classList.add('is-drop-target');
+          try { e.dataTransfer.dropEffect = 'move'; } catch (_err) { /* ignore */ }
+        });
+        row.addEventListener('drop', (e) => {
+          if (!dragActiveType || dragActiveType !== staffType) return;
+          if (!dragActiveId || dragActiveId === id) return;
+          e.preventDefault();
+          const container = row.parentElement;
+          if (!(container instanceof HTMLElement)) return;
+          const before = new Map();
+          container.querySelectorAll('.appts-cal-staff-modal__row').forEach((el) => {
+            if (el instanceof HTMLElement) before.set(el, el.getBoundingClientRect());
+          });
+          const dragging = container.querySelector('.appts-cal-staff-modal__row.is-dragging');
+          if (!(dragging instanceof HTMLElement)) return;
+          container.insertBefore(dragging, row);
+          container.querySelectorAll('.appts-cal-staff-modal__row').forEach((el) => {
+            if (!(el instanceof HTMLElement)) return;
+            const a = before.get(el);
+            if (!a) return;
+            const b = el.getBoundingClientRect();
+            const dx = a.left - b.left;
+            const dy = a.top - b.top;
+            if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
+            el.animate(
+              [
+                { transform: `translate(${dx}px, ${dy}px)` },
+                { transform: 'translate(0, 0)' },
+              ],
+              { duration: 320, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
+            );
+          });
+          clearDropHints();
+          syncOrderArraysFromDom();
+        });
+        row.addEventListener('keydown', (e) => {
+          if (!(e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown'))) return;
+          e.preventDefault();
+          const container = row.parentElement;
+          if (!(container instanceof HTMLElement)) return;
+          const before = new Map();
+          container.querySelectorAll('.appts-cal-staff-modal__row').forEach((el) => {
+            if (el instanceof HTMLElement) before.set(el, el.getBoundingClientRect());
+          });
+          const rows = Array.from(container.querySelectorAll('.appts-cal-staff-modal__row'));
+          const idx = rows.indexOf(row);
+          if (idx < 0) return;
+          if (e.key === 'ArrowUp' && idx > 0) {
+            container.insertBefore(row, rows[idx - 1]);
+          }
+          if (e.key === 'ArrowDown' && idx < rows.length - 1) {
+            container.insertBefore(rows[idx + 1], row);
+          }
+          container.querySelectorAll('.appts-cal-staff-modal__row').forEach((el) => {
+            if (!(el instanceof HTMLElement)) return;
+            const a = before.get(el);
+            if (!a) return;
+            const b = el.getBoundingClientRect();
+            const dx = a.left - b.left;
+            const dy = a.top - b.top;
+            if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
+            el.animate(
+              [
+                { transform: `translate(${dx}px, ${dy}px)` },
+                { transform: 'translate(0, 0)' },
+              ],
+              { duration: 260, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
+            );
+          });
+          syncOrderArraysFromDom();
+        });
+
+        return row;
+      };
+
+      orderedSched.forEach((s) => {
+        schedRows.appendChild(buildRow(s, 'scheduled'));
+      });
+      orderedFr.forEach((s) => {
+        frRows.appendChild(buildRow(s, 'freelancer'));
       });
       sched.appendChild(schedRows);
       fr.appendChild(frRows);
       box.appendChild(sched);
       box.appendChild(fr);
+      syncOrderArraysFromDom();
     }
   }
 
@@ -4910,7 +5458,7 @@
 
   document.addEventListener('click', (e) => {
     if (!(e.target instanceof Element)) return;
-    if (!e.target.closest('.ops-staff-head')) closeAllStaffMenus();
+    if (!e.target.closest('.ops-staff-head') && !e.target.closest('.ops-calendar-head-overlay__cell')) closeAllStaffMenus();
     if (!e.target.closest('#cal-appt-ctx-menu')) closeApptContextMenu();
   });
   document.addEventListener('keydown', (e) => {
@@ -4962,6 +5510,17 @@
       t = setTimeout(() => {
         if (performance.now() < implicitWorkdayFitSuppressedUntil) return;
         scheduleWorkdayViewportFit();
+        /* Responsive staff columns: viewport changed → recalculate column width.
+           Pass visible staff count so we avoid empty space when all staff fit. */
+        if (staffColumnsPerView != null && lastCalendarPayload) {
+          const visibleN = Array.isArray(lastCalendarPayload.staff) ? lastCalendarPayload.staff.length : 0;
+          const newCw = computeColumnWidthFromStaffCount(staffColumnsPerView, visibleN > 0 ? visibleN : undefined);
+          if (newCw !== columnWidthPx) {
+            columnWidthPx = newCw;
+            renderCalendar(lastCalendarPayload);
+            syncCalendarToolbarControls();
+          }
+        }
         scheduleCalendarHorizontalNavStateSync();
       }, 100);
     });

@@ -3365,10 +3365,15 @@ body:has(.calendar-workspace) {
   border-radius: 8px;
   background: transparent;
   color: #64748b;
-  font-size: 1.25rem;
   line-height: 1;
   cursor: pointer;
   transition: all 0.2s ease;
+}
+.appts-cal-chevron-icon {
+  width: 1rem;
+  height: 1rem;
+  display: block;
+  flex-shrink: 0;
 }
 .appts-cal-card__chev:hover {
   background: #fff;
@@ -3740,7 +3745,8 @@ body:has(.calendar-workspace) {
   border-radius: 0;
   box-shadow: none;
   margin-bottom: var(--ds-space-3);
-  padding: var(--ds-space-2) 0 var(--ds-space-1);
+  padding: var(--ds-space-2) var(--ds-space-2) var(--ds-space-1);
+  box-sizing: border-box;
 }
 
 .appts-command-strip--premium.appts-command-strip {
@@ -3752,6 +3758,7 @@ body:has(.calendar-workspace) {
   border-bottom: 1px solid var(--ds-color-divider);
   margin-bottom: 0;
   width: 100%;
+  box-sizing: border-box;
 }
 
 /* Day calendar premium top bar: one control chrome (no nested tray + flat buttons mismatch). */
@@ -3766,6 +3773,62 @@ body:has(.calendar-workspace) {
 
 .appts-calendar-control-surface--premium .appts-cal-staff-pan {
   display: none;
+}
+
+.appts-cal-staff-pan.appts-cal-staff-pan--docked-grid {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.16rem;
+  position: absolute;
+  top: 0.36rem;
+  right: 0.48rem;
+  z-index: 260; /* above overlay sticky head (250) so arrows are always visible */
+  padding: 0.2rem;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.08);
+  backdrop-filter: saturate(160%) blur(10px);
+  -webkit-backdrop-filter: saturate(160%) blur(10px);
+}
+
+.appts-cal-staff-pan.appts-cal-staff-pan--docked-grid.is-inactive {
+  opacity: 0.58;
+}
+
+.appts-cal-staff-pan.appts-cal-staff-pan--docked-grid::before {
+  content: none;
+}
+
+.appts-cal-staff-pan.appts-cal-staff-pan--docked-grid .appts-cal-staff-pan__btn {
+  width: 1.9rem;
+  min-width: 1.9rem;
+  min-height: 1.9rem;
+  padding: 0;
+  justify-content: center;
+  gap: 0;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: rgba(15, 23, 42, 0.62);
+  flex: 0 0 auto;
+  box-shadow: none;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.12s ease, border-color 0.18s ease;
+}
+
+.appts-cal-staff-pan.appts-cal-staff-pan--docked-grid .appts-cal-staff-pan__btn:hover {
+  background: rgba(15, 23, 42, 0.065);
+  color: rgba(15, 23, 42, 0.9);
+  border-color: rgba(15, 23, 42, 0.08);
+}
+
+.appts-cal-staff-pan.appts-cal-staff-pan--docked-grid .appts-cal-staff-pan__btn:active {
+  transform: scale(0.96);
+}
+
+.appts-cal-staff-pan.appts-cal-staff-pan--docked-grid .appts-cal-staff-pan__btn:disabled {
+  opacity: 0.36;
+  cursor: not-allowed;
 }
 
 .appts-calendar-control-surface--premium .appts-cal-staff-pan__btn {
@@ -4859,6 +4922,44 @@ body:has(.calendar-workspace) {
   font-weight: var(--ds-font-semibold);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
+/* ── Staff-per-view segmented button group ────────────────────────────── */
+.appts-cal-zoom__col-btns {
+  display: flex;
+  gap: 5px;
+  margin-top: 0.55rem;
+}
+.appts-cal-zoom__col-btn {
+  flex: 1;
+  padding: 0.45rem 0;
+  border: 1.5px solid rgba(15, 23, 42, 0.12);
+  border-radius: var(--ds-radius-md);
+  background: transparent;
+  font-size: 0.9375rem;
+  font-weight: var(--ds-font-semibold);
+  line-height: 1;
+  cursor: pointer;
+  color: var(--ds-color-text-secondary);
+  transition:
+    background 0.12s ease,
+    color 0.12s ease,
+    border-color 0.12s ease;
+}
+.appts-cal-zoom__col-btn:hover {
+  background: rgba(15, 23, 42, 0.04);
+  border-color: rgba(15, 23, 42, 0.22);
+  color: var(--ds-color-text-primary);
+}
+.appts-cal-zoom__col-btn--active,
+.appts-cal-zoom__col-btn[aria-pressed="true"] {
+  background: #0f172a;
+  color: #fff;
+  border-color: #0f172a;
+}
+.appts-cal-zoom__col-btn--active:hover,
+.appts-cal-zoom__col-btn[aria-pressed="true"]:hover {
+  background: #1e293b;
+  border-color: #1e293b;
+}
 .appts-cal-zoom__check {
   display: flex;
   align-items: flex-start;
@@ -4972,7 +5073,7 @@ body:has(.calendar-workspace) {
 }
 .appts-cal-staff-modal__row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: 0.9rem 1.15rem minmax(0, 1fr);
   align-items: center;
   gap: 0.45rem;
   min-width: 0;
@@ -4988,8 +5089,50 @@ body:has(.calendar-workspace) {
   overflow-wrap: break-word;
   word-break: normal;
 }
+.appts-cal-staff-modal__drag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.9rem;
+  height: 1.15rem;
+  color: rgba(15, 23, 42, 0.42);
+  font-size: 0.9rem;
+  line-height: 1;
+  user-select: none;
+  cursor: grab;
+}
+.appts-cal-staff-modal__row.is-dragging {
+  /* Hide the in-flow source row so it doesn't overlap the browser drag ghost. */
+  opacity: 0;
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+  cursor: grabbing;
+}
+.appts-cal-staff-modal__row.is-drop-target {
+  outline: 2px solid rgba(15, 23, 42, 0.14);
+  outline-offset: 1px;
+  background: rgba(15, 23, 42, 0.035);
+}
+.appts-cal-staff-modal__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .appts-cal-staff-modal__row:hover {
   background: rgba(0, 0, 0, 0.035);
+}
+.appts-cal-staff-modal__row {
+  transition:
+    background 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.appts-cal-staff-modal__row:focus-within {
+  outline: 2px solid rgba(15, 23, 42, 0.12);
+  outline-offset: 2px;
 }
 .appts-cal-staff-modal__row input[type="checkbox"] {
   accent-color: var(--ds-color-accent);
@@ -5238,6 +5381,7 @@ a.appts-cal-toolbar__menu-item:hover {
   scrollbar-color: transparent transparent;
   -ms-overflow-style: none;
   -webkit-overflow-scrolling: touch;
+  position: relative;
 }
 
 /* WebKit/Blink: width:0 alone still paints a track on some Windows builds — hide all pieces. */
@@ -5384,8 +5528,8 @@ body.calendar-is-fullscreen .app-shell__main.calendar-main-is-immersive {
   --cal-z-slot-preview: 8;
   /* Active slot hover (fixed to viewport): above .ops-now-line so the time bubble is not covered. */
   --cal-z-slot-preview-active: 95;
-  /* Above staff menus (60) so the “now” line is never covered by cards or dropdowns. */
-  --cal-z-now-line: 80;
+  /* Keep now-line above lanes/cards but below menus/tool overlays. */
+  --cal-z-now-line: 20;
   --cal-now-line-color: #dc2626;
   /* Slightly larger corner curve on event cards (quiet “sheet” vs sharp widget) */
   --ops-cal-card-radius: 0.75rem;
@@ -5398,6 +5542,105 @@ body.calendar-is-fullscreen .app-shell__main.calendar-main-is-immersive {
   /* Overlay scrollbars can still paint over the last lane; inset keeps staff headers/cards off the thumb. */
   padding-inline-end: var(--ds-space-3);
   box-sizing: border-box;
+}
+
+/* Overlay sticky staff header (JS-built) — robust against sticky/overflow quirks. */
+.ops-calendar-head-overlay {
+  position: sticky;
+  top: 0;
+  /* Hard-coded z-index: --cal-z-head is scoped to .ops-calendar which is a sibling,
+     not an ancestor, so var(--cal-z-head) would be unresolved here → auto.
+     45 puts the overlay above calendar content (cards z~10, now-line z~20, staff-head z~35)
+     but BELOW app-level stacking contexts (context-anchor z=50, staff-menu z=60, tools-panel z=100)
+     so dropdowns always render on top. */
+  z-index: 45;
+  /* Allow the absolutely-positioned nav slot to anchor to this container. */
+  overflow: visible;
+  background: var(--ds-color-bg-canvas);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  width: 100%;
+  flex-shrink: 0;
+  /* Default: no pointer events on the overlay itself — only the nav slot overrides this. */
+  pointer-events: none;
+}
+.ops-calendar-head-overlay__time,
+.ops-calendar-head-overlay__scroll {
+  pointer-events: none;
+}
+/* Right-end nav slot — floats over the last column so it takes zero layout space. */
+.ops-calendar-head-overlay__nav {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 74px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.26rem 0.34rem;
+  border-left: 1px solid rgba(15, 23, 42, 0.06);
+  background: var(--ds-color-bg-canvas);
+  box-sizing: border-box;
+  pointer-events: auto; /* overrides parent none — buttons are clickable */
+}
+.ops-calendar-head-overlay__time {
+  flex: 0 0 84px;
+  width: 84px;
+  min-width: 84px;
+  max-width: 84px;
+}
+.ops-calendar-head-overlay__scroll {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* Hide scrollbar visually — scrollLeft is still settable programmatically. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.ops-calendar-head-overlay__scroll::-webkit-scrollbar {
+  display: none;
+}
+.ops-calendar-head-overlay__inner {
+  display: grid;
+  grid-auto-flow: row;
+  grid-auto-rows: minmax(2.85rem, auto);
+  width: max-content;
+  min-width: min-content;
+}
+.ops-calendar-head-overlay__cell {
+  padding: 0.45rem 0.55rem;
+  min-height: 2.85rem;
+  box-sizing: border-box;
+  border-right: 1px solid rgba(15, 23, 42, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto; /* clickable — delegates to original .ops-staff-menu */
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.14s ease;
+}
+.ops-calendar-head-overlay__cell:hover {
+  background: rgba(15, 23, 42, 0.035);
+}
+.ops-calendar-head-overlay__cell:last-child { border-right: none; }
+
+.ops-calendar.ops-calendar--overlay-head .ops-calendar-head {
+  /* Collapse to 0 height — overlay header replaces it visually.
+     overflow:visible so JS measurements (offsetWidth, offsetLeft) on children remain accurate.
+     visibility:hidden + pointer-events:none make it fully inert visually and interactively. */
+  height: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  overflow: visible !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  flex-shrink: 0;
 }
 /* Instant Tools Fit / column changes: no width/grid-template animation (avoids staged shrink feel). */
 .ops-calendar-head,
@@ -5416,12 +5659,29 @@ body.calendar-is-fullscreen .app-shell__main.calendar-main-is-immersive {
   border-bottom: 1px solid rgba(15, 23, 42, 0.06);
   background: var(--ds-color-bg-canvas);
   flex-shrink: 0;
+  width: 100%;
+  align-self: stretch;
+  position: -webkit-sticky;
   position: sticky;
   top: 0;
-  z-index: var(--cal-z-head);
+  z-index: calc(var(--cal-z-head) + 10);
   overflow: visible;
   /* Staff dropdown extends below this row; stays above lane cards (see --cal-z-* on .ops-calendar). */
   box-shadow: none;
+}
+
+/* Dedicated fixed slot for staff horizontal arrows (outside horizontal scroll area). */
+.ops-calendar-head-nav-slot {
+  flex: 0 0 auto;
+  width: 74px;
+  min-width: 74px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.26rem 0.34rem;
+  border-left: 1px solid rgba(15, 23, 42, 0.06);
+  background: var(--ds-color-bg-canvas);
+  box-sizing: border-box;
 }
 /* Staff names scroll horizontally with lanes; synced via JS to .ops-calendar-lanes-scroll. */
 .ops-calendar-head-scroll {
@@ -5436,7 +5696,83 @@ body.calendar-is-fullscreen .app-shell__main.calendar-main-is-immersive {
   scrollbar-color: transparent transparent;
   -ms-overflow-style: none;
 }
-.ops-calendar-head-scroll::-webkit-scrollbar,
+
+.appts-cal-staff-pan.appts-cal-staff-pan--docked-head-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.14rem;
+  margin: 0;
+  padding: 0.12rem;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+  backdrop-filter: saturate(150%) blur(6px);
+  -webkit-backdrop-filter: saturate(150%) blur(6px);
+}
+
+.appts-cal-staff-pan.appts-cal-staff-pan--docked-head-slot.is-inactive {
+  opacity: 0.58;
+}
+
+.appts-cal-staff-pan.appts-cal-staff-pan--docked-head-slot .appts-cal-staff-pan__btn {
+  width: 1.82rem;
+  min-width: 1.82rem;
+  min-height: 1.82rem;
+  padding: 0;
+  justify-content: center;
+  gap: 0;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: rgba(15, 23, 42, 0.66);
+  box-shadow: none;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.12s ease, border-color 0.18s ease;
+}
+
+.appts-cal-staff-pan.appts-cal-staff-pan--docked-head-slot .appts-cal-staff-pan__btn:hover {
+  background: rgba(15, 23, 42, 0.065);
+  color: rgba(15, 23, 42, 0.92);
+  border-color: rgba(15, 23, 42, 0.09);
+}
+
+.appts-cal-staff-pan.appts-cal-staff-pan--docked-head-slot .appts-cal-staff-pan__btn:active {
+  transform: scale(0.96);
+}
+
+.appts-cal-staff-pan.appts-cal-staff-pan--docked-head-slot .appts-cal-staff-pan__btn:disabled {
+  opacity: 0.36;
+  cursor: not-allowed;
+}
+.ops-calendar-head-overlay__nav .appts-cal-staff-pan--docked-head-slot {
+  /* Inside the overlay header's nav slot: strip the floating pill look,
+     keep it flat and flush with the header row. */
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 0 0.1rem !important;
+  gap: 0.08rem !important;
+}
+.ops-calendar-head-overlay__nav .appts-cal-staff-pan--docked-head-slot .appts-cal-staff-pan__btn {
+  width: 1.7rem !important;
+  min-width: 1.7rem !important;
+  min-height: 1.7rem !important;
+  border-radius: 0.4rem !important;
+  color: rgba(15, 23, 42, 0.52) !important;
+}
+.ops-calendar-head-overlay__nav .appts-cal-staff-pan--docked-head-slot .appts-cal-staff-pan__btn:hover {
+  background: rgba(15, 23, 42, 0.06) !important;
+  color: rgba(15, 23, 42, 0.88) !important;
+  border-color: transparent !important;
+}
+.ops-calendar-head-overlay__nav .appts-cal-staff-pan--docked-head-slot .appts-cal-staff-pan__btn:disabled {
+  opacity: 0.28 !important;
+}
+
 .ops-calendar-head-scroll::-webkit-scrollbar-track,
 .ops-calendar-head-scroll::-webkit-scrollbar-thumb,
 .ops-calendar-head-scroll::-webkit-scrollbar-button {
@@ -5853,11 +6189,12 @@ body.calendar-is-fullscreen .app-shell__main.calendar-main-is-immersive {
   border-top-style: solid;
   opacity: 0.72;
 }
-/* Current-time line: always above lane cards, grid lines, and staff menus (--cal-z-now-line). */
+/* Current-time line: above lanes/grid, below menus/overlays (--cal-z-now-line). */
 .ops-now-line {
   position: absolute;
-  left: 84px;
-  right: 0;
+  left: 0;
+  width: 0;
+  right: auto;
   height: 2px;
   /* JS sets top to the old 1px line’s top; center the 2px band on that instant. */
   transform: translateY(-0.5px);
@@ -13773,7 +14110,6 @@ details.cashier-totals-summary:not([open]) {
   border: 1px solid var(--ds-color-border-light);
   box-shadow: none;
   color: #374151;
-  font-size: 1rem;
   line-height: 1;
   display: flex;
   align-items: center;
