@@ -212,6 +212,24 @@
 .client-ref-surface .client-ref-inline-dl dt { font-weight: 600; margin: 0; color: var(--cr-muted); }
 .client-ref-surface .client-ref-inline-dl dd { margin: 0; color: var(--cr-text); }
 .client-ref-surface .client-ref-actions-row { display: flex; flex-wrap: wrap; gap: 0.5rem 0.65rem; margin: 0.85rem 0 0.15rem; }
+
+.client-ref-surface .client-ref-quick-book {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    margin: 0 0 1rem;
+    padding: 0.65rem 0.85rem;
+    border-radius: 8px;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    background: rgba(255, 255, 255, 0.65);
+}
+.client-ref-surface .client-ref-quick-book__hint { margin: 0; flex: 1 1 12rem; }
+.client-ref-surface .client-ref-quick-book__disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    pointer-events: none;
+}
 .client-ref-surface .client-ref-details-main .client-ref-details-save-row {
   display: flex;
   flex-wrap: wrap;

@@ -215,13 +215,19 @@ final class AppointmentController
             require base_path('modules/appointments/views/drawer/create.php');
             return;
         }
-        // Non-drawer: promote to full-page wizard. Carry branch_id and date context.
+        // Non-drawer: promote to full-page wizard. Carry branch_id, date, and client prefill.
         $q  = [];
         if (isset($_GET['branch_id'])) {
             $q['branch_id'] = (int) $_GET['branch_id'];
+        } elseif ($branchId > 0) {
+            $q['branch_id'] = $branchId;
         }
         if (isset($_GET['date'])) {
             $q['date'] = (string) $_GET['date'];
+        }
+        $prefillClientIdCreate = (int) ($_GET['client_id'] ?? 0);
+        if ($prefillClientIdCreate > 0) {
+            $q['client_id'] = $prefillClientIdCreate;
         }
         $qs = $q ? '?' . http_build_query($q) : '';
         header('Location: /appointments/wizard' . $qs);

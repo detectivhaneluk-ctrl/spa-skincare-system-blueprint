@@ -13,6 +13,15 @@ ob_start();
 <?php require base_path('modules/clients/views/partials/client-ref-sidebar.php'); ?>
 
         <div class="client-ref-main" role="main">
+            <div class="client-ref-quick-book" role="region" aria-label="Quick booking">
+                <?php if (!empty($canCreateAppointments) && isset($resumeAddAppointmentUrl) && is_string($resumeAddAppointmentUrl) && $resumeAddAppointmentUrl !== ''): ?>
+                <a class="btn calendar-btn calendar-btn--primary" href="<?= htmlspecialchars($resumeAddAppointmentUrl) ?>">Quick Book</a>
+                <span class="hint client-ref-quick-book__hint">Starts a new appointment with this client already selected (same flow as Add Appointment below).</span>
+                <?php else: ?>
+                <span class="btn calendar-btn client-ref-quick-book__disabled" role="button" aria-disabled="true" title="Your role does not include creating appointments.">Quick Book</span>
+                <span class="hint client-ref-quick-book__hint">Quick Book needs permission to create appointments.</span>
+                <?php endif; ?>
+            </div>
             <section class="client-ref-block" aria-labelledby="client-ref-contact-heading">
                 <h2 id="client-ref-contact-heading" class="client-ref-block-title">Contact</h2>
                 <dl class="client-ref-inline-dl">

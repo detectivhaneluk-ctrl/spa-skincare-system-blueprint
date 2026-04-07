@@ -51,6 +51,8 @@ final class AppointmentWizardStateService
         $rawDate = (string) ($prefill['date'] ?? '');
         $date    = preg_match('/^\d{4}-\d{2}-\d{2}$/', $rawDate) === 1 ? $rawDate : null;
 
+        $prefillClientId = (int) ($prefill['client_id'] ?? 0);
+
         $state = [
             'version'    => self::VERSION,
             'branch_id'  => $branchId,
@@ -77,7 +79,7 @@ final class AppointmentWizardStateService
             'service_lines'        => [],
             'client'               => [
                 'mode'      => 'existing',
-                'client_id' => null,
+                'client_id' => $prefillClientId > 0 ? $prefillClientId : null,
                 'draft'     => [],
             ],
             'payment'  => ['mode' => 'none'],  // replaced by real state after step 4

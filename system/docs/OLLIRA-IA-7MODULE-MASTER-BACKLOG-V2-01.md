@@ -297,7 +297,7 @@ Status vocabulary: `DONE` | `IN PROGRESS` | `NEXT` | `OPEN` | `DEFERRED`
 | STORY-03.2.9 | Invoices & Payments tab (full financial ledger per client) | DONE | Existing |
 | STORY-03.2.10 | Documents tab (signed consents, prescriptions for clinics) | OPEN | |
 | STORY-03.2.11 | **Deep links from clients list + client profile** to client-held surfaces: `/memberships/client-memberships`, `/packages/client-packages`, `/gift-cards` with **`client_id`** filter (exact client scope) | DONE | 2026-04-07: `/clients` index + `clients/views/show.php`; `verify_story_03_2_11_client_profile_deep_links_01.php` exits 0 |
-| STORY-03.2.12 | [Quick Book] button always visible on client profile; opens CALENDAR booking drawer with client pre-filled | OPEN | |
+| STORY-03.2.12 | [Quick Book] always visible on client profile summary; starts live `/appointments/create` → full-page wizard with **client_id** in wizard state (same contract as Add Appointment) | DONE | `verify_story_03_2_12_client_profile_quick_book_01.php` exits 0 |
 
 #### FEAT-03.3: Loyalty Programme
 
@@ -808,6 +808,7 @@ php system/scripts/read-only/verify_business_nav_entry_clarity_safe_lane_02.php
 php system/scripts/read-only/verify_catalog_growth_subsection_business_clarity_03.php
 php system/scripts/read-only/verify_admin_ia_business_first_truth_01.php
 php system/scripts/read-only/verify_story_03_2_11_client_profile_deep_links_01.php
+php system/scripts/read-only/verify_story_03_2_12_client_profile_quick_book_01.php
 ```
 
 ### To be created in Phase 2

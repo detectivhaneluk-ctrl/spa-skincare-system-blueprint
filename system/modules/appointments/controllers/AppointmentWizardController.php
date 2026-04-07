@@ -67,6 +67,17 @@ final class AppointmentWizardController
         $existing = $this->stateService->getValidForBranch($branchId);
         if ($existing === null) {
             $this->stateService->init($branchId, $_GET);
+        } else {
+            $prefillClientId = (int) ($_GET['client_id'] ?? 0);
+            if ($prefillClientId > 0) {
+                $state = $existing;
+                if (!isset($state['client']) || !is_array($state['client'])) {
+                    $state['client'] = ['mode' => 'existing', 'client_id' => null, 'draft' => []];
+                }
+                $state['client']['mode'] = 'existing';
+                $state['client']['client_id'] = $prefillClientId;
+                $this->stateService->save($state);
+            }
         }
 
         $qs = '?' . http_build_query(['branch_id' => $branchId]);
