@@ -491,16 +491,25 @@ final class ServiceController
             return;
         }
         try {
-            $n = $this->service->bulkPermanentlyDelete($ids);
-        } catch (\DomainException | \RuntimeException $e) {
-            flash('error', $e->getMessage());
+            $out = $this->service->bulkPermanentlyDelete($ids);
+        } catch (\Throwable $e) {
+            if (function_exists('slog')) {
+                \slog('error', 'services.bulk_permanent_delete', $e->getMessage(), []);
+            }
+            flash('error', 'Could not complete bulk permanent delete. Try again or contact support if this continues.');
             $this->redirectToServicesIndexPostContext();
             return;
         }
-        if ($n === 0) {
-            flash('error', 'No services could be permanently deleted (check Trash, dependencies, or permissions).');
+        $deleted = $out['deleted'];
+        $blocked = $out['blocked'];
+        if ($deleted === 0 && $blocked === []) {
+            flash('error', 'No services could be permanently deleted (nothing matched your selection).');
+        } elseif ($deleted === 0) {
+            flash('error', $this->formatBulkPermanentAllBlockedSummary($blocked));
+        } elseif ($blocked === []) {
+            flash('success', $deleted === 1 ? '1 service permanently deleted.' : "{$deleted} services permanently deleted.");
         } else {
-            flash('success', $n === 1 ? '1 service permanently deleted.' : "{$n} services permanently deleted.");
+            flash('warning', $this->formatBulkPermanentPartialSummary($deleted, $blocked));
         }
         $this->redirectToServicesIndexPostContext();
     }
@@ -521,7 +530,7 @@ final class ServiceController
             flash('success', 'Service restored.');
             header('Location: /services-resources/services');
             exit;
-        } catch (\DomainException $e) {
+        } catch (\DomainException | \RuntimeException $e) {
             flash('error', $e->getMessage());
             header('Location: /services-resources/services?status=trash');
             exit;
@@ -544,6 +553,11 @@ final class ServiceController
             flash('success', 'Service permanently deleted.');
         } catch (\DomainException $e) {
             flash('error', $e->getMessage());
+        } catch (\Throwable $e) {
+            if (function_exists('slog')) {
+                \slog('error', 'services.permanent_delete', $e->getMessage(), ['service_id' => $id]);
+            }
+            flash('error', 'This service cannot be permanently deleted because related records still exist.');
         }
         header('Location: /services-resources/services?status=trash');
         exit;
@@ -567,6 +581,48 @@ final class ServiceController
         }
 
         return array_values(array_unique($out));
+    }
+
+    /**
+     * @param list<array{id: int, label: string, reason: string}> $blocked
+     */
+    private function formatBulkPermanentAllBlockedSummary(array $blocked): string
+    {
+        $n = count($blocked);
+        $parts = [];
+        foreach ($blocked as $b) {
+            $parts[] = $b['label'] . ': ' . $this->truncateBulkPermanentReason((string) $b['reason']);
+        }
+
+        return 'No services were permanently deleted (' . $n . ' skipped). ' . implode(' · ', $parts);
+    }
+
+    /**
+     * @param list<array{id: int, label: string, reason: string}> $blocked
+     */
+    private function formatBulkPermanentPartialSummary(int $deleted, array $blocked): string
+    {
+        $head = $deleted === 1
+            ? '1 service permanently deleted.'
+            : "{$deleted} services permanently deleted.";
+        $maxShow = 5;
+        $slice = array_slice($blocked, 0, $maxShow);
+        $tailParts = [];
+        foreach ($slice as $b) {
+            $tailParts[] = $b['label'] . ' (' . $this->truncateBulkPermanentReason((string) $b['reason']) . ')';
+        }
+        $more = count($blocked) > $maxShow ? ' · +' . (count($blocked) - $maxShow) . ' more' : '';
+
+        return $head . ' Not deleted (' . count($blocked) . '): ' . implode(' · ', $tailParts) . $more;
+    }
+
+    private function truncateBulkPermanentReason(string $reason, int $max = 200): string
+    {
+        if (strlen($reason) <= $max) {
+            return $reason;
+        }
+
+        return substr($reason, 0, $max - 3) . '...';
     }
 
     private function redirectToServicesIndexPostContext(): void

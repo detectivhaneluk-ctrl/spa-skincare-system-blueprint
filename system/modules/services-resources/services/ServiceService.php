@@ -206,7 +206,7 @@ final class ServiceService
             $this->tenantScopeGuard->requireResolvedTenantScope();
             $svc = $this->repo->findTrashed($id);
             if (!$svc) {
-                throw new \RuntimeException('Not found');
+                throw new \DomainException('That service was not found in Trash.');
             }
             $this->branchContext->assertBranchMatchOrGlobalEntity($svc['branch_id'] !== null && $svc['branch_id'] !== '' ? (int) $svc['branch_id'] : null);
             $this->assertSkuNotDuplicate($id, $svc['sku'] ?? null);
@@ -237,21 +237,23 @@ final class ServiceService
             $this->branchContext->assertBranchMatchOrGlobalEntity($svc['branch_id'] !== null && $svc['branch_id'] !== '' ? (int) $svc['branch_id'] : null);
             if ($this->repo->countAppointmentSeriesForService($id) > 0) {
                 throw new \DomainException(
-                    'This service cannot be permanently deleted because it is still linked to appointment series. Remove or change those series first.'
+                    'This service cannot be permanently deleted because appointment series still reference it. Remove or reassign those series first.'
                 );
             }
             try {
                 $n = $this->repo->hardDeleteTrashed($id);
             } catch (\PDOException $e) {
-                if ($e->getCode() === '23000' || str_contains(strtolower($e->getMessage()), 'foreign key')) {
+                if ((string) $e->getCode() === '23000' || str_contains(strtolower($e->getMessage()), 'foreign key')) {
                     throw new \DomainException(
-                        'This service cannot be permanently deleted because other records still reference it.'
+                        'This service cannot be permanently deleted because related records still exist.'
                     );
                 }
                 throw $e;
             }
             if ($n !== 1) {
-                throw new \DomainException('Could not permanently delete this service.');
+                throw new \DomainException(
+                    'This service cannot be permanently deleted because related records still exist.'
+                );
             }
             $this->audit->log('service_permanently_deleted', 'service', $id, $this->userId(), $svc['branch_id'] ?? null, [
                 'service' => $svc,
@@ -338,15 +340,17 @@ final class ServiceService
     }
 
     /**
-     * @param list<int> $ids
+     * @param list<int|string> $ids
+     * @return array{deleted: int, blocked: list<array{id: int, label: string, reason: string}>}
      */
-    public function bulkPermanentlyDelete(array $ids): int
+    public function bulkPermanentlyDelete(array $ids): array
     {
         $ctx = $this->contextHolder->requireContext();
         $ctx->requireResolvedTenant();
         $this->authorizer->requireAuthorized($ctx, ResourceAction::SERVICE_MANAGE, ResourceRef::collection('service'));
         $this->tenantScopeGuard->requireResolvedTenantScope();
         $deleted = 0;
+        $blocked = [];
         foreach ($ids as $raw) {
             $id = (int) $raw;
             if ($id <= 0) {
@@ -355,12 +359,16 @@ final class ServiceService
             try {
                 $this->permanentlyDelete($id);
                 $deleted++;
-            } catch (\DomainException) {
-                // skip blocked / not trashed / FK
+            } catch (\DomainException $e) {
+                $blocked[] = [
+                    'id' => $id,
+                    'label' => $this->serviceLabelForBulkOutcome($id),
+                    'reason' => $e->getMessage(),
+                ];
             }
         }
 
-        return $deleted;
+        return ['deleted' => $deleted, 'blocked' => $blocked];
     }
 
     /**
@@ -466,7 +474,25 @@ final class ServiceService
             if ($e instanceof \DomainException || $e instanceof \RuntimeException || $e instanceof \InvalidArgumentException) {
                 throw $e;
             }
+            if ($action === 'service permanent delete') {
+                throw new \DomainException(
+                    'This service cannot be permanently deleted because related records still exist.',
+                    0,
+                    $e
+                );
+            }
             throw new \DomainException('Service operation failed.');
         }
+    }
+
+    private function serviceLabelForBulkOutcome(int $id): string
+    {
+        $row = $this->repo->findTrashed($id) ?? $this->repo->find($id);
+        if ($row === null) {
+            return '#' . $id;
+        }
+        $name = trim((string) ($row['name'] ?? ''));
+
+        return $name !== '' ? ('#' . $id . ' ' . $name) : ('#' . $id);
     }
 }
