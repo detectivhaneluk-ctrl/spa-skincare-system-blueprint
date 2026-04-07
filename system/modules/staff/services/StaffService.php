@@ -180,7 +180,7 @@ final class StaffService
             $this->tenantScopeGuard->requireResolvedTenantScope();
             $row = $this->repo->findTrashed($id);
             if (!$row) {
-                throw new \RuntimeException('Staff not found');
+                throw new \DomainException('That staff member was not found in Trash.');
             }
             $this->branchContext->assertBranchMatchOrGlobalEntity($row['branch_id'] !== null && $row['branch_id'] !== '' ? (int) $row['branch_id'] : null);
             $uid = isset($row['user_id']) && $row['user_id'] !== null && $row['user_id'] !== '' ? (int) $row['user_id'] : null;
@@ -214,7 +214,7 @@ final class StaffService
             } catch (\PDOException $e) {
                 if ((string) $e->getCode() === '23000' || str_contains(strtolower($e->getMessage()), 'foreign key')) {
                     throw new \DomainException(
-                        'This staff member cannot be permanently deleted because other records still reference them.'
+                        'This staff member cannot be permanently deleted because related records still exist.'
                     );
                 }
                 throw $e;

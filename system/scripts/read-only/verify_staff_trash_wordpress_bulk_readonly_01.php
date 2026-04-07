@@ -61,6 +61,8 @@ $checks = [
     'StaffService blocks hard delete when appointment_series or payroll lines exist' =>
         str_contains($svc, 'countAppointmentSeriesForStaff')
         && str_contains($svc, 'countPayrollCommissionLinesForStaff'),
+    'StaffRepository hardDeleteTrashed issues physical DELETE on trashed rows only' =>
+        str_contains($repo, 'DELETE s FROM staff s WHERE s.id = ? AND s.deleted_at IS NOT NULL'),
 ];
 
 $fail = false;

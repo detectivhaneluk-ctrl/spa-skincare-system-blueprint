@@ -661,7 +661,7 @@ final class StaffController
             flash('success', 'Staff member restored.');
             header('Location: /staff');
             exit;
-        } catch (\DomainException $e) {
+        } catch (\DomainException | \RuntimeException $e) {
             flash('error', $e->getMessage());
             header('Location: /staff?status=trash');
             exit;
