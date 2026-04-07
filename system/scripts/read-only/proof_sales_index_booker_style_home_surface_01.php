@@ -51,7 +51,8 @@ $checks['cashier_partial_has_no_legacy_cashier_subnav'] = !mustContain($cashierW
 $checks['register_route_still_registered'] = mustContain($routes, "get('/sales/register'");
 $checks['scanner_source_disabled_honestly'] = mustContain($cashierWorkspace, 'scanner_input')
     && mustContain($cashierWorkspace, 'source_input')
-    && mustContain($cashierWorkspace, 'readonly disabled placeholder="Disabled"');
+    && mustContain($cashierWorkspace, 'readonly disabled placeholder="Not connected"')
+    && mustContain($cashierWorkspace, 'readonly disabled placeholder="Not available"');
 $checks['cashier_edit_includes_workspace_shell'] = mustContain($cashierEdit, 'sales-workspace-shell.php')
     && mustContain($cashierEdit, "require __DIR__ . '/_cashier_workspace.php'");
 $checks['cashier_edit_route_still_registered'] = mustContain($routes, "get('/sales/invoices/{id}/edit'");
