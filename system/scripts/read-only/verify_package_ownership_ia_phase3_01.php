@@ -50,6 +50,7 @@ pchk('P9b: payments settings packages subsection names Clients for held packages
 pchk('P10: clients list toolbar links client packages', $clIdx, 'href="/packages/client-packages"');
 pchk('P11: sales workspace shell supports title override', $salesShell, '$salesWorkspaceShellTitle');
 pchk('P12: package definitions view sets Catalog-oriented shell title', $pkgDef, '$salesWorkspaceShellTitle = \'Package plans\'');
+pchk('P13: sales workspace shell has no Packages tab to catalog definitions', $salesShell, "'url' => '/packages'", false);
 
 echo "\nVERIFIER: verify_package_ownership_ia_phase3_01\n";
 echo str_repeat('─', 72) . "\n";

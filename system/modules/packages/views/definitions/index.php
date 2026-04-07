@@ -3,13 +3,13 @@ $title = 'Packages';
 $mainClass = 'sales-workspace-page';
 ob_start();
 $salesWorkspaceShellModifier = 'workspace-shell--list';
-$salesWorkspaceActiveTab = 'packages';
+$salesWorkspaceActiveTab = '';
 $salesWorkspaceShellTitle = 'Package plans';
 $salesWorkspaceShellSub = 'Definitions — main nav: Catalog. Client-held packages: Clients. Checkout: Sales.';
 require base_path('modules/sales/views/partials/sales-workspace-shell.php');
 ?>
 <h2 class="sales-workspace-section-title">Packages</h2>
-<p class="hint" style="margin-top:0;">Package plan definitions — session counts, validity, and price. To view packages sold to clients, see <a href="/packages/client-packages">Client packages</a>.</p>
+<p class="hint" style="margin-top:0;">Package plan definitions — session counts, validity, and price. Packages clients hold are managed in Clients (main navigation), not on this screen.</p>
 <?php if ($flash && is_array($flash)): $t = array_key_first($flash); ?>
 <div class="flash flash-<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($flash[$t] ?? '') ?></div>
 <?php endif; ?>
@@ -36,7 +36,6 @@ require base_path('modules/sales/views/partials/sales-workspace-shell.php');
 
 <p>
     <a class="btn" href="/packages/create">New package plan</a>
-    <a class="btn" href="/packages/client-packages">Client packages</a>
 </p>
 
 <table class="index-table">

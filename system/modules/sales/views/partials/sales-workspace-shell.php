@@ -7,7 +7,6 @@ $tabs = [
     ['id' => 'manage_sales', 'label' => 'Manage Sales', 'url' => '/sales/invoices'],
     ['id' => 'staff_checkout', 'label' => 'New sale', 'url' => '/sales'],
     ['id' => 'gift_cards', 'label' => 'Gift cards', 'url' => '/gift-cards'],
-    ['id' => 'packages', 'label' => 'Packages', 'url' => '/packages'],
     ['id' => 'register', 'label' => 'Register', 'url' => '/sales/register'],
 ];
 $shellClass = 'workspace-shell workspace-shell--sales';

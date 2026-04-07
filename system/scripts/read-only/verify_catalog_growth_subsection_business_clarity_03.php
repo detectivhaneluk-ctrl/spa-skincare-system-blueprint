@@ -81,7 +81,8 @@ chk('F2: Membership Definitions h1 absent', $memDef, 'Membership Definitions', f
 chk('F3: plan description hint present', $memDef, 'plan definitions');
 chk('F4: New membership plan CTA', $memDef, 'New membership plan');
 chk('F5: old Create Membership Definition CTA absent', $memDef, 'Create Membership Definition', false);
-chk('F6: Active client memberships link present', $memDef, 'Active client memberships');
+chk('F6: no client-memberships launcher on plan definitions index', $memDef, 'href="/memberships/client-memberships"', false);
+chk('F6b: prose names Clients for enrollments', $memDef, 'managed in Clients');
 chk('F7: Organisation-wide only filter option', $memDef, 'Organisation-wide only');
 chk('F8: old Global only option absent', $memDef, 'Global only', false);
 chk('F9: /memberships/create route unchanged', $memDef, '/memberships/create');
@@ -102,6 +103,8 @@ chk('H2: Package Definitions h2 absent', $pkgDef, 'Package Definitions', false);
 chk('H3: plan description hint present', $pkgDef, 'Package plan definitions');
 chk('H4: New package plan CTA', $pkgDef, 'New package plan');
 chk('H5: old Create Package Definition CTA absent', $pkgDef, 'Create Package Definition', false);
+chk('H5b: no client-packages launcher on plan definitions index', $pkgDef, 'href="/packages/client-packages"', false);
+chk('H5c: prose names Clients for held packages', $pkgDef, 'managed in Clients');
 chk('H6: Organisation-wide only filter', $pkgDef, 'Organisation-wide only');
 chk('H7: old All branches (explicit mix) absent', $pkgDef, 'All branches (explicit mix)', false);
 chk('H8: business scope hint updated', $pkgDef, 'Organisation-wide plans are available across all branches');

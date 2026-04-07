@@ -3,7 +3,7 @@ $title = 'Edit Package Definition';
 $mainClass = 'sales-workspace-page';
 ob_start();
 $salesWorkspaceShellModifier = 'workspace-shell--list';
-$salesWorkspaceActiveTab = 'packages';
+$salesWorkspaceActiveTab = '';
 $salesWorkspaceShellTitle = 'Package plans';
 $salesWorkspaceShellSub = 'Definitions — main nav: Catalog. Client-held packages: Clients. Checkout: Sales.';
 require base_path('modules/sales/views/partials/sales-workspace-shell.php');

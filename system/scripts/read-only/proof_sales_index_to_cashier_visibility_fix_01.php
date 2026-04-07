@@ -36,7 +36,7 @@ $checks['workspace_shell_sales_ia'] = mustContain($salesShell, "'label' => 'Mana
     && mustContain($salesShell, "'id' => 'staff_checkout'")
     && mustContain($salesShell, "'url' => '/sales/invoices'")
     && mustContain($salesShell, "'url' => '/gift-cards'")
-    && mustContain($salesShell, "'url' => '/packages'")
+    && !mustContain($salesShell, "'url' => '/packages'")
     && mustContain($salesShell, "'url' => '/sales/register'");
 $cashierText = is_file($cashierWorkspace) ? (string) file_get_contents($cashierWorkspace) : '';
 $checks['no_misleading_caisse_subnav_to_create'] = $cashierText === '' || !str_contains($cashierText, 'href="/sales/invoices/create">Caisse');

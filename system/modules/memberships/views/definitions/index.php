@@ -3,7 +3,7 @@ $title = 'Membership Plans';
 ob_start();
 ?>
 <h1>Membership Plans</h1>
-<p class="hint" style="margin-top:0;">These are the plan definitions — duration, price, and availability. To view or manage plans enrolled to clients, use <a href="/memberships/client-memberships">Active client memberships</a>.</p>
+<p class="hint" style="margin-top:0;">These are the plan definitions — duration, price, and availability. Active client enrollments are managed in Clients (main navigation), not on this screen.</p>
 <?php if ($flash && is_array($flash)): $t = array_key_first($flash); ?>
 <div class="flash flash-<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($flash[$t] ?? '') ?></div>
 <?php endif; ?>
@@ -28,7 +28,6 @@ ob_start();
 
 <p>
     <a class="btn" href="/memberships/create">New membership plan</a>
-    <a class="btn" href="/memberships/client-memberships">Active client memberships</a>
 </p>
 
 <table class="index-table">
