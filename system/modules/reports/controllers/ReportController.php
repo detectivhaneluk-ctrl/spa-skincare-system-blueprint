@@ -19,6 +19,18 @@ final class ReportController
     }
 
     /**
+     * HTML index: links only to existing JSON report GET routes (no fabricated metrics).
+     */
+    public function index(): void
+    {
+        $title = 'Reports';
+        ob_start();
+        require dirname(__DIR__) . '/views/index.php';
+        $content = ob_get_clean();
+        require shared_path('layout/base.php');
+    }
+
+    /**
      * Build filters from GET; on invalid date input sends 400 JSON and exits.
      *
      * @return array{branch_id: int|null, date_from: string|null, date_to: string|null}

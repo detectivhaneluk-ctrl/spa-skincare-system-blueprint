@@ -38,8 +38,12 @@ chk('A5: /settings href in navItems', $navB, "'/settings'");
 chk('A6: settingsActivePrefixes /settings', $navB, "'/settings'");
 chk('A7: settingsActivePrefixes /memberships', $navB, "'/memberships'");
 chk('A8: settingsActivePrefixes /branches', $navB, "'/branches'");
-chk('A9: settingsActivePrefixes /payroll', $navB, "'/payroll'");
-chk('A10: settingsActivePrefixes /services-resources', $navB, "'/services-resources'");
+chk('A9: Admin prefix list is control-plane only (settings, memberships, branches)', $navB, "'/settings',\n        '/memberships',\n        '/branches',");
+chk('A10: Team nav active covers /payroll', $navB, "str_starts_with(\$navPath, '/payroll')");
+chk('A10b: Catalog nav uses navIsCatalog', $navB, '$navIsCatalog');
+chk('A10c: Reports nav uses navIsReports', $navB, '$navIsReports');
+chk('A10d: navItems Catalog href and label', $navB, "'/services-resources', 'Catalog'");
+chk('A10e: navItems Reports href and label', $navB, "'/reports', 'Reports'");
 chk('A11: sidebar module launchers absent', $shell, 'data-group="branches"', false);
 chk('A12: info-only nodes absent', $shell, 'Users (info only)', false);
 chk('A13: Business Setup label in sidebar', $shell, 'Business Setup');
@@ -105,15 +109,36 @@ chk('I8: old social tab absent', $mktNav, "Facebook / Twitter", false);
 chk('I9: contact-lists nav links to live route', $mktNav, '/marketing/contact-lists');
 chk('I10: contact-lists view uses correct tab id', $clIdx, "\$marketingTopActive = 'contact_lists'");
 
-// ── J. No fabricated features ────────────────────────────────────────────────
-// Reports module has no view files — correctly absent (JSON-API only)
+// ── J. Reports home is honest (real GET targets only) ─────────────────────────
 $reportsView = $base . '/modules/reports/views/index.php';
 if (!file_exists($reportsView)) {
-    $checks[] = ['PASS', 'J1: reports views/index.php not fabricated (correctly absent)', ''];
-    $pass++;
-} else {
-    $checks[] = ['FAIL', 'J1: reports views/index.php should NOT exist — was fabricated', ''];
+    $checks[] = ['FAIL', 'J1: reports views/index.php missing (Reports home required)', ''];
     $fail++;
+} else {
+    $rv = (string) file_get_contents($reportsView);
+    $jNeedles = [
+        '/reports/revenue-summary',
+        '/reports/payments-by-method',
+        '/reports/refunds-summary',
+        '/reports/appointments-volume',
+        '/reports/new-clients',
+        '/reports/staff-appointment-count',
+        '/reports/gift-card-liability',
+        '/reports/inventory-movements',
+        '/reports/vat-distribution',
+    ];
+    $jOk = true;
+    foreach ($jNeedles as $jn) {
+        if (!str_contains($rv, $jn)) {
+            $jOk = false;
+            $checks[] = ['FAIL', 'J1: reports index missing link: ' . $jn, ''];
+            $fail++;
+        }
+    }
+    if ($jOk) {
+        $checks[] = ['PASS', 'J1: reports index lists all live report GET paths', ''];
+        $pass++;
+    }
 }
 
 // ── Report ────────────────────────────────────────────────────────────────────

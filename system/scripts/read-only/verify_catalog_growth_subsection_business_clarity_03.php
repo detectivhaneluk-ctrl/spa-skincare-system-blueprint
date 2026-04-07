@@ -47,7 +47,7 @@ chk('B1: Catalog hub exists', $svcHub, 'catalog-hub');
 chk('B2: navIsSales covers /gift-cards', $navB, "str_starts_with(\$navPath, '/gift-cards')");
 chk('B3: navIsSales covers /packages', $navB, "str_starts_with(\$navPath, '/packages')");
 chk('B4: /memberships in settingsActivePrefixes', $navB, "'/memberships'");
-chk('B5: /services-resources in settingsActivePrefixes', $navB, "'/services-resources'");
+chk('B5: Catalog active-state via navIsCatalog (/services-resources)', $navB, '$navIsCatalog');
 
 // ── C. Services subscreen ────────────────────────────────────────────────────
 chk('C1: services backlink says Catalog', $svcIdx, '← Catalog');

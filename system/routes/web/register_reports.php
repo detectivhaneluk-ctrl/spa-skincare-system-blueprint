@@ -6,6 +6,7 @@ use Core\Middleware\AuthMiddleware;
 use Core\Middleware\GuestMiddleware;
 use Core\Middleware\PermissionMiddleware;
 
+$router->get('/reports', [\Modules\Reports\Controllers\ReportController::class, 'index'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('reports.view')]);
 $router->get('/reports/revenue-summary', [\Modules\Reports\Controllers\ReportController::class, 'revenueSummary'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('reports.view')]);
 $router->get('/reports/payments-by-method', [\Modules\Reports\Controllers\ReportController::class, 'paymentsByMethod'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('reports.view')]);
 $router->get('/reports/refunds-summary', [\Modules\Reports\Controllers\ReportController::class, 'refundsSummary'], [AuthMiddleware::class, \Core\Middleware\TenantProtectedRouteMiddleware::class, \Core\Middleware\PermissionMiddleware::for('reports.view')]);
