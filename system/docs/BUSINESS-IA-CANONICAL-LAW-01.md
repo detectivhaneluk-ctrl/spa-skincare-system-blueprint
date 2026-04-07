@@ -98,7 +98,7 @@ Paths below are **current** unless marked *(planned)*. Tasks may add shells or l
 - Equipment: `/services-resources/equipment/*`  
 - Package **plans**: `/packages` (definitions); client-held packages: `/packages/client-packages/*` (canonical **Clients** for “owned”; route unchanged until a task proves redirect/shell).  
 - Membership **plans**: `/memberships`; client memberships: `/memberships/client-memberships/*` (canonical **Clients** for enrolled state).  
-- **Gift cards:** issuance/ledger UI today under `/gift-cards/*` — canonical **Sales** for operations; Catalog may hold **read-only discovery** links only if a task explicitly allows it.
+- **Gift cards:** issuance/ledger UI under `/gift-cards/*` — canonical **Sales**; Catalog hub may surface **Sales discovery** links (labeled as such in `modules/services-resources/views/index.php`) without implying a catalog **definition**.
 
 ### 3.6 Sales
 

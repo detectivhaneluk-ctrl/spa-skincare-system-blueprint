@@ -2,13 +2,13 @@
 
 **Artifact:** single live cleanup, stale-task elimination, and **one** ordered execution lane for `BUSINESS-IA-CANONICAL-REBUILD-PROGRAM-01`.  
 **Audit anchored:** 2026-04-07 against repo files under `system/` (no archive authority).  
-**Status:** DONE — stale-task cleanup + surviving lane documented; law/backlog drift removed where contradicted by live code.
+**Status:** DONE — lane advanced 2026-04-07: **2.2** + **3.1** copy closures shipped (`BUSINESS-IA-SEQUENTIAL-LANE-CLOSURE-02-TO-03-01`); **next** slice **3.2** (see §6).
 
 ---
 
 ## 1. STATUS
 
-**DONE** — This document records the file-by-file audit, eliminated stale instructions, the surviving backlog mapped to phases, the **single** next executable slice, drift guards, and verifier bundle. Implementation work **after** this artifact must start from **§6** only.
+**DONE** — Audit + elimination log remain valid. **Execution lock updated:** Phase **2.2** and **3.1** are **closed** in live UI/docs; next bounded slice is **3.2** only.
 
 ---
 
@@ -55,7 +55,7 @@
 | `system/docs/BUSINESS-IA-CANONICAL-LAW-01.md` | UPDATE-LABELING | **Patched 2026-04-07:** §3.9 and §8 Phase 1 row aligned to live `base.php` + `GET /reports` (removed stale “no Reports in nav” gap). |
 | `system/docs/BUSINESS-IA-CANONICAL-BACKLOG-01.md` | UPDATE-LABELING | **Patched:** link to this lock doc; Phase 1 open decisions marked resolved against live repo. |
 | `system/docs/MAINTAINER-RUNTIME-TRUTH.md` | KEEP-AS-LIVE | Matches “code wins”; read-only script guidance consistent. |
-| `README.md` (root) | KEEP-AS-LIVE | Correctly defers to `system/` and marks `archive/` historical. |
+| `README.md` (root) | UPDATE-LABELING | **2026-04-07:** English Maintainers block adds ten-home IA + Admin control-plane pointer (`BUSINESS-IA-CANONICAL-LAW-01.md`). |
 | `system/README.md` | CLEANUP-REFERENCES | **Patched:** maintainer path now `system/docs/MAINTAINER-RUNTIME-TRUTH.md` (was broken `docs/…`). |
 
 ### B. Primary nav / shell
@@ -71,8 +71,8 @@
 | File | Verdict | Note |
 |------|---------|------|
 | `system/modules/settings/controllers/SettingsController.php` | KEEP-AS-LIVE | Re-audit before any `section` / POST allowlist work; law freezes contracts. |
-| `system/modules/settings/views/index.php` | KEEP-AS-LIVE | `$title` / `$settingsPageTitle` = Admin; workspace sections; membership help text references Catalog/Clients (aligned). |
-| `system/modules/settings/views/partials/shell.php` | KEEP-AS-LIVE | Control-plane sidebar only; module launcher `data-group` nodes absent (per verifiers). |
+| `system/modules/settings/views/index.php` | KEEP-AS-LIVE | **2026-04-07:** Section headings/help reframed as policy/defaults; contracts unchanged. |
+| `system/modules/settings/views/partials/shell.php` | KEEP-AS-LIVE | **2026-04-07:** Sidebar title **Admin**; label **Policies and defaults**; summary **All sections**; subtitle control-plane only. |
 | `system/modules/settings/Support/SettingsShellSidebar.php` | KEEP-AS-LIVE | Permission map for sibling settings controllers; not a second nav rail in views. |
 | `system/routes/web/register_settings.php` | KEEP-AS-LIVE | GET/POST `/settings` + adjacency routes unchanged. |
 | `system/routes/web/register_branches.php` | KEEP-AS-LIVE | Branch registry under Admin family active state. |
@@ -84,8 +84,8 @@
 | `system/routes/web/register_clients.php` | KEEP-AS-LIVE | Client tabs + permission matrix comments match law. |
 | `system/routes/web/register_payroll.php` | KEEP-AS-LIVE | Payroll ops routes; highlight under Team in `base.php`. |
 | `system/routes/web/register_reports.php` | KEEP-AS-LIVE | `GET /reports` + JSON report GETs; real endpoints only. |
-| `system/modules/services-resources/views/index.php` | UPDATE-LABELING | Hub titled Catalog; package/membership cards honest; **lead line still lists gift cards alongside definitions** — Phase 3.1 remainder. |
-| `system/modules/sales/views/partials/sales-workspace-shell.php` | KEEP-AS-LIVE | Subtitle matches money-movement framing; verifier-green. |
+| `system/modules/services-resources/views/index.php` | KEEP-AS-LIVE | **2026-04-07:** Lead + gift-card card = Sales discovery; definitions vs Sales explicit. |
+| `system/modules/sales/views/partials/sales-workspace-shell.php` | KEEP-AS-LIVE | **2026-04-07:** Subtitle reinforces money/stored-value home; verifier substring retained. |
 | `system/modules/clients/views/` (tree) | KEEP-AS-LIVE | No fake report routes found; Phase 5 aggregation still open. |
 | `system/modules/packages/views/` | KEEP-AS-LIVE | Definitions vs client-packages split exists; Phase 4.2 polish optional. |
 | `system/modules/memberships/` (views used by routes) | KEEP-AS-LIVE | Plan vs client-membership surfaces separated in nav state. |
@@ -106,6 +106,7 @@
 | `system/scripts/read-only/verify_business_nav_entry_clarity_safe_lane_02.php` | KEEP-AS-LIVE | Regression authority for nav/catalog/reports honesty. |
 | `system/scripts/read-only/verify_catalog_growth_subsection_business_clarity_03.php` | KEEP-AS-LIVE | Catalog + subsection clarity. |
 | `system/scripts/read-only/verify_admin_ia_business_first_truth_01.php` | KEEP-AS-LIVE | Admin boundary + contracts. |
+| `system/scripts/read-only/verify_settings_control_plane_no_operational_launcher_hub_01.php` | KEEP-AS-LIVE | **2026-04-07:** S9 needle follows sidebar label **Policies and defaults**. |
 
 ---
 
@@ -135,9 +136,9 @@ Strict **phase order**; within a phase, row order. Status applies to **remaining
 
 | Order | ID | Task | Phase | Status |
 |------:|----|------|-------|--------|
-| 1 | 2.2 | Section honesty pass — each `section=` area describes policy/control; no new sections without allowlist task | 2 | **NEXT** |
-| 2 | 3.1 | Catalog hub: lead + cards — definitions vs client-record vs Sales (gift cards de-emphasized / discovery per law) | 3 | **LATER** |
-| 3 | 3.2 | Secondary “back to catalog” / breadcrumb consistency | 3 | **LATER** |
+| 1 | 2.2 | Section honesty pass — each `section=` area describes policy/control; no new sections without allowlist task | 2 | **CLOSED** (2026-04-07) |
+| 2 | 3.1 | Catalog hub: lead + cards — definitions vs client-record vs Sales (gift cards de-emphasized / discovery per law) | 3 | **CLOSED** (2026-04-07) |
+| 3 | 3.2 | Secondary “back to catalog” / breadcrumb consistency | 3 | **NEXT** |
 | 4 | 4.1 | Sales workspace copy tightening (if any gaps after 3.x) | 4 | **LATER** |
 | 5 | 4.2 | Packages views: definition vs client-package language | 4 | **LATER** |
 | 6 | 5.1 | Client profile: aggregate memberships / packages / gift cards / balance **where data exists** | 5 | **LATER** |
@@ -152,20 +153,20 @@ Strict **phase order**; within a phase, row order. Status applies to **remaining
 | 15 | 10.1 | Empty states / misleading CTAs | 10 | **LATER** |
 | 16 | 10.2 | Final verifier sweep | 10 | **LATER** |
 
-**Blocked-by-prior-slice:** 3.x blocked until **2.2** closes for the phase-ordered lane (no skipping Phase 2 remainder).
+**Blocked-by-prior-slice:** none — **2.2** and **3.1** are closed; execute **3.2** next.
 
 ---
 
 ## 6. SINGLE LIVE EXECUTION LANE
 
-**Next task (only):** **Backlog 2.2 — Section honesty pass** (`BUSINESS-IA-CANONICAL-BACKLOG-01.md`).
+**Next task (only):** **Backlog 3.2 — Secondary “back to catalog” consistency** (`BUSINESS-IA-CANONICAL-BACKLOG-01.md`).
 
-**Why this is next:** Phases **0–1** deliverables for nav/Reports/Catalog active-state are **already live** and verifier-backed. Phase **2.1** shell boundary is **already live**. The **only** remaining Phase 2 backlog row is **2.2** before any Phase 3 Catalog copy work — preserves law phase ordering and avoids skipping Admin honesty.
+**Why this is next:** **2.2** and **3.1** are complete in live copy; Phase 3’s remaining row is **3.2** before Phase 4.
 
 **Re-audit before touching:**  
-`system/modules/settings/controllers/SettingsController.php`, `system/modules/settings/views/index.php`, `system/modules/settings/views/partials/shell.php`, and any partial rendered per `section=` (establishment screens, payment-settings, public_channels block, etc.).
+`modules/services-resources/views/services/`, `…/rooms/`, `…/equipment/`, and any catalog-adjacent partials that render back links; extend or satisfy `verify_catalog_*` as applicable.
 
-**Non-goals for 2.2:** No new `section=` keys; no `SettingsController` POST allowlist changes; no route or permission renames; no `public_channels` / `PUBLIC_CHANNELS_WRITE_KEYS` split; no database migrations.
+**Non-goals for 3.2:** No wizard route renames; no deep link breakage; no new catalog URLs.
 
 ---
 
@@ -178,7 +179,7 @@ Until a **new** scoped task explicitly permits them, Cursor / implementers **mus
 - Treating `archive/*` or root `docs/ARCHITECTURE-RESET-*` as authority for **Business IA** task selection.
 - Re-adding **module launcher hubs** inside Admin settings sidebar (regresses `verify_admin_ia_business_first_truth_01.php`).
 - Inventing report URLs or dashboard metrics not backed by `register_reports.php`.
-- Running a **second** parallel Business IA lane (e.g. Phase 5 client aggregation while Phase 2.2 is open) — finish **2.2** first.
+- Running a **second** parallel Business IA lane (e.g. Phase 5 while **3.2** is the named next slice) — finish **3.2** first unless re-scoped.
 
 ---
 
@@ -196,7 +197,7 @@ php system/scripts/read-only/verify_admin_ia_business_first_truth_01.php
 
 ## 9. FINAL EXECUTION RECOMMENDATION
 
-Execute **only** backlog task **2.2** next: read every live settings `section=` surface for policy/control honesty, adjust copy where a tab still implies operational CRUD ownership that belongs in Catalog, Sales, Clients, or Team, and re-run the three read-only verifiers until they exit zero — do not start Phase 3 Catalog hub refinements or client aggregation until Phase 2 is closed.
+Execute **only** backlog task **3.2** next: audit services, spaces, and equipment subsection views so every “back to catalog” path names the canonical Catalog hub honestly, without breaking deep links or wizard routes, then run the three read-only verifiers until they exit zero.
 
 ---
 

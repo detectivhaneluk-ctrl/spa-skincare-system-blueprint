@@ -2,7 +2,7 @@
 
 $settingsPageTitle = (string) ($settingsPageTitle ?? 'Admin');
 
-$settingsPageSubtitle = (string) ($settingsPageSubtitle ?? 'Policies, controls, and defaults. Use the sidebar for editable Admin settings. Operational work lives under its primary home in the main navigation — Admin is not a second launcher hub.');
+$settingsPageSubtitle = (string) ($settingsPageSubtitle ?? 'Organization policies, defaults, and controls only. Day-to-day work stays in the main navigation — Calendar, Clients, Catalog, Sales, Team, and the rest.');
 
 $activeSection = (string) ($activeSettingsSection ?? 'establishment');
 
@@ -108,17 +108,17 @@ $activeDirectoryGroup = $isNativeActive ? 'general' : '';
 
     <div class="settings-shell">
 
-        <aside class="settings-sidebar" aria-label="Admin settings navigation">
+        <aside class="settings-sidebar" aria-label="Admin navigation">
 
-            <h2 class="settings-sidebar__title">Settings</h2>
+            <h2 class="settings-sidebar__title">Admin</h2>
 
             <nav class="settings-sidebar__nav">
 
-                <p class="settings-sidebar__section-label">Editable settings</p>
+                <p class="settings-sidebar__section-label">Policies and defaults</p>
 
                 <details class="settings-tree" data-group="general" <?= $activeDirectoryGroup === 'general' ? 'open' : '' ?>>
 
-                    <summary>All settings</summary>
+                    <summary>All sections</summary>
 
                     <?php if ($canViewSettingsLink): ?>
 
@@ -176,7 +176,7 @@ $activeDirectoryGroup = $isNativeActive ? 'general' : '';
 
         </aside>
 
-        <section class="settings-workspace" aria-label="Admin settings workspace">
+        <section class="settings-workspace" aria-label="Admin workspace">
 
             <?= $settingsWorkspaceContent ?>
 

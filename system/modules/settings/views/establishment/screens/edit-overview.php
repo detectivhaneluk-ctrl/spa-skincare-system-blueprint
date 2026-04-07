@@ -65,8 +65,8 @@
     }
     ?>
     <header class="settings-establishment__hero">
-        <h2 class="settings-establishment__title">Edit Establishment Overview</h2>
-        <p class="settings-establishment__lead">This form updates only the currently write-backed establishment settings fields.</p>
+        <h2 class="settings-establishment__title">Edit business profile</h2>
+        <p class="settings-establishment__lead">Updates the write-backed business profile fields for your organisation.</p>
     </header>
 
     <form method="post" action="/settings" class="settings-form settings-establishment">

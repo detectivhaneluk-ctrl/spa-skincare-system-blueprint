@@ -45,6 +45,8 @@ Exit code must be `0` for each.
 
 **Explicit non-goals:** Dropping `public_channels` combined POST contract.
 
+**Live closure note (2026-04-07, `BUSINESS-IA-SEQUENTIAL-LANE-CLOSURE-02-TO-03-01`):** Task **2.2** (section honesty + Admin shell copy) satisfied in repo with contracts unchanged.
+
 ---
 
 ## Phase 3 — Catalog finalization
@@ -53,6 +55,8 @@ Exit code must be `0` for each.
 |----|-----------|---------|----------------|-----------|------------------|
 | 3.1 | Hub copy + card order | Align `catalog-hub` lead/cards with definition vs client-record law; gift cards **Sales**, client packages/memberships **Clients** | `modules/services-resources/views/index.php` | Changing `/gift-cards` path | `verify_catalog_growth_subsection_business_clarity_03.php` |
 | 3.2 | Secondary “back to catalog” consistency | Breadcrumbs or back links point to canonical Catalog without breaking deep links | Services/rooms/equipment views | Wizard route changes | Read-only grep verifier or extend `verify_catalog_*` |
+
+**Live closure note (2026-04-07, `BUSINESS-IA-SEQUENTIAL-LANE-CLOSURE-02-TO-03-01`):** Task **3.1** hub lead + gift-card card aligned to Sales ownership; `verify_catalog_growth_subsection_business_clarity_03.php` green.
 
 ---
 

@@ -2,7 +2,7 @@
 $salesWorkspaceShellModifier = isset($salesWorkspaceShellModifier) ? trim((string) $salesWorkspaceShellModifier) : '';
 $salesWorkspaceActiveTab = isset($salesWorkspaceActiveTab) ? (string) $salesWorkspaceActiveTab : '';
 $salesWorkspaceShellTitle = isset($salesWorkspaceShellTitle) ? trim((string) $salesWorkspaceShellTitle) : 'Sales';
-$salesWorkspaceShellSub = isset($salesWorkspaceShellSub) ? trim((string) $salesWorkspaceShellSub) : 'Invoices, checkout, payments, gift cards, and register.';
+$salesWorkspaceShellSub = isset($salesWorkspaceShellSub) ? trim((string) $salesWorkspaceShellSub) : 'Invoices, checkout, payments, gift cards, and register — money movement and stored value live here.';
 $tabs = [
     ['id' => 'manage_sales', 'label' => 'Manage Sales', 'url' => '/sales/invoices'],
     ['id' => 'staff_checkout', 'label' => 'New sale', 'url' => '/sales'],

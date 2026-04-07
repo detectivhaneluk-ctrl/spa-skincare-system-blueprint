@@ -35,7 +35,7 @@ $canCreate = !empty($canCreateGiftCards);
 $bulkFormId = 'gift-cards-bulk-expiry-form';
 ?>
 <h2 class="sales-workspace-section-title">Gift Cards</h2>
-<p class="hint">View and manage gift cards issued to clients. Each card carries a stored value — issue, redeem, or adjust the balance. Full transaction history is available on the card detail page.</p>
+<p class="hint">Sales workspace for gift cards. Each card carries stored value — you can issue, redeem, or adjust the balance. Full transaction history is on the card detail page.</p>
 <?php if ($flash && is_array($flash)): $t = array_key_first($flash); ?>
 <div class="flash flash-<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($flash[$t] ?? '') ?></div>
 <?php endif; ?>

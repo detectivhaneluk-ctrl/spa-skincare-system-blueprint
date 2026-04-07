@@ -3,6 +3,7 @@
 ## Maintainers: authoritative vs archival (English)
 
 - **Canonical runnable app and structure:** `system/README.md`
+- **Product information architecture (live):** ten primary workspaces in the tenant app (Overview, Calendar, Clients, Team, Catalog, Sales, Inventory, Marketing, Reports, Admin). **`/settings` is Admin — policies, defaults, and control-plane only**, not the home for day-to-day operational CRUD. Spec: `system/docs/BUSINESS-IA-CANONICAL-LAW-01.md`.
 - **Production HTTP document root:** `system/public` only — `system/docs/DEPLOYMENT-DOCROOT-EXPOSURE-HARDENING-01.md`
 - **Canonical “what is live vs historical” index:** `system/docs/MAINTAINER-RUNTIME-TRUTH.md`
 - **Archived blueprint** (vision-era; may not match current PHP modules): `archive/blueprint-reference/`

@@ -46,7 +46,7 @@ sc_assert('S5: index membership section: no catalog/client membership hrefs', $i
 sc_assert('S6: payment-settings: no operational gift-cards/packages/refund hrefs', $pay, 'href="/gift-cards"', false);
 sc_assert('S7: payment-settings: no /packages href', $pay, 'href="/packages"', false);
 sc_assert('S8: payment-settings: no refund-review href', $pay, 'href="/memberships/refund-review"', false);
-sc_assert('S9: shell still exposes editable-settings sidebar', $shell, 'Editable settings');
+sc_assert('S9: shell sidebar uses policy framing (not generic settings dump)', $shell, 'Policies and defaults');
 sc_assert('S10: index still renders public_channels cards (contract)', $index, 'Public Commerce</h3>');
 
 echo "\nVERIFIER: verify_settings_control_plane_no_operational_launcher_hub_01\n";

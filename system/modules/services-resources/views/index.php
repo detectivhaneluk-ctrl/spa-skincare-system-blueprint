@@ -5,7 +5,7 @@ ob_start();
 <div class="catalog-hub">
     <header class="catalog-hub__header">
         <h1 class="catalog-hub__title">Catalog</h1>
-        <p class="catalog-hub__lead">Everything that can be booked or sold — services, packages, memberships, and gift cards. Spaces and equipment are listed here because they are assigned to services.</p>
+        <p class="catalog-hub__lead">Definitions for what you book and sell: services, package plans, membership plans, spaces, and equipment. Stored-value gift cards are operated in <a href="/sales">Sales</a>; this hub includes a shortcut to that ledger, not a catalog definition.</p>
     </header>
 
     <?php if ($flash && is_array($flash)): $t = array_key_first($flash); ?>
@@ -42,10 +42,10 @@ ob_start();
         </div>
 
         <div class="catalog-hub-card">
-            <h2 class="catalog-hub-card__title">Gift Cards</h2>
-            <p class="catalog-hub-card__desc">Stored-value gift cards. Issue, redeem, and adjust balances. Public gift card sales are controlled under Admin &rsaquo; Online Channels.</p>
+            <h2 class="catalog-hub-card__title">Gift cards (Sales)</h2>
+            <p class="catalog-hub-card__desc">Discovery only: operational home is <a href="/sales">Sales</a>. Issue, redeem, and adjust balances there. Public gift-card <em>sales</em> policy is under Admin &rsaquo; Online Channels.</p>
             <div class="catalog-hub-card__links">
-                <a class="catalog-hub-card__link" href="/gift-cards">View gift cards</a>
+                <a class="catalog-hub-card__link" href="/gift-cards">Open gift cards (Sales)</a>
                 <a class="catalog-hub-card__link catalog-hub-card__link--secondary" href="/gift-cards/issue">Issue gift card</a>
             </div>
         </div>

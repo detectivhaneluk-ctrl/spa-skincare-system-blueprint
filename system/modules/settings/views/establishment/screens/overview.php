@@ -1,12 +1,12 @@
 <section class="settings-establishment">
     <header class="settings-establishment__hero">
-        <h2 class="settings-establishment__title">Establishment Overview</h2>
-        <p class="settings-establishment__lead">Use this overview to access focused screens for establishment setup. Only one screen is shown at a time.</p>
+        <h2 class="settings-establishment__title">Business setup</h2>
+        <p class="settings-establishment__lead">Business profile, contacts, and branch calendar inputs. One focused screen at a time.</p>
     </header>
 
     <div class="settings-establishment-grid">
         <section class="settings-establishment-card settings-establishment-card--full">
-            <h3 class="settings-establishment-card__title">Current Settings Summary</h3>
+            <h3 class="settings-establishment-card__title">Business profile summary</h3>
             <div class="settings-establishment-summary">
                 <div class="settings-establishment-summary__row"><span class="settings-establishment-summary__key">Name</span><span class="settings-establishment-summary__value"><?= htmlspecialchars((string) ($establishment['name'] ?? 'Not set')) ?></span></div>
                 <div class="settings-establishment-summary__row"><span class="settings-establishment-summary__key">Phone</span><span class="settings-establishment-summary__value"><?= htmlspecialchars((string) ($establishment['phone'] ?? 'Not set')) ?></span></div>
@@ -46,7 +46,7 @@
             }
             ?>
             <?php if ($secondaryContactBranchId === null): ?>
-                <p class="settings-establishment-card__help">No active branch context is available for secondary contact settings.</p>
+                <p class="settings-establishment-card__help">No active branch context is available for secondary contact fields.</p>
             <?php elseif (!$secondaryConfigured): ?>
                 <p class="settings-establishment-card__help">No secondary contact configured for the active branch context.</p>
             <?php else: ?>

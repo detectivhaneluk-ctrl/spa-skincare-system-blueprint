@@ -126,7 +126,7 @@ if (in_array($activeSection, ['establishment', 'cancellation', 'payments'], true
                 <?php if (!$cancellationPolicyEditOpen): ?>
                 <div class="settings-establishment-grid">
                     <section class="settings-establishment-card settings-establishment-card--full">
-                        <h3 class="settings-establishment-card__title">Current Settings Summary</h3>
+                        <h3 class="settings-establishment-card__title">At a glance</h3>
                         <div class="settings-establishment-summary">
                             <div class="settings-establishment-summary__row"><span class="settings-establishment-summary__key">Allow cancellations</span><span class="settings-establishment-summary__value"><?= htmlspecialchars($yn(!empty($cancellation['enabled']))) ?></span></div>
                             <div class="settings-establishment-summary__row"><span class="settings-establishment-summary__key">Apply to</span><span class="settings-establishment-summary__value"><?= htmlspecialchars((string) ($cancellation['customer_scope'] ?? 'all')) ?> (saved for future operational enforcement)</span></div>
@@ -290,8 +290,8 @@ if (in_array($activeSection, ['establishment', 'cancellation', 'payments'], true
             </section>
             <?php elseif ($activeSection === 'appointments'): ?>
             <section class="settings-card settings-card--appt-scope">
-                <h2>Appointments — scope</h2>
-                <p class="settings-card__lead">Choose where this configuration is saved. Branch rows override organization default.</p>
+                <h2>Booking rules — scope</h2>
+                <p class="settings-card__lead">Pick org default or a branch. Branch rows override organization default; this page only stores policy values.</p>
                 <form method="get" action="/settings" class="settings-branch-form">
                     <input type="hidden" name="section" value="appointments">
                     <label for="appointments_branch_id">Scope</label>
@@ -310,8 +310,8 @@ if (in_array($activeSection, ['establishment', 'cancellation', 'payments'], true
                 <input type="hidden" name="section" value="appointments">
                 <input type="hidden" name="appointments_context_branch_id" value="<?= (int) $appointmentsBranchId ?>">
                 <section class="settings-card">
-                    <h2>All Appointments</h2>
-                    <p class="settings-card__lead">One control plane for appointment behavior and readout at the selected scope.</p>
+                    <h2>Booking rules</h2>
+                    <p class="settings-card__lead">Defaults for internal booking behavior and calendar readout at the selected scope. Scheduling work stays in Calendar.</p>
 
                     <h3>Operational rules</h3>
                     <p class="settings-card__help">These rules affect internal booking behavior and operational checks.</p>
@@ -409,7 +409,7 @@ if (in_array($activeSection, ['establishment', 'cancellation', 'payments'], true
                         </div>
                     </div>
                 </section>
-                <div class="settings-savebar"><button type="submit">Save appointment settings</button></div>
+                <div class="settings-savebar"><button type="submit">Save booking rules</button></div>
             </form>
             <?php elseif ($activeSection === 'payments'): ?>
             <?php
@@ -417,8 +417,8 @@ if (in_array($activeSection, ['establishment', 'cancellation', 'payments'], true
             ?>
             <?php elseif ($activeSection === 'waitlist'): ?>
             <section class="settings-card settings-card--appt-scope">
-                <h2>Waitlist settings — scope</h2>
-                <p class="settings-card__lead">Choose where this configuration is saved. Branch values override organization default.</p>
+                <h2>Waitlist rules — scope</h2>
+                <p class="settings-card__lead">Pick org default or a branch. Branch values override organization default; queue operations stay in Calendar.</p>
                 <form method="get" action="/settings" class="settings-branch-form">
                     <input type="hidden" name="section" value="waitlist">
                     <label for="waitlist_branch_id">Scope</label>
@@ -437,7 +437,7 @@ if (in_array($activeSection, ['establishment', 'cancellation', 'payments'], true
                 <input type="hidden" name="section" value="waitlist">
                 <input type="hidden" name="waitlist_context_branch_id" value="<?= (int) $waitlistBranchId ?>">
                 <section class="settings-card">
-                    <h2>Waitlist settings</h2>
+                    <h2>Waitlist rules</h2>
                     <div class="settings-grid">
                         <div class="setting-row"><input type="hidden" name="settings[waitlist.enabled]" value="0"><label><input type="checkbox" name="settings[waitlist.enabled]" value="1" <?= !empty($waitlist['enabled']) ? 'checked' : '' ?>> Waitlist enabled</label></div>
                         <div class="setting-row"><input type="hidden" name="settings[waitlist.auto_offer_enabled]" value="0"><label><input type="checkbox" name="settings[waitlist.auto_offer_enabled]" value="1" <?= !empty($waitlist['auto_offer_enabled']) ? 'checked' : '' ?>> Auto-offer enabled</label></div>
@@ -445,12 +445,12 @@ if (in_array($activeSection, ['establishment', 'cancellation', 'payments'], true
                         <div class="setting-row"><label for="waitlist-default_expiry_minutes">Default expiry (minutes)</label><input type="number" id="waitlist-default_expiry_minutes" name="settings[waitlist.default_expiry_minutes]" min="0" value="<?= (int) ($waitlist['default_expiry_minutes'] ?? 30) ?>"></div>
                     </div>
                 </section>
-                <div class="settings-savebar"><button type="submit">Save waitlist settings</button></div>
+                <div class="settings-savebar"><button type="submit">Save waitlist rules</button></div>
             </form>
             <?php elseif ($activeSection === 'marketing'): ?>
             <section class="settings-card settings-card--appt-scope">
-                <h2>Marketing settings — scope</h2>
-                <p class="settings-card__lead">Choose where this configuration is saved. Branch values override organization default.</p>
+                <h2>Marketing defaults — scope</h2>
+                <p class="settings-card__lead">Pick org default or a branch. Branch values override organization default; campaigns stay in Marketing.</p>
                 <form method="get" action="/settings" class="settings-branch-form">
                     <input type="hidden" name="section" value="marketing">
                     <label for="marketing_branch_id">Scope</label>
@@ -469,35 +469,35 @@ if (in_array($activeSection, ['establishment', 'cancellation', 'payments'], true
                 <input type="hidden" name="section" value="marketing">
                 <input type="hidden" name="marketing_context_branch_id" value="<?= (int) $marketingBranchId ?>">
                 <section class="settings-card">
-                    <h2>Marketing settings</h2>
+                    <h2>Marketing defaults</h2>
                     <div class="settings-grid">
                         <div class="setting-row"><input type="hidden" name="settings[marketing.default_opt_in]" value="0"><label><input type="checkbox" name="settings[marketing.default_opt_in]" value="1" <?= !empty($marketing['default_opt_in']) ? 'checked' : '' ?>> Default opt-in for new clients</label></div>
                         <div class="setting-row"><label for="marketing-consent_label">Consent label (client form)</label><input type="text" id="marketing-consent_label" name="settings[marketing.consent_label]" value="<?= htmlspecialchars($marketing['consent_label'] ?? 'Marketing communications') ?>" placeholder="Marketing communications"></div>
                     </div>
                 </section>
-                <div class="settings-savebar"><button type="submit">Save marketing settings</button></div>
+                <div class="settings-savebar"><button type="submit">Save marketing defaults</button></div>
             </form>
             <?php elseif ($activeSection === 'security'): ?>
             <form method="post" action="/settings" class="settings-form">
                 <input type="hidden" name="<?= htmlspecialchars(config('app.csrf_token_name', 'csrf_token')) ?>" value="<?= htmlspecialchars($csrf) ?>">
                 <input type="hidden" name="section" value="security">
                 <section class="settings-card">
-                    <h2>Security</h2>
-                    <p class="settings-card__help">Saves <strong>organization default</strong> only here. Session policy for signed-in staff uses the current branch merged with org default.</p>
+                    <h2>Access &amp; security</h2>
+                    <p class="settings-card__help">Organization defaults for staff session and password policy. Runtime still merges branch where the app applies it.</p>
                     <div class="settings-grid">
                         <div class="setting-row"><label for="security-password_expiration">Password expiration</label><select id="security-password_expiration" name="settings[security.password_expiration]"><option value="never" <?= ($security['password_expiration'] ?? 'never') === 'never' ? 'selected' : '' ?>>Never</option><option value="90_days" <?= ($security['password_expiration'] ?? '') === '90_days' ? 'selected' : '' ?>>90 days</option></select></div>
                         <div class="setting-row"><label for="security-inactivity_timeout_minutes">Inactivity timeout (minutes)</label><select id="security-inactivity_timeout_minutes" name="settings[security.inactivity_timeout_minutes]"><option value="15" <?= (int) ($security['inactivity_timeout_minutes'] ?? 30) === 15 ? 'selected' : '' ?>>15</option><option value="30" <?= (int) ($security['inactivity_timeout_minutes'] ?? 30) === 30 ? 'selected' : '' ?>>30</option><option value="120" <?= (int) ($security['inactivity_timeout_minutes'] ?? 30) === 120 ? 'selected' : '' ?>>120</option></select></div>
                     </div>
                 </section>
-                <div class="settings-savebar"><button type="submit">Save security settings</button></div>
+                <div class="settings-savebar"><button type="submit">Save access &amp; security</button></div>
             </form>
             <?php elseif ($activeSection === 'notifications'): ?>
             <form method="post" action="/settings" class="settings-form">
                 <input type="hidden" name="<?= htmlspecialchars(config('app.csrf_token_name', 'csrf_token')) ?>" value="<?= htmlspecialchars($csrf) ?>">
                 <input type="hidden" name="section" value="notifications">
                 <section class="settings-card">
-                    <h2>Internal notifications</h2>
-                    <p class="settings-card__help">Saves <strong>organization default</strong> only here. In-app and outbound gates use branch-merged values when the creating code passes a branch.</p>
+                    <h2>Notifications &amp; automations</h2>
+                    <p class="settings-card__help">Organization defaults for which notification families are on. In-app and outbound gates use branch-merged values when the creating code passes a branch.</p>
                     <p class="settings-card__help">In-app: toggles filter staff notifications by type prefix (including <code>payment_</code> when Sales is on). Outbound email: only appointment / waitlist / membership families consult these flags; no payment transactional email queue uses Sales here. Marketing email is separate.</p>
                     <div class="settings-grid">
                         <div class="setting-row"><input type="hidden" name="settings[notifications.appointments_enabled]" value="0"><label><input type="checkbox" name="settings[notifications.appointments_enabled]" value="1" <?= !empty($notification['appointments_enabled']) ? 'checked' : '' ?>> Appointments notifications</label></div>
@@ -506,21 +506,21 @@ if (in_array($activeSection, ['establishment', 'cancellation', 'payments'], true
                         <div class="setting-row"><input type="hidden" name="settings[notifications.memberships_enabled]" value="0"><label><input type="checkbox" name="settings[notifications.memberships_enabled]" value="1" <?= !empty($notification['memberships_enabled']) ? 'checked' : '' ?>> Membership notifications</label></div>
                     </div>
                 </section>
-                <div class="settings-savebar"><button type="submit">Save notification settings</button></div>
+                <div class="settings-savebar"><button type="submit">Save notification defaults</button></div>
             </form>
             <?php elseif ($activeSection === 'hardware'): ?>
             <form method="post" action="/settings" class="settings-form">
                 <input type="hidden" name="<?= htmlspecialchars(config('app.csrf_token_name', 'csrf_token')) ?>" value="<?= htmlspecialchars($csrf) ?>">
                 <input type="hidden" name="section" value="hardware">
                 <section class="settings-card">
-                    <h2>Hardware</h2>
-                    <p class="settings-card__help">Saves <strong>organization default</strong> only here. Register and receipt dispatch read hardware flags for the payment/invoice branch at runtime.</p>
+                    <h2>Devices &amp; integrations</h2>
+                    <p class="settings-card__help">Organization defaults for register and receipt hardware. Checkout still runs in Sales; these flags are read at payment/invoice time.</p>
                     <div class="settings-grid">
                         <div class="setting-row"><input type="hidden" name="settings[hardware.use_cash_register]" value="0"><label><input type="checkbox" name="settings[hardware.use_cash_register]" value="1" <?= !empty($hardware['use_cash_register']) ? 'checked' : '' ?>> Use cash register</label></div>
                         <div class="setting-row"><input type="hidden" name="settings[hardware.use_receipt_printer]" value="0"><label><input type="checkbox" name="settings[hardware.use_receipt_printer]" value="1" <?= !empty($hardware['use_receipt_printer']) ? 'checked' : '' ?>> Use receipt printer dispatch</label></div>
                     </div>
                 </section>
-                <div class="settings-savebar"><button type="submit">Save hardware settings</button></div>
+                <div class="settings-savebar"><button type="submit">Save device defaults</button></div>
             </form>
             <?php elseif ($activeSection === 'memberships'): ?>
             <form method="post" action="/settings" class="settings-form">
@@ -528,7 +528,7 @@ if (in_array($activeSection, ['establishment', 'cancellation', 'payments'], true
                 <input type="hidden" name="section" value="memberships">
                 <section class="settings-card">
                     <h2>Membership defaults</h2>
-                    <p class="settings-card__help">Saves <strong>organization default</strong> only here. Terms, renewal reminder, and grace are still read with branch merge in membership lifecycle paths. Membership <em>plan</em> definitions are managed in Catalog. Active client enrollments are managed in Clients.</p>
+                    <p class="settings-card__help">Policy text and timing defaults only. Plan definitions live in Catalog; enrolled clients live in Clients.</p>
                     <div class="settings-grid">
                         <div class="setting-row"><label for="memberships-terms_text">Terms and conditions (membership signup)</label><textarea id="memberships-terms_text" name="settings[memberships.terms_text]" rows="4" maxlength="5000"><?= htmlspecialchars($membership['terms_text'] ?? '') ?></textarea></div>
                         <div class="setting-row"><label for="memberships-renewal_reminder_days">Renewal reminder (days before expiry)</label><input type="number" id="memberships-renewal_reminder_days" name="settings[memberships.renewal_reminder_days]" min="0" value="<?= (int) ($membership['renewal_reminder_days'] ?? 7) ?>"></div>
@@ -539,8 +539,8 @@ if (in_array($activeSection, ['establishment', 'cancellation', 'payments'], true
             </form>
             <?php else: ?>
             <section class="settings-card">
-                <h2>Online Channels</h2>
-                <p class="settings-card__lead">Control how your business is visible and accessible online. The branch selector below applies to all three areas on this page — choose a branch to view and save its specific settings, or leave on default to edit the organisation-wide values.</p>
+                <h2>Online channels</h2>
+                <p class="settings-card__lead">Public visibility and access policy. The branch selector applies to all three areas — choose a branch to view and save overrides, or stay on organisation default.</p>
                 <form method="get" action="/settings" class="settings-branch-form">
                     <input type="hidden" name="section" value="public_channels">
                     <label for="online_booking_branch_id">Branch context</label>
@@ -585,7 +585,7 @@ if (in_array($activeSection, ['establishment', 'cancellation', 'payments'], true
 
                 <section class="settings-card settings-online-channel-card">
                     <h3 class="settings-online-channel-card__title">Public Commerce</h3>
-                    <p class="settings-card__lead">Controls anonymous online purchases such as gift cards, packages, and memberships. Uses the branch context selected above.</p>
+                    <p class="settings-card__lead">Policy for whether anonymous online purchases are allowed (gift cards, packages, memberships). Staff fulfillment and ledgers stay in Sales. Uses the branch context selected above.</p>
                     <div class="settings-grid">
                         <div class="setting-row"><input type="hidden" name="settings[public_commerce.enabled]" value="0"><label><input type="checkbox" name="settings[public_commerce.enabled]" value="1" <?= !empty($publicCommerce['enabled']) ? 'checked' : '' ?>> Public purchases enabled</label></div>
                         <div class="setting-row"><input type="hidden" name="settings[public_commerce.public_api_enabled]" value="0"><label><input type="checkbox" name="settings[public_commerce.public_api_enabled]" value="1" <?= !empty($publicCommerce['public_api_enabled']) ? 'checked' : '' ?>> Allow anonymous purchases via public API</label></div>
@@ -598,7 +598,7 @@ if (in_array($activeSection, ['establishment', 'cancellation', 'payments'], true
                     </div>
                 </section>
 
-                <div class="settings-savebar"><button type="submit">Save Online Channel settings</button></div>
+                <div class="settings-savebar"><button type="submit">Save online channel defaults</button></div>
             </form>
 <?php endif; ?>
 <?php if ($activeSection === 'cancellation'): ?>
@@ -675,7 +675,7 @@ if (in_array($activeSection, ['establishment', 'cancellation', 'payments'], true
 <?php
 $settingsWorkspaceContent = (string) ob_get_clean();
 $settingsPageTitle = 'Admin';
-$settingsPageSubtitle = 'Policies, controls, and defaults. Sidebar: editable Admin settings. Use the main navigation for operational workspaces — Admin stays control-plane only.';
+$settingsPageSubtitle = 'Organization policies, defaults, and controls. Use the sidebar to move between sections; operational workspaces stay in the main navigation.';
 $settingsFlash = $flash ?? null;
 ob_start();
 require base_path('modules/settings/views/partials/shell.php');
