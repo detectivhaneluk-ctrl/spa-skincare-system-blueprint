@@ -1,5 +1,5 @@
 <?php
-$title = 'Settings';
+$title = 'Admin';
 ob_start();
 $establishment = $establishment ?? [];
 $cancellation = $cancellation ?? [];
@@ -551,53 +551,66 @@ if (in_array($activeSection, ['establishment', 'cancellation', 'payments'], true
             </form>
             <?php else: ?>
             <section class="settings-card">
-                <h2>Public channels</h2>
-                <p class="settings-card__lead">One page edits three domains; the branch selector applies to <strong>all</strong> of them. Choose org default or a branch to read and save the merged effective row for that context. <strong>Online booking</strong> — public booking rules and API gates. <strong>Public intake</strong> — token URLs. <strong>Public commerce</strong> — anonymous purchase API and product gates.</p>
+                <h2>Online Channels</h2>
+                <p class="settings-card__lead">Control how your business is visible and accessible online. The branch selector below applies to all three areas on this page — choose a branch to view and save its specific settings, or leave on default to edit the organisation-wide values.</p>
                 <form method="get" action="/settings" class="settings-branch-form">
                     <input type="hidden" name="section" value="public_channels">
                     <label for="online_booking_branch_id">Branch context</label>
                     <select id="online_booking_branch_id" name="online_booking_branch_id">
-                        <option value="0" <?= $onlineBookingBranchId === 0 ? 'selected' : '' ?>>Default (global)</option>
+                        <option value="0" <?= $onlineBookingBranchId === 0 ? 'selected' : '' ?>>Organisation default (all branches)</option>
                         <?php foreach ($branches as $b): $bid = (int) ($b['id'] ?? 0); ?>
                         <option value="<?= $bid ?>" <?= $onlineBookingBranchId === $bid ? 'selected' : '' ?>><?= htmlspecialchars((string) ($b['name'] ?? '')) ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <button type="submit">Apply branch</button>
+                    <button type="submit">Apply</button>
                 </form>
-                <p class="settings-card__hint"><?= $onlineBookingBranchId > 0 ? 'Active context: branch ' . htmlspecialchars($selectedBranchName !== '' ? $selectedBranchName : ('#' . (string) $onlineBookingBranchId)) : 'Active context: global default' ?></p>
+                <p class="settings-card__hint">
+                    <?= $onlineBookingBranchId > 0
+                        ? 'Showing settings for: <strong>' . htmlspecialchars($selectedBranchName !== '' ? $selectedBranchName : ('#' . (string) $onlineBookingBranchId)) . '</strong>. Changes save to this branch row.'
+                        : 'Showing organisation default. Changes apply to all branches unless overridden at branch level.' ?>
+                </p>
             </section>
             <form method="post" action="/settings" class="settings-form">
                 <input type="hidden" name="<?= htmlspecialchars(config('app.csrf_token_name', 'csrf_token')) ?>" value="<?= htmlspecialchars($csrf) ?>">
                 <input type="hidden" name="section" value="public_channels">
                 <input type="hidden" name="online_booking_context_branch_id" value="<?= $onlineBookingBranchId ?>">
-                <section class="settings-card">
-                    <h3>Online booking</h3>
+
+                <section class="settings-card settings-online-channel-card">
+                    <h3 class="settings-online-channel-card__title">Online Booking</h3>
+                    <p class="settings-card__lead">Controls whether clients can book appointments through your public booking page. Rules here apply to the branch context selected above.</p>
                     <div class="settings-grid">
                         <div class="setting-row"><input type="hidden" name="settings[online_booking.enabled]" value="0"><label><input type="checkbox" name="settings[online_booking.enabled]" value="1" <?= !empty($onlineBooking['enabled']) ? 'checked' : '' ?>> Online booking enabled</label></div>
-                        <div class="setting-row"><input type="hidden" name="settings[online_booking.public_api_enabled]" value="0"><label><input type="checkbox" name="settings[online_booking.public_api_enabled]" value="1" <?= !empty($onlineBooking['public_api_enabled']) ? 'checked' : '' ?>> Anonymous booking API</label></div>
-                        <div class="setting-row"><label for="online_booking-min_lead_minutes">Min lead (minutes)</label><input type="number" id="online_booking-min_lead_minutes" name="settings[online_booking.min_lead_minutes]" min="0" value="<?= (int) ($onlineBooking['min_lead_minutes'] ?? 120) ?>"></div>
-                        <div class="setting-row"><label for="online_booking-max_days_ahead">Max days ahead</label><input type="number" id="online_booking-max_days_ahead" name="settings[online_booking.max_days_ahead]" min="1" value="<?= (int) ($onlineBooking['max_days_ahead'] ?? 60) ?>"></div>
-                        <div class="setting-row"><input type="hidden" name="settings[online_booking.allow_new_clients]" value="0"><label><input type="checkbox" name="settings[online_booking.allow_new_clients]" value="1" <?= !empty($onlineBooking['allow_new_clients']) ? 'checked' : '' ?>> Allow new clients</label></div>
-                    </div>
-                    <h3>Public intake</h3>
-                    <p class="setting-help">This toggle uses the selected branch context above.</p>
-                    <div class="settings-grid">
-                        <div class="setting-row"><input type="hidden" name="settings[intake.public_enabled]" value="0"><label><input type="checkbox" name="settings[intake.public_enabled]" value="1" <?= !empty($intake['public_enabled']) ? 'checked' : '' ?>> Public intake token URLs enabled</label></div>
-                    </div>
-                    <h3>Public commerce</h3>
-                    <p class="setting-help">Ownership note: anonymous/public gift-card commerce controls are edited here. Payments shows read-only values and links here.</p>
-                    <div class="settings-grid">
-                        <div class="setting-row"><input type="hidden" name="settings[public_commerce.enabled]" value="0"><label><input type="checkbox" name="settings[public_commerce.enabled]" value="1" <?= !empty($publicCommerce['enabled']) ? 'checked' : '' ?>> Public purchases enabled</label></div>
-                        <div class="setting-row"><input type="hidden" name="settings[public_commerce.public_api_enabled]" value="0"><label><input type="checkbox" name="settings[public_commerce.public_api_enabled]" value="1" <?= !empty($publicCommerce['public_api_enabled']) ? 'checked' : '' ?>> Anonymous commerce API</label></div>
-                        <div class="setting-row"><input type="hidden" name="settings[public_commerce.allow_gift_cards]" value="0"><label><input type="checkbox" name="settings[public_commerce.allow_gift_cards]" value="1" <?= !empty($publicCommerce['allow_gift_cards']) ? 'checked' : '' ?>> Allow gift cards</label></div>
-                        <div class="setting-row"><input type="hidden" name="settings[public_commerce.allow_packages]" value="0"><label><input type="checkbox" name="settings[public_commerce.allow_packages]" value="1" <?= !empty($publicCommerce['allow_packages']) ? 'checked' : '' ?>> Allow packages</label></div>
-                        <div class="setting-row"><input type="hidden" name="settings[public_commerce.allow_memberships]" value="0"><label><input type="checkbox" name="settings[public_commerce.allow_memberships]" value="1" <?= !empty($publicCommerce['allow_memberships']) ? 'checked' : '' ?>> Allow memberships</label></div>
-                        <div class="setting-row"><input type="hidden" name="settings[public_commerce.allow_new_clients]" value="0"><label><input type="checkbox" name="settings[public_commerce.allow_new_clients]" value="1" <?= !empty($publicCommerce['allow_new_clients']) ? 'checked' : '' ?>> Allow new clients</label></div>
-                        <div class="setting-row"><label for="public_commerce-gift_card_min_amount">Gift card min amount</label><input type="number" id="public_commerce-gift_card_min_amount" name="settings[public_commerce.gift_card_min_amount]" min="0.01" step="0.01" value="<?= htmlspecialchars((string) ($publicCommerce['gift_card_min_amount'] ?? 25)) ?>"></div>
-                        <div class="setting-row"><label for="public_commerce-gift_card_max_amount">Gift card max amount</label><input type="number" id="public_commerce-gift_card_max_amount" name="settings[public_commerce.gift_card_max_amount]" min="0.01" step="0.01" value="<?= htmlspecialchars((string) ($publicCommerce['gift_card_max_amount'] ?? 500)) ?>"></div>
+                        <div class="setting-row"><input type="hidden" name="settings[online_booking.public_api_enabled]" value="0"><label><input type="checkbox" name="settings[online_booking.public_api_enabled]" value="1" <?= !empty($onlineBooking['public_api_enabled']) ? 'checked' : '' ?>> Allow anonymous booking via public API</label></div>
+                        <div class="setting-row"><label for="online_booking-min_lead_minutes">Minimum booking lead time (minutes)</label><input type="number" id="online_booking-min_lead_minutes" name="settings[online_booking.min_lead_minutes]" min="0" value="<?= (int) ($onlineBooking['min_lead_minutes'] ?? 120) ?>"></div>
+                        <div class="setting-row"><label for="online_booking-max_days_ahead">Maximum days ahead clients can book</label><input type="number" id="online_booking-max_days_ahead" name="settings[online_booking.max_days_ahead]" min="1" value="<?= (int) ($onlineBooking['max_days_ahead'] ?? 60) ?>"></div>
+                        <div class="setting-row"><input type="hidden" name="settings[online_booking.allow_new_clients]" value="0"><label><input type="checkbox" name="settings[online_booking.allow_new_clients]" value="1" <?= !empty($onlineBooking['allow_new_clients']) ? 'checked' : '' ?>> Allow new clients to book online</label></div>
                     </div>
                 </section>
-                <div class="settings-savebar"><button type="submit">Save public channel settings</button></div>
+
+                <section class="settings-card settings-online-channel-card">
+                    <h3 class="settings-online-channel-card__title">Public Intake</h3>
+                    <p class="settings-card__lead">Controls whether clients can submit intake forms through a public token URL. Uses the branch context selected above.</p>
+                    <div class="settings-grid">
+                        <div class="setting-row"><input type="hidden" name="settings[intake.public_enabled]" value="0"><label><input type="checkbox" name="settings[intake.public_enabled]" value="1" <?= !empty($intake['public_enabled']) ? 'checked' : '' ?>> Public intake form URLs enabled</label></div>
+                    </div>
+                </section>
+
+                <section class="settings-card settings-online-channel-card">
+                    <h3 class="settings-online-channel-card__title">Public Commerce</h3>
+                    <p class="settings-card__lead">Controls anonymous online purchases such as gift cards, packages, and memberships. Uses the branch context selected above.</p>
+                    <div class="settings-grid">
+                        <div class="setting-row"><input type="hidden" name="settings[public_commerce.enabled]" value="0"><label><input type="checkbox" name="settings[public_commerce.enabled]" value="1" <?= !empty($publicCommerce['enabled']) ? 'checked' : '' ?>> Public purchases enabled</label></div>
+                        <div class="setting-row"><input type="hidden" name="settings[public_commerce.public_api_enabled]" value="0"><label><input type="checkbox" name="settings[public_commerce.public_api_enabled]" value="1" <?= !empty($publicCommerce['public_api_enabled']) ? 'checked' : '' ?>> Allow anonymous purchases via public API</label></div>
+                        <div class="setting-row"><input type="hidden" name="settings[public_commerce.allow_gift_cards]" value="0"><label><input type="checkbox" name="settings[public_commerce.allow_gift_cards]" value="1" <?= !empty($publicCommerce['allow_gift_cards']) ? 'checked' : '' ?>> Allow gift card purchases</label></div>
+                        <div class="setting-row"><input type="hidden" name="settings[public_commerce.allow_packages]" value="0"><label><input type="checkbox" name="settings[public_commerce.allow_packages]" value="1" <?= !empty($publicCommerce['allow_packages']) ? 'checked' : '' ?>> Allow package purchases</label></div>
+                        <div class="setting-row"><input type="hidden" name="settings[public_commerce.allow_memberships]" value="0"><label><input type="checkbox" name="settings[public_commerce.allow_memberships]" value="1" <?= !empty($publicCommerce['allow_memberships']) ? 'checked' : '' ?>> Allow membership purchases</label></div>
+                        <div class="setting-row"><input type="hidden" name="settings[public_commerce.allow_new_clients]" value="0"><label><input type="checkbox" name="settings[public_commerce.allow_new_clients]" value="1" <?= !empty($publicCommerce['allow_new_clients']) ? 'checked' : '' ?>> Allow new clients to purchase</label></div>
+                        <div class="setting-row"><label for="public_commerce-gift_card_min_amount">Gift card minimum amount</label><input type="number" id="public_commerce-gift_card_min_amount" name="settings[public_commerce.gift_card_min_amount]" min="0.01" step="0.01" value="<?= htmlspecialchars((string) ($publicCommerce['gift_card_min_amount'] ?? 25)) ?>"></div>
+                        <div class="setting-row"><label for="public_commerce-gift_card_max_amount">Gift card maximum amount</label><input type="number" id="public_commerce-gift_card_max_amount" name="settings[public_commerce.gift_card_max_amount]" min="0.01" step="0.01" value="<?= htmlspecialchars((string) ($publicCommerce['gift_card_max_amount'] ?? 500)) ?>"></div>
+                    </div>
+                </section>
+
+                <div class="settings-savebar"><button type="submit">Save Online Channel settings</button></div>
             </form>
 <?php endif; ?>
 <?php if ($activeSection === 'cancellation'): ?>
@@ -673,8 +686,8 @@ if (in_array($activeSection, ['establishment', 'cancellation', 'payments'], true
 <?php endif; ?>
 <?php
 $settingsWorkspaceContent = (string) ob_get_clean();
-$settingsPageTitle = 'Settings';
-$settingsPageSubtitle = 'Choose an editable settings section from the sidebar. Related launchers and info-only items are separated for scope clarity.';
+$settingsPageTitle = 'Admin';
+$settingsPageSubtitle = 'Configure your business. Use the sidebar to navigate editable settings areas.';
 $settingsFlash = $flash ?? null;
 ob_start();
 require base_path('modules/settings/views/partials/shell.php');

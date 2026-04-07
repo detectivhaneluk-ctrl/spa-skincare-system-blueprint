@@ -82,9 +82,9 @@ $cardsSummaryOther = $methodLines($buckets['other']);
 ?>
 <section class="settings-establishment settings-payment-control-plane">
     <header class="settings-establishment__hero">
-        <h2 class="settings-establishment__title">Payment Settings</h2>
+        <h2 class="settings-establishment__title">Payments, Checkout &amp; Tax</h2>
         <p class="settings-establishment__lead">
-            What you can change here: methods preview, recording defaults, receipt/invoice policy, and finance shortcuts. Unsupported payment types are listed once at the bottom.
+            Configure payment method defaults, recording rules, receipt and invoice layout, and access related finance settings.
         </p>
     </header>
 
@@ -436,29 +436,15 @@ $cardsSummaryOther = $methodLines($buckets['other']);
             </div>
         </section>
 
-        <section class="settings-establishment-card settings-payment-subsection settings-payment-subsection--deferred-cluster" data-payment-mode="deferred" aria-label="Payment capabilities not in this build">
-            <h3 class="settings-establishment-card__title">Not in this build</h3>
-            <p class="settings-payment-deferred-cluster__lead">No settings or routes for these payment capabilities—listed for expectations only.</p>
-            <ul class="settings-payment-deferred-cluster__list">
-                <li>Deposits / partial prepayment</li>
-                <li>PMS integration</li>
-                <li>Direct debit / bank debit</li>
-                <li>PayPal (incl. mobile)</li>
-                <li>Client / house account</li>
-                <li>Split invoice / split order</li>
-                <li>Spa points / minutes</li>
-                <li>Tips / service fee</li>
-                <li>Org-wide refund policy text (invoice refunds: sales flows)</li>
-            </ul>
-            <?php if ($canManageMembershipsLink): ?>
-                <p class="settings-payment-deferred-cluster__action">
-                    <a class="settings-establishment-btn settings-establishment-btn--muted" href="/memberships/refund-review">Membership refund review</a>
-                    <span class="settings-payment-deferred-cluster__action-note">Operational queue only—not a policy editor.</span>
-                </p>
-            <?php elseif ($canViewMembershipsLink): ?>
-                <p class="settings-payment-deferred-cluster__muted">Membership refund review needs manage permission.</p>
-            <?php endif; ?>
+        <?php if ($canManageMembershipsLink): ?>
+        <section class="settings-establishment-card settings-payment-subsection settings-payment-subsection--linked settings-payment-subsection--compact-linked" data-payment-mode="linked">
+            <h3 class="settings-establishment-card__title">Membership refund review</h3>
+            <p class="settings-establishment-card__help">Operational queue — not a policy editor.</p>
+            <div class="settings-establishment-actions">
+                <a class="settings-establishment-btn settings-establishment-btn--muted" href="/memberships/refund-review">Open refund review</a>
+            </div>
         </section>
+        <?php endif; ?>
     </div>
 </section>
 <style>
@@ -519,46 +505,6 @@ $cardsSummaryOther = $methodLines($buckets['other']);
     }
     .settings-payment-subsection--deferred .settings-establishment-card__title {
         font-size: 0.95rem;
-    }
-    .settings-payment-subsection--deferred-cluster {
-        background: #f3f4f6;
-        border-style: dashed;
-    }
-    .settings-payment-subsection--deferred-cluster .settings-establishment-card__title {
-        font-size: 0.95rem;
-        color: #4b5563;
-    }
-    .settings-payment-deferred-cluster__lead {
-        margin: 0 0 0.5rem;
-        font-size: 0.82rem;
-        line-height: 1.45;
-        color: #6b7280;
-    }
-    .settings-payment-deferred-cluster__list {
-        margin: 0 0 0.65rem;
-        padding-left: 1.15rem;
-        font-size: 0.82rem;
-        line-height: 1.5;
-        color: #4b5563;
-    }
-    .settings-payment-deferred-cluster__list li {
-        margin: 0.15rem 0;
-    }
-    .settings-payment-deferred-cluster__action {
-        margin: 0;
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 0.5rem 0.75rem;
-    }
-    .settings-payment-deferred-cluster__action-note {
-        font-size: 0.78rem;
-        color: #6b7280;
-    }
-    .settings-payment-deferred-cluster__muted {
-        margin: 0;
-        font-size: 0.78rem;
-        color: #9ca3af;
     }
     .settings-payment-subsection--compact-linked .settings-establishment-card__title {
         font-size: 0.98rem;

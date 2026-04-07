@@ -85,14 +85,14 @@
         || str_starts_with($navPath, '/gift-cards')
         || str_starts_with($navPath, '/packages');
     $navItems = [
-        ['/dashboard', 'Dashboard', $navPath === '/' || str_starts_with($navPath, '/dashboard')],
-        ['/appointments/calendar/day', 'Appointments', $navIsAppointments],
+        ['/dashboard', 'Overview', $navPath === '/' || str_starts_with($navPath, '/dashboard')],
+        ['/appointments/calendar/day', 'Calendar', $navIsAppointments],
         ['/clients', 'Clients', str_starts_with($navPath, '/clients')],
-        ['/staff', 'Staff', str_starts_with($navPath, '/staff')],
+        ['/staff', 'Team', str_starts_with($navPath, '/staff')],
         ['/sales', 'Sales', $navIsSales],
         ['/inventory', 'Inventory', str_starts_with($navPath, '/inventory')],
         ['/marketing/campaigns', 'Marketing', str_starts_with($navPath, '/marketing')],
-        ['/settings', 'Settings', $navIsSettings],
+        ['/settings', 'Admin', $navIsSettings],
     ];
     $navSideIcons = [
         'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10',

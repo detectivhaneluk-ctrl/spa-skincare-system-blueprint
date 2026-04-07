@@ -1,8 +1,8 @@
 <?php
 
-$settingsPageTitle = (string) ($settingsPageTitle ?? 'Settings');
+$settingsPageTitle = (string) ($settingsPageTitle ?? 'Admin');
 
-$settingsPageSubtitle = (string) ($settingsPageSubtitle ?? 'Choose a settings subsection from the sidebar.');
+$settingsPageSubtitle = (string) ($settingsPageSubtitle ?? 'Configure your business settings from the sidebar.');
 
 $activeSection = (string) ($activeSettingsSection ?? 'establishment');
 
@@ -62,8 +62,6 @@ $settingsUrl = static function (string $section, ?int $onlineBookingBranchIdPara
 
     }
 
-
-
     return '/settings?' . http_build_query($query);
 
 };
@@ -106,6 +104,12 @@ $isNativeActive = in_array($activeSection, $nativeSections, true);
 
 $activeDirectoryGroup = $isNativeActive ? 'general' : '';
 
+$hasAnyOperationalLink = $canViewBranchesLink
+    || $canViewServicesResourcesLink
+    || ($canViewStaffLink || $canCreateStaffLink || $canViewPayrollLink)
+    || $canViewPackagesLink
+    || $canViewMembershipsLink;
+
 ?>
 
 <div class="settings-page">
@@ -126,27 +130,27 @@ $activeDirectoryGroup = $isNativeActive ? 'general' : '';
 
     <div class="settings-shell">
 
-        <aside class="settings-sidebar" aria-label="Settings directory">
+        <aside class="settings-sidebar" aria-label="Admin settings navigation">
 
-            <h2 class="settings-sidebar__title">Settings directory</h2>
+            <h2 class="settings-sidebar__title">Settings</h2>
 
             <nav class="settings-sidebar__nav">
 
-                <p class="settings-sidebar__section-label">Editable settings sections</p>
+                <p class="settings-sidebar__section-label">Editable settings</p>
 
                 <details class="settings-tree" data-group="general" <?= $activeDirectoryGroup === 'general' ? 'open' : '' ?>>
 
-                    <summary>General Settings</summary>
+                    <summary>All settings</summary>
 
                     <?php if ($canViewSettingsLink): ?>
 
-                    <a class="<?= $activeSection === 'establishment' ? 'is-active' : '' ?>" href="<?= htmlspecialchars($settingsUrl('establishment')) ?>">Establishment Information - Mixed scope</a>
+                    <a class="<?= $activeSection === 'establishment' ? 'is-active' : '' ?>" href="<?= htmlspecialchars($settingsUrl('establishment')) ?>">Business Setup</a>
 
-                    <a class="<?= $activeSection === 'cancellation' ? 'is-active' : '' ?>" href="<?= htmlspecialchars($settingsUrl('cancellation')) ?>">Cancellation Policy - Organization default</a>
+                    <a class="<?= $activeSection === 'cancellation' ? 'is-active' : '' ?>" href="<?= htmlspecialchars($settingsUrl('cancellation')) ?>">Cancellation &amp; No-show Policy</a>
 
-                    <a class="<?= $activeSection === 'appointments' ? 'is-active' : '' ?>" href="<?= htmlspecialchars($settingsUrl('appointments', null, $appointmentsBranchId)) ?>">Appointment Settings - Mixed scope</a>
+                    <a class="<?= $activeSection === 'appointments' ? 'is-active' : '' ?>" href="<?= htmlspecialchars($settingsUrl('appointments', null, $appointmentsBranchId)) ?>">Booking Rules</a>
 
-                    <a class="<?= $activeSection === 'payments' ? 'is-active' : '' ?>" href="<?= htmlspecialchars($settingsPaymentsUrl) ?>">Payment Settings - Mixed scope</a>
+                    <a class="<?= $activeSection === 'payments' ? 'is-active' : '' ?>" href="<?= htmlspecialchars($settingsPaymentsUrl) ?>">Payments, Checkout &amp; Tax</a>
 
                     <?php endif; ?>
 
@@ -158,7 +162,7 @@ $activeDirectoryGroup = $isNativeActive ? 'general' : '';
 
                     <?php if ($canViewPriceModificationReasonsLink): ?>
 
-                    <a class="<?= $activeSection === 'price_modification_reasons' ? 'is-active' : '' ?>" href="/settings/price-modification-reasons">Price modification reasons</a>
+                    <a class="<?= $activeSection === 'price_modification_reasons' ? 'is-active' : '' ?>" href="/settings/price-modification-reasons">Price Modification Reasons</a>
 
                     <?php endif; ?>
 
@@ -166,177 +170,27 @@ $activeDirectoryGroup = $isNativeActive ? 'general' : '';
 
                     <a class="<?= $activeSection === 'vat_rates' ? 'is-active' : '' ?>" href="/settings/vat-rates">VAT Types</a>
 
-                    <a class="<?= $activeSection === 'vat_distribution_guide' ? 'is-active' : '' ?>" href="/settings/vat-distribution-guide">VAT distribution</a>
+                    <a class="<?= $activeSection === 'vat_distribution_guide' ? 'is-active' : '' ?>" href="/settings/vat-distribution-guide">VAT Distribution Guide</a>
 
                     <?php endif; ?>
 
                     <?php if ($canViewSettingsLink): ?>
 
-                    <a class="<?= $activeSection === 'notifications' ? 'is-active' : '' ?>" href="<?= htmlspecialchars($settingsUrl('notifications')) ?>">Internal Notifications - Mixed scope</a>
+                    <a class="<?= $activeSection === 'notifications' ? 'is-active' : '' ?>" href="<?= htmlspecialchars($settingsUrl('notifications')) ?>">Notifications &amp; Automations</a>
 
-                    <a class="<?= $activeSection === 'hardware' ? 'is-active' : '' ?>" href="<?= htmlspecialchars($settingsUrl('hardware')) ?>">IT Hardware - Mixed scope</a>
+                    <a class="<?= $activeSection === 'hardware' ? 'is-active' : '' ?>" href="<?= htmlspecialchars($settingsUrl('hardware')) ?>">Devices &amp; Integrations</a>
 
-                    <a class="<?= $activeSection === 'security' ? 'is-active' : '' ?>" href="<?= htmlspecialchars($settingsUrl('security')) ?>">Security - Mixed scope</a>
+                    <a class="<?= $activeSection === 'security' ? 'is-active' : '' ?>" href="<?= htmlspecialchars($settingsUrl('security')) ?>">Access &amp; Security</a>
 
-                    <a class="<?= $activeSection === 'marketing' ? 'is-active' : '' ?>" href="<?= htmlspecialchars($settingsUrl('marketing')) ?>">Marketing Settings - Mixed scope</a>
+                    <a class="<?= $activeSection === 'marketing' ? 'is-active' : '' ?>" href="<?= htmlspecialchars($settingsUrl('marketing')) ?>">Marketing Defaults</a>
 
-                    <a class="<?= $activeSection === 'waitlist' ? 'is-active' : '' ?>" href="<?= htmlspecialchars($settingsUrl('waitlist')) ?>">Waitlist Settings - Mixed scope</a>
+                    <a class="<?= $activeSection === 'waitlist' ? 'is-active' : '' ?>" href="<?= htmlspecialchars($settingsUrl('waitlist')) ?>">Waitlist Rules</a>
 
-                    <a class="<?= $activeSection === 'public_channels' ? 'is-active' : '' ?>" href="<?= htmlspecialchars($settingsUrl('public_channels', $onlineBookingBranchId, null)) ?>">Public channels - Mixed scope</a>
+                    <a class="<?= $activeSection === 'public_channels' ? 'is-active' : '' ?>" href="<?= htmlspecialchars($settingsUrl('public_channels', $onlineBookingBranchId, null)) ?>">Online Channels</a>
 
-                    <a class="<?= $activeSection === 'memberships' ? 'is-active' : '' ?>" href="<?= htmlspecialchars($settingsUrl('memberships')) ?>">Membership defaults - Mixed scope</a>
-
-                    <?php endif; ?>
-
-                </details>
-
-                <p class="settings-sidebar__section-label settings-sidebar__section-label--modules">Related module launchers</p>
-
-                <?php if ($canViewBranchesLink): ?>
-
-                <details class="settings-tree" data-group="branches">
-
-                    <summary>Branches</summary>
-
-                    <a href="/branches">Manage branches</a>
-
-                </details>
-
-                <?php endif; ?>
-
-                <?php if ($canViewServicesResourcesLink): ?>
-
-                <details class="settings-tree" data-group="spaces">
-
-                    <summary>Spaces</summary>
-
-                    <a href="/services-resources/rooms">All spaces</a>
-
-                    <a href="/services-resources/rooms/create">New Space</a>
-
-                </details>
-
-                <details class="settings-tree" data-group="equipment">
-
-                    <summary>Equipment</summary>
-
-                    <a href="/services-resources/equipment">All equipment</a>
-
-                    <a href="/services-resources/equipment/create">New Equipment</a>
-
-                </details>
-
-                <?php endif; ?>
-
-                <?php if ($canViewStaffLink || $canCreateStaffLink || $canViewPayrollLink): ?>
-
-                <details class="settings-tree" data-group="staff">
-
-                    <summary>Staff</summary>
-
-                    <?php if ($canViewStaffLink): ?>
-
-                    <a href="/staff">All staff</a>
+                    <a class="<?= $activeSection === 'memberships' ? 'is-active' : '' ?>" href="<?= htmlspecialchars($settingsUrl('memberships')) ?>">Membership Defaults</a>
 
                     <?php endif; ?>
-
-                    <?php if ($canCreateStaffLink): ?>
-
-                    <a href="/staff/create">New Staff Member</a>
-
-                    <?php endif; ?>
-
-                    <?php if ($canViewStaffLink): ?>
-
-                    <a href="/staff/groups">Groups</a>
-
-                    <?php endif; ?>
-
-                    <?php if ($canViewPayrollLink): ?>
-
-                    <a href="/payroll/runs">Staff Hours &amp; Payroll</a>
-
-                    <?php endif; ?>
-
-                </details>
-
-                <?php endif; ?>
-
-                <?php if ($canViewServicesResourcesLink): ?>
-
-                <details class="settings-tree" data-group="services">
-
-                    <summary>Services</summary>
-
-                    <a href="/services-resources/services">All services</a>
-
-                    <a href="/services-resources/services/create">New Service</a>
-
-                </details>
-
-                <?php endif; ?>
-
-                <?php if ($canViewPackagesLink): ?>
-
-                <details class="settings-tree" data-group="packages">
-
-                    <summary>Packages</summary>
-
-                    <a href="/packages">All packages</a>
-
-                    <a href="/packages/create">New Package</a>
-
-                </details>
-
-                <?php endif; ?>
-
-                <?php if ($canViewMembershipsLink || $canViewSettingsLink): ?>
-
-                <details class="settings-tree" data-group="memberships">
-
-                    <summary>Memberships (catalog)</summary>
-
-                    <?php if ($canViewMembershipsLink): ?>
-
-                    <a href="/memberships">All memberships</a>
-
-                    <a href="/memberships/create">New Membership</a>
-
-                    <?php endif; ?>
-
-                    <?php if ($canViewSettingsLink): ?>
-
-                    <p class="settings-sidebar__info">Default terms and renewal hints live under <strong>Membership defaults</strong> in General Settings.</p>
-
-                    <?php endif; ?>
-
-                </details>
-
-                <?php endif; ?>
-
-                <p class="settings-sidebar__section-label settings-sidebar__section-label--info">Information only (not managed here)</p>
-
-                <details class="settings-tree" data-group="connections">
-
-                    <summary>Users (info only)</summary>
-
-                    <p class="settings-sidebar__info">Tenant user accounts are not managed from Settings in this build (separate platform tools apply).</p>
-
-                </details>
-
-                <details class="settings-tree" data-group="series">
-
-                    <summary>Series (info only)</summary>
-
-                    <p class="settings-sidebar__info">Recurring series are handled from <a href="/appointments">Appointments</a> and the <a href="/calendar/day">day calendar</a>. There is no series list under Settings; staff APIs exist for series actions.</p>
-
-                </details>
-
-                <details class="settings-tree" data-group="documents">
-
-                    <summary>Document storage (info only)</summary>
-
-                    <p class="settings-sidebar__info">Definitions and files use JSON API routes under <code>/documents/…</code>. There is no HTML admin for document types in Settings.</p>
 
                 </details>
 
@@ -344,9 +198,79 @@ $activeDirectoryGroup = $isNativeActive ? 'general' : '';
 
         </aside>
 
-        <section class="settings-workspace" aria-label="Settings workspace">
+        <section class="settings-workspace" aria-label="Admin workspace">
 
             <?= $settingsWorkspaceContent ?>
+
+            <?php if ($hasAnyOperationalLink): ?>
+            <div class="settings-operational-areas" role="complementary" aria-label="Manage operational areas">
+                <h2 class="settings-operational-areas__title">Manage operational areas</h2>
+                <p class="settings-operational-areas__lead">These are separate operational modules, not editable settings.</p>
+                <div class="settings-operational-areas__grid">
+
+                    <?php if ($canViewBranchesLink): ?>
+                    <div class="settings-op-card">
+                        <h3 class="settings-op-card__title">Branches</h3>
+                        <p class="settings-op-card__desc">Manage physical locations and their configurations.</p>
+                        <a class="settings-op-card__link" href="/branches">Manage branches</a>
+                    </div>
+                    <?php endif; ?>
+
+                    <?php if ($canViewStaffLink || $canCreateStaffLink || $canViewPayrollLink): ?>
+                    <div class="settings-op-card">
+                        <h3 class="settings-op-card__title">Team</h3>
+                        <p class="settings-op-card__desc">Staff profiles, groups, schedules, and payroll.</p>
+                        <?php if ($canViewStaffLink): ?>
+                        <a class="settings-op-card__link" href="/staff">View team</a>
+                        <?php endif; ?>
+                        <?php if ($canCreateStaffLink): ?>
+                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/staff/create">Add member</a>
+                        <?php endif; ?>
+                        <?php if ($canViewPayrollLink): ?>
+                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/payroll/runs">Staff hours &amp; payroll</a>
+                        <?php endif; ?>
+                    </div>
+                    <?php endif; ?>
+
+                    <?php if ($canViewServicesResourcesLink): ?>
+                    <div class="settings-op-card">
+                        <h3 class="settings-op-card__title">Services</h3>
+                        <p class="settings-op-card__desc">Service catalog, categories, and pricing.</p>
+                        <a class="settings-op-card__link" href="/services-resources/services">View services</a>
+                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/services-resources/services/create">Add service</a>
+                    </div>
+                    <?php endif; ?>
+
+                    <?php if ($canViewServicesResourcesLink): ?>
+                    <div class="settings-op-card">
+                        <h3 class="settings-op-card__title">Spaces &amp; Equipment</h3>
+                        <p class="settings-op-card__desc">Treatment rooms, spaces, and equipment resources.</p>
+                        <a class="settings-op-card__link" href="/services-resources/rooms">Spaces</a>
+                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/services-resources/equipment">Equipment</a>
+                    </div>
+                    <?php endif; ?>
+
+                    <?php if ($canViewPackagesLink): ?>
+                    <div class="settings-op-card">
+                        <h3 class="settings-op-card__title">Packages</h3>
+                        <p class="settings-op-card__desc">Prepaid service packages and session bundles.</p>
+                        <a class="settings-op-card__link" href="/packages">View packages</a>
+                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/packages/create">Add package</a>
+                    </div>
+                    <?php endif; ?>
+
+                    <?php if ($canViewMembershipsLink): ?>
+                    <div class="settings-op-card">
+                        <h3 class="settings-op-card__title">Memberships</h3>
+                        <p class="settings-op-card__desc">Membership catalog and client enrollment. Default terms live under <a href="<?= htmlspecialchars($settingsUrl('memberships')) ?>">Membership Defaults</a>.</p>
+                        <a class="settings-op-card__link" href="/memberships">View memberships</a>
+                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/memberships/create">Add membership</a>
+                    </div>
+                    <?php endif; ?>
+
+                </div>
+            </div>
+            <?php endif; ?>
 
         </section>
 
@@ -372,30 +296,6 @@ $activeDirectoryGroup = $isNativeActive ? 'general' : '';
 
     }
 
-
-
-    .settings-sidebar__section-label--modules {
-
-        margin-top: 0.85rem;
-
-        padding-top: 0.7rem;
-
-        border-top: 1px solid #e5e7eb;
-
-    }
-
-    .settings-sidebar__section-label--info {
-
-        margin-top: 0.85rem;
-
-        padding-top: 0.7rem;
-
-        border-top: 1px solid #e5e7eb;
-
-    }
-
-
-
     .settings-sidebar__info {
 
         margin: 0.25rem 0 0;
@@ -410,19 +310,127 @@ $activeDirectoryGroup = $isNativeActive ? 'general' : '';
 
     }
 
-
-
     .settings-sidebar__info code {
 
         font-size: 0.78rem;
 
     }
 
-
-
     .settings-sidebar__info a {
 
         color: #2563eb;
+
+    }
+
+    .settings-operational-areas {
+
+        margin-top: 2.5rem;
+
+        padding-top: 1.5rem;
+
+        border-top: 2px solid #e5e7eb;
+
+    }
+
+    .settings-operational-areas__title {
+
+        margin: 0 0 0.3rem;
+
+        font-size: 1rem;
+
+        font-weight: 700;
+
+        color: #111827;
+
+    }
+
+    .settings-operational-areas__lead {
+
+        margin: 0 0 1rem;
+
+        font-size: 0.85rem;
+
+        color: #6b7280;
+
+    }
+
+    .settings-operational-areas__grid {
+
+        display: grid;
+
+        grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+
+        gap: 0.85rem;
+
+    }
+
+    .settings-op-card {
+
+        padding: 0.9rem 1rem;
+
+        border: 1px solid #e5e7eb;
+
+        border-radius: 0.65rem;
+
+        background: #f9fafb;
+
+    }
+
+    .settings-op-card__title {
+
+        margin: 0 0 0.2rem;
+
+        font-size: 0.92rem;
+
+        font-weight: 600;
+
+        color: #111827;
+
+    }
+
+    .settings-op-card__desc {
+
+        margin: 0 0 0.65rem;
+
+        font-size: 0.82rem;
+
+        color: #4b5563;
+
+        line-height: 1.4;
+
+    }
+
+    .settings-op-card__desc a {
+
+        color: #2563eb;
+
+    }
+
+    .settings-op-card__link {
+
+        display: inline-block;
+
+        margin-right: 0.5rem;
+
+        margin-bottom: 0.25rem;
+
+        font-size: 0.83rem;
+
+        color: #2563eb;
+
+        text-decoration: none;
+
+    }
+
+    .settings-op-card__link:hover {
+
+        text-decoration: underline;
+
+    }
+
+    .settings-op-card__link--secondary {
+
+        color: #4b5563;
 
     }
 
