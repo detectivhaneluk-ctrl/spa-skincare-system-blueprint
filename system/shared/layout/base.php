@@ -68,7 +68,6 @@
     }
     $settingsActivePrefixes = [
         '/settings',
-        '/memberships',
         '/branches',
     ];
     $navIsSettings = false;
@@ -78,8 +77,17 @@
             break;
         }
     }
+    if (str_starts_with($navPath, '/memberships/refund-review')) {
+        $navIsSettings = true;
+    }
 
-    $navIsCatalog = str_starts_with($navPath, '/services-resources');
+    $navIsClientsMemberships = str_starts_with($navPath, '/memberships/client-memberships');
+    $navIsCatalog = str_starts_with($navPath, '/services-resources')
+        || (
+            str_starts_with($navPath, '/memberships')
+            && ! $navIsClientsMemberships
+            && ! str_starts_with($navPath, '/memberships/refund-review')
+        );
     $navIsReports = str_starts_with($navPath, '/reports');
     $navIsTeam = str_starts_with($navPath, '/staff') || str_starts_with($navPath, '/payroll');
 
@@ -89,7 +97,7 @@
     $navItems = [
         ['/dashboard', 'Overview', $navPath === '/' || str_starts_with($navPath, '/dashboard')],
         ['/appointments/calendar/day', 'Calendar', $navIsAppointments],
-        ['/clients', 'Clients', str_starts_with($navPath, '/clients')],
+        ['/clients', 'Clients', str_starts_with($navPath, '/clients') || $navIsClientsMemberships],
         ['/staff', 'Team', $navIsTeam],
         ['/services-resources', 'Catalog', $navIsCatalog],
         ['/sales', 'Sales', $navIsSales],

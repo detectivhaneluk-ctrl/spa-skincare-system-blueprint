@@ -160,11 +160,12 @@ assert_contains('K5: MARKETING_BRANCH_PARAM constant present', $ctrlPhp, "MARKET
 // L. Admin active prefixes = control plane; payroll/catalog/reports have primary homes
 // ──────────────────────────────────────────────────────────────────────────────
 assert_contains('L1: /settings prefix in settingsActivePrefixes', $basePhp, "'/settings'");
-assert_contains('L2: /memberships prefix in settingsActivePrefixes', $basePhp, "'/memberships'");
+assert_contains('L2: /memberships not listed in settingsActivePrefixes (plan/client surfaces have primary homes)', $basePhp, "        '/memberships',", false);
 assert_contains('L3: /branches prefix in settingsActivePrefixes', $basePhp, "'/branches'");
-assert_contains('L4: Catalog split via navIsCatalog', $basePhp, '$navIsCatalog');
-assert_contains('L5: Reports split via navIsReports', $basePhp, '$navIsReports');
-assert_contains('L6: Team active includes payroll operations prefix', $basePhp, "str_starts_with(\$navPath, '/payroll')");
+assert_contains('L4: client-held memberships nav split present', $basePhp, '$navIsClientsMemberships');
+assert_contains('L5: Catalog split via navIsCatalog', $basePhp, '$navIsCatalog');
+assert_contains('L6: Reports split via navIsReports', $basePhp, '$navIsReports');
+assert_contains('L7: Team active includes payroll operations prefix', $basePhp, "str_starts_with(\$navPath, '/payroll')");
 
 // ──────────────────────────────────────────────────────────────────────────────
 // M. Page title changed to Admin in index.php

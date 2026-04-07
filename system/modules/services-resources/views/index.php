@@ -34,10 +34,10 @@ ob_start();
 
         <div class="catalog-hub-card">
             <h2 class="catalog-hub-card__title">Memberships</h2>
-            <p class="catalog-hub-card__desc">Recurring membership plans. Create plans here, then enrol clients. Default renewal and grace settings are in Admin.</p>
+            <p class="catalog-hub-card__desc">Membership <strong>plan definitions</strong> only (what you sell). Clients who hold an active membership are listed under <a href="/clients">Clients</a> &rarr; active memberships.</p>
             <div class="catalog-hub-card__links">
                 <a class="catalog-hub-card__link" href="/memberships">View membership plans</a>
-                <a class="catalog-hub-card__link catalog-hub-card__link--secondary" href="/memberships/client-memberships">Client memberships</a>
+                <a class="catalog-hub-card__link catalog-hub-card__link--secondary" href="/memberships/create">New membership plan</a>
             </div>
         </div>
 

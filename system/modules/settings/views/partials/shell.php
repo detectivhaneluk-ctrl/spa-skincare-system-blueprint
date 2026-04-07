@@ -262,9 +262,9 @@ $hasAnyOperationalLink = $canViewBranchesLink
                     <?php if ($canViewMembershipsLink): ?>
                     <div class="settings-op-card">
                         <h3 class="settings-op-card__title">Memberships</h3>
-                        <p class="settings-op-card__desc">Membership catalog and client enrollment. Default terms live under <a href="<?= htmlspecialchars($settingsUrl('memberships')) ?>">Membership Defaults</a>.</p>
-                        <a class="settings-op-card__link" href="/memberships">View memberships</a>
-                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/memberships/create">Add membership</a>
+                        <p class="settings-op-card__desc">Shortcuts: plan definitions live in <strong>Catalog</strong>; records attached to clients live under <strong>Clients</strong>. Policy and default renewal text live under <a href="<?= htmlspecialchars($settingsUrl('memberships')) ?>">Membership Defaults</a>.</p>
+                        <a class="settings-op-card__link" href="/memberships">Membership plans (Catalog)</a>
+                        <a class="settings-op-card__link settings-op-card__link--secondary" href="/memberships/client-memberships">Active client memberships</a>
                     </div>
                     <?php endif; ?>
 

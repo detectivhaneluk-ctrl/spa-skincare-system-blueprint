@@ -93,6 +93,7 @@ $rowEnd = $total > 0 ? min($page * $perPage, $total) : 0;
                     <div class="clients-ws-toolbar__primary">
                         <a href="/clients/create" class="calendar-btn calendar-btn--primary">New Client</a>
                         <a href="/clients/duplicates" class="calendar-btn">Duplicate Search</a>
+                        <a href="/memberships/client-memberships" class="calendar-btn">Active memberships</a>
                     </div>
                     <p class="clients-ws-results-meta">
                         <?php if ($total === 0): ?>
