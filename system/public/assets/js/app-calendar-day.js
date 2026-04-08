@@ -2055,11 +2055,11 @@
     if (action === 'block') {
       await openDrawerUrl(buildBlockedTimeUrlForStaff(staffId));
     } else if (action === 'schedule') {
-      window.location.href = '/staff/' + encodeURIComponent(staffId) + '/edit?tab=schedule';
+      await openDrawerUrl('/staff/' + encodeURIComponent(staffId) + '/edit?tab=schedule');
     } else if (action === 'services') {
-      window.location.href = '/staff/' + encodeURIComponent(staffId) + '/edit?tab=services';
+      await openDrawerUrl('/staff/' + encodeURIComponent(staffId) + '/edit?tab=services');
     } else if (action === 'profile') {
-      window.location.href = '/staff/' + encodeURIComponent(staffId);
+      await openDrawerUrl('/staff/' + encodeURIComponent(staffId) + '/edit');
     } else if (action === 'hide') {
       const hidden = getHiddenStaffIds();
       hidden.add(String(staffId));
