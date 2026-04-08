@@ -85,6 +85,7 @@ endif;
 <div class="pedit-wrap"
     <?php if ($isDrawer): ?>
     data-drawer-content-root
+    data-drawer-tabs
     data-drawer-title="<?= $drawerTitle ?>"
     data-drawer-subtitle="<?= htmlspecialchars($drawerSubtitle, ENT_QUOTES, 'UTF-8') ?>"
     data-drawer-width="wide"
@@ -129,7 +130,7 @@ endif;
 <?php endif; ?>
 
 <!-- ── Tab nav ──────────────────────────────────────────────────────────── -->
-<div class="pedit-tabs" data-drawer-tabs role="tablist" aria-label="Profile sections">
+<div class="pedit-tabs" role="tablist" aria-label="Profile sections">
     <?php
     $tabs = [
         'basic'        => 'Employee Info',
