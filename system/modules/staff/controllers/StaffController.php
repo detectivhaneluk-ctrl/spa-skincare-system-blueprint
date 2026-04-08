@@ -1223,7 +1223,8 @@ final class StaffController
 
     private function isDrawerRequest(): bool
     {
-        return (($_SERVER['HTTP_X_APP_DRAWER'] ?? '') === '1');
+        return (string) ($_GET['drawer'] ?? '') === '1'
+            || (string) ($_SERVER['HTTP_X_APP_DRAWER'] ?? '') === '1';
     }
 
     private function sendDrawerSuccess(string $message, string $reloadUrl): void
