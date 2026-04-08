@@ -1,0 +1,167 @@
+{
+  "timestamp": "2026-04-08T02:15:17.254Z",
+  "results": [
+    {
+      "id": "S1.1",
+      "label": "Login succeeded",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S2.1",
+      "label": "List view HTTP 200",
+      "status": "PASS",
+      "detail": "200"
+    },
+    {
+      "id": "S2.2",
+      "label": "No PHP fatal on list view",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S2.3",
+      "label": "List view switcher buttons present",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S2.4",
+      "label": "List view renders table or empty state",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S2.5",
+      "label": "Category filter present",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S2.6",
+      "label": "Create CTA present",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S2.7",
+      "label": "Status tabs (Active/Trash) present",
+      "status": "PASS",
+      "detail": "found 2"
+    },
+    {
+      "id": "S2.8",
+      "label": "Services workspace shell rendered",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S2.9",
+      "label": "No JS console errors on list view",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S3.1",
+      "label": "Structure view HTTP 200",
+      "status": "PASS",
+      "detail": "200"
+    },
+    {
+      "id": "S3.2",
+      "label": "No PHP fatal on structure view",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S3.3",
+      "label": "Structure view container present",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S3.4",
+      "label": "Structure view not hidden",
+      "status": "PASS",
+      "detail": "hidden=false"
+    },
+    {
+      "id": "S3.5",
+      "label": "List view hidden in structure mode",
+      "status": "PASS",
+      "detail": "hidden=true"
+    },
+    {
+      "id": "S3.6",
+      "label": "Structure view shows groups or empty state",
+      "status": "PASS",
+      "detail": "groups=9"
+    },
+    {
+      "id": "S3.7",
+      "label": "No JS errors on structure view",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S4.1",
+      "label": "Trash view HTTP 200",
+      "status": "PASS",
+      "detail": "200"
+    },
+    {
+      "id": "S4.2",
+      "label": "No PHP fatal on trash view",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S4.3",
+      "label": "View switcher hidden in trash mode",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S4.4",
+      "label": "Create CTA hidden in trash mode",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S4.5",
+      "label": "No JS errors on trash view",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S5.1",
+      "label": "Category+view URL does not break page",
+      "status": "PASS",
+      "detail": "200"
+    },
+    {
+      "id": "S5.2",
+      "label": "No PHP fatal on category filter",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S5.3",
+      "label": "No JS errors on category filter page",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S6.1",
+      "label": "Service create form loads",
+      "status": "PASS",
+      "detail": "200"
+    },
+    {
+      "id": "S6.2",
+      "label": "Categories index loads",
+      "status": "PASS",
+      "detail": "200"
+    }
+  ]
+}
