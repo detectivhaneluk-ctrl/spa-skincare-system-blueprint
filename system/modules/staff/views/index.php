@@ -262,7 +262,7 @@ if ($sortCol !== 'name') {
         <td class="stf-td stf-td--actions">
             <div class="stf-row-actions">
                 <?php if (empty($trashView)): ?>
-                <a href="/staff/<?= (int) $r['id'] ?>/edit" class="stf-act stf-act--edit" title="Edit staff member">Edit</a>
+                <a href="/staff/<?= (int) $r['id'] ?>/edit" data-drawer-url="/staff/<?= (int) $r['id'] ?>/edit" class="stf-act stf-act--edit" title="Edit staff member">Edit</a>
                 <form method="post" action="/staff/<?= (int) $r['id'] ?>/delete" class="stf-act-form"
                       onsubmit="return confirm('Move «<?= htmlspecialchars(addslashes($r['display_name'] ?? '')) ?>» to Trash?')">
                     <input type="hidden" name="<?= $csrfName ?>" value="<?= $csrfVal ?>">

@@ -4,6 +4,9 @@ $staffIsTrashed = (bool) ($staffIsTrashed ?? false);
 $dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 $flash = flash();
 ob_start();
+$teamWorkspaceActiveTab = 'directory';
+$teamWorkspaceShellTitle = 'Team';
+require base_path('modules/staff/views/partials/team-workspace-shell.php');
 ?>
 <?php if ($flash && is_array($flash)): $t = array_key_first($flash); ?>
 <div class="flash flash-<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($flash[$t] ?? '') ?></div>
@@ -14,7 +17,11 @@ ob_start();
 <?php endif; ?>
 <div class="entity-actions">
     <?php if (!$staffIsTrashed): ?>
-    <a href="/staff/<?= (int) $staff['id'] ?>/edit">Edit</a>
+    <a href="/staff/<?= (int) $staff['id'] ?>/edit" data-drawer-url="/staff/<?= (int) $staff['id'] ?>/edit">Edit</a>
+    <a href="/staff/<?= (int) $staff['id'] ?>/edit?tab=schedule" data-drawer-url="/staff/<?= (int) $staff['id'] ?>/edit?tab=schedule" class="staff-schedule-edit-link" title="Edit weekly schedule">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Edit Schedule
+    </a>
     <form method="post" action="/staff/<?= (int) $staff['id'] ?>/delete" style="display:inline" onsubmit="return confirm('Move this staff member to Trash?')">
         <input type="hidden" name="<?= htmlspecialchars(config('app.csrf_token_name', 'csrf_token')) ?>" value="<?= htmlspecialchars($csrf) ?>">
         <button type="submit">Trash</button>
