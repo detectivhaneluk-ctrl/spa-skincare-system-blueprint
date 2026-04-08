@@ -156,7 +156,7 @@ endif;
      TAB: Employee Info + Compensation (one form — saves together)
      ══════════════════════════════════════════════════════════════════════ -->
 <div class="pedit-panel" data-drawer-tab-panel="basic" <?= $activeTab !== 'basic' ? 'hidden' : '' ?>>
-<form method="post" action="/staff/<?= $staffId ?>" class="pedit-form" enctype="multipart/form-data" novalidate>
+<form method="post" action="/staff/<?= $staffId ?>" class="pedit-form" enctype="multipart/form-data" novalidate data-drawer-submit>
     <input type="hidden" name="<?= $csrfName ?>" value="<?= $csrfVal ?>">
 
     <div class="staff-create-section">
@@ -341,7 +341,7 @@ endif;
      TAB: Compensation (part of same form, separate panel for UX)
      ══════════════════════════════════════════════════════════════════════ -->
 <div class="pedit-panel" data-drawer-tab-panel="compensation" <?= $activeTab !== 'compensation' ? 'hidden' : '' ?>>
-<form method="post" action="/staff/<?= $staffId ?>" class="pedit-form" novalidate>
+<form method="post" action="/staff/<?= $staffId ?>" class="pedit-form" novalidate data-drawer-submit>
     <input type="hidden" name="<?= $csrfName ?>" value="<?= $csrfVal ?>">
 
     <div class="staff-create-section">
@@ -445,7 +445,7 @@ endif;
      TAB: Services
      ══════════════════════════════════════════════════════════════════════ -->
 <div class="pedit-panel" data-drawer-tab-panel="services" <?= $activeTab !== 'services' ? 'hidden' : '' ?>>
-<form method="post" action="/staff/<?= $staffId ?>/profile/services" class="pedit-form" id="profile-services-form" novalidate>
+<form method="post" action="/staff/<?= $staffId ?>/profile/services" class="pedit-form" id="profile-services-form" novalidate data-drawer-submit>
     <input type="hidden" name="<?= $csrfName ?>" value="<?= $csrfVal ?>">
 
     <?php if (!empty($errors['_services_general'])): ?>
@@ -510,7 +510,7 @@ endif;
      TAB: Schedule
      ══════════════════════════════════════════════════════════════════════ -->
 <div class="pedit-panel" data-drawer-tab-panel="schedule" <?= $activeTab !== 'schedule' ? 'hidden' : '' ?>>
-<form method="post" action="/staff/<?= $staffId ?>/profile/schedule" class="pedit-form" id="profile-schedule-form" novalidate>
+<form method="post" action="/staff/<?= $staffId ?>/profile/schedule" class="pedit-form" id="profile-schedule-form" novalidate data-drawer-submit>
     <input type="hidden" name="<?= $csrfName ?>" value="<?= $csrfVal ?>">
 
     <?php if (!empty($errors['_schedule_general'])): ?>

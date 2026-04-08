@@ -449,6 +449,11 @@ final class StaffController
             return;
         }
 
+        if ($this->isDrawerRequest()) {
+            $tab = in_array($activeTab, ['basic', 'compensation'], true) ? $activeTab : 'basic';
+            $this->sendDrawerSuccess('Profile saved.', '/staff/' . $id . '/edit?tab=' . $tab);
+            return;
+        }
         flash('success', 'Profile saved.');
         header('Location: /staff/' . $id . '/edit?tab=' . $activeTab);
         exit;
@@ -492,6 +497,10 @@ final class StaffController
             return;
         }
 
+        if ($this->isDrawerRequest()) {
+            $this->sendDrawerSuccess('Services saved.', '/staff/' . $id . '/edit?tab=services');
+            return;
+        }
         flash('success', 'Services saved.');
         header('Location: /staff/' . $id . '/edit?tab=services');
         exit;
@@ -549,6 +558,10 @@ final class StaffController
             return;
         }
 
+        if ($this->isDrawerRequest()) {
+            $this->sendDrawerSuccess('Schedule saved.', '/staff/' . $id . '/edit?tab=schedule');
+            return;
+        }
         flash('success', 'Schedule saved.');
         header('Location: /staff/' . $id . '/edit?tab=schedule');
         exit;
@@ -1206,5 +1219,21 @@ final class StaffController
             Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handle(403);
             return false;
         }
+    }
+
+    private function isDrawerRequest(): bool
+    {
+        return (($_SERVER['HTTP_X_APP_DRAWER'] ?? '') === '1');
+    }
+
+    private function sendDrawerSuccess(string $message, string $reloadUrl): void
+    {
+        @ini_set('display_errors', '0');
+        if (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['success' => true, 'data' => ['message' => $message, 'reload_url' => $reloadUrl]]);
+        exit;
     }
 }
