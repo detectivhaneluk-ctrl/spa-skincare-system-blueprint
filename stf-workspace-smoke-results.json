@@ -1,0 +1,155 @@
+{
+  "timestamp": "2026-04-08T02:23:31.097Z",
+  "results": [
+    {
+      "id": "S1.1",
+      "label": "Login succeeded",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S2.1",
+      "label": "List view HTTP 200",
+      "status": "PASS",
+      "detail": "200"
+    },
+    {
+      "id": "S2.2",
+      "label": "No PHP fatal on list view",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S2.3",
+      "label": "Table or empty state present",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S2.4",
+      "label": "Search input present",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S2.5",
+      "label": "Status tabs present (Active / All incl. inactive / Trash)",
+      "status": "PASS",
+      "detail": "found 3"
+    },
+    {
+      "id": "S2.6",
+      "label": "Add Staff CTA present",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S2.7",
+      "label": "Bulk action bar present",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S2.8",
+      "label": "Team workspace shell rendered",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S2.9",
+      "label": "No JS errors on list view",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S3.1",
+      "label": "Sort URL HTTP 200",
+      "status": "PASS",
+      "detail": "200"
+    },
+    {
+      "id": "S3.2",
+      "label": "No PHP fatal on sort URL",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S3.3",
+      "label": "No JS errors on sort URL",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S4.1",
+      "label": "Inactive view HTTP 200",
+      "status": "PASS",
+      "detail": "200"
+    },
+    {
+      "id": "S4.2",
+      "label": "No PHP fatal on inactive view",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S4.3",
+      "label": "\"All incl. inactive\" tab is active",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S4.4",
+      "label": "No JS errors on inactive view",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S5.1",
+      "label": "Trash view HTTP 200",
+      "status": "PASS",
+      "detail": "200"
+    },
+    {
+      "id": "S5.2",
+      "label": "No PHP fatal on trash view",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S5.3",
+      "label": "Add Staff CTA hidden in trash",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S5.4",
+      "label": "Search hidden in trash mode",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S5.5",
+      "label": "Trash tab is active",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S5.6",
+      "label": "No JS errors on trash view",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "S6.1",
+      "label": "Staff create form loads",
+      "status": "PASS",
+      "detail": "200"
+    },
+    {
+      "id": "S6.2",
+      "label": "Staff groups page loads",
+      "status": "PASS",
+      "detail": "200"
+    }
+  ]
+}
