@@ -14,7 +14,7 @@ use Modules\Clients\Repositories\ClientPageLayoutProfileRepository;
 final class ClientPageLayoutService
 {
     /** User-facing hint when `client_page_layout_*` tables are missing (apply migration 113). */
-    public const LAYOUT_STORAGE_REQUIRES_MIGRATION_MESSAGE = 'Client Fields / Page Layouts requires migration 113 to be applied before this feature can be used.';
+    public const LAYOUT_STORAGE_REQUIRES_MIGRATION_MESSAGE = 'The client form composer requires migration 113 to be applied before layouts can be edited.';
 
     private ?bool $layoutTablesPresent = null;
 
@@ -167,6 +167,30 @@ final class ClientPageLayoutService
     }
 
     /**
+     * Composer entry: returns layout rows, persisting a corrected intake prefix for customer_details when allowed.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function listLayoutItemsForComposer(int $organizationId, string $profileKey, bool $persistIntakeRepair): array
+    {
+        $items = $this->listLayoutItems($organizationId, $profileKey);
+        if ($profileKey !== 'customer_details' || $items === [] || !$persistIntakeRepair) {
+            return $items;
+        }
+        $normalized = $this->normalizeCustomerDetailsRowsFromDbItems($items);
+        if (!$this->customerDetailsLayoutListsDiffer($items, $normalized)) {
+            return $items;
+        }
+        $this->saveLayout($organizationId, $profileKey, $normalized);
+        $profile = $this->profiles->findByOrgAndKey($organizationId, $profileKey);
+        if (!$profile) {
+            return $items;
+        }
+
+        return $this->items->listByProfileId((int) $profile['id']);
+    }
+
+    /**
      * @param list<array{field_key:string, position:int, is_enabled:int}> $rows
      */
     public function shiftItemPosition(int $organizationId, string $profileKey, string $fieldKey, string $direction): void
@@ -196,17 +220,20 @@ final class ClientPageLayoutService
         if ($j < 0 || $j >= count($items)) {
             return;
         }
+        if ($profileKey === 'customer_details') {
+            $immutable = $this->catalog->customerDetailsImmutablePrefixKeys();
+            if (in_array((string) $items[$idx]['field_key'], $immutable, true)
+                || in_array((string) $items[$j]['field_key'], $immutable, true)) {
+                return;
+            }
+        }
         $tmp = $items[$idx];
         $items[$idx] = $items[$j];
         $items[$j] = $tmp;
         $rows = [];
         $pos = 0;
         foreach ($items as $row) {
-            $rows[] = [
-                'field_key' => (string) $row['field_key'],
-                'position' => $pos++,
-                'is_enabled' => (int) ($row['is_enabled'] ?? 1),
-            ];
+            $rows[] = $this->layoutRowFromDatabaseRow($row, $pos++);
         }
         $this->saveLayout($organizationId, $profileKey, $rows);
     }
@@ -220,6 +247,11 @@ final class ClientPageLayoutService
         $profile = $this->profiles->findByOrgAndKey($organizationId, $profileKey);
         if (!$profile) {
             throw new \InvalidArgumentException('Unknown layout profile.');
+        }
+        if ($profileKey === 'customer_details') {
+            $rows = $this->normalizeCustomerDetailsPostedRows($rows);
+        } else {
+            $rows = $this->sanitizeGenericPostedLayoutRows($rows);
         }
         foreach ($rows as $r) {
             $fk = trim((string) ($r['field_key'] ?? ''));
@@ -251,12 +283,12 @@ final class ClientPageLayoutService
     public function getEnabledOrderedKeysForDetails(int $organizationId): array
     {
         if (!$this->isLayoutStorageReady()) {
-            return $this->prependRequiredIdentityKeys($this->defaultDetailsFieldKeys());
+            return $this->prependIntakeCoreKeys($this->defaultDetailsFieldKeys());
         }
         $this->ensureDefaultsForOrganization($organizationId);
         $profile = $this->profiles->findByOrgAndKey($organizationId, 'customer_details');
         if (!$profile) {
-            return $this->prependRequiredIdentityKeys($this->defaultDetailsFieldKeys());
+            return $this->prependIntakeCoreKeys($this->defaultDetailsFieldKeys());
         }
         $list = $this->items->listByProfileId((int) $profile['id']);
         $keys = [];
@@ -266,7 +298,7 @@ final class ClientPageLayoutService
             }
             $keys[] = (string) $row['field_key'];
         }
-        $keys = $this->prependRequiredIdentityKeys($keys);
+        $keys = $this->prependIntakeCoreKeys($keys);
 
         return array_values(array_unique($keys));
     }
@@ -307,12 +339,12 @@ final class ClientPageLayoutService
             $this->tenantScopeGuard->requireResolvedTenantScope();
             $oid = $this->organizationContext->getCurrentOrganizationId();
             if ($oid === null || $oid <= 0) {
-                return $this->prependRequiredIdentityKeys($this->defaultDetailsFieldKeys());
+                return $this->prependIntakeCoreKeys($this->defaultDetailsFieldKeys());
             }
 
             return $this->getEnabledOrderedKeysForDetails((int) $oid);
         } catch (\Throwable) {
-            return $this->prependRequiredIdentityKeys($this->defaultDetailsFieldKeys());
+            return $this->prependIntakeCoreKeys($this->defaultDetailsFieldKeys());
         }
     }
 
@@ -338,12 +370,192 @@ final class ClientPageLayoutService
      * @param list<string> $keys
      * @return list<string>
      */
-    private function prependRequiredIdentityKeys(array $keys): array
+    private function prependIntakeCoreKeys(array $keys): array
     {
-        $need = ['first_name', 'last_name'];
+        $need = $this->catalog->customerDetailsImmutablePrefixKeys();
         $filtered = array_values(array_filter($keys, static fn (string $k) => !in_array($k, $need, true)));
 
         return array_merge($need, $filtered);
+    }
+
+    /**
+     * @param list<array<string, mixed>> $dbItems
+     * @return list<array{field_key: string, position: int, is_enabled: int, display_label: ?string, is_required: ?int}>
+     */
+    private function normalizeCustomerDetailsRowsFromDbItems(array $dbItems): array
+    {
+        $rows = [];
+        foreach ($dbItems as $row) {
+            $rows[] = $this->layoutRowFromDatabaseRow($row, (int) ($row['position'] ?? 0));
+        }
+        usort($rows, static fn (array $a, array $b): int => $a['position'] <=> $b['position']);
+
+        return $this->finalizeCustomerDetailsNormalizedRows($rows);
+    }
+
+    /**
+     * @param array<string, mixed> $row DB or in-memory layout item
+     * @return array{field_key: string, position: int, is_enabled: int, display_label: ?string, is_required: ?int}
+     */
+    public function layoutRowFromStoredItem(array $row, int $position): array
+    {
+        return $this->layoutRowFromDatabaseRow($row, $position);
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @return array{field_key: string, position: int, is_enabled: int, display_label: ?string, is_required: ?int}
+     */
+    private function layoutRowFromDatabaseRow(array $row, int $position): array
+    {
+        $dl = null;
+        if (array_key_exists('display_label', $row) && $row['display_label'] !== null) {
+            $t = trim((string) $row['display_label']);
+            $dl = $t !== '' ? $t : null;
+        }
+        $req = null;
+        if (array_key_exists('is_required', $row) && $row['is_required'] !== null && $row['is_required'] !== '') {
+            $req = (int) $row['is_required'] ? 1 : 0;
+        }
+
+        return [
+            'field_key' => (string) $row['field_key'],
+            'position' => $position,
+            'is_enabled' => (int) ($row['is_enabled'] ?? 1) ? 1 : 0,
+            'display_label' => $dl,
+            'is_required' => $req,
+        ];
+    }
+
+    /**
+     * @param list<array{field_key: string, position: int, is_enabled: int}> $sortedRows
+     * @return list<array{field_key: string, position: int, is_enabled: int, display_label: ?string, is_required: ?int}>
+     */
+    private function finalizeCustomerDetailsNormalizedRows(array $sortedRows): array
+    {
+        $immutable = $this->catalog->customerDetailsImmutablePrefixKeys();
+        $byKey = [];
+        foreach ($sortedRows as $r) {
+            $byKey[(string) $r['field_key']] = $r;
+        }
+        $keys = array_map(static fn (array $r): string => (string) $r['field_key'], $sortedRows);
+        $tail = [];
+        $seenTail = [];
+        foreach ($keys as $k) {
+            if (in_array($k, $immutable, true)) {
+                continue;
+            }
+            if (isset($seenTail[$k])) {
+                continue;
+            }
+            $seenTail[$k] = true;
+            $tail[] = $k;
+        }
+        $mergedKeys = array_merge($immutable, $tail);
+        $out = [];
+        $pos = 0;
+        foreach ($mergedKeys as $fk) {
+            $prev = $byKey[$fk] ?? null;
+            $en = $prev !== null ? ((int) ($prev['is_enabled'] ?? 1) ? 1 : 0) : 1;
+            if (in_array($fk, $immutable, true)) {
+                $en = 1;
+            }
+            $dl = null;
+            $req = null;
+            if ($prev !== null) {
+                if (isset($prev['display_label'])) {
+                    $t = trim((string) $prev['display_label']);
+                    $dl = $t !== '' ? $t : null;
+                }
+                if (array_key_exists('is_required', $prev)) {
+                    $rv = $prev['is_required'];
+                    $req = ($rv === null || $rv === '') ? null : (((int) $rv) ? 1 : 0);
+                }
+            }
+            $out[] = [
+                'field_key' => $fk,
+                'position' => $pos++,
+                'is_enabled' => $en,
+                'display_label' => $dl,
+                'is_required' => $req,
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param list<array<string, mixed>> $rows
+     * @return list<array{field_key: string, position: int, is_enabled: int}>
+     */
+    private function normalizeCustomerDetailsPostedRows(array $rows): array
+    {
+        $clean = [];
+        foreach ($rows as $r) {
+            if (!is_array($r)) {
+                continue;
+            }
+            $fk = trim((string) ($r['field_key'] ?? ''));
+            if ($fk === '') {
+                continue;
+            }
+            $entry = [
+                'field_key' => $fk,
+                'position' => (int) ($r['position'] ?? 0),
+                'is_enabled' => !empty($r['is_enabled']) ? 1 : 0,
+                'display_label' => ($dl = trim((string) ($r['display_label'] ?? ''))) !== '' ? $dl : null,
+            ];
+            $entry['is_required'] = array_key_exists('is_required', $r)
+                ? (!empty($r['is_required']) ? 1 : 0)
+                : null;
+            $clean[] = $entry;
+        }
+        usort($clean, static fn (array $a, array $b): int => $a['position'] <=> $b['position']);
+
+        return $this->finalizeCustomerDetailsNormalizedRows($clean);
+    }
+
+    /**
+     * @param list<array<string, mixed>> $rows
+     * @return list<array{field_key: string, position: int, is_enabled: int, display_label: ?string, is_required: ?int}>
+     */
+    private function sanitizeGenericPostedLayoutRows(array $rows): array
+    {
+        $clean = [];
+        foreach ($rows as $r) {
+            if (!is_array($r)) {
+                continue;
+            }
+            $fk = trim((string) ($r['field_key'] ?? ''));
+            if ($fk === '') {
+                continue;
+            }
+            $clean[] = [
+                'field_key' => $fk,
+                'position' => (int) ($r['position'] ?? 0),
+                'is_enabled' => !empty($r['is_enabled']) ? 1 : 0,
+                'display_label' => ($dl = trim((string) ($r['display_label'] ?? ''))) !== '' ? $dl : null,
+                'is_required' => array_key_exists('is_required', $r)
+                    ? (!empty($r['is_required']) ? 1 : 0)
+                    : null,
+            ];
+        }
+        usort($clean, static fn (array $a, array $b): int => $a['position'] <=> $b['position']);
+
+        return $clean;
+    }
+
+    /**
+     * @param list<array<string, mixed>> $dbItems
+     * @param list<array{field_key: string, position: int, is_enabled: int}> $normalized
+     */
+    private function customerDetailsLayoutListsDiffer(array $dbItems, array $normalized): bool
+    {
+        usort($dbItems, static fn (array $a, array $b): int => ((int) ($a['position'] ?? 0)) <=> ((int) ($b['position'] ?? 0)));
+        $aKeys = array_map(static fn (array $r): string => (string) $r['field_key'], $dbItems);
+        $bKeys = array_map(static fn (array $r): string => (string) $r['field_key'], $normalized);
+
+        return $aKeys !== $bKeys;
     }
 
     private function assertFieldKeyAllowed(string $fieldKey): void

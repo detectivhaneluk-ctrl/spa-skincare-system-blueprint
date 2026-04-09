@@ -6,6 +6,7 @@
 
   var KEY_LAYOUT = 'ollira_app_nav_layout';
   var KEY_COLLAPSED = 'ollira_app_sidebar_collapsed';
+  var KEY_THEME = 'ollira_app_theme';
   var BP_MOBILE = 900;
 
   function getLayout() {
@@ -217,6 +218,7 @@
     }
 
     sideNavLinkClicks();
+    initAccountMenu();
   }
 
   /** Close mobile overlay when navigating within app (full page load still closes; good for same-tab). */
@@ -228,6 +230,129 @@
       if (a && isMobile() && document.documentElement.getAttribute('data-app-nav-layout') === 'sidebar') {
         closeMobileSidebar();
       }
+    });
+  }
+
+  function getTheme() {
+    var t = document.documentElement.getAttribute('data-app-theme');
+    return t === 'dark' ? 'dark' : 'light';
+  }
+
+  function applyTheme(mode) {
+    var v = mode === 'dark' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-app-theme', v);
+    try {
+      localStorage.setItem(KEY_THEME, v);
+    } catch (e) { /* ignore */ }
+    document.querySelectorAll('[data-app-theme-toggle]').forEach(function (btn) {
+      btn.setAttribute('aria-checked', v === 'dark' ? 'true' : 'false');
+    });
+    document.querySelectorAll('[data-app-theme-state-label]').forEach(function (el) {
+      el.textContent = v === 'dark' ? 'Dark' : 'Light';
+    });
+  }
+
+  function positionAccountPanel(trigger, panel) {
+    if (!trigger || !panel) return;
+    var rect = trigger.getBoundingClientRect();
+    var margin = 8;
+    var pw = panel.offsetWidth || 280;
+    var ph = panel.offsetHeight || 320;
+    var left = rect.right - pw;
+    if (left < margin) {
+      left = margin;
+    }
+    if (left + pw > window.innerWidth - margin) {
+      left = Math.max(margin, window.innerWidth - pw - margin);
+    }
+    var top = rect.bottom + margin;
+    if (top + ph > window.innerHeight - margin) {
+      top = rect.top - ph - margin;
+    }
+    if (top < margin) {
+      top = margin;
+    }
+    panel.style.left = left + 'px';
+    panel.style.top = top + 'px';
+  }
+
+  function closeAllAccountPanels() {
+    document.querySelectorAll('[data-app-shell-account-panel]').forEach(function (panel) {
+      panel.setAttribute('hidden', '');
+      panel.style.left = '';
+      panel.style.top = '';
+    });
+    document.querySelectorAll('[data-app-shell-account-trigger]').forEach(function (tr) {
+      tr.setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  function openAccountPanel(root) {
+    var trigger = root.querySelector('[data-app-shell-account-trigger]');
+    var panel = root.querySelector('[data-app-shell-account-panel]');
+    if (!trigger || !panel) return;
+    closeAllAccountPanels();
+    panel.removeAttribute('hidden');
+    trigger.setAttribute('aria-expanded', 'true');
+    window.requestAnimationFrame(function () {
+      positionAccountPanel(trigger, panel);
+      var focusable = panel.querySelector('a[href], button:not([disabled])');
+      if (focusable && typeof focusable.focus === 'function') {
+        focusable.focus();
+      }
+    });
+  }
+
+  function toggleAccountPanel(root) {
+    var panel = root.querySelector('[data-app-shell-account-panel]');
+    if (!panel) return;
+    if (panel.hasAttribute('hidden')) {
+      openAccountPanel(root);
+    } else {
+      closeAllAccountPanels();
+    }
+  }
+
+  function initAccountMenu() {
+    var roots = document.querySelectorAll('[data-app-shell-account]');
+    if (!roots.length) return;
+
+    applyTheme(getTheme());
+
+    roots.forEach(function (root) {
+      var trigger = root.querySelector('[data-app-shell-account-trigger]');
+      if (trigger) {
+        trigger.addEventListener('click', function (ev) {
+          ev.stopPropagation();
+          toggleAccountPanel(root);
+        });
+      }
+    });
+
+    document.querySelectorAll('[data-app-theme-toggle]').forEach(function (btn) {
+      btn.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        var next = getTheme() === 'dark' ? 'light' : 'dark';
+        applyTheme(next);
+      });
+    });
+
+    document.addEventListener('click', function (ev) {
+      var t = ev.target;
+      if (t && t.closest && t.closest('[data-app-shell-account]')) {
+        return;
+      }
+      closeAllAccountPanels();
+    });
+
+    document.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Escape') {
+        closeAllAccountPanels();
+      }
+    });
+
+    window.addEventListener('resize', function () {
+      closeAllAccountPanels();
     });
   }
 

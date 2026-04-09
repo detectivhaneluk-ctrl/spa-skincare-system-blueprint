@@ -1,7 +1,10 @@
 <?php
+$clientsWorkspaceActiveTab = 'intake';
+require base_path('modules/clients/views/partials/clients-workspace-data.php');
 ob_start();
+require base_path('modules/clients/views/partials/clients-workspace-shell.php');
 ?>
-<h1>Assign intake form</h1>
+<h2>Assign intake form</h2>
 <?php if (!empty($flash['error'])): ?><p><?= htmlspecialchars((string) $flash['error']) ?></p><?php endif; ?>
 <p><a href="/intake/templates">Templates</a> · <a href="/intake/assignments">Assignments</a></p>
 <?php if (empty($templates)): ?>

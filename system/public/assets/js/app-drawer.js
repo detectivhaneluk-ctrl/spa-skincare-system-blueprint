@@ -11,6 +11,87 @@
     activeWidth: 'medium',
   };
 
+  /** Top-right {@see OlliraToast} for drawer JSON flows (no full page reload → no PHP flash). */
+  function pushAppToast(kind, text) {
+    if (!text || typeof text !== 'string') {
+      return;
+    }
+    const T = window.OlliraToast;
+    if (!T) {
+      return;
+    }
+    if (kind === 'error' && typeof T.error === 'function') {
+      T.error(text);
+      return;
+    }
+    if (kind === 'success' && typeof T.success === 'function') {
+      T.success(text);
+      return;
+    }
+    if (typeof T.show === 'function') {
+      T.show({ type: kind === 'error' ? 'error' : 'success', message: text });
+    }
+  }
+
+  const DRAWER_SUBMIT_SPINNER =
+    '<span class="app-drawer-submit__spinner" aria-hidden="true">' +
+    '<svg class="app-drawer-submit__spinner-svg" width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+    '<circle cx="12" cy="12" r="9.25" stroke="currentColor" stroke-opacity="0.22" stroke-width="2"/>' +
+    '<path d="M12 2.75 A9.25 9.25 0 0 1 21.25 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>' +
+    '</svg></span>' +
+    '<span class="visually-hidden">Saving…</span>';
+
+  function resolveDrawerSubmitButton(form, submitter) {
+    if (
+      submitter &&
+      submitter.tagName === 'BUTTON' &&
+      submitter.getAttribute('type') === 'submit' &&
+      form.contains(submitter)
+    ) {
+      return submitter;
+    }
+    return form.querySelector('button[type="submit"]');
+  }
+
+  /**
+   * Primary action loading on the clicked submit control (no drawer status strip).
+   */
+  function setDrawerFormSubmitting(form, active, submitter = null) {
+    const allSubmit = [...form.querySelectorAll('button[type="submit"]')];
+    if (!active) {
+      allSubmit.forEach((b) => {
+        b.disabled = false;
+        b.removeAttribute('aria-disabled');
+        if (b.dataset.drawerSubmitHtml) {
+          b.innerHTML = b.dataset.drawerSubmitHtml;
+          delete b.dataset.drawerSubmitHtml;
+        }
+        b.style.minWidth = '';
+        b.classList.remove('is-drawer-submit-loading');
+        b.removeAttribute('aria-busy');
+      });
+      return;
+    }
+    const primary = resolveDrawerSubmitButton(form, submitter);
+    allSubmit.forEach((b) => {
+      b.disabled = true;
+      b.setAttribute('aria-disabled', 'true');
+    });
+    if (!primary) {
+      return;
+    }
+    if (!primary.dataset.drawerSubmitHtml) {
+      primary.dataset.drawerSubmitHtml = primary.innerHTML;
+    }
+    const w = primary.getBoundingClientRect().width;
+    if (w >= 48) {
+      primary.style.minWidth = `${Math.ceil(w)}px`;
+    }
+    primary.classList.add('is-drawer-submit-loading');
+    primary.setAttribute('aria-busy', 'true');
+    primary.innerHTML = DRAWER_SUBMIT_SPINNER;
+  }
+
   function buildShell() {
     host.innerHTML = `
       <div class="app-drawer" hidden>
@@ -44,6 +125,104 @@
   const bodyEl = host.querySelector('#app-drawer-body');
   const footerEl = host.querySelector('#app-drawer-footer');
   const headerActionsEl = host.querySelector('#app-drawer-header-actions');
+
+  /** Matches `Staff edit_profile` $displayOrder — used when `data-schedule-display-order` is missing. */
+  const DEFAULT_SCHEDULE_DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
+
+  function parseScheduleDisplayOrder(form) {
+    const raw = form && form.getAttribute('data-schedule-display-order');
+    if (!raw) {
+      return DEFAULT_SCHEDULE_DISPLAY_ORDER.slice();
+    }
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) && parsed.length ? parsed : DEFAULT_SCHEDULE_DISPLAY_ORDER.slice();
+    } catch (_) {
+      return DEFAULT_SCHEDULE_DISPLAY_ORDER.slice();
+    }
+  }
+
+  /**
+   * Staff schedule grid in `#profile-schedule-form`: inline scripts do not run when HTML is injected via
+   * `innerHTML`, so toggle/copy-prev must use delegation on the drawer body.
+   */
+  bodyEl.addEventListener('change', function (event) {
+    const t = event.target;
+    if (!t || !t.classList || !t.classList.contains('day-toggle')) {
+      return;
+    }
+    if (!(t instanceof HTMLInputElement) || t.type !== 'checkbox') {
+      return;
+    }
+    const form = t.closest('#profile-schedule-form');
+    if (!form || !bodyEl.contains(t)) {
+      return;
+    }
+    const row = t.closest('.staff-schedule-row');
+    if (!row) {
+      return;
+    }
+    const inputs = row.querySelectorAll('.day-time-input');
+    const copyBtn = row.querySelector('.btn-copy-prev');
+    const on = t.checked;
+    row.classList.toggle('staff-schedule-row--on', on);
+    row.classList.toggle('staff-schedule-row--off', !on);
+    inputs.forEach(function (i) {
+      i.disabled = !on;
+    });
+    if (copyBtn) {
+      copyBtn.disabled = !on;
+    }
+    if (on) {
+      const arr = Array.from(inputs);
+      if (arr[0] && !arr[0].value) {
+        arr[0].value = '09:00';
+      }
+      if (arr[1] && !arr[1].value) {
+        arr[1].value = '17:00';
+      }
+    }
+  });
+
+  bodyEl.addEventListener('click', function (event) {
+    const btn = event.target.closest('.btn-copy-prev');
+    if (!btn || btn.disabled || !bodyEl.contains(btn)) {
+      return;
+    }
+    const form = btn.closest('#profile-schedule-form');
+    if (!form) {
+      return;
+    }
+    const order = parseScheduleDisplayOrder(form);
+    const dow = parseInt(btn.getAttribute('data-dow') || '', 10);
+    if (Number.isNaN(dow)) {
+      return;
+    }
+    const idx = order.indexOf(dow);
+    if (idx <= 0) {
+      return;
+    }
+    const prevDow = order[idx - 1];
+    const prevRow = form.querySelector('.staff-schedule-row[data-dow="' + prevDow + '"]');
+    if (!prevRow) {
+      return;
+    }
+    const prevToggle = prevRow.querySelector('.day-toggle');
+    if (!prevToggle || !prevToggle.checked) {
+      return;
+    }
+    const src = Array.from(prevRow.querySelectorAll('.day-time-input'));
+    const dstRow = btn.closest('.staff-schedule-row');
+    if (!dstRow) {
+      return;
+    }
+    const dst = Array.from(dstRow.querySelectorAll('.day-time-input'));
+    src.forEach(function (s, i) {
+      if (dst[i] && !dst[i].disabled) {
+        dst[i].value = s.value;
+      }
+    });
+  });
 
   const DRAWER_FETCH_TIMEOUT_MS = 25000;
   /** Must exceed .app-drawer --drawer-t (360ms) + compositor slack; used if transitionend is missed. */
@@ -279,6 +458,33 @@
     window.dispatchEvent(new CustomEvent('app:appointments-calendar-refresh'));
   }
 
+  /** Host pages where staff profile drawer should dismiss after save instead of reloading edit inside the drawer. */
+  function isAppointmentsShellHost() {
+    const p = window.location.pathname || '';
+    if (p === '/appointments' || p.startsWith('/appointments/')) {
+      return true;
+    }
+    if (p.startsWith('/calendar')) {
+      return true;
+    }
+    if (/^\/clients\/\d+\/appointments/.test(p)) {
+      return true;
+    }
+    return false;
+  }
+
+  function isStaffEditReloadUrl(url) {
+    if (!url || typeof url !== 'string') {
+      return false;
+    }
+    try {
+      const path = new URL(url, window.location.origin).pathname;
+      return /^\/staff\/\d+\/edit$/.test(path);
+    } catch (_) {
+      return /^\/staff\/\d+\/edit(\?|$)/.test(url);
+    }
+  }
+
   function setContent(html, requestedUrl) {
     /* Clear loading strip in the same turn as real HTML — avoids one frame of “content + loading bar” (layout jump). */
     setStatus('', '');
@@ -288,10 +494,17 @@
     applyMetadata(root);
     initDrawerTabs(bodyEl);
     initDrawerForms(bodyEl);
+    initDrawerCloseTriggers(bodyEl);
     initDirtyTracking(bodyEl);
     initAppointmentCreate(bodyEl);
     initAppointmentEdit(bodyEl);
     initDrawerLinks(bodyEl);
+    if (typeof window.initClientCreateDelivery === 'function') {
+      window.initClientCreateDelivery(bodyEl);
+    }
+    if (typeof window.initClientCreatePhoneDedupe === 'function') {
+      window.initClientCreatePhoneDedupe(bodyEl);
+    }
   }
 
   /**
@@ -325,7 +538,8 @@
         }
       } catch (error) {
         bodyEl.innerHTML = '<div class="app-drawer__empty app-drawer__empty--error">Could not load this workspace.</div>';
-        setStatus(error && error.message ? error.message : 'Could not load drawer.', 'error');
+        setStatus('', '');
+        pushAppToast('error', error && error.message ? error.message : 'Could not load drawer.');
       }
     })();
     return true;
@@ -339,8 +553,9 @@
       const message = payload.error && payload.error.message ? payload.error.message : 'Request failed.';
       if (payload.data && payload.data.html) {
         setContent(payload.data.html, state.activeUrl);
+      } else {
+        setStatus('', '');
       }
-      setStatus(message, 'error');
       throw new Error(message);
     }
 
@@ -349,7 +564,8 @@
       setContent(data.html, data.url || state.activeUrl);
     }
     if (data.message) {
-      setStatus(data.message, 'success');
+      pushAppToast('success', data.message);
+      setStatus('', '');
     }
     if (data.refresh_calendar) {
       refreshCalendarIfPresent();
@@ -358,11 +574,27 @@
       openUrl(data.open_url, { force: true });
       return;
     }
+    /** Full navigation after success (e.g. client create → profile) — closes drawer first. */
+    if (data.window_assign && typeof data.window_assign === 'string') {
+      closeDrawer(true);
+      window.location.assign(data.window_assign);
+      return;
+    }
     if (data.close_drawer) {
       closeDrawer(true);
       return;
     }
+    if (data.reload_host) {
+      closeDrawer(true);
+      window.location.reload();
+      return;
+    }
     if (data.reload_url && form) {
+      if (isAppointmentsShellHost() && isStaffEditReloadUrl(data.reload_url)) {
+        refreshCalendarIfPresent();
+        closeDrawer(true);
+        return;
+      }
       openUrl(data.reload_url, { force: true });
     }
   }
@@ -399,6 +631,15 @@
     handleResponsePayload(payload, form);
   }
 
+  function initDrawerCloseTriggers(root) {
+    root.querySelectorAll('[data-app-drawer-close]').forEach((el) => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        closeDrawer();
+      });
+    });
+  }
+
   function initDrawerForms(root) {
     root.querySelectorAll('form[data-drawer-submit]').forEach((form) => {
       form.addEventListener('submit', async (event) => {
@@ -407,11 +648,15 @@
         if (confirmMessage && !window.confirm(confirmMessage)) {
           return;
         }
-        setStatus('Saving...', 'loading');
+        const clickedSubmit = event.submitter || null;
+        setDrawerFormSubmitting(form, true, clickedSubmit);
         try {
           await submitDrawerForm(form);
         } catch (error) {
-          setStatus(error && error.message ? error.message : 'Could not complete request.', 'error');
+          const msg = error && error.message ? error.message : 'Could not complete request.';
+          pushAppToast('error', msg);
+        } finally {
+          setDrawerFormSubmitting(form, false);
         }
       });
     });

@@ -1,9 +1,9 @@
+<?php
+$salesWorkspaceShellTitle = 'Reports';
+$salesWorkspaceShellSub = 'Measurement endpoints. Each link returns JSON; add date_from and date_to (Y-m-d) and optional branch_id where your role allows.';
+require base_path('modules/sales/views/partials/sales-workspace-shell.php');
+?>
 <div class="reports-hub">
-    <header class="reports-hub__header">
-        <h1 class="reports-hub__title">Reports</h1>
-        <p class="reports-hub__lead">Measurement endpoints already available in this build. Each link returns JSON; add <code>date_from</code> and <code>date_to</code> (<code>Y-m-d</code>) and optional <code>branch_id</code> where your role allows.</p>
-        <p class="reports-hub__lead">Reach this hub from <strong>Overview</strong> (Quick access) or the <strong>Sales</strong> workspace (<strong>Reports</strong> tab) when your role includes report access.</p>
-    </header>
     <ul class="reports-hub__list">
         <li><a class="reports-hub__link" href="/reports/revenue-summary">Revenue summary</a></li>
         <li><a class="reports-hub__link" href="/reports/payments-by-method">Payments by method</a></li>
@@ -17,10 +17,7 @@
     </ul>
 </div>
 <style>
-.reports-hub__header { margin-bottom: 1.25rem; }
-.reports-hub__title { margin: 0 0 0.25rem; font-size: 1.35rem; font-weight: 700; color: #111827; }
-.reports-hub__lead { margin: 0; font-size: 0.87rem; color: #4b5563; line-height: 1.45; }
-.reports-hub__lead code { font-size: 0.82rem; background: #f3f4f6; padding: 0.1em 0.35em; border-radius: 0.25rem; }
+.reports-hub { padding: 1.5rem 0; }
 .reports-hub__list { margin: 0; padding-left: 1.2rem; color: #111827; }
 .reports-hub__list li { margin: 0.35rem 0; }
 .reports-hub__link { color: #2563eb; text-decoration: none; font-size: 0.9rem; }

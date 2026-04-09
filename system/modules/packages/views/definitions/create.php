@@ -1,15 +1,11 @@
 <?php
-$title = 'New package plan (Catalog)';
-$mainClass = 'sales-workspace-page';
+$title = 'New Package Plan';
 ob_start();
-$salesWorkspaceShellModifier = 'workspace-shell--list';
-$salesWorkspaceActiveTab = '';
-$salesWorkspaceShellTitle = 'Package plans';
-$salesWorkspaceShellSub = 'Catalog package plans (templates). Client-held records: Clients. Checkout may sell a plan assignment: Sales — not the home for definitions or held records.';
-require base_path('modules/sales/views/partials/sales-workspace-shell.php');
+$pkgWorkspaceActiveTab = 'plans';
+require base_path('modules/packages/views/partials/packages-workspace-shell.php');
 ?>
-<h2 class="sales-workspace-section-title">New package plan</h2>
-<p class="hint" style="margin-top:0;"><strong>Catalog</strong> — create a <strong>plan template</strong> (sessions, price, branch scope). This is not a client&rsquo;s held package; those records are owned under <strong>Clients</strong>.</p>
+<h2>New Package Plan</h2>
+<p class="hint" style="margin-top:0;">Create a plan template (sessions, price, branch scope). Client-held records are managed in Clients.</p>
 <?php if (!empty($errors)): ?>
 <ul class="form-errors">
     <?php if (!empty($errors['_general'])): ?><li><?= htmlspecialchars($errors['_general']) ?></li><?php endif; ?>
@@ -50,4 +46,7 @@ require base_path('modules/sales/views/partials/sales-workspace-shell.php');
     </div>
     <div class="form-actions"><button type="submit">Create plan</button> <a href="/packages">← Package plans</a></div>
 </form>
-<?php $content = ob_get_clean(); require shared_path('layout/base.php'); ?>
+<?php
+$content = ob_get_clean();
+require shared_path('layout/base.php');
+?>

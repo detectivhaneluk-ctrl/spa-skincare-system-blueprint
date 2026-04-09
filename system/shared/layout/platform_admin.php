@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= htmlspecialchars($title ?? 'Founder') ?></title>
+    <link rel="stylesheet" href="/assets/css/design-tokens.css">
     <link rel="stylesheet" href="/assets/css/app.css">
+    <script src="/assets/js/app-toast.js" defer></script>
 </head>
 <body>
     <?php
@@ -59,5 +61,6 @@
     <main class="app-shell__main main platform-shell__main<?= !empty($mainClass) ? ' ' . htmlspecialchars((string) $mainClass) : '' ?>">
         <?= $content ?? '' ?>
     </main>
+    <?php require shared_path('layout/partials/app-toast-bootstrap.php'); ?>
 </body>
 </html>

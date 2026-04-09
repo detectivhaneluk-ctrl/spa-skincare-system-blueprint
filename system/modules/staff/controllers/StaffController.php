@@ -11,6 +11,7 @@ use Modules\Media\Services\MediaAssetUploadService;
 use Modules\ServicesResources\Repositories\ServiceRepository;
 use Modules\Staff\Repositories\StaffBreakRepository;
 use Modules\Staff\Repositories\StaffGroupRepository;
+use Modules\Staff\Repositories\StaffProfileStatsRepository;
 use Modules\Staff\Repositories\StaffRepository;
 use Modules\Staff\Repositories\StaffScheduleRepository;
 use Modules\Staff\Services\StaffBreakService;
@@ -43,7 +44,8 @@ final class StaffController
         private StaffGroupRepository $groupRepo,
         private BranchContext $branchContext,
         private OrganizationRepositoryScope $orgScope,
-        private ServiceRepository $serviceRepo
+        private ServiceRepository $serviceRepo,
+        private StaffProfileStatsRepository $profileStatsRepo,
     ) {
     }
 
@@ -361,7 +363,120 @@ final class StaffController
         $schedules = $this->scheduleRepo->listByStaff($id);
         $breaks = $this->breakRepo->listByStaff($id);
         $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
+        $staffProfileStats = [
+            'photo_url' => $this->profileStatsRepo->getPhotoPublicUrl(
+                isset($staff['photo_media_asset_id']) && $staff['photo_media_asset_id'] !== null && $staff['photo_media_asset_id'] !== ''
+                    ? (int) $staff['photo_media_asset_id']
+                    : null
+            ),
+            'appointments' => $this->profileStatsRepo->getAppointmentMetrics($id),
+            'invoice_revenue' => $this->profileStatsRepo->getInvoiceRevenueViaAppointments($id),
+            'commission' => $this->profileStatsRepo->getCommissionTotals($id),
+        ];
+        $completed = (int) ($staffProfileStats['appointments']['appointments_completed'] ?? 0);
+        $noShow = (int) ($staffProfileStats['appointments']['appointments_no_show'] ?? 0);
+        $staffProfileStats['success_rate_percent'] = ($completed + $noShow) > 0
+            ? round(100.0 * $completed / ($completed + $noShow), 1)
+            : null;
+        $scheduleHasLunch = false;
+        foreach ($schedules as $schRow) {
+            $ls = $schRow['lunch_start_time'] ?? null;
+            $le = $schRow['lunch_end_time'] ?? null;
+            if (($ls !== null && $ls !== '') || ($le !== null && $le !== '')) {
+                $scheduleHasLunch = true;
+                break;
+            }
+        }
+        $staffShowEnrichment = $this->buildStaffShowEnrichment($id, $staff, $scheduleHasLunch);
         require base_path('modules/staff/views/show.php');
+    }
+
+    /**
+     * Labels, relations, and lists for the read-only staff show page (no new data plane; uses existing repos / scoped reads).
+     *
+     * @param array<string, mixed> $staff
+     * @return array{
+     *   branch_name: string|null,
+     *   linked_user: array{name: string, email: string}|null,
+     *   primary_group_name: string|null,
+     *   service_type_name: string|null,
+     *   assigned_service_names: list<string>,
+     *   schedule_has_lunch: bool
+     * }
+     */
+    private function buildStaffShowEnrichment(int $staffId, array $staff, bool $scheduleHasLunch): array
+    {
+        $db = Application::container()->get(\Core\App\Database::class);
+        $branchName = null;
+        $bid = isset($staff['branch_id']) && $staff['branch_id'] !== null && $staff['branch_id'] !== ''
+            ? (int) $staff['branch_id']
+            : 0;
+        if ($bid > 0) {
+            $brow = $db->fetchOne('SELECT name FROM branches WHERE id = ? LIMIT 1', [$bid]);
+            if ($brow !== null && trim((string) ($brow['name'] ?? '')) !== '') {
+                $branchName = trim((string) $brow['name']);
+            }
+        }
+
+        $linkedUser = null;
+        $uid = isset($staff['user_id']) && $staff['user_id'] !== null && $staff['user_id'] !== ''
+            ? (int) $staff['user_id']
+            : 0;
+        if ($uid > 0) {
+            $u = $db->fetchOne('SELECT name, email FROM users WHERE id = ? AND deleted_at IS NULL LIMIT 1', [$uid]);
+            if ($u !== null) {
+                $linkedUser = [
+                    'name' => trim((string) ($u['name'] ?? '')),
+                    'email' => trim((string) ($u['email'] ?? '')),
+                ];
+            }
+        }
+
+        $groupName = null;
+        $gid = isset($staff['primary_group_id']) && $staff['primary_group_id'] !== null && $staff['primary_group_id'] !== ''
+            ? (int) $staff['primary_group_id']
+            : 0;
+        if ($gid > 0) {
+            $g = $this->groupRepo->find($gid);
+            if ($g !== null && trim((string) ($g['name'] ?? '')) !== '') {
+                $groupName = trim((string) $g['name']);
+            }
+        }
+
+        $serviceTypeName = null;
+        $stId = isset($staff['service_type_id']) && $staff['service_type_id'] !== null && $staff['service_type_id'] !== ''
+            ? (int) $staff['service_type_id']
+            : 0;
+        if ($stId > 0) {
+            foreach ($this->loadServiceTypes() as $t) {
+                if ((int) ($t['id'] ?? 0) === $stId) {
+                    $serviceTypeName = trim((string) ($t['name'] ?? ''));
+                    break;
+                }
+            }
+        }
+
+        $branchForServices = $this->resolveStaffBranchId($staff);
+        $assignedNames = [];
+        $svcById = [];
+        foreach ($this->serviceRepo->list(null, $branchForServices) as $svc) {
+            $svcById[(int) $svc['id']] = trim((string) ($svc['name'] ?? ''));
+        }
+        foreach ($this->serviceRepo->listAssignedServiceIdsForStaff($staffId) as $sid) {
+            if (isset($svcById[$sid]) && $svcById[$sid] !== '') {
+                $assignedNames[] = $svcById[$sid];
+            }
+        }
+        sort($assignedNames, SORT_STRING | SORT_FLAG_CASE);
+
+        return [
+            'branch_name' => $branchName,
+            'linked_user' => $linkedUser,
+            'primary_group_name' => $groupName,
+            'service_type_name' => $serviceTypeName !== '' ? $serviceTypeName : null,
+            'assigned_service_names' => $assignedNames,
+            'schedule_has_lunch' => $scheduleHasLunch,
+        ];
     }
 
     public function editProfile(int $id): void
@@ -411,6 +526,10 @@ final class StaffController
         $activeTab = in_array(($_POST['_tab'] ?? ''), ['basic', 'compensation'], true) ? $_POST['_tab'] : 'basic';
 
         if (!empty($errors)) {
+            if ($this->isDrawerRequest()) {
+                $this->sendDrawerError($this->firstFieldErrorMessage($errors));
+                return;
+            }
             $staff = array_merge($staff, $data);
             $staff['display_name'] = $this->service->getDisplayName($staff);
             $users        = Application::container()->get(\Core\App\Database::class)->fetchAll('SELECT id, name, email FROM users WHERE deleted_at IS NULL ORDER BY name');
@@ -431,6 +550,10 @@ final class StaffController
         try {
             $this->service->update($id, $data);
         } catch (\DomainException | \RuntimeException $e) {
+            if ($this->isDrawerRequest()) {
+                $this->sendDrawerError($e->getMessage());
+                return;
+            }
             $errors['_general'] = $e->getMessage();
             $staff = array_merge($staff, $data);
             $staff['display_name'] = $this->service->getDisplayName($staff);
@@ -480,6 +603,10 @@ final class StaffController
         try {
             $this->serviceRepo->replaceAssignedServicesForStaff($id, $serviceIds, $branchId);
         } catch (\DomainException | \RuntimeException $e) {
+            if ($this->isDrawerRequest()) {
+                $this->sendDrawerError($e->getMessage());
+                return;
+            }
             $staff['display_name'] = $this->service->getDisplayName($staff);
             $serviceGroups  = $this->loadServicesGrouped($branchId);
             $assignedIds    = array_flip($serviceIds);
@@ -525,6 +652,10 @@ final class StaffController
         try {
             $this->scheduleService->saveDefaultWeek($id, $rawDays);
         } catch (\InvalidArgumentException | \DomainException | \RuntimeException $e) {
+            if ($this->isDrawerRequest()) {
+                $this->sendDrawerError($e->getMessage());
+                return;
+            }
             $staff['display_name'] = $this->service->getDisplayName($staff);
             $rawSchedule = $this->scheduleRepo->listByStaff($id);
             $schedule    = $this->indexScheduleByDay($rawSchedule);
@@ -1236,5 +1367,31 @@ final class StaffController
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode(['success' => true, 'data' => ['message' => $message, 'reload_url' => $reloadUrl]]);
         exit;
+    }
+
+    private function sendDrawerError(string $message, int $statusCode = 422): void
+    {
+        @ini_set('display_errors', '0');
+        if (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        header('Content-Type: application/json; charset=utf-8');
+        http_response_code($statusCode);
+        echo json_encode(['success' => false, 'error' => ['message' => $message]]);
+        exit;
+    }
+
+    /**
+     * @param array<string, string> $errors
+     */
+    private function firstFieldErrorMessage(array $errors): string
+    {
+        foreach ($errors as $msg) {
+            if (is_string($msg) && $msg !== '') {
+                return $msg;
+            }
+        }
+
+        return 'Please correct the errors and try again.';
     }
 }

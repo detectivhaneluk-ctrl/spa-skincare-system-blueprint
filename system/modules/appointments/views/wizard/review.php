@@ -173,7 +173,7 @@ $paymentLabel  = $paymentLabels[$paymentMode] ?? $paymentMode;
 
       <form method="post" action="/appointments/wizard/cancel" style="display:inline">
         <input type="hidden" name="<?= htmlspecialchars($csrfName) ?>" value="<?= htmlspecialchars($csrf) ?>">
-        <button type="submit" class="ds-btn ds-btn--ghost">Cancel</button>
+        <button type="submit" class="appt-wizard-actions__cancel">Cancel</button>
       </form>
     </div>
   </div><!-- .appt-wizard-body -->

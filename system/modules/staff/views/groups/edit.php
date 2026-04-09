@@ -1,9 +1,12 @@
 <?php
 $title = 'Edit Staff Group';
 ob_start();
+$teamWorkspaceActiveTab = 'groups';
+$teamWorkspaceShellTitle = 'Team';
+require base_path('modules/staff/views/partials/team-workspace-shell.php');
 ?>
 <div class="page-header">
-    <h1 class="page-header__title">Edit Staff Group</h1>
+    <h2 class="page-header__title">Edit Staff Group</h2>
 </div>
 
 <?php if (!empty($errors)): ?>

@@ -1,9 +1,12 @@
 <?php
 $title = 'Staff Groups';
 ob_start();
+$teamWorkspaceActiveTab = 'groups';
+$teamWorkspaceShellTitle = 'Team';
+require base_path('modules/staff/views/partials/team-workspace-shell.php');
 ?>
 <div class="page-header">
-    <h1 class="page-header__title">Staff Groups</h1>
+    <h2 class="page-header__title">Staff Groups</h2>
     <a href="/staff/groups/admin/create" class="btn btn--primary">Create Group</a>
 </div>
 
@@ -49,7 +52,4 @@ ob_start();
     </tbody>
 </table>
 
-<div class="page-actions page-actions--secondary">
-    <a href="/staff" class="btn btn--secondary">Back to Staff</a>
-</div>
 <?php $content = ob_get_clean(); require shared_path('layout/base.php'); ?>

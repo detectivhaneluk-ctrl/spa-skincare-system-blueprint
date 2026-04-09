@@ -331,13 +331,25 @@ $pgSep  = str_contains($pgBase, '?') ? '&' : '?';
 
     if (checkAll) {
         checkAll.addEventListener('change', function () {
+            checkAll.indeterminate = false;
             document.querySelectorAll('.stf-row-check').forEach(function (c) { c.checked = checkAll.checked; });
             updateBulkCount();
         });
     }
 
+    function syncSelectAllHeader() {
+        if (!checkAll) return;
+        var all = document.querySelectorAll('.stf-row-check');
+        var on = document.querySelectorAll('.stf-row-check:checked');
+        checkAll.checked = all.length > 0 && on.length === all.length;
+        checkAll.indeterminate = on.length > 0 && on.length < all.length;
+    }
+
     document.querySelectorAll('.stf-row-check').forEach(function (c) {
-        c.addEventListener('change', updateBulkCount);
+        c.addEventListener('change', function () {
+            updateBulkCount();
+            syncSelectAllHeader();
+        });
     });
 
     if (bulkForm && bulkSel) {
@@ -387,6 +399,7 @@ $pgSep  = str_contains($pgBase, '?') ? '&' : '?';
             }
         });
         updateBulkCount();
+        syncSelectAllHeader();
     }
 
     if (searchInput) {

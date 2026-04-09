@@ -11,19 +11,24 @@ use Modules\Clients\Support\PublicContactNormalizer;
  */
 final class ClientInputValidator
 {
+    private const NOTES_MAX_LEN = 65535;
+
     /**
      * @param array<string, mixed> $data Parsed client payload (see {@see \Modules\Clients\Controllers\ClientController})
      * @param list<array<string, mixed>> $customFieldDefinitions Active definitions for the current branch/org context
      * @return array<string, string> field => message
      */
-    public function validate(array $data, array $customFieldDefinitions = []): array
+    public function validate(array $data, array $customFieldDefinitions = [], bool $isCreate = false): array
     {
         $errors = [];
         if (($data['first_name'] ?? '') === '') {
             $errors['first_name'] = 'First name is required.';
         }
-        if (($data['last_name'] ?? '') === '') {
-            $errors['last_name'] = 'Last name is required.';
+        if ($isCreate) {
+            $mobile = trim((string) ($data['phone_mobile'] ?? ''));
+            if ($mobile === '') {
+                $errors['phone_mobile'] = 'Mobile phone is required.';
+            }
         }
         $email = $data['email'] ?? null;
         if ($email !== null && $email !== '') {
@@ -100,8 +105,17 @@ final class ClientInputValidator
                 $errors[$key] = 'This field is too long.';
             }
         }
+        $notesVal = $data['notes'] ?? null;
+        if ($notesVal !== null && $notesVal !== '' && mb_strlen((string) $notesVal) > self::NOTES_MAX_LEN) {
+            $errors['notes'] = 'Notes are too long.';
+        }
         if (!in_array((int) ($data['delivery_same_as_home'] ?? 0), [0, 1], true)) {
             $errors['delivery_same_as_home'] = 'Invalid value.';
+        }
+        if ($isCreate && (int) ($data['needs_delivery'] ?? 0) === 1) {
+            if (trim((string) ($data['delivery_address_1'] ?? '')) === '') {
+                $errors['delivery_address_1'] = 'Delivery address line 1 is required when delivery is enabled.';
+            }
         }
         $values = is_array($data['custom_fields'] ?? null) ? $data['custom_fields'] : [];
         foreach ($customFieldDefinitions as $def) {
@@ -109,7 +123,7 @@ final class ClientInputValidator
             if ((int) ($def['is_required'] ?? 0) !== 1) {
                 continue;
             }
-            $raw = $values[$id] ?? '';
+            $raw = $values[$id] ?? $values[(string) $id] ?? '';
             if (($def['field_type'] ?? '') === 'boolean') {
                 if ($raw === '' || $raw === null) {
                     $errors['custom_field_' . $id] = (string) $def['label'] . ' is required.';
@@ -127,7 +141,7 @@ final class ClientInputValidator
             if (isset($errors[$ek])) {
                 continue;
             }
-            $val = trim((string) ($values[$id] ?? ''));
+            $val = trim((string) ($values[$id] ?? $values[(string) $id] ?? ''));
             if ($val === '') {
                 continue;
             }

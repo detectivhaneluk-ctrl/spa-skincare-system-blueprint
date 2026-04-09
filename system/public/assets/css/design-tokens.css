@@ -39,6 +39,8 @@
   --ds-color-danger-bg: rgba(176, 0, 32, 0.06);
   --ds-color-success: #1b7f3a;
   --ds-color-success-bg: rgba(27, 127, 58, 0.08);
+  /* Apple HIG system green (live / status dots); distinct from brand semantic success */
+  --ds-color-apple-system-green: #34c759;
   --ds-color-warning-bg: #fff8e6;
   --ds-color-warning-text: #6b5a1a;
 
@@ -121,8 +123,11 @@
   --ds-shell-pad-y: var(--ds-space-4);
   --ds-workspace-max-width: none;
   --ds-z-app-header: 200;
+  --ds-z-account-popover: calc(var(--ds-z-app-header) + 30);
   /* Above shell chrome (.app-shell__header, mobile bar, sidebar overlays use header + n) */
   --ds-z-drawer: calc(var(--ds-z-app-header) + 250);
+  /* Toasts: above drawer overlay so feedback stays visible during panel work */
+  --ds-z-toast: calc(var(--ds-z-drawer) + 80);
 
   /* —— Motion (functional only) —— */
   --ds-duration-drawer: 180ms;
@@ -136,4 +141,50 @@
   --ds-glass-border: rgba(255, 255, 255, 0.55);
   --ds-glass-blur: blur(24px) saturate(140%);
   --ds-glass-blur-strong: blur(32px) saturate(160%);
+
+  /* Workspace toolbar CTA + mini-calendar selected day (light = ink; dark theme overrides) */
+  --ds-color-toolbar-cta-bg: #111827;
+  --ds-color-toolbar-cta-border: #111827;
+  --ds-color-toolbar-cta-bg-hover: #111827;
+  --ds-color-toolbar-cta-border-hover: #111827;
+  --ds-color-selection-fill: #111827;
+  --ds-color-selection-shadow: rgba(17, 24, 39, 0.22);
+}
+
+/*
+ * Dark theme (operator preference). Applied via html[data-app-theme="dark"] from account menu + head script.
+ * Covers shell tokens first; module pages inherit where they use var(--ds-*).
+ */
+html[data-app-theme="dark"] {
+  color-scheme: dark;
+  --ds-color-bg-page: #0a0a0b;
+  --ds-color-bg-canvas: #141416;
+  --ds-color-bg-subtle: #1a1a1d;
+  --ds-color-bg-muted: #222226;
+  --ds-color-text: #f5f5f7;
+  --ds-color-text-secondary: #b4b4bc;
+  --ds-color-text-tertiary: #8e8e98;
+  --ds-color-border: rgba(255, 255, 255, 0.1);
+  --ds-color-border-light: rgba(255, 255, 255, 0.07);
+  --ds-color-divider: rgba(255, 255, 255, 0.08);
+  --ds-color-accent: #f5f5f7;
+  --ds-color-accent-hover: #ffffff;
+  --ds-color-accent-muted: rgba(255, 255, 255, 0.1);
+  --ds-color-accent-border: rgba(255, 255, 255, 0.22);
+  --ds-color-focus-ring: rgba(255, 255, 255, 0.35);
+  --ds-color-focus-ring-ui: #e5e5ea;
+  --ds-color-segmented-track: #2a2a2e;
+  --ds-color-segmented-track-strong: #343438;
+  --ds-glass-bg: rgba(28, 28, 32, 0.82);
+  --ds-glass-bg-strong: rgba(22, 22, 26, 0.92);
+  --ds-glass-border: rgba(255, 255, 255, 0.08);
+
+  --ds-color-toolbar-cta-bg: #2563eb;
+  --ds-color-toolbar-cta-border: #1d4ed8;
+  --ds-color-toolbar-cta-bg-hover: #3b82f6;
+  --ds-color-toolbar-cta-border-hover: #60a5fa;
+  /* Distinct from --ds-color-accent (used for nav chrome / links on dark) */
+  --ds-color-selection-fill: #2563eb;
+  --ds-color-selection-shadow: rgba(37, 99, 235, 0.42);
+  --ds-color-apple-system-green: #30d158;
 }

@@ -1,7 +1,10 @@
 <?php
+$clientsWorkspaceActiveTab = 'intake';
+require base_path('modules/clients/views/partials/clients-workspace-data.php');
 ob_start();
+require base_path('modules/clients/views/partials/clients-workspace-shell.php');
 ?>
-<h1>Intake form templates</h1>
+<h2>Consultation Form Templates</h2>
 <?php if (!empty($flash['success'])): ?><p><?= htmlspecialchars((string) $flash['success']) ?></p><?php endif; ?>
 <?php if (!empty($flash['error'])): ?><p><?= htmlspecialchars((string) $flash['error']) ?></p><?php endif; ?>
 <p><a href="/intake/templates/create">Create template</a> · <a href="/intake/assign">Assign form</a> · <a href="/intake/assignments">Assignments</a></p>

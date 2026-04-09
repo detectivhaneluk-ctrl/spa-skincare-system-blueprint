@@ -129,10 +129,7 @@ if ($selectedMode === 'none') {
       <div class="appt-wizard-actions">
         <a href="/appointments/wizard/step3?branch_id=<?= $branchId ?>" class="ds-btn ds-btn--ghost">← Back</a>
         <button type="submit" class="ds-btn ds-btn--primary">Continue to Review →</button>
-        <form method="post" action="/appointments/wizard/cancel" style="display:inline">
-          <input type="hidden" name="<?= htmlspecialchars($csrfName) ?>" value="<?= htmlspecialchars($csrf) ?>">
-          <button type="submit" class="ds-btn ds-btn--ghost">Cancel</button>
-        </form>
+        <button type="submit" class="appt-wizard-actions__cancel" formaction="/appointments/wizard/cancel" formmethod="post">Cancel</button>
       </div>
     </form>
   </div><!-- .appt-wizard-body -->

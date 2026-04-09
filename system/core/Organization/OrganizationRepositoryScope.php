@@ -576,6 +576,7 @@ final class OrganizationRepositoryScope
             . 'INNER JOIN branches b ON b.id = cl.branch_id AND b.deleted_at IS NULL '
             . "WHERE cl.id = {$cm}.{$cid} AND cl.deleted_at IS NULL AND b.organization_id = {$orgSub}"
             . ')'
+            . ')'
             . ')';
 
         return [

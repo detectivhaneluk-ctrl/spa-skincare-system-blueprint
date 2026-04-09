@@ -39,7 +39,7 @@ $checks['create_view_uses_shared_cashier_partial'] = mustContain($createView, "r
 $checks['edit_view_uses_shared_cashier_partial'] = mustContain($editView, "require __DIR__ . '/_cashier_workspace.php'");
 $checks['shared_workspace_has_required_surface_regions'] = mustContain($workspaceView, 'cashier-left-rail')
     && mustContain($workspaceView, 'cashier-client-banner')
-    && mustContain($workspaceView, 'Ordered Articles')
+    && mustContain($workspaceView, 'Ordered articles')
     && mustContain($workspaceView, 'cashier-tab-row');
 $checks['product_add_maps_to_real_invoice_storage_contract'] = mustContain($workspaceView, "item_type: 'product'")
     && mustContain($workspaceView, 'source_id: product.id');

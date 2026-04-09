@@ -1,15 +1,11 @@
 <?php
-$title = 'Edit package plan (Catalog)';
-$mainClass = 'sales-workspace-page';
+$title = 'Edit Package Plan';
 ob_start();
-$salesWorkspaceShellModifier = 'workspace-shell--list';
-$salesWorkspaceActiveTab = '';
-$salesWorkspaceShellTitle = 'Package plans';
-$salesWorkspaceShellSub = 'Catalog package plans (templates). Client-held records: Clients. Checkout may sell a plan assignment: Sales — not the home for definitions or held records.';
-require base_path('modules/sales/views/partials/sales-workspace-shell.php');
+$pkgWorkspaceActiveTab = 'plans';
+require base_path('modules/packages/views/partials/packages-workspace-shell.php');
 ?>
-<h2 class="sales-workspace-section-title">Edit package plan</h2>
-<p class="hint" style="margin-top:0;"><strong>Catalog</strong> — you are editing the <strong>plan template</strong>. Rows a client already holds stay under <strong>Clients</strong> (client-held packages), not here.</p>
+<h2>Edit Package Plan</h2>
+<p class="hint" style="margin-top:0;">Editing the plan template. Client-held packages are managed in Clients.</p>
 <?php if (!empty($errors)): ?>
 <ul class="form-errors">
     <?php if (!empty($errors['_general'])): ?><li><?= htmlspecialchars($errors['_general']) ?></li><?php endif; ?>
@@ -50,4 +46,7 @@ require base_path('modules/sales/views/partials/sales-workspace-shell.php');
     </div>
     <div class="form-actions"><button type="submit">Save</button> <a href="/packages">← Package plans</a></div>
 </form>
-<?php $content = ob_get_clean(); require shared_path('layout/base.php'); ?>
+<?php
+$content = ob_get_clean();
+require shared_path('layout/base.php');
+?>

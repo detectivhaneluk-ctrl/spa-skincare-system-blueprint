@@ -8,6 +8,7 @@ use Core\App\Application;
 use Core\Branch\BranchContext;
 use Core\Branch\BranchDirectory;
 use Core\Contracts\ClientListProvider;
+use Core\Permissions\PermissionService;
 use Modules\Packages\Repositories\ClientPackageRepository;
 use Modules\Packages\Repositories\PackageRepository;
 use Modules\Packages\Repositories\PackageUsageRepository;
@@ -22,31 +23,88 @@ final class ClientPackageController
         private PackageService $service,
         private ClientListProvider $clients,
         private BranchDirectory $branchDirectory,
-        private BranchContext $branchContext
+        private BranchContext $branchContext,
+        private PermissionService $perm
     ) {
     }
 
     public function index(): void
     {
         $tenantBranchId = $this->tenantBranchOrRedirect();
-        $search = trim($_GET['search'] ?? '');
-        $status = trim($_GET['status'] ?? '');
+        $search = trim((string) ($_GET['search'] ?? ''));
+        $status = trim((string) ($_GET['status'] ?? ''));
+        $branchRaw = trim((string) ($_GET['branch_id'] ?? ''));
+        $filterClientId = max(0, (int) ($_GET['client_id'] ?? 0));
         $filters = [
-            'search' => $search ?: null,
-            'status' => $status ?: null,
+            'search' => $search !== '' ? $search : null,
+            'status' => $status !== '' ? $status : null,
         ];
+        if ($filterClientId > 0) {
+            $filters['client_id'] = $filterClientId;
+        }
         $page = max(1, (int) ($_GET['page'] ?? 1));
         $perPage = 20;
+        $total = $this->clientPackages->countInTenantScope($filters, $tenantBranchId);
+        $totalPages = max(1, (int) ceil($total / $perPage));
+        if ($total === 0) {
+            $page = 1;
+        } elseif ($page > $totalPages) {
+            $page = $totalPages;
+        }
         $rows = $this->clientPackages->listInTenantScope($filters, $tenantBranchId, $perPage, ($page - 1) * $perPage);
         foreach ($rows as &$r) {
             $r['client_display'] = trim(($r['client_first_name'] ?? '') . ' ' . ($r['client_last_name'] ?? '')) ?: '—';
             $r['remaining_now'] = $this->service->getRemainingSessions((int) $r['id']);
         }
         unset($r);
-        $total = $this->clientPackages->countInTenantScope($filters, $tenantBranchId);
         $branches = $this->getBranches();
         $flash = flash();
+        $sessionAuth = Application::container()->get(\Core\Auth\SessionAuth::class);
+        $uid = $sessionAuth->id();
+        $csrf = $sessionAuth->csrfToken();
+        $canBulkCancel = $uid !== null && $this->perm->has($uid, 'packages.cancel');
         require base_path('modules/packages/views/client-packages/index.php');
+    }
+
+    public function bulkCancel(): void
+    {
+        $tenantBranchId = $this->tenantBranchOrRedirect();
+        $action = trim((string) ($_POST['bulk_action'] ?? ''));
+        if ($action !== 'cancel') {
+            flash('error', 'Choose a bulk action.');
+            $this->redirectToClientPackagesIndexPostContext();
+            return;
+        }
+        $raw = $_POST['client_package_ids'] ?? [];
+        if (!is_array($raw)) {
+            $raw = [];
+        }
+        $idSet = [];
+        foreach ($raw as $v) {
+            $id = (int) $v;
+            if ($id > 0) {
+                $idSet[$id] = true;
+            }
+        }
+        $ids = array_keys($idSet);
+        if ($ids === []) {
+            flash('error', 'No packages selected.');
+            $this->redirectToClientPackagesIndexPostContext();
+            return;
+        }
+        $notesRaw = trim((string) ($_POST['bulk_notes'] ?? ''));
+        $notes = $notesRaw !== '' ? $notesRaw : null;
+        $out = $this->service->bulkCancelClientPackages($ids, $notes, $tenantBranchId);
+        $cancelled = $out['cancelled'];
+        $skipped = $out['skipped'];
+        if ($cancelled === 0) {
+            flash('error', $skipped > 0 ? 'No packages could be cancelled (not found, expired, or branch mismatch).' : 'No packages could be cancelled.');
+        } elseif ($skipped === 0) {
+            flash('success', $cancelled === 1 ? '1 package cancelled.' : "{$cancelled} packages cancelled.");
+        } else {
+            flash('warning', "{$cancelled} cancelled, {$skipped} skipped.");
+        }
+        $this->redirectToClientPackagesIndexPostContext();
     }
 
     public function assign(): void
@@ -319,5 +377,33 @@ final class ClientPackageController
         }
 
         return $branchId;
+    }
+
+    private function redirectToClientPackagesIndexPostContext(): void
+    {
+        $q = [];
+        $s = trim((string) ($_POST['list_search'] ?? ''));
+        if ($s !== '') {
+            $q['search'] = $s;
+        }
+        $st = trim((string) ($_POST['list_status'] ?? ''));
+        if ($st !== '') {
+            $q['status'] = $st;
+        }
+        $br = trim((string) ($_POST['list_branch_id'] ?? ''));
+        if ($br !== '') {
+            $q['branch_id'] = $br;
+        }
+        $cid = (int) ($_POST['list_client_id'] ?? 0);
+        if ($cid > 0) {
+            $q['client_id'] = (string) $cid;
+        }
+        $pg = (int) ($_POST['list_page'] ?? 1);
+        if ($pg > 1) {
+            $q['page'] = (string) $pg;
+        }
+        $url = '/packages/client-packages' . ($q !== [] ? '?' . http_build_query($q) : '');
+        header('Location: ' . $url);
+        exit;
     }
 }

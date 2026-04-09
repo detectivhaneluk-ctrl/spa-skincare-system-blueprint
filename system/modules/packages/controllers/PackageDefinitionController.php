@@ -23,20 +23,94 @@ final class PackageDefinitionController
     public function index(): void
     {
         $tenantBranchId = $this->tenantBranchOrRedirect();
-        $search = trim($_GET['search'] ?? '');
-        $status = trim($_GET['status'] ?? '');
+        $search = trim((string) ($_GET['search'] ?? ''));
+        $status = trim((string) ($_GET['status'] ?? ''));
+        $branchRaw = trim((string) ($_GET['branch_id'] ?? ''));
 
         $filters = [
-            'search' => $search ?: null,
-            'status' => $status ?: null,
+            'search' => $search !== '' ? $search : null,
+            'status' => $status !== '' ? $status : null,
         ];
         $page = max(1, (int) ($_GET['page'] ?? 1));
         $perPage = 20;
-        $packageDefs = $this->packages->listInTenantScope($filters, $tenantBranchId, $perPage, ($page - 1) * $perPage);
         $total = $this->packages->countInTenantScope($filters, $tenantBranchId);
+        $totalPages = max(1, (int) ceil($total / $perPage));
+        if ($total === 0) {
+            $page = 1;
+        } elseif ($page > $totalPages) {
+            $page = $totalPages;
+        }
+        $packageDefs = $this->packages->listInTenantScope($filters, $tenantBranchId, $perPage, ($page - 1) * $perPage);
         $flash = flash();
         $branches = $this->getBranches();
+        $sessionAuth = Application::container()->get(\Core\Auth\SessionAuth::class);
+        $uid = $sessionAuth->id();
+        $perm = Application::container()->get(\Core\Permissions\PermissionService::class);
+        $canCreatePlans = $uid !== null && $perm->has($uid, 'packages.create');
+        $canEditPlans = $uid !== null && $perm->has($uid, 'packages.edit');
+        $canBulkRemovePlans = $uid !== null && $perm->has($uid, 'packages.edit');
+        $csrf = $sessionAuth->csrfToken();
         require base_path('modules/packages/views/definitions/index.php');
+    }
+
+    public function bulkSoftDelete(): void
+    {
+        $tenantBranchId = $this->tenantBranchOrRedirect();
+        $action = trim((string) ($_POST['bulk_action'] ?? ''));
+        if ($action !== 'remove') {
+            flash('error', 'Choose a bulk action.');
+            $this->redirectToPackagesIndexPostContext();
+            return;
+        }
+        $raw = $_POST['package_ids'] ?? [];
+        if (!is_array($raw)) {
+            $raw = [];
+        }
+        $idSet = [];
+        foreach ($raw as $v) {
+            $id = (int) $v;
+            if ($id > 0) {
+                $idSet[$id] = true;
+            }
+        }
+        $ids = array_keys($idSet);
+        if ($ids === []) {
+            flash('error', 'No plans selected.');
+            $this->redirectToPackagesIndexPostContext();
+            return;
+        }
+        $out = $this->service->bulkSoftDeletePackageDefinitions($ids, $tenantBranchId);
+        $removed = $out['removed'];
+        $skipped = $out['skipped'];
+        if ($removed === 0) {
+            flash('error', $skipped > 0 ? 'No plans could be removed (not found or branch access).' : 'No plans could be removed.');
+        } elseif ($skipped === 0) {
+            flash('success', $removed === 1 ? '1 plan removed from catalog.' : "{$removed} plans removed from catalog.");
+        } else {
+            flash('warning', "{$removed} removed, {$skipped} skipped.");
+        }
+        $this->redirectToPackagesIndexPostContext();
+    }
+
+    public function destroy(int $id): void
+    {
+        $tenantBranchId = $this->tenantBranchOrRedirect();
+        $package = $this->packages->findInTenantScope($id, $tenantBranchId);
+        if (!$package) {
+            Application::container()->get(\Core\Errors\HttpErrorHandler::class)->handle(404);
+            return;
+        }
+        if (!$this->ensureBranchAccess($package)) {
+            return;
+        }
+        try {
+            $this->service->softDeletePackageDefinition($id, $tenantBranchId);
+            flash('success', 'Package plan removed from catalog.');
+        } catch (\Throwable $e) {
+            flash('error', $e->getMessage());
+        }
+        header('Location: /packages');
+        exit;
     }
 
     public function create(): void
@@ -187,5 +261,29 @@ final class PackageDefinitionController
         }
 
         return $branchId;
+    }
+
+    private function redirectToPackagesIndexPostContext(): void
+    {
+        $q = [];
+        $s = trim((string) ($_POST['list_search'] ?? ''));
+        if ($s !== '') {
+            $q['search'] = $s;
+        }
+        $st = trim((string) ($_POST['list_status'] ?? ''));
+        if ($st !== '') {
+            $q['status'] = $st;
+        }
+        $br = trim((string) ($_POST['list_branch_id'] ?? ''));
+        if ($br !== '') {
+            $q['branch_id'] = $br;
+        }
+        $pg = (int) ($_POST['list_page'] ?? 1);
+        if ($pg > 1) {
+            $q['page'] = (string) $pg;
+        }
+        $url = '/packages' . ($q !== [] ? '?' . http_build_query($q) : '');
+        header('Location: ' . $url);
+        exit;
     }
 }

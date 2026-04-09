@@ -40,11 +40,16 @@ final class ClientMembershipController
         $tenantBranchId = $this->tenantBranchOrRedirect();
         $search = self::coerceGetString('search');
         $status = self::coerceGetString('status');
+        $branchRaw = self::coerceGetString('branch_id');
+        $filterClientId = max(0, (int) ($_GET['client_id'] ?? 0));
 
         $filters = [
             'search' => $search ?: null,
             'status' => $status ?: null,
         ];
+        if ($filterClientId > 0) {
+            $filters['client_id'] = $filterClientId;
+        }
         $page = max(1, (int) ($_GET['page'] ?? 1));
         $perPage = 20;
         $items = $this->clientMemberships->listInTenantScope($filters, $tenantBranchId, $perPage, ($page - 1) * $perPage);

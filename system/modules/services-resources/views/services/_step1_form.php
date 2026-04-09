@@ -33,7 +33,7 @@ $feeMode = $service['staff_fee_mode'] ?? 'none';
 <div class="svc-step-general-err"><?= htmlspecialchars($errors['_general']) ?></div>
 <?php endif; ?>
 
-<form method="post" action="<?= htmlspecialchars($formAction) ?>" class="svc-step-form">
+<form method="post" action="<?= htmlspecialchars($formAction) ?>" class="svc-step-form"<?= (isset($svcStepFormExtraAttrs) && $svcStepFormExtraAttrs !== '') ? ' ' . $svcStepFormExtraAttrs : '' ?>>
     <input type="hidden" name="<?= htmlspecialchars(config('app.csrf_token_name', 'csrf_token')) ?>" value="<?= htmlspecialchars($csrf) ?>">
 
     <!-- ══ A — CLASSIFICATION ══════════════════════════════════════ -->

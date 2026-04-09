@@ -26,8 +26,7 @@ $repo = $base . '/modules/clients/repositories/ClientRepository.php';
 $edit = $base . '/modules/clients/views/edit.php';
 $layoutRender = $base . '/modules/clients/views/partials/client-details-layout-render.php';
 $sidebarLayout = $base . '/modules/clients/views/partials/client-sidebar-layout-fields.php';
-$layoutsView = $base . '/modules/clients/views/custom-fields-layouts.php';
-$fieldsIndex = $base . '/modules/clients/views/custom-fields-index.php';
+$composerView = $base . '/modules/clients/views/custom-fields-composer.php';
 
 $checks = [];
 
@@ -48,10 +47,10 @@ $checks['edit_uses_layout_render'] = mustContain($edit, 'client-details-layout-r
 $checks['layout_render_receive_emails'] = mustContain($layoutRender, 'receive_emails')
     && mustContain($layoutRender, 'receive_sms');
 $checks['sidebar_layout_partial'] = is_file($sidebarLayout) && mustContain($sidebarLayout, 'sidebarLayoutKeys');
-$checks['layouts_view_save_and_remove_forms'] = mustContain($layoutsView, 'layouts/save')
-    && mustContain($layoutsView, 'layouts/remove-item');
-$checks['fields_index_system_catalog_table'] = mustContain($fieldsIndex, 'System fields (catalog)')
-    && mustContain($fieldsIndex, '/delete');
+$checks['composer_view_save_and_remove_forms'] = mustContain($composerView, 'layouts/save')
+    && mustContain($composerView, 'layouts/remove-item');
+$checks['composer_system_catalog_table'] = mustContain($composerView, 'Built-in profile fields')
+    && mustContain($composerView, '/delete');
 
 $allPass = !in_array(false, $checks, true);
 

@@ -341,7 +341,12 @@ final class ClientRepository
      *
      * @param array<string, mixed> $filters
      */
-    private function appendStaffClientRowBranchEnvelope(string &$sql, array &$params, array $filters): void
+    /**
+     * Branch pin for staff client list / duplicate scans: explicit {@code filters['branch_id']} or current branch context.
+     *
+     * @param array<string, mixed> $filters
+     */
+    private function staffListBranchIdOrNull(array $filters): ?int
     {
         $bid = null;
         if (isset($filters['branch_id']) && $filters['branch_id'] !== null && $filters['branch_id'] !== '') {
@@ -353,13 +358,104 @@ final class ClientRepository
         if ($bid === null) {
             $cb = $this->branchContext->getCurrentBranchId();
             if ($cb !== null && $cb > 0) {
-                $bid = $cb;
+                $bid = (int) $cb;
             }
         }
+
+        return $bid;
+    }
+
+    private function appendStaffClientRowBranchEnvelope(string &$sql, array &$params, array $filters): void
+    {
+        $bid = $this->staffListBranchIdOrNull($filters);
         if ($bid !== null) {
             $sql .= ' AND (c.branch_id IS NULL OR c.branch_id = ?)';
             $params[] = $bid;
         }
+    }
+
+    /**
+     * Two distinct live clients sharing the same normalized email, mobile phone digits, and full name (strong duplicate).
+     * Respects the same optional branch envelope as {@see list()}. Requires normalized search columns (migration 119).
+     *
+     * @param array<string, mixed> $listFilters Same shape as {@see list()} filters (e.g. search — ignored here; branch_id optional).
+     * @return array{id_a: int, id_b: int}|null Lower id first.
+     */
+    public function findFirstStrongDuplicatePair(array $listFilters = []): ?array
+    {
+        if (!$this->normalizedSearchSchema->isReady()) {
+            return null;
+        }
+        $f1 = $this->orgScope->clientProfileOrgMembershipExistsClause('c1');
+        $f2 = $this->orgScope->clientProfileOrgMembershipExistsClause('c2');
+        $bid = $this->staffListBranchIdOrNull($listFilters);
+        $sql = 'SELECT c1.id AS id_a, c2.id AS id_b FROM clients c1
+            INNER JOIN clients c2 ON c1.id < c2.id
+            WHERE c1.deleted_at IS NULL AND c2.deleted_at IS NULL
+            AND c1.merged_into_client_id IS NULL AND c2.merged_into_client_id IS NULL
+            AND c1.email_lc IS NOT NULL AND c1.email_lc != \'\'
+            AND c1.email_lc = c2.email_lc
+            AND c1.phone_mobile_digits IS NOT NULL AND CHAR_LENGTH(c1.phone_mobile_digits) >= 7
+            AND c1.phone_mobile_digits = c2.phone_mobile_digits
+            AND LOWER(TRIM(CONCAT(COALESCE(c1.first_name, \'\'), \' \', COALESCE(c1.last_name, \'\')))) != \'\'
+            AND LOWER(TRIM(CONCAT(COALESCE(c1.first_name, \'\'), \' \', COALESCE(c1.last_name, \'\'))))
+                = LOWER(TRIM(CONCAT(COALESCE(c2.first_name, \'\'), \' \', COALESCE(c2.last_name, \'\'))))';
+        $params = [];
+        if ($bid !== null) {
+            $sql .= ' AND (c1.branch_id IS NULL OR c1.branch_id = ?) AND (c2.branch_id IS NULL OR c2.branch_id = ?)';
+            $params[] = $bid;
+            $params[] = $bid;
+        }
+        $sql .= $f1['sql'] . $f2['sql'];
+        $params = array_merge($params, $f1['params'], $f2['params']);
+        $sql .= ' ORDER BY c1.id ASC LIMIT 1';
+        $row = $this->db->forRead()->fetchOne($sql, $params);
+        if ($row === null) {
+            return null;
+        }
+        $a = (int) ($row['id_a'] ?? 0);
+        $b = (int) ($row['id_b'] ?? 0);
+        if ($a <= 0 || $b <= 0 || $a === $b) {
+            return null;
+        }
+
+        return ['id_a' => $a, 'id_b' => $b];
+    }
+
+    /**
+     * Count live clients matching the same strong identity triplet (for banner counts).
+     *
+     * @param array<string, mixed> $listFilters
+     */
+    public function countClientsMatchingStrongDuplicateIdentity(
+        string $emailLc,
+        string $phoneMobileDigits,
+        string $lowerTrimFullName,
+        array $listFilters = [],
+    ): int {
+        if (!$this->normalizedSearchSchema->isReady()) {
+            return 0;
+        }
+        if ($emailLc === '' || strlen($phoneMobileDigits) < 7 || $lowerTrimFullName === '') {
+            return 0;
+        }
+        $frag = $this->orgScope->clientProfileOrgMembershipExistsClause('c');
+        $bid = $this->staffListBranchIdOrNull($listFilters);
+        $sql = 'SELECT COUNT(*) AS n FROM clients c
+            WHERE c.deleted_at IS NULL AND c.merged_into_client_id IS NULL
+            AND c.email_lc = ?
+            AND c.phone_mobile_digits = ?
+            AND LOWER(TRIM(CONCAT(COALESCE(c.first_name, \'\'), \' \', COALESCE(c.last_name, \'\')))) = ?';
+        $params = [$emailLc, $phoneMobileDigits, $lowerTrimFullName];
+        if ($bid !== null) {
+            $sql .= ' AND (c.branch_id IS NULL OR c.branch_id = ?)';
+            $params[] = $bid;
+        }
+        $sql .= $frag['sql'];
+        $params = array_merge($params, $frag['params']);
+        $row = $this->db->forRead()->fetchOne($sql, $params);
+
+        return (int) ($row['n'] ?? 0);
     }
 
     /**

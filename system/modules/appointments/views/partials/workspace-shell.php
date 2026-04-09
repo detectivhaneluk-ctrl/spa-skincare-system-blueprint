@@ -18,8 +18,17 @@ foreach ($tabs as $_t) {
     }
 }
 $maxTabLabelAttr = htmlspecialchars($maxTabLabel, ENT_QUOTES, 'UTF-8');
+$useClientsStyleModuleHead = ($shellModifier === 'workspace-shell--create');
 ?>
-<div class="ds-workspace <?= $shellClass ?>">
+<div class="ds-workspace <?= $shellClass ?><?= $useClientsStyleModuleHead ? ' appointments-wizard-workspace-shell' : '' ?>">
+    <?php if ($useClientsStyleModuleHead): ?>
+    <header class="workspace-module-head">
+        <div class="workspace-module-head__text">
+            <h1 class="workspace-module-head__title">Appointments</h1>
+            <p class="workspace-module-head__sub">Manage your salon's daily schedule.</p>
+        </div>
+    </header>
+    <?php else: ?>
     <header class="appts-workspace-header ds-page-subheader">
         <div class="appts-workspace-header__row ds-page-subheader__row">
             <div class="appts-workspace-header__intro ds-page-subheader__intro">
@@ -59,4 +68,5 @@ $maxTabLabelAttr = htmlspecialchars($maxTabLabel, ENT_QUOTES, 'UTF-8');
             <?php endif; ?>
         </div>
     </header>
+    <?php endif; ?>
 </div>

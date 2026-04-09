@@ -1,12 +1,12 @@
 <?php
 $title = $title ?? 'New branch';
-$content = ob_start();
 $branch = $branch ?? ['name' => '', 'code' => ''];
 $errors = $errors ?? [];
 $csrfName = config('app.csrf_token_name', 'csrf_token');
+ob_start();
+require base_path('modules/branches/views/partials/branches-workspace-shell.php');
 ?>
-<h1>New branch</h1>
-<p><a href="/branches">← Branches</a></p>
+<h2>New branch</h2>
 <?php if ($flash && is_array($flash)): $t = array_key_first($flash); ?>
 <div class="flash flash-<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($flash[$t] ?? '') ?></div>
 <?php endif; ?>
@@ -23,6 +23,9 @@ $csrfName = config('app.csrf_token_name', 'csrf_token');
         <label for="branch-code">Code (optional)</label>
         <input type="text" id="branch-code" name="code" maxlength="50" value="<?= htmlspecialchars((string) ($branch['code'] ?? '')) ?>" placeholder="e.g. MAIN">
     </div>
-    <p><button type="submit">Create</button></p>
+    <p><button type="submit">Create</button> <a href="/branches">Cancel</a></p>
 </form>
-<?php $content = ob_get_clean(); require shared_path('layout/base.php'); ?>
+<?php
+$content = ob_get_clean();
+require shared_path('layout/base.php');
+?>

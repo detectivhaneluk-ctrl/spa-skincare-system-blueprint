@@ -37,5 +37,22 @@ workers/image-pipeline/node_modules/
 # Accidental npm at repository root (do not commit)
 /node_modules/
 
+# Vite/React Flow bundle source (npm install in frontend/services-map)
+frontend/services-map/node_modules/
+
+# Ephemeral smoke / debug artifacts at repository root (local Playwright/proof runs; not canonical source)
+# Tracked drivers stay in the index; un-ignore so they remain addable on fresh checkouts if ever removed.
+/*.cjs
+!svc-workspace-smoke.cjs
+!stf-workspace-smoke.cjs
+/*.mjs
+/*.png
+!proof-*.png
+/calendar-live-proof-gate-09.json
+/cross-module-smoke-results.json
+/drawer-smoke-results.txt
+/smoke-results.txt
+/smoke-staff-scoped-results.txt
+
 # Optional Playwright deps for system/scripts/dev-only/calendar_screenshot_once.mjs (npm install playwright)
 system/scripts/dev-only/node_modules/

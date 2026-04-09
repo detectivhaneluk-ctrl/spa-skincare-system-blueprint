@@ -1,8 +1,11 @@
 <?php
 $title = $title ?? 'Compensation rules';
 ob_start();
+$teamWorkspaceActiveTab = 'payroll';
+$teamWorkspaceShellTitle = 'Team';
+require base_path('modules/staff/views/partials/team-workspace-shell.php');
 ?>
-<h1>Compensation rules</h1>
+<h2>Compensation rules</h2>
 <?php if (!empty($flash) && is_array($flash)): $t = array_key_first($flash); ?>
 <div class="flash flash-<?= htmlspecialchars((string) $t) ?>"><?= htmlspecialchars((string) ($flash[$t] ?? '')) ?></div>
 <?php endif; ?>

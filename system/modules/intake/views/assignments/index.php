@@ -1,8 +1,11 @@
 <?php
-ob_start();
+$clientsWorkspaceActiveTab = 'intake';
+require base_path('modules/clients/views/partials/clients-workspace-data.php');
 $base = rtrim((string) config('app.url', ''), '/');
+ob_start();
+require base_path('modules/clients/views/partials/clients-workspace-shell.php');
 ?>
-<h1>Intake assignments</h1>
+<h2>Intake assignments</h2>
 <?php if (!empty($flash['success'])): ?><p><?= htmlspecialchars((string) $flash['success']) ?></p><?php endif; ?>
 <?php if (!empty($flash['error'])): ?><p><?= htmlspecialchars((string) $flash['error']) ?></p><?php endif; ?>
 <?php if (!empty($showTokenOnce)): ?>

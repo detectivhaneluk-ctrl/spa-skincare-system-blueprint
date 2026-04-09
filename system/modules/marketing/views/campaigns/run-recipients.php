@@ -1,8 +1,11 @@
 <?php
 $title = 'Campaign run recipients';
+$marketingTopActive = 'email_campaigns';
+$marketingRailActive = 'campaigns';
 ob_start();
+require base_path('modules/marketing/views/partials/marketing-top-nav.php');
 ?>
-<h1>Run #<?= (int) ($run['id'] ?? 0) ?> — <?= htmlspecialchars((string) ($campaign['name'] ?? '')) ?></h1>
+<h2>Run #<?= (int) ($run['id'] ?? 0) ?> — <?= htmlspecialchars((string) ($campaign['name'] ?? '')) ?></h2>
 <?php if (!empty($flash) && is_array($flash)): $t = array_key_first($flash); ?>
 <div class="flash flash-<?= htmlspecialchars((string) $t) ?>"><?= htmlspecialchars((string) ($flash[$t] ?? '')) ?></div>
 <?php endif; ?>

@@ -9,7 +9,7 @@ CREATE TABLE service_products (
     quantity_used DECIMAL(12,3) NOT NULL DEFAULT 1.000
         COMMENT 'Amount of this product consumed per service delivery.',
     unit_cost_snapshot DECIMAL(12,2) NULL
-        COMMENT 'Copy of product cost_price at time of assignment (informational; not kept live).',
+        COMMENT 'Copy of product cost_price at assignment (informational, not live-synced).',
     UNIQUE KEY uq_service_product (service_id, product_id),
     INDEX idx_service_products_service (service_id),
     INDEX idx_service_products_product (product_id),

@@ -188,13 +188,17 @@ ob_start();
                 <div class="appts-cal-toolbar-branch-pill-wrap">
                     <?php if (count($branches) === 1): ?>
                     <span class="appts-cal-toolbar-branch-pill appts-cal-toolbar-branch-pill--static" title="Active branch">
-                        <span class="appts-cal-toolbar-branch-pill__dot" aria-hidden="true"></span>
+                        <span class="appts-cal-toolbar-branch-pill__salon" aria-hidden="true">
+                            <svg class="appts-cal-toolbar-branch-pill__salon-svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-building"/></svg>
+                        </span>
                         <span class="appts-cal-toolbar-branch-pill__name"><?= htmlspecialchars($branches[0]['name']) ?></span>
                     </span>
                     <?php else: ?>
                     <label class="visually-hidden" for="calendar-branch">Branch</label>
                     <div class="appts-cal-toolbar-branch-pill">
-                        <span class="appts-cal-toolbar-branch-pill__dot" aria-hidden="true"></span>
+                        <span class="appts-cal-toolbar-branch-pill__salon" aria-hidden="true">
+                            <svg class="appts-cal-toolbar-branch-pill__salon-svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-building"/></svg>
+                        </span>
                         <select class="appts-cal-toolbar-branch-select" id="calendar-branch" name="branch_id" form="calendar-filter-form" title="Switch branch">
                             <?php foreach ($branches as $b): ?>
                             <option value="<?= (int) $b['id'] ?>" <?= ((int)($branchId ?? 0) === (int)$b['id']) ? 'selected' : '' ?>><?= htmlspecialchars($b['name']) ?></option>

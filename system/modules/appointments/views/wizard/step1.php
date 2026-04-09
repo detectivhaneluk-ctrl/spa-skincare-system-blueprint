@@ -55,28 +55,34 @@ $csrfName = config('app.csrf_token_name', 'csrf_token');
     </ul>
     <?php endif; ?>
 
-    <form method="post" action="/appointments/wizard/step1?branch_id=<?= $branchId ?>" class="appt-wizard-form" id="wizard-step1-form">
+    <form method="post" action="/appointments/wizard/step1?branch_id=<?= $branchId ?>" class="appt-wizard-form appt-wizard-form--step1" id="wizard-step1-form">
       <input type="hidden" name="<?= htmlspecialchars($csrfName) ?>" value="<?= htmlspecialchars($csrf) ?>">
 
       <fieldset class="appt-wizard-section">
-        <legend class="appt-wizard-section__title">Search mode</legend>
-        <div class="form-row form-row--inline">
-          <label>
+        <legend class="appt-wizard-section__title" id="wiz-legend-mode">Search mode</legend>
+        <div class="appt-wizard-choice-group" role="radiogroup" aria-labelledby="wiz-legend-mode">
+          <label class="appt-wizard-choice">
             <input type="radio" name="mode" value="service" <?= ($search['mode'] ?? 'service') === 'service' ? 'checked' : '' ?>>
-            Service
+            <span class="appt-wizard-choice__text">
+              <span class="appt-wizard-choice__label">Service</span>
+              <span class="appt-wizard-choice__hint">Book by service &amp; duration</span>
+            </span>
           </label>
-          <label style="color: #999; cursor: not-allowed;" title="Package booking is not yet available">
-            <input type="radio" name="mode" value="package" disabled>
-            Package <span class="hint">(not yet available — disabled)</span>
+          <label class="appt-wizard-choice appt-wizard-choice--disabled" title="Package booking is not yet available">
+            <input type="radio" name="mode" value="package" disabled tabindex="-1">
+            <span class="appt-wizard-choice__text">
+              <span class="appt-wizard-choice__label">Package</span>
+              <span class="appt-wizard-choice__hint">Coming soon</span>
+            </span>
           </label>
         </div>
       </fieldset>
 
       <fieldset class="appt-wizard-section">
-        <legend class="appt-wizard-section__title">Service</legend>
+        <legend class="appt-wizard-section__title" id="wiz-legend-service">Service</legend>
         <div class="form-row">
           <label for="wiz-category">Category <span class="hint">(optional filter)</span></label>
-          <select id="wiz-category" name="category_id">
+          <select id="wiz-category" name="category_id" class="appt-wizard-field">
             <option value="">— All categories —</option>
             <?php foreach ($categories as $cat): ?>
             <option value="<?= (int)($cat['id'] ?? 0) ?>"
@@ -88,7 +94,7 @@ $csrfName = config('app.csrf_token_name', 'csrf_token');
         </div>
         <div class="form-row">
           <label for="wiz-service">Service <span class="hint">*</span></label>
-          <select id="wiz-service" name="service_id" required>
+          <select id="wiz-service" name="service_id" required class="appt-wizard-field">
             <option value="">— Select service —</option>
             <?php foreach ($services as $svc): ?>
             <option value="<?= (int)($svc['id'] ?? 0) ?>"
@@ -106,6 +112,7 @@ $csrfName = config('app.csrf_token_name', 'csrf_token');
         <div class="form-row">
           <label for="wiz-guests">Guests</label>
           <input type="number" id="wiz-guests" name="guests" min="1" max="20"
+            class="appt-wizard-field appt-wizard-field--narrow"
             value="<?= max(1, (int)($search['guests'] ?? 1)) ?>">
           <?php if (!empty($errors['guests'])): ?>
           <span class="error"><?= htmlspecialchars($errors['guests']) ?></span>
@@ -114,35 +121,50 @@ $csrfName = config('app.csrf_token_name', 'csrf_token');
       </fieldset>
 
       <fieldset class="appt-wizard-section">
-        <legend class="appt-wizard-section__title">Date / time</legend>
-        <div class="form-row form-row--inline">
+        <legend class="appt-wizard-section__title" id="wiz-legend-datetime">Date / time</legend>
+        <div class="appt-wizard-choice-group appt-wizard-choice-group--date" role="radiogroup" aria-labelledby="wiz-legend-datetime">
           <?php $dateMode = $search['date_mode'] ?? 'exact'; ?>
-          <label>
+          <label class="appt-wizard-choice">
             <input type="radio" name="date_mode" value="exact" <?= $dateMode === 'exact' ? 'checked' : '' ?>>
-            Exact date
+            <span class="appt-wizard-choice__text">
+              <span class="appt-wizard-choice__label">Exact date</span>
+              <span class="appt-wizard-choice__hint">Pick one day</span>
+            </span>
           </label>
-          <label>
+          <label class="appt-wizard-choice">
             <input type="radio" name="date_mode" value="first_available" <?= $dateMode === 'first_available' ? 'checked' : '' ?>>
-            First available
+            <span class="appt-wizard-choice__text">
+              <span class="appt-wizard-choice__label">First available</span>
+              <span class="appt-wizard-choice__hint">Soonest slot</span>
+            </span>
           </label>
-          <label>
+          <label class="appt-wizard-choice">
             <input type="radio" name="date_mode" value="range" <?= $dateMode === 'range' ? 'checked' : '' ?>>
-            Date range
+            <span class="appt-wizard-choice__text">
+              <span class="appt-wizard-choice__label">Date range</span>
+              <span class="appt-wizard-choice__hint">Search a window</span>
+            </span>
           </label>
         </div>
         <div class="form-row" id="wiz-date-exact-row">
           <label for="wiz-date">Date</label>
-          <input type="date" id="wiz-date" name="date"
+          <input type="date" id="wiz-date" name="date" class="appt-wizard-field"
             value="<?= htmlspecialchars((string)($continuation['date'] ?? $search['date'] ?? '')) ?>">
           <?php if (!empty($errors['date'])): ?>
           <span class="error"><?= htmlspecialchars($errors['date']) ?></span>
           <?php endif; ?>
         </div>
-        <div class="form-row" id="wiz-date-range-row" hidden>
-          <label for="wiz-date-from">From</label>
-          <input type="date" id="wiz-date-from" name="date_from" value="<?= htmlspecialchars((string)($search['date_from'] ?? '')) ?>">
-          <label for="wiz-date-to">To</label>
-          <input type="date" id="wiz-date-to" name="date_to" value="<?= htmlspecialchars((string)($search['date_to'] ?? '')) ?>">
+        <div class="appt-wizard-daterange" id="wiz-date-range-row" hidden>
+          <div class="form-row appt-wizard-daterange__cell">
+            <label for="wiz-date-from">From</label>
+            <input type="date" id="wiz-date-from" name="date_from" class="appt-wizard-field"
+              value="<?= htmlspecialchars((string)($search['date_from'] ?? '')) ?>">
+          </div>
+          <div class="form-row appt-wizard-daterange__cell">
+            <label for="wiz-date-to">To</label>
+            <input type="date" id="wiz-date-to" name="date_to" class="appt-wizard-field"
+              value="<?= htmlspecialchars((string)($search['date_to'] ?? '')) ?>">
+          </div>
           <?php if (!empty($errors['date_from']) || !empty($errors['date_to'])): ?>
           <span class="error"><?= htmlspecialchars($errors['date_from'] ?? $errors['date_to'] ?? '') ?></span>
           <?php endif; ?>
@@ -150,10 +172,10 @@ $csrfName = config('app.csrf_token_name', 'csrf_token');
       </fieldset>
 
       <fieldset class="appt-wizard-section">
-        <legend class="appt-wizard-section__title">Filters <span class="hint">(optional)</span></legend>
+        <legend class="appt-wizard-section__title" id="wiz-legend-filters">Filters <span class="hint">(optional)</span></legend>
         <div class="form-row">
           <label for="wiz-staff">Staff preference</label>
-          <select id="wiz-staff" name="staff_id">
+          <select id="wiz-staff" name="staff_id" class="appt-wizard-field">
             <option value="">— Any available staff —</option>
             <?php foreach ($staff as $st): ?>
             <option value="<?= (int)($st['id'] ?? 0) ?>"
@@ -165,7 +187,7 @@ $csrfName = config('app.csrf_token_name', 'csrf_token');
         </div>
         <div class="form-row">
           <label for="wiz-room">Room preference</label>
-          <select id="wiz-room" name="room_id">
+          <select id="wiz-room" name="room_id" class="appt-wizard-field">
             <option value="">— Any room —</option>
             <?php foreach ($rooms as $rm): ?>
             <option value="<?= (int)($rm['id'] ?? 0) ?>"
@@ -175,21 +197,19 @@ $csrfName = config('app.csrf_token_name', 'csrf_token');
             <?php endforeach; ?>
           </select>
         </div>
-        <div class="form-row">
-          <label>
+        <div class="form-row appt-wizard-checkbox-row">
+          <label class="appt-wizard-checkbox">
             <input type="checkbox" name="include_freelancers" value="1"
               <?= !empty($search['include_freelancers']) ? 'checked' : '' ?>>
-            Include freelance staff
+            <span class="appt-wizard-checkbox__box" aria-hidden="true"></span>
+            <span class="appt-wizard-checkbox__label">Include freelance staff</span>
           </label>
         </div>
       </fieldset>
 
-      <div class="appt-wizard-actions">
+      <div class="appt-wizard-actions appt-wizard-actions--footer">
         <button type="submit" class="ds-btn ds-btn--primary">Search availability</button>
-        <form method="post" action="/appointments/wizard/cancel" style="display:inline">
-          <input type="hidden" name="<?= htmlspecialchars($csrfName) ?>" value="<?= htmlspecialchars($csrf) ?>">
-          <button type="submit" class="ds-btn ds-btn--ghost">Cancel</button>
-        </form>
+        <button type="submit" class="appt-wizard-actions__cancel" formaction="/appointments/wizard/cancel" formmethod="post">Cancel</button>
       </div>
     </form>
 

@@ -7,7 +7,7 @@ ob_start();
 ?>
 <?php require base_path('modules/clients/views/partials/clients-workspace-shell.php'); ?>
 <div class="wr-reg-pro">
-    <header class="wr-reg-pro__intro">
+    <header class="wr-reg-pro__intro wr-reg-pro__intro--list">
         <h1 class="wr-reg-pro__title">Web registrations</h1>
         <p class="wr-reg-pro__subtitle">Review inbound requests, filter by status or branch, and open a record to update review state or convert it to a client.</p>
     </header>
@@ -16,47 +16,49 @@ ob_start();
     <div class="flash flash-<?= htmlspecialchars($t) ?> wr-reg-pro__flash"><?= htmlspecialchars($flash[$t] ?? '') ?></div>
     <?php endif; ?>
 
-    <div class="wr-reg-pro__actions">
-        <a href="/clients/registrations/create" class="wr-reg-pro__btn wr-reg-pro__btn--primary">Add registration request</a>
-        <a href="/clients" class="wr-reg-pro__btn wr-reg-pro__btn--ghost">Back to clients</a>
+    <div class="wr-reg-pro__toolbar">
+        <a href="/clients/registrations/create" class="wr-reg-pro__btn wr-reg-pro__btn--primary wr-reg-pro__btn--toolbar">Add registration request</a>
+        <form method="get" class="wr-reg-pro__filters-inline" aria-label="Filter registration requests">
+            <div class="wr-reg-pro__filter-chip">
+                <label class="wr-reg-pro__filter-chip-label" for="wr-reg-filter-status">Status</label>
+                <select id="wr-reg-filter-status" name="status" class="wr-reg-pro__select wr-reg-pro__select--inline">
+                    <option value="">All</option>
+                    <?php foreach ($statusOptions as $s): ?>
+                    <option value="<?= htmlspecialchars($s) ?>" <?= (($_GET['status'] ?? '') === $s) ? 'selected' : '' ?>><?= htmlspecialchars(ucfirst($s)) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="wr-reg-pro__filter-chip">
+                <label class="wr-reg-pro__filter-chip-label" for="wr-reg-filter-source">Source</label>
+                <select id="wr-reg-filter-source" name="source" class="wr-reg-pro__select wr-reg-pro__select--inline">
+                    <option value="">All</option>
+                    <?php foreach ($sources as $s): ?>
+                    <option value="<?= htmlspecialchars($s) ?>" <?= (($_GET['source'] ?? '') === $s) ? 'selected' : '' ?>><?= htmlspecialchars($s) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="wr-reg-pro__filter-chip">
+                <label class="wr-reg-pro__filter-chip-label" for="wr-reg-filter-branch">Branch</label>
+                <select id="wr-reg-filter-branch" name="branch_id" class="wr-reg-pro__select wr-reg-pro__select--inline">
+                    <option value="">All</option>
+                    <?php foreach ($branches as $b): ?>
+                    <?php $bid = (string) ((int) ($b['id'] ?? 0)); ?>
+                    <option value="<?= htmlspecialchars($bid) ?>" <?= (($_GET['branch_id'] ?? '') === $bid) ? 'selected' : '' ?>><?= htmlspecialchars((string) $b['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <button type="submit" class="wr-reg-pro__btn wr-reg-pro__btn--filter-apply">Apply</button>
+        </form>
     </div>
 
-    <form method="get" class="wr-reg-pro__filters" aria-label="Filter registration requests">
-        <div class="wr-reg-pro__filter-group">
-            <label class="wr-reg-pro__filter-label" for="wr-reg-filter-status">Status</label>
-            <select id="wr-reg-filter-status" name="status" class="wr-reg-pro__select">
-                <option value="">All statuses</option>
-                <?php foreach ($statusOptions as $s): ?>
-                <option value="<?= htmlspecialchars($s) ?>" <?= (($_GET['status'] ?? '') === $s) ? 'selected' : '' ?>><?= htmlspecialchars(ucfirst($s)) ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        <div class="wr-reg-pro__filter-group">
-            <label class="wr-reg-pro__filter-label" for="wr-reg-filter-source">Source</label>
-            <select id="wr-reg-filter-source" name="source" class="wr-reg-pro__select">
-                <option value="">All sources</option>
-                <?php foreach ($sources as $s): ?>
-                <option value="<?= htmlspecialchars($s) ?>" <?= (($_GET['source'] ?? '') === $s) ? 'selected' : '' ?>><?= htmlspecialchars($s) ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        <div class="wr-reg-pro__filter-group">
-            <label class="wr-reg-pro__filter-label" for="wr-reg-filter-branch">Branch</label>
-            <select id="wr-reg-filter-branch" name="branch_id" class="wr-reg-pro__select">
-                <option value="">All branches</option>
-                <?php foreach ($branches as $b): ?>
-                <?php $bid = (string) ((int) ($b['id'] ?? 0)); ?>
-                <option value="<?= htmlspecialchars($bid) ?>" <?= (($_GET['branch_id'] ?? '') === $bid) ? 'selected' : '' ?>><?= htmlspecialchars((string) $b['name']) ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        <div class="wr-reg-pro__filter-actions">
-            <button type="submit" class="wr-reg-pro__btn wr-reg-pro__btn--primary wr-reg-pro__btn--compact">Apply filters</button>
-        </div>
-    </form>
-
     <?php if (empty($registrations)): ?>
-    <section class="wr-reg-pro__empty-card" aria-live="polite">
+    <section class="wr-reg-pro__empty wr-reg-pro__empty--illustrated" aria-live="polite">
+        <div class="wr-reg-pro__empty-icon" aria-hidden="true">
+            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 8a2 2 0 0 1 2-2h2l1-2h6l1 2h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8z" stroke="currentColor" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="12" cy="13" r="3" stroke="currentColor" stroke-width="1.35"/>
+            </svg>
+        </div>
         <h2 class="wr-reg-pro__empty-title">No requests match</h2>
         <p class="wr-reg-pro__empty-text">Try another filter or add a registration request to get started.</p>
     </section>
@@ -90,7 +92,7 @@ ob_start();
                             <?php if (!empty($r['linked_client_id'])): ?>
                                 <a class="wr-reg-pro__link" href="/clients/<?= (int) $r['linked_client_id'] ?>">#<?= (int) $r['linked_client_id'] ?> <?= htmlspecialchars(trim((string) ($r['linked_client_first_name'] ?? '') . ' ' . (string) ($r['linked_client_last_name'] ?? ''))) ?></a>
                             <?php else: ?>
-                                <span class="wr-reg-pro__muted">—</span>
+                                <span class="wr-reg-pro__cell-empty"></span>
                             <?php endif; ?>
                         </td>
                         <td class="wr-reg-pro__cell-muted"><?= htmlspecialchars((string) ($r['created_at'] ?? '')) ?></td>

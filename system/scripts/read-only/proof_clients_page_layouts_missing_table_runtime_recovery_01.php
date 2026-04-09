@@ -22,7 +22,7 @@ $migration = $base . '/data/migrations/113_clients_fields_layouts_and_extended_c
 $service = $base . '/modules/clients/services/ClientPageLayoutService.php';
 $controller = $base . '/modules/clients/controllers/ClientController.php';
 $shell = $base . '/modules/clients/views/partials/client-fields-admin-shell.php';
-$layoutsView = $base . '/modules/clients/views/custom-fields-layouts.php';
+$layoutsView = $base . '/modules/clients/views/custom-fields-composer.php';
 
 $checks = [];
 
@@ -43,7 +43,7 @@ $checks['controller_get_shift_guarded'] = mustContain($controller, 'shift_field'
 $checks['shell_operator_notice'] = mustContain($shell, 'LAYOUT_STORAGE_REQUIRES_MIGRATION_MESSAGE')
     && mustContain($shell, 'scripts/migrate.php');
 $checks['layouts_view_blocked_branch'] = mustContain($layoutsView, 'layoutStorageReady')
-    && mustContain($layoutsView, 'layout editor is disabled');
+    && mustContain($layoutsView, 'Layout storage is not available');
 
 $allPass = !in_array(false, $checks, true);
 

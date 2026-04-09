@@ -200,6 +200,11 @@ require base_path('modules/staff/views/partials/team-workspace-shell.php');
             row.classList.toggle('staff-schedule-row--off', !isOn);
             inputs.forEach(function (i) { i.disabled = !isOn; });
             if (copyBtn) copyBtn.disabled = !isOn;
+            if (isOn) {
+                var arr = Array.from(inputs);
+                if (arr[0] && !arr[0].value) arr[0].value = '09:00';
+                if (arr[1] && !arr[1].value) arr[1].value = '17:00';
+            }
         });
     });
 

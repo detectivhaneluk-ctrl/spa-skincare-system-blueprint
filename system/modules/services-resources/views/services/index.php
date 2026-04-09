@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 $title       = $trashView ? 'Services — Trash' : 'Services';
 $csrfName    = htmlspecialchars(config('app.csrf_token_name', 'csrf_token'));
 $csrfVal     = htmlspecialchars($csrf ?? '');
@@ -36,36 +36,63 @@ ob_start();
 $svcWorkspaceActiveTab = 'services';
 require base_path('modules/services-resources/views/partials/services-workspace-shell.php');
 
-// ── Group services by category for Structure view ──────────────────────────
-$categoryMap  = [];
-foreach ($categories as $c) {
-    $categoryMap[(int) $c['id']] = $c;
+// ── Category tree + per-category services for Structure (map) view ─────────
+$serviceMapCategories = $serviceMapCategories ?? [];
+$categoryById = [];
+foreach ($serviceMapCategories as $c) {
+    $categoryById[(int) $c['id']] = $c;
 }
-$grouped      = [];   // category_id => ['category' => [...], 'services' => [...]]
-$uncategorized = [];  // services with no category
+$childrenByParent = [];
+foreach ($serviceMapCategories as $c) {
+    $pid = isset($c['parent_id']) && $c['parent_id'] !== '' && $c['parent_id'] !== null
+        ? (int) $c['parent_id']
+        : 0;
+    $childrenByParent[$pid][] = $c;
+}
+foreach ($childrenByParent as &$grp) {
+    usort(
+        $grp,
+        fn ($a, $b) => ($a['sort_order'] ?? 0) <=> ($b['sort_order'] ?? 0)
+            ?: strcmp((string) ($a['name'] ?? ''), (string) ($b['name'] ?? ''))
+    );
+}
+unset($grp);
+
+$servicesByCategory = [];
+$uncategorized      = [];
 foreach ($services as $s) {
     $cid = (int) ($s['category_id'] ?? 0);
-    if ($cid && isset($categoryMap[$cid])) {
-        $grouped[$cid]['category'] = $categoryMap[$cid];
-        $grouped[$cid]['services'][] = $s;
+    if ($cid > 0 && isset($categoryById[$cid])) {
+        $servicesByCategory[$cid][] = $s;
     } else {
         $uncategorized[] = $s;
     }
 }
-// Preserve category sort order from $categories list
-$orderedGrouped = [];
-foreach ($categories as $c) {
-    $cid = (int) $c['id'];
-    if (isset($grouped[$cid])) {
-        $orderedGrouped[$cid] = $grouped[$cid];
-    }
+foreach ($servicesByCategory as &$sg) {
+    usort($sg, fn ($a, $b) => strcmp((string) ($a['name'] ?? ''), (string) ($b['name'] ?? '')));
 }
-// Add any category IDs that appeared in services but were absent from $categories list
-foreach ($grouped as $cid => $g) {
-    if (!isset($orderedGrouped[$cid])) {
-        $orderedGrouped[$cid] = $g;
-    }
+unset($sg);
+
+$mapRootCategoryId = $baseCategory !== null ? $baseCategory : null;
+
+require_once __DIR__ . '/_flow_tree_build.php';
+$olliraFlowTree = ollira_services_build_flow_tree(
+    $childrenByParent,
+    $categoryById,
+    $servicesByCategory,
+    $uncategorized,
+    'Ollira',
+    $mapRootCategoryId
+);
+try {
+    $olliraFlowJson = json_encode(
+        $olliraFlowTree,
+        JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP
+    );
+} catch (Throwable $e) {
+    $olliraFlowJson = '{"id":"root","type":"root","name":"Ollira","children":[]}';
 }
+$olliraFlowBuilt = is_file(base_path('public/assets/services-map/ollira-services-map.js'));
 
 ?>
 <?php if ($flash && is_array($flash)): $fk = array_key_first($flash); ?>
@@ -388,137 +415,278 @@ foreach ($grouped as $cid => $g) {
 <div id="svc-view-structure" class="svc-view <?= $activeView === 'structure' ? '' : 'svc-view--hidden' ?>">
 <?php if ($trashView): ?>
 <p class="svc-muted" style="margin:1rem 0;">Structure view is not available in Trash mode.</p>
-<?php elseif (empty($services) && empty($uncategorized)): ?>
+<?php elseif (empty($serviceMapCategories) && empty($services)): ?>
 <div class="svc-empty">
     <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".3" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-    <p class="svc-empty__title">No services yet</p>
-    <p class="svc-empty__sub"><a href="/services-resources/services/create">Create your first service</a> to see the structure.</p>
+    <p class="svc-empty__title">No categories or services yet</p>
+    <p class="svc-empty__sub"><a href="/services-resources/categories/create">Add a category</a> or <a href="/services-resources/services/create">create a service</a> to build your map.</p>
 </div>
 <?php else: ?>
 
-<!-- Structure toolbar -->
-<div class="svc-struct-toolbar">
+<div class="svc-map-toolbar svc-struct-toolbar">
     <div class="svc-struct-toolbar__left">
+        <?php if (!$olliraFlowBuilt): ?>
         <div class="svc-search-wrap" id="svc-struct-search-wrap">
             <svg class="svc-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" id="svc-struct-search" class="svc-search-input" placeholder="Search in structure…" autocomplete="off" aria-label="Search services in structure view">
+            <input type="text" id="svc-struct-search" class="svc-search-input" placeholder="Search map…" autocomplete="off" aria-label="Search categories and services on the map">
             <button type="button" id="svc-struct-search-clear" class="svc-search-clear" title="Clear" hidden>✕</button>
         </div>
+        <?php endif; ?>
     </div>
-    <div class="svc-struct-toolbar__right">
-        <button type="button" class="svc-struct-expand-all taxmgr-btn-icon-sm" id="svc-struct-expand-all">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-            Expand all
-        </button>
-        <button type="button" class="svc-struct-collapse-all taxmgr-btn-icon-sm" id="svc-struct-collapse-all">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="10" y1="14" x2="3" y2="21"/><line x1="21" y1="3" x2="14" y2="10"/></svg>
-            Collapse all
-        </button>
-        <a href="/services-resources/categories" class="taxmgr-btn-icon-sm">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-            Manage categories
+    <div class="svc-struct-toolbar__right svc-map-toolbar__right">
+        <a href="/services-resources/categories" class="svc-map-toolbar-btn taxmgr-btn-icon-sm">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/></svg>
+            Edit order
         </a>
-    </div>
-</div>
-
-<p id="svc-struct-no-results" class="svc-no-results" hidden>No services match your search.</p>
-
-<div class="svc-struct-grid" id="svc-struct-grid">
-
-<?php foreach ($orderedGrouped as $cid => $group):
-    $cat  = $group['category'];
-    $svcs = $group['services'];
-    $cnt  = count($svcs);
-?>
-<div class="svc-struct-group" data-cat-id="<?= (int) $cid ?>" id="svc-struct-group-<?= (int) $cid ?>">
-    <div class="svc-struct-group-head">
-        <button type="button" class="svc-struct-toggle" data-target="svc-struct-group-<?= (int) $cid ?>" aria-expanded="true" aria-label="Toggle <?= htmlspecialchars($cat['name'] ?? '') ?>">
-            <svg class="svc-struct-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+        <a href="<?= htmlspecialchars(svcIndexUrl(['category' => $baseCategory ? (string) $baseCategory : null, 'sort' => $baseSort, 'dir' => $baseDir])) ?>" class="svc-map-toolbar-btn taxmgr-btn-icon-sm">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            List view
+        </a>
+        <?php if (!$olliraFlowBuilt): ?>
+        <button type="button" class="svc-map-toolbar-btn taxmgr-btn-icon-sm" id="svc-map-reset-view" title="Reset pan and zoom">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            Reset view
         </button>
-        <a href="/services-resources/categories/<?= (int) $cid ?>" class="svc-struct-cat-name"><?= htmlspecialchars($cat['name'] ?? '') ?></a>
-        <?php if (!empty($cat['path']) && strpos($cat['path'], ' › ') !== false): ?>
-        <span class="svc-struct-cat-path"><?= htmlspecialchars($cat['path'] ?? '') ?></span>
-        <?php endif; ?>
-        <span class="svc-struct-cat-count" title="<?= $cnt ?> <?= $cnt === 1 ? 'service' : 'services' ?>"><?= $cnt ?></span>
-        <div class="svc-struct-cat-actions">
-            <a href="/services-resources/categories?edit=<?= (int) $cid ?>" class="svc-struct-act" title="Edit category">Edit cat.</a>
-            <a href="<?= htmlspecialchars(svcIndexUrl(['view' => null, 'category' => (string) $cid])) ?>" class="svc-struct-act" title="Filter list to this category">List view</a>
-        </div>
-    </div>
-    <div class="svc-struct-group-body" id="svc-struct-body-<?= (int) $cid ?>">
-        <?php foreach ($svcs as $s):
-            $sd = (int) ($s['duration_minutes'] ?? 0);
-            $sdLabel = $sd >= 60 ? (floor($sd / 60) . 'h' . ($sd % 60 ? ' ' . ($sd % 60) . 'm' : '')) : ($sd > 0 ? $sd . 'm' : '—');
-            $sActive = !empty($s['is_active']);
-        ?>
-        <div class="svc-struct-row" data-name="<?= htmlspecialchars(strtolower($s['name'] ?? '')) ?>" data-sku="<?= htmlspecialchars(strtolower($s['sku'] ?? '')) ?>">
-            <span class="svc-struct-row-indent" aria-hidden="true"></span>
-            <div class="svc-struct-row-content">
-                <a href="/services-resources/services/<?= (int) $s['id'] ?>" class="svc-struct-svc-name"><?= htmlspecialchars($s['name'] ?? '') ?></a>
-                <div class="svc-struct-svc-meta">
-                    <?php if ($sdLabel !== '—'): ?><span class="svc-meta-chip svc-meta-chip--dur"><?= htmlspecialchars($sdLabel) ?></span><?php endif; ?>
-                    <?php $sp = (float) ($s['price'] ?? 0); if ($sp > 0): ?><span class="svc-meta-chip svc-meta-chip--price"><?= htmlspecialchars(number_format($sp, 2)) ?></span><?php endif; ?>
-                    <?php if (!empty($s['add_on'])): ?><span class="svc-meta-chip svc-meta-chip--addon">Add-on</span><?php endif; ?>
-                    <?php if (!empty($s['show_in_online_menu'])): ?><span class="svc-meta-chip svc-meta-chip--online">Online</span><?php endif; ?>
-                    <span class="svc-meta-status <?= $sActive ? 'svc-status--active' : 'svc-status--inactive' ?>" style="margin-left:auto;"><?= $sActive ? 'Active' : 'Inactive' ?></span>
-                </div>
-            </div>
-            <div class="svc-struct-row-actions">
-                <a href="/services-resources/services/<?= (int) $s['id'] ?>/edit" class="svc-act svc-act--edit">Edit</a>
-            </div>
-        </div>
-        <?php endforeach; ?>
-        <?php if ($cnt === 0): ?>
-        <div class="svc-struct-row svc-struct-row--empty">
-            <span class="svc-struct-row-indent" aria-hidden="true"></span>
-            <span class="svc-muted" style="font-size:0.8rem;">No services in this category.</span>
-            <a href="/services-resources/services/create" class="svc-act svc-act--edit" style="margin-left:auto;">+ Add service</a>
-        </div>
+        <button type="button" class="svc-struct-expand-all taxmgr-btn-icon-sm" id="svc-struct-expand-all">Expand all</button>
+        <button type="button" class="svc-struct-collapse-all taxmgr-btn-icon-sm" id="svc-struct-collapse-all">Collapse all</button>
         <?php endif; ?>
     </div>
 </div>
-<?php endforeach; ?>
 
-<?php if (!empty($uncategorized)): ?>
-<div class="svc-struct-group svc-struct-group--uncat" id="svc-struct-group-uncat">
-    <div class="svc-struct-group-head">
-        <button type="button" class="svc-struct-toggle" data-target="svc-struct-group-uncat" aria-expanded="true" aria-label="Toggle Uncategorized">
-            <svg class="svc-struct-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <span class="svc-struct-cat-name svc-struct-cat-name--uncat">Uncategorized</span>
-        <span class="svc-struct-cat-count" title="<?= count($uncategorized) ?> uncategorized services"><?= count($uncategorized) ?></span>
-        <div class="svc-struct-cat-actions">
-            <a href="/services-resources/categories" class="svc-struct-act" title="Assign a category">Manage categories</a>
+<?php if ($olliraFlowBuilt): ?>
+<link rel="stylesheet" href="/assets/services-map/ollira-services-map.css">
+<p id="svc-struct-no-results" class="svc-no-results" hidden></p>
+<div
+    id="ollira-svc-flow-root"
+    class="ollira-svc-flow-host"
+    style="min-height:72vh;height:72vh;width:100%;box-sizing:border-box"
+    data-csrf-name="<?= htmlspecialchars($csrfName, ENT_QUOTES, 'UTF-8') ?>"
+    data-csrf-value="<?= htmlspecialchars($csrfVal, ENT_QUOTES, 'UTF-8') ?>"
+></div>
+<script type="application/json" id="ollira-svc-flow-json"><?= $olliraFlowJson ?></script>
+<script src="/assets/services-map/ollira-services-map.js" defer></script>
+<script>
+(function () {
+    var flowMounted = false;
+    function showFlowErr(msg) {
+        var el = document.getElementById('ollira-svc-flow-root');
+        if (el && !flowMounted) {
+            el.innerHTML = '<p class="svc-muted" style="padding:1rem;">' + msg + '</p>';
+        }
+    }
+    function bootOlliraFlow() {
+        var struct = document.getElementById('svc-view-structure');
+        if (struct && struct.classList.contains('svc-view--hidden')) {
+            return;
+        }
+        var el = document.getElementById('ollira-svc-flow-root');
+        var j = document.getElementById('ollira-svc-flow-json');
+        var M = window.OlliraServicesMap;
+        if (!el || !j) return;
+        if (!M || typeof M.mount !== 'function') {
+            return;
+        }
+        if (flowMounted) {
+            requestAnimationFrame(function () { window.dispatchEvent(new Event('resize')); });
+            return;
+        }
+        var csrfName = el.getAttribute('data-csrf-name') || '';
+        var csrfVal = el.getAttribute('data-csrf-value') || '';
+        try {
+            function openStructureDrawer(url) {
+                if (window.AppDrawer && typeof window.AppDrawer.openUrl === 'function') {
+                    window.AppDrawer.openUrl(url);
+                    return true;
+                }
+                return false;
+            }
+            M.mount(el, {
+                tree: JSON.parse(j.textContent || '{}'),
+                height: '72vh',
+                categoryReparentUrl: '/services-resources/categories/reparent',
+                csrfToken: csrfVal,
+                onAction: function (p) {
+                    if (p.action === 'reparent-success') {
+                        window.location.reload();
+                        return;
+                    }
+                    if (p.action === 'edit') {
+                        if (p.node.type === 'service') {
+                            var editSvc = '/services-resources/services/' + String(p.node.id).replace(/^svc-/, '') + '/edit';
+                            if (!openStructureDrawer(editSvc)) {
+                                window.location.assign(editSvc);
+                            }
+                            return;
+                        }
+                        if (p.node.type === 'category') {
+                            var ce = String(p.node.id).replace(/^cat-/, '');
+                            if (ce === 'uncategorized') return;
+                            var catEdit = '/services-resources/categories?edit=' + encodeURIComponent(ce);
+                            if (!openStructureDrawer(catEdit)) {
+                                window.location.assign(catEdit);
+                            }
+                            return;
+                        }
+                    }
+                    if (p.action === 'add-child') {
+                        if (p.nodeId === 'root') {
+                            var catRoot = '/services-resources/categories';
+                            if (!openStructureDrawer(catRoot)) {
+                                window.location.assign(catRoot);
+                            }
+                            return;
+                        }
+                        if (String(p.nodeId).indexOf('cat-') === 0) {
+                            var cp = String(p.nodeId).replace(/^cat-/, '');
+                            if (cp === 'uncategorized') {
+                                var crUnc = '/services-resources/services/create';
+                                if (!openStructureDrawer(crUnc)) {
+                                    window.location.assign(crUnc);
+                                }
+                                return;
+                            }
+                            var catChild = '/services-resources/categories?parent_id=' + encodeURIComponent(cp);
+                            if (!openStructureDrawer(catChild)) {
+                                window.location.assign(catChild);
+                            }
+                            return;
+                        }
+                        var crSvc = '/services-resources/services/create';
+                        if (!openStructureDrawer(crSvc)) {
+                            window.location.assign(crSvc);
+                        }
+                    }
+                    if (p.action === 'delete' && p.node.type === 'service') {
+                        var sid = String(p.node.id).replace(/^svc-/, '');
+                        if (!confirm('Move «' + (p.node.name || '') + '» to Trash?')) return;
+                        if (window.AppDrawer && typeof window.fetch === 'function') {
+                            var fd = new FormData();
+                            fd.append(csrfName, csrfVal);
+                            fetch('/services-resources/services/' + encodeURIComponent(sid) + '/delete?drawer=1', {
+                                method: 'POST',
+                                body: fd,
+                                credentials: 'same-origin',
+                                headers: {
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                    'X-App-Drawer': '1'
+                                }
+                            })
+                                .then(function (r) {
+                                    return r.json().catch(function () {
+                                        return null;
+                                    });
+                                })
+                                .then(function (payload) {
+                                    if (payload && payload.success && payload.data && payload.data.reload_host) {
+                                        var T = window.OlliraToast;
+                                        if (T && payload.data.message && typeof T.success === 'function') {
+                                            T.success(payload.data.message);
+                                        }
+                                        window.location.reload();
+                                        return;
+                                    }
+                                    var msg =
+                                        payload && payload.error && payload.error.message
+                                            ? payload.error.message
+                                            : 'Could not move service to Trash.';
+                                    var Te = window.OlliraToast;
+                                    if (Te && typeof Te.error === 'function') {
+                                        Te.error(msg);
+                                    } else {
+                                        window.alert(msg);
+                                    }
+                                })
+                                .catch(function () {
+                                    var Tx = window.OlliraToast;
+                                    if (Tx && typeof Tx.error === 'function') {
+                                        Tx.error('Could not move service to Trash.');
+                                    }
+                                });
+                            return;
+                        }
+                        var f = document.createElement('form');
+                        f.method = 'post';
+                        f.action = '/services-resources/services/' + sid + '/delete';
+                        var inp = document.createElement('input');
+                        inp.type = 'hidden';
+                        inp.name = csrfName;
+                        inp.value = csrfVal;
+                        f.appendChild(inp);
+                        document.body.appendChild(f);
+                        f.submit();
+                    }
+                }
+            });
+            flowMounted = true;
+            requestAnimationFrame(function () { window.dispatchEvent(new Event('resize')); });
+        } catch (e) {
+            if (window.console && console.error) console.error(e);
+            showFlowErr('Map failed to start. Check the browser console.');
+        }
+    }
+    function waitForMapLib(then) {
+        var n = 0;
+        var id = setInterval(function () {
+            n++;
+            if (window.OlliraServicesMap && typeof window.OlliraServicesMap.mount === 'function') {
+                clearInterval(id);
+                then();
+            } else if (n >= 120) {
+                clearInterval(id);
+                showFlowErr('Could not load /assets/services-map/ollira-services-map.js (blocked or 404). Run <code>npm run build</code> in <code>frontend/services-map</code>.');
+            }
+        }, 50);
+    }
+    function whenStructureVisible(then) {
+        var struct = document.getElementById('svc-view-structure');
+        if (!struct) return;
+        if (!struct.classList.contains('svc-view--hidden')) {
+            then();
+            return;
+        }
+        var mo = new MutationObserver(function () {
+            if (!struct.classList.contains('svc-view--hidden')) {
+                mo.disconnect();
+                then();
+            }
+        });
+        mo.observe(struct, { attributes: true, attributeFilter: ['class'] });
+    }
+    function schedule() {
+        whenStructureVisible(function () {
+            waitForMapLib(bootOlliraFlow);
+        });
+    }
+    if (document.readyState === 'complete') {
+        schedule();
+    } else {
+        window.addEventListener('load', schedule);
+    }
+})();
+</script>
+<?php else: ?>
+<p class="svc-muted" style="margin:0 0 0.75rem;font-size:0.8125rem;">Run <code>cd frontend/services-map && npm install && npm run build</code> to enable the React Flow mind-map (dagre layout).</p>
+<p id="svc-struct-no-results" class="svc-no-results" hidden>No matches in this map.</p>
+<div class="svc-map-wrap" id="svc-map-wrap">
+    <div class="svc-map-viewport" id="svc-map-viewport" tabindex="0" aria-label="Service category map, drag to pan">
+        <button type="button" class="svc-map-pan svc-map-pan--n" id="svc-map-pan-n" aria-label="Pan up"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><polyline points="18 15 12 9 6 15"/></svg></button>
+        <button type="button" class="svc-map-pan svc-map-pan--s" id="svc-map-pan-s" aria-label="Pan down"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></button>
+        <button type="button" class="svc-map-pan svc-map-pan--w" id="svc-map-pan-w" aria-label="Pan left"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg></button>
+        <button type="button" class="svc-map-pan svc-map-pan--e" id="svc-map-pan-e" aria-label="Pan right"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg></button>
+        <div class="svc-map-zoom" role="group" aria-label="Zoom">
+            <button type="button" class="svc-map-zoom__btn" id="svc-map-zoom-out" aria-label="Zoom out">−</button>
+            <span class="svc-map-zoom__label" id="svc-map-zoom-label">100%</span>
+            <button type="button" class="svc-map-zoom__btn" id="svc-map-zoom-in" aria-label="Zoom in">+</button>
         </div>
-    </div>
-    <div class="svc-struct-group-body" id="svc-struct-body-uncat">
-        <?php foreach ($uncategorized as $s):
-            $sd = (int) ($s['duration_minutes'] ?? 0);
-            $sdLabel = $sd >= 60 ? (floor($sd / 60) . 'h' . ($sd % 60 ? ' ' . ($sd % 60) . 'm' : '')) : ($sd > 0 ? $sd . 'm' : '—');
-            $sActive = !empty($s['is_active']);
-        ?>
-        <div class="svc-struct-row" data-name="<?= htmlspecialchars(strtolower($s['name'] ?? '')) ?>" data-sku="<?= htmlspecialchars(strtolower($s['sku'] ?? '')) ?>">
-            <span class="svc-struct-row-indent" aria-hidden="true"></span>
-            <div class="svc-struct-row-content">
-                <a href="/services-resources/services/<?= (int) $s['id'] ?>" class="svc-struct-svc-name"><?= htmlspecialchars($s['name'] ?? '') ?></a>
-                <div class="svc-struct-svc-meta">
-                    <?php if ($sdLabel !== '—'): ?><span class="svc-meta-chip svc-meta-chip--dur"><?= htmlspecialchars($sdLabel) ?></span><?php endif; ?>
-                    <?php $sp = (float) ($s['price'] ?? 0); if ($sp > 0): ?><span class="svc-meta-chip svc-meta-chip--price"><?= htmlspecialchars(number_format($sp, 2)) ?></span><?php endif; ?>
-                    <?php if (!empty($s['add_on'])): ?><span class="svc-meta-chip svc-meta-chip--addon">Add-on</span><?php endif; ?>
-                    <?php if (!empty($s['show_in_online_menu'])): ?><span class="svc-meta-chip svc-meta-chip--online">Online</span><?php endif; ?>
-                    <span class="svc-meta-status <?= $sActive ? 'svc-status--active' : 'svc-status--inactive' ?>" style="margin-left:auto;"><?= $sActive ? 'Active' : 'Inactive' ?></span>
-                </div>
-            </div>
-            <div class="svc-struct-row-actions">
-                <a href="/services-resources/services/<?= (int) $s['id'] ?>/edit" class="svc-act svc-act--edit">Edit</a>
+        <div class="svc-map-stage" id="svc-map-stage">
+            <div class="svc-map-canvas" id="svc-map-canvas">
+                <?php require __DIR__ . '/_structure_map_tree.php'; ?>
             </div>
         </div>
-        <?php endforeach; ?>
     </div>
 </div>
 <?php endif; ?>
-
-</div><!-- /.svc-struct-grid -->
 <?php endif; ?>
 </div><!-- /#svc-view-structure -->
 
@@ -622,91 +790,183 @@ foreach ($grouped as $cid => $g) {
         if (target) { target.focus(); target.select(); }
     });
 
-    // ── Structure-view collapse/expand ─────────────────────────────────────
-    function applyStructureCollapse(groupId, collapse) {
-        var body = document.getElementById('svc-struct-body-' + groupId);
-        var group = document.getElementById('svc-struct-group-' + groupId);
-        if (!body || !group) return;
-        body.style.display = collapse ? 'none' : '';
-        var btn = group.querySelector('.svc-struct-toggle');
-        if (btn) {
-            btn.setAttribute('aria-expanded', collapse ? 'false' : 'true');
-            var chevron = btn.querySelector('.svc-struct-chevron');
-            if (chevron) chevron.style.transform = collapse ? 'rotate(-90deg)' : '';
+    // ── Structure map (legacy HTML tree only when React bundle not built) ───
+    if (document.getElementById('svc-map-wrap')) {
+    function setMapBranchCollapsed(ul, collapsed) {
+        if (!ul) return;
+        ul.classList.toggle('svc-map-children--collapsed', collapsed);
+        var prev = ul.previousElementSibling;
+        if (prev && prev.classList && prev.classList.contains('svc-map-node')) {
+            var tbtn = prev.querySelector('.svc-map-collapse');
+            if (tbtn) {
+                tbtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+                var ic = tbtn.querySelector('.svc-map-collapse__icon');
+                if (ic) ic.style.transform = collapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+            }
         }
     }
 
-    document.querySelectorAll('.svc-struct-toggle').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            var target = btn.getAttribute('data-target');
-            var body = document.getElementById('svc-struct-body-' + target.replace('svc-struct-group-', ''));
-            var group = document.getElementById(target);
-            if (!body) return;
-            var collapsed = body.style.display === 'none';
-            applyStructureCollapse(target.replace('svc-struct-group-', ''), !collapsed);
+    document.querySelectorAll('.svc-map-collapse').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            var node = btn.closest('.svc-map-branch');
+            if (!node) return;
+            var ul = node.querySelector(':scope > ul.svc-map-children');
+            if (!ul) return;
+            var collapsed = !ul.classList.contains('svc-map-children--collapsed');
+            setMapBranchCollapsed(ul, collapsed);
         });
     });
 
     var expandAllBtn   = document.getElementById('svc-struct-expand-all');
     var collapseAllBtn = document.getElementById('svc-struct-collapse-all');
 
-    function getAllGroupIds() {
-        var groups = document.querySelectorAll('#svc-struct-grid .svc-struct-group');
-        return Array.prototype.map.call(groups, function (g) {
-            return g.id.replace('svc-struct-group-', '');
-        });
-    }
-
     if (expandAllBtn) {
         expandAllBtn.addEventListener('click', function () {
-            getAllGroupIds().forEach(function (id) { applyStructureCollapse(id, false); });
+            document.querySelectorAll('#svc-map-tree ul.svc-map-children').forEach(function (ul) {
+                setMapBranchCollapsed(ul, false);
+            });
         });
     }
     if (collapseAllBtn) {
         collapseAllBtn.addEventListener('click', function () {
-            getAllGroupIds().forEach(function (id) { applyStructureCollapse(id, true); });
+            document.querySelectorAll('#svc-map-tree ul.svc-map-children').forEach(function (ul) {
+                setMapBranchCollapsed(ul, true);
+            });
         });
     }
 
-    // ── Structure search ────────────────────────────────────────────────────
+    // ── Structure map: pan & zoom ───────────────────────────────────────────
+    var mapCanvas = document.getElementById('svc-map-canvas');
+    var mapStage  = document.getElementById('svc-map-stage');
+    var mapViewport = document.getElementById('svc-map-viewport');
+    var zoomLabel = document.getElementById('svc-map-zoom-label');
+    var mapScale = 1;
+    var mapTx = 0;
+    var mapTy = 0;
+    var mapDrag = false;
+    var mapDragX = 0;
+    var mapDragY = 0;
+    var mapStartTx = 0;
+    var mapStartTy = 0;
+
+    function clampMapScale(s) {
+        if (s < 0.45) return 0.45;
+        if (s > 1.6) return 1.6;
+        return s;
+    }
+
+    function applyMapTransform() {
+        if (!mapCanvas) return;
+        mapCanvas.style.transform = 'translate(' + mapTx + 'px,' + mapTy + 'px) scale(' + mapScale + ')';
+        if (zoomLabel) zoomLabel.textContent = Math.round(mapScale * 100) + '%';
+    }
+
+    function nudgeMap(dx, dy) {
+        mapTx += dx;
+        mapTy += dy;
+        applyMapTransform();
+    }
+
+    if (mapCanvas && mapStage) {
+        applyMapTransform();
+
+        mapStage.addEventListener('mousedown', function (e) {
+            if (e.button !== 0) return;
+            var t = e.target;
+            if (t.closest('a, button, input, textarea, select, .svc-map-act-form')) return;
+            mapDrag = true;
+            mapDragX = e.clientX;
+            mapDragY = e.clientY;
+            mapStartTx = mapTx;
+            mapStartTy = mapTy;
+            mapStage.classList.add('svc-map-stage--dragging');
+            e.preventDefault();
+        });
+        window.addEventListener('mousemove', function (e) {
+            if (!mapDrag) return;
+            mapTx = mapStartTx + (e.clientX - mapDragX);
+            mapTy = mapStartTy + (e.clientY - mapDragY);
+            applyMapTransform();
+        });
+        window.addEventListener('mouseup', function () {
+            if (mapDrag) {
+                mapDrag = false;
+                mapStage.classList.remove('svc-map-stage--dragging');
+            }
+        });
+
+        [['svc-map-pan-n', 0, 56], ['svc-map-pan-s', 0, -56], ['svc-map-pan-w', 56, 0], ['svc-map-pan-e', -56, 0]].forEach(function (row) {
+            var el = document.getElementById(row[0]);
+            if (el) el.addEventListener('click', function () { nudgeMap(row[1], row[2]); });
+        });
+
+        var zIn  = document.getElementById('svc-map-zoom-in');
+        var zOut = document.getElementById('svc-map-zoom-out');
+        if (zIn) zIn.addEventListener('click', function () {
+            mapScale = clampMapScale(mapScale + 0.1);
+            applyMapTransform();
+        });
+        if (zOut) zOut.addEventListener('click', function () {
+            mapScale = clampMapScale(mapScale - 0.1);
+            applyMapTransform();
+        });
+
+        var zReset = document.getElementById('svc-map-reset-view');
+        if (zReset) zReset.addEventListener('click', function () {
+            mapScale = 1;
+            mapTx = 0;
+            mapTy = 0;
+            applyMapTransform();
+        });
+
+        mapViewport.addEventListener('wheel', function (e) {
+            if (!e.ctrlKey) return;
+            e.preventDefault();
+            var delta = e.deltaY < 0 ? 0.08 : -0.08;
+            mapScale = clampMapScale(mapScale + delta);
+            applyMapTransform();
+        }, { passive: false });
+    }
+
+    // ── Structure map search ────────────────────────────────────────────────
     var structSearch      = document.getElementById('svc-struct-search');
     var structSearchClear = document.getElementById('svc-struct-search-clear');
     var structNoResults   = document.getElementById('svc-struct-no-results');
+
+    function mapBranchVisible(li, q) {
+        var self = (li.dataset.mapSearch || '').toLowerCase();
+        var childBranches = li.querySelectorAll(':scope > ul.svc-map-children > li.svc-map-branch');
+        var anyChild = false;
+        childBranches.forEach(function (childLi) {
+            if (mapBranchVisible(childLi, q)) anyChild = true;
+        });
+        var selfMatch = q === '' || self.indexOf(q) !== -1;
+        var show = selfMatch || anyChild;
+        li.style.display = show ? '' : 'none';
+        if (anyChild && q !== '') {
+            var ul = li.querySelector(':scope > ul.svc-map-children');
+            if (ul) setMapBranchCollapsed(ul, false);
+        }
+        return show;
+    }
 
     function applyStructSearch() {
         if (!structSearch) return;
         var q = structSearch.value.toLowerCase().trim();
         if (structSearchClear) structSearchClear.hidden = q === '';
 
-        var totalVis = 0;
-        var groups = document.querySelectorAll('#svc-struct-grid .svc-struct-group');
-        groups.forEach(function (group) {
-            var rows = group.querySelectorAll('.svc-struct-row:not(.svc-struct-row--empty)');
-            var groupVis = 0;
-            rows.forEach(function (r) {
-                var match = q === ''
-                    || (r.dataset.name || '').includes(q)
-                    || (r.dataset.sku  || '').includes(q);
-                r.style.display = match ? '' : 'none';
-                if (match) groupVis++;
-            });
-            // Show group if any child matches or no query
-            group.style.display = (q === '' || groupVis > 0) ? '' : 'none';
-            // Expand groups that have matches
-            if (q !== '' && groupVis > 0) {
-                var body = group.querySelector('[id^="svc-struct-body-"]');
-                if (body) body.style.display = '';
-                var btn = group.querySelector('.svc-struct-toggle');
-                if (btn) {
-                    btn.setAttribute('aria-expanded', 'true');
-                    var chevron = btn.querySelector('.svc-struct-chevron');
-                    if (chevron) chevron.style.transform = '';
-                }
-            }
-            totalVis += groupVis;
-        });
+        var tree = document.getElementById('svc-map-tree');
+        if (!tree) return;
+        var rootLi = tree.querySelector(':scope > li.svc-map-branch--root');
+        if (!rootLi) return;
+        mapBranchVisible(rootLi, q);
 
-        if (structNoResults) structNoResults.hidden = totalVis > 0 || q === '';
+        var anyVis = false;
+        rootLi.querySelectorAll('li.svc-map-branch').forEach(function (li) {
+            if (!li.classList.contains('svc-map-branch--root') && li.style.display !== 'none') anyVis = true;
+        });
+        if (structNoResults) structNoResults.hidden = anyVis || q === '';
     }
 
     if (structSearch) {
@@ -716,6 +976,8 @@ foreach ($grouped as $cid => $g) {
             applyStructSearch();
             structSearch.focus();
         });
+    }
+
     }
 
 })();

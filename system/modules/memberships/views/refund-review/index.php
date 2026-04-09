@@ -2,8 +2,10 @@
 $title = 'Membership refund review';
 $csrfName = config('app.csrf_token_name', 'csrf_token');
 ob_start();
+$memWorkspaceActiveTab = 'refund-review';
+require base_path('modules/memberships/views/partials/memberships-workspace-shell.php');
 ?>
-<h1>Membership refund review</h1>
+<h2>Membership refund review</h2>
 <p class="muted">Canonical truth is invoices and payments. Use <strong>Reconcile from invoice</strong> after correcting an invoice so membership rows resync. <strong>Acknowledge</strong> records operator review only—it does not change money or membership terms.</p>
 
 <?php if ($flash && is_array($flash)): $t = array_key_first($flash); ?>
@@ -115,4 +117,7 @@ ob_start();
     </tbody>
 </table>
 <?php endif; ?>
-<?php $content = ob_get_clean(); require shared_path('layout/base.php'); ?>
+<?php
+$content = ob_get_clean();
+require shared_path('layout/base.php');
+?>

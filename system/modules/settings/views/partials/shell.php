@@ -32,6 +32,12 @@ $canViewSettingsLink = !empty($canViewSettingsLink);
 
 $canViewServicesResourcesLink = !empty($canViewServicesResourcesLink);
 
+$canViewMembershipsLink = !empty($canViewMembershipsLink);
+
+$canViewPackagesLink = !empty($canViewPackagesLink);
+
+$canViewBranchesLink = !empty($canViewBranchesLink);
+
 $settingsUrl = static function (string $section, ?int $onlineBookingBranchIdParam = null, ?int $appointmentsBranchIdParam = null): string {
 
     $query = ['section' => $section];
@@ -116,19 +122,7 @@ $activeDirectoryGroup = $isNativeActive ? 'general' : '';
 
             <nav class="settings-sidebar__nav">
 
-                <?php if ($canViewServicesResourcesLink): ?>
-
-                <p class="settings-sidebar__section-label">Services &amp; pricing</p>
-
-                <a class="settings-sidebar__services-pricing-link" href="/services-resources">Services &amp; Pricing</a>
-
                 <p class="settings-sidebar__section-label">Policies and defaults</p>
-
-                <?php else: ?>
-
-                <p class="settings-sidebar__section-label">Policies and defaults</p>
-
-                <?php endif; ?>
 
                 <details class="settings-tree" data-group="general" <?= $activeDirectoryGroup === 'general' ? 'open' : '' ?>>
 
@@ -186,6 +180,32 @@ $activeDirectoryGroup = $isNativeActive ? 'general' : '';
 
                 </details>
 
+                <p class="settings-sidebar__section-label">Catalog</p>
+
+                <?php if ($canViewServicesResourcesLink): ?>
+
+                <a class="settings-sidebar__catalog-link" href="/services-resources">Services &amp; Pricing</a>
+
+                <?php endif; ?>
+
+                <?php if ($canViewMembershipsLink): ?>
+
+                <a class="settings-sidebar__catalog-link <?= str_starts_with($_SERVER['REQUEST_URI'] ?? '', '/memberships') ? 'is-active' : '' ?>" href="/memberships">Memberships</a>
+
+                <?php endif; ?>
+
+                <?php if ($canViewPackagesLink): ?>
+
+                <a class="settings-sidebar__catalog-link <?= str_starts_with($_SERVER['REQUEST_URI'] ?? '', '/packages') ? 'is-active' : '' ?>" href="/packages">Packages</a>
+
+                <?php endif; ?>
+
+                <?php if ($canViewBranchesLink): ?>
+
+                <a class="settings-sidebar__catalog-link <?= str_starts_with($_SERVER['REQUEST_URI'] ?? '', '/branches') ? 'is-active' : '' ?>" href="/branches">Branches</a>
+
+                <?php endif; ?>
+
             </nav>
 
         </aside>
@@ -218,7 +238,8 @@ $activeDirectoryGroup = $isNativeActive ? 'general' : '';
 
     }
 
-    .settings-sidebar__services-pricing-link {
+    .settings-sidebar__services-pricing-link,
+    .settings-sidebar__catalog-link {
 
         display: block;
 
@@ -234,7 +255,8 @@ $activeDirectoryGroup = $isNativeActive ? 'general' : '';
 
     }
 
-    .settings-sidebar__services-pricing-link:hover {
+    .settings-sidebar__services-pricing-link:hover,
+    .settings-sidebar__catalog-link:hover {
 
         text-decoration: underline;
 

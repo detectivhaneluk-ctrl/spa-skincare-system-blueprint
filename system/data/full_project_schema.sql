@@ -370,6 +370,8 @@ CREATE TABLE client_page_layout_items (
     field_key VARCHAR(120) NOT NULL,
     position INT NOT NULL DEFAULT 0,
     is_enabled TINYINT(1) NOT NULL DEFAULT 1,
+    display_label VARCHAR(150) NULL DEFAULT NULL,
+    is_required TINYINT(1) NULL DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uk_client_page_layout_items_profile_field (profile_id, field_key),
@@ -691,7 +693,7 @@ CREATE TABLE service_products (
     quantity_used DECIMAL(12,3) NOT NULL DEFAULT 1.000
         COMMENT 'Amount of this product consumed per service delivery.',
     unit_cost_snapshot DECIMAL(12,2) NULL
-        COMMENT 'Copy of product cost_price at time of assignment (informational; not kept live).',
+        COMMENT 'Copy of product cost_price at assignment (informational, not live-synced).',
     UNIQUE KEY uq_service_product (service_id, product_id),
     INDEX idx_service_products_service (service_id),
     INDEX idx_service_products_product (product_id),

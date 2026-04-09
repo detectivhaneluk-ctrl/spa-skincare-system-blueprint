@@ -1,0 +1,167 @@
+{
+  "id": "root",
+  "type": "root",
+  "name": "Ollira",
+  "children": [
+    {
+      "id": "cat-hair",
+      "type": "category",
+      "name": "Hair",
+      "children": [
+        {
+          "id": "cat-cut",
+          "type": "category",
+          "name": "Cuts",
+          "children": [
+            {
+              "id": "svc-men-cut",
+              "type": "service",
+              "name": "Men's cut",
+              "durationMinutes": 30,
+              "price": 5000,
+              "currency": "AMD"
+            },
+            {
+              "id": "svc-women-cut",
+              "type": "service",
+              "name": "Women's cut",
+              "durationMinutes": 60,
+              "price": 8000,
+              "currency": "AMD"
+            },
+            {
+              "id": "svc-child-cut",
+              "type": "service",
+              "name": "Kids' cut",
+              "durationMinutes": 45,
+              "price": 4000,
+              "currency": "AMD"
+            }
+          ]
+        },
+        {
+          "id": "cat-color",
+          "type": "category",
+          "name": "Color",
+          "children": [
+            {
+              "id": "cat-color-full",
+              "type": "category",
+              "name": "Full color",
+              "children": [
+                {
+                  "id": "svc-color-short",
+                  "type": "service",
+                  "name": "Short hair",
+                  "durationMinutes": 120,
+                  "price": 18000,
+                  "currency": "AMD"
+                },
+                {
+                  "id": "svc-color-long",
+                  "type": "service",
+                  "name": "Long hair",
+                  "durationMinutes": 180,
+                  "price": 25000,
+                  "currency": "AMD"
+                }
+              ]
+            },
+            {
+              "id": "svc-toning",
+              "type": "service",
+              "name": "Toning rinse",
+              "durationMinutes": 45,
+              "price": 12000,
+              "currency": "AMD"
+            }
+          ]
+        },
+        {
+          "id": "svc-styling",
+          "type": "service",
+          "name": "Styling",
+          "durationMinutes": 40,
+          "price": 6000,
+          "currency": "AMD"
+        }
+      ]
+    },
+    {
+      "id": "cat-face",
+      "type": "category",
+      "name": "Facial care",
+      "children": [
+        {
+          "id": "cat-cleanse",
+          "type": "category",
+          "name": "Cleansing",
+          "children": [
+            {
+              "id": "svc-deep-clean",
+              "type": "service",
+              "name": "Deep cleanse",
+              "durationMinutes": 75,
+              "price": 15000,
+              "currency": "AMD"
+            },
+            {
+              "id": "svc-ultrasonic",
+              "type": "service",
+              "name": "Ultrasonic cleanse",
+              "durationMinutes": 60,
+              "price": 13000,
+              "currency": "AMD"
+            }
+          ]
+        },
+        {
+          "id": "cat-antiage",
+          "type": "category",
+          "name": "Anti-aging",
+          "children": [
+            {
+              "id": "svc-peptide",
+              "type": "service",
+              "name": "Peptide therapy",
+              "durationMinutes": 90,
+              "price": 22000,
+              "currency": "AMD"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cat-nails",
+      "type": "category",
+      "name": "Nails",
+      "children": [
+        {
+          "id": "svc-manicure",
+          "type": "service",
+          "name": "Classic manicure",
+          "durationMinutes": 50,
+          "price": 7000,
+          "currency": "AMD"
+        },
+        {
+          "id": "svc-pedicure",
+          "type": "service",
+          "name": "Pedicure",
+          "durationMinutes": 70,
+          "price": 10000,
+          "currency": "AMD"
+        },
+        {
+          "id": "svc-gel",
+          "type": "service",
+          "name": "Gel polish + shaping",
+          "durationMinutes": 90,
+          "price": 14000,
+          "currency": "AMD"
+        }
+      ]
+    }
+  ]
+}

@@ -6,10 +6,29 @@ namespace Modules\Clients\Services;
 
 /**
  * Canonical catalog of system field keys for layouts and admin. Custom fields use keys {@code custom:{id}}.
+ *
+ * {@see self::customerDetailsImmutablePrefixKeys()} — fixed prefix for the customer_details layout, aligned with
+ * manual registration intake ({@see ClientRegistrationValidator}) and new-client essentials (name, email, phones, notes).
  */
 final class ClientFieldCatalogService
 {
     public const CUSTOM_KEY_PREFIX = 'custom:';
+
+    /**
+     * Keys that must stay present, in this order, at the start of the `customer_details` layout.
+     * Operators can add fields after this block (e.g. custom “skin type”) but cannot remove or reorder these.
+     *
+     * @return list<string>
+     */
+    public function customerDetailsImmutablePrefixKeys(): array
+    {
+        return ['first_name', 'last_name', 'email', 'phone_contact_block', 'notes'];
+    }
+
+    public function isCustomerDetailsImmutableKey(string $key): bool
+    {
+        return in_array($key, $this->customerDetailsImmutablePrefixKeys(), true);
+    }
 
     /**
      * @return array<string, array<string, mixed>>
@@ -92,6 +111,56 @@ final class ClientFieldCatalogService
                 'sidebar_profile_default' => true,
             ],
         ];
+    }
+
+    /**
+     * System fields shown on the Client Fields settings screen: only fields the org can place on layouts.
+     * Immutable rows (e.g. first name, last name) are omitted so operators are not shown data they cannot control.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public function systemFieldsConfigurableForLayouts(): array
+    {
+        return array_filter(
+            $this->systemFieldDefinitions(),
+            static fn (array $meta): bool => !empty($meta['configurable'])
+        );
+    }
+
+    /**
+     * Human-readable field format for admin UI (replaces developer-oriented type keys).
+     */
+    public static function humanizeFieldTypeLabel(string $type): string
+    {
+        $t = trim($type);
+        if ($t === '') {
+            return '';
+        }
+
+        $map = [
+            'single_line_text' => 'Text',
+            'paragraph_text' => 'Long text',
+            'summary_read_only' => 'Auto-generated',
+            'picklist' => 'Choice',
+            'boolean' => 'On / off',
+            'email' => 'Email',
+            'phone' => 'Phone',
+            'address' => 'Address',
+            'date' => 'Date',
+            'text' => 'Text',
+            'textarea' => 'Long text',
+            'number' => 'Number',
+            'select' => 'Choice',
+            'multiselect' => 'Multiple choices',
+        ];
+
+        if (isset($map[$t])) {
+            return $map[$t];
+        }
+
+        $normalized = str_replace(['-', '_'], ' ', strtolower($t));
+
+        return ucwords($normalized);
     }
 
     public function isSystemFieldKey(string $key): bool

@@ -37,6 +37,7 @@ final class GiftCardController
             $code = trim((string) $_GET['search']);
         }
         $clientName = trim((string) ($_GET['client_name'] ?? ''));
+        $filterClientId = max(0, (int) ($_GET['client_id'] ?? 0));
         $status = trim((string) ($_GET['status'] ?? ''));
         if ($status !== '' && !in_array($status, GiftCardService::STATUSES, true)) {
             $status = '';
@@ -63,6 +64,7 @@ final class GiftCardController
             'scope_mode' => $scopeMode,
             'code' => $code !== '' ? $code : null,
             'client_name' => $clientName !== '' ? $clientName : null,
+            'client_id' => $filterClientId > 0 ? $filterClientId : null,
             'status' => $status !== '' ? $status : null,
             'issued_from' => $issuedFrom,
             'issued_to' => $issuedTo,
@@ -86,6 +88,9 @@ final class GiftCardController
         }
         if ($clientName !== '') {
             $giftCardIndexQuery['client_name'] = $clientName;
+        }
+        if ($filterClientId > 0) {
+            $giftCardIndexQuery['client_id'] = (string) $filterClientId;
         }
         if ($status !== '') {
             $giftCardIndexQuery['status'] = $status;
@@ -452,7 +457,7 @@ final class GiftCardController
 
     private function giftCardIndexRedirectSuffixFromPost(): string
     {
-        $keys = ['code', 'client_name', 'status', 'issued_from', 'issued_to', 'list_branch', 'page'];
+        $keys = ['code', 'client_name', 'client_id', 'status', 'issued_from', 'issued_to', 'list_branch', 'page'];
         $out = [];
         foreach ($keys as $k) {
             $field = 'ret_' . $k;

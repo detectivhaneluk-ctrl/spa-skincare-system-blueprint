@@ -1,14 +1,14 @@
 <?php
 $title = $title ?? 'Edit branch';
-$content = ob_start();
 $branch = $branch ?? [];
 $errors = $errors ?? [];
 $id = (int) ($branch['id'] ?? 0);
 $csrfName = config('app.csrf_token_name', 'csrf_token');
 $isInactive = !empty($branch['deleted_at']);
+ob_start();
+require base_path('modules/branches/views/partials/branches-workspace-shell.php');
 ?>
-<h1>Edit branch</h1>
-<p><a href="/branches">← Branches</a></p>
+<h2>Edit branch</h2>
 <?php if ($isInactive): ?>
 <div class="flash flash-error">This branch is inactive (soft-deleted). You can still edit the record; it will not appear in operational selectors until restored (not available in UI).</div>
 <?php endif; ?>
@@ -28,6 +28,9 @@ $isInactive = !empty($branch['deleted_at']);
         <label for="branch-code">Code (optional)</label>
         <input type="text" id="branch-code" name="code" maxlength="50" value="<?= htmlspecialchars((string) ($branch['code'] ?? '')) ?>">
     </div>
-    <p><button type="submit">Save</button></p>
+    <p><button type="submit">Save</button> <a href="/branches">Cancel</a></p>
 </form>
-<?php $content = ob_get_clean(); require shared_path('layout/base.php'); ?>
+<?php
+$content = ob_get_clean();
+require shared_path('layout/base.php');
+?>

@@ -1,8 +1,11 @@
 <?php
 $title = $title ?? 'Create payroll run';
 ob_start();
+$teamWorkspaceActiveTab = 'payroll';
+$teamWorkspaceShellTitle = 'Team';
+require base_path('modules/staff/views/partials/team-workspace-shell.php');
 ?>
-<h1>Create payroll run</h1>
+<h2>Create payroll run</h2>
 <?php if (!empty($errors['_general'])): ?>
 <div class="flash flash-error"><?= htmlspecialchars((string) $errors['_general']) ?></div>
 <?php endif; ?>

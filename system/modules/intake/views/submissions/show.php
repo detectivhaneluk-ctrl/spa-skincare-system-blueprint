@@ -1,11 +1,14 @@
 <?php
-ob_start();
+$clientsWorkspaceActiveTab = 'intake';
+require base_path('modules/clients/views/partials/clients-workspace-data.php');
 $labels = [];
 foreach ($fields as $f) {
     $labels[(string) ($f['field_key'] ?? '')] = (string) ($f['label'] ?? '');
 }
+ob_start();
+require base_path('modules/clients/views/partials/clients-workspace-shell.php');
 ?>
-<h1>Intake submission #<?= (int) ($submission['id'] ?? 0) ?></h1>
+<h2>Intake submission #<?= (int) ($submission['id'] ?? 0) ?></h2>
 <p><a href="/intake/assignments">Assignments</a></p>
 <p>Client #<?= (int) ($submission['client_id'] ?? 0) ?>
     <?php if (!empty($submission['appointment_id'])): ?> · Appointment #<?= (int) $submission['appointment_id'] ?><?php endif; ?>

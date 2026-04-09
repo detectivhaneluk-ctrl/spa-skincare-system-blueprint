@@ -117,46 +117,137 @@ final class ClientController
             $c['display_phone'] = $this->service->getCanonicalPrimaryPhone($c);
         }
         unset($c);
-        $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
+        $sessionAuth = Application::container()->get(\Core\Auth\SessionAuth::class);
+        $uid = $sessionAuth->id();
+        $perm = Application::container()->get(PermissionService::class);
+        $canDeepLinkMemberships = $uid !== null && $perm->has($uid, 'memberships.view');
+        $canDeepLinkPackages = $uid !== null && $perm->has($uid, 'packages.view');
+        $canDeepLinkGiftCards = $uid !== null && $perm->has($uid, 'gift_cards.view');
+        $canDeleteClients = $uid !== null && $perm->has($uid, 'clients.delete');
+        $canCreateClients = $uid !== null && $perm->has($uid, 'clients.create');
+        $canMergeClients = $uid !== null && $perm->has($uid, 'clients.edit');
+        $listFilters = $filters;
+        $strongDupPair = null;
+        $clientsDupBannerCount = 0;
+        $clientsDupBannerShow = false;
+        if ($this->repo->isNormalizedSearchSchemaReady()) {
+            $strongDupPair = $this->repo->findFirstStrongDuplicatePair($listFilters);
+            if ($strongDupPair !== null) {
+                $anchor = $this->repo->find($strongDupPair['id_a']);
+                if ($anchor !== null) {
+                    $nameNorm = strtolower(trim((string) ($anchor['first_name'] ?? '') . ' ' . (string) ($anchor['last_name'] ?? '')));
+                    $elc = (string) ($anchor['email_lc'] ?? '');
+                    $pmd = (string) ($anchor['phone_mobile_digits'] ?? '');
+                    $clientsDupBannerCount = $this->repo->countClientsMatchingStrongDuplicateIdentity(
+                        $elc,
+                        $pmd,
+                        $nameNorm,
+                        $listFilters
+                    );
+                    $clientsDupBannerShow = $clientsDupBannerCount >= 2;
+                }
+            }
+        }
+        $mergeModalPair = null;
+        $mergeModalAutoOpen = false;
+        if ($canMergeClients) {
+            $mqA = (int) ($_GET['merge_primary'] ?? 0);
+            $mqB = (int) ($_GET['merge_secondary'] ?? 0);
+            if ($mqA > 0 && $mqB > 0 && $mqA !== $mqB) {
+                $mergeModalPair = $this->buildMergeModalPairCards($mqA, $mqB);
+                $mergeModalAutoOpen = $mergeModalPair !== null;
+            } elseif ($mqA > 0) {
+                $row = $this->repo->find($mqA);
+                if ($row && $this->clientRowVisibleInCurrentBranchContext($row)) {
+                    $crit = ['email' => null, 'phone' => null];
+                    $em = trim((string) ($row['email'] ?? ''));
+                    if ($em !== '') {
+                        $crit['email'] = $em;
+                    }
+                    $ph = $this->service->getCanonicalPrimaryPhone($row);
+                    if ($ph !== null && trim((string) $ph) !== '') {
+                        $crit['phone'] = $ph;
+                    }
+                    if ($crit['email'] !== null || $crit['phone'] !== null) {
+                        $dups = $this->service->findDuplicates($mqA, array_filter($crit, static fn ($v) => $v !== null));
+                        foreach ($dups as $dup) {
+                            $oid = (int) ($dup['id'] ?? 0);
+                            if ($oid > 0 && $oid !== $mqA) {
+                                $mergeModalPair = $this->buildMergeModalPairCards($mqA, $oid);
+                                $mergeModalAutoOpen = $mergeModalPair !== null;
+                                break;
+                            }
+                        }
+                    }
+                }
+            } elseif ($strongDupPair !== null) {
+                $mergeModalPair = $this->buildMergeModalPairCards($strongDupPair['id_a'], $strongDupPair['id_b']);
+            }
+        }
+        $csrf = $sessionAuth->csrfToken();
         $flash = flash();
         require base_path('modules/clients/views/index.php');
     }
 
-    public function duplicates(): void
+    public function bulkDestroy(): void
     {
-        $name = trim((string) ($_GET['name'] ?? ''));
-        $email = trim((string) ($_GET['email'] ?? ''));
-        $phone = trim((string) ($_GET['phone'] ?? ''));
-        $partial = (int) ($_GET['partial'] ?? 0) === 1;
-        $page = max(1, (int) ($_GET['page'] ?? 1));
-        $perPage = 25;
-        $searchRun = $name !== '' || $email !== '' || $phone !== '';
-        $duplicateResults = [];
-        $total = 0;
-        $totalPages = 1;
-        $dupNormalizedSearchReady = true;
-        if ($searchRun) {
-            $criteria = [
-                'full_name' => $name !== '' ? $name : null,
-                'phone' => $phone !== '' ? $phone : null,
-                'email' => $email !== '' ? $email : null,
-            ];
-            $pack = $this->service->searchDuplicateCandidatesPaginated($criteria, null, true, $partial, $page, $perPage);
-            $total = $pack['total'];
-            $page = $pack['page'];
-            $duplicateResults = $pack['rows'];
-            $dupNormalizedSearchReady = (bool) ($pack['normalized_search_schema_ready'] ?? true);
-            $totalPages = max(1, (int) ceil($total / $perPage));
-            foreach ($duplicateResults as &$c) {
-                $c['display_name'] = $this->service->getDisplayName($c);
-            }
-            unset($c);
+        $action = trim((string) ($_POST['bulk_action'] ?? ''));
+        if ($action !== 'delete') {
+            flash('error', 'Choose a bulk action.');
+            $this->redirectToClientsIndexPostContext();
+            return;
         }
-        $session = Application::container()->get(\Core\Auth\SessionAuth::class);
-        $uid = $session->id();
-        $canMergeClients = $uid !== null && Application::container()->get(PermissionService::class)->has($uid, 'clients.edit');
-        $flash = flash();
-        require base_path('modules/clients/views/duplicates.php');
+        $raw = $_POST['client_ids'] ?? [];
+        if (!is_array($raw)) {
+            $raw = [];
+        }
+        $idSet = [];
+        foreach ($raw as $v) {
+            $id = (int) $v;
+            if ($id > 0) {
+                $idSet[$id] = true;
+            }
+        }
+        $ids = array_keys($idSet);
+        if ($ids === []) {
+            flash('error', 'No clients selected.');
+            $this->redirectToClientsIndexPostContext();
+            return;
+        }
+        $out = $this->service->bulkDelete($ids);
+        $deleted = $out['deleted'];
+        $skipped = $out['skipped'];
+        if ($deleted === 0) {
+            flash('error', $skipped > 0 ? 'No clients could be deleted (check permissions or branch access).' : 'No clients could be deleted.');
+        } elseif ($skipped === 0) {
+            flash('success', $deleted === 1 ? '1 client deleted.' : "{$deleted} clients deleted.");
+        } else {
+            flash('warning', "{$deleted} deleted, {$skipped} skipped (not found, wrong branch, or not allowed).");
+        }
+        $this->redirectToClientsIndexPostContext();
+    }
+
+    /**
+     * JSON: whether a normalized phone match exists (New Client inline hint). Tenant-scoped.
+     */
+    public function phoneExistsCheck(): void
+    {
+        $raw = trim((string) ($_GET['phone'] ?? ''));
+        header('Content-Type: application/json; charset=utf-8');
+        if ($raw === '') {
+            echo json_encode(['match' => false, 'client_id' => null], JSON_UNESCAPED_UNICODE);
+
+            return;
+        }
+        $rows = $this->service->findDuplicates(0, ['phone' => $raw]);
+        $id = 0;
+        if ($rows !== [] && isset($rows[0]['id'])) {
+            $id = (int) $rows[0]['id'];
+        }
+        echo json_encode([
+            'match' => $id > 0,
+            'client_id' => $id > 0 ? $id : null,
+        ], JSON_UNESCAPED_UNICODE);
     }
 
     public function create(): void
@@ -167,8 +258,6 @@ final class ClientController
         $marketing = $this->settings->getMarketingSettings($this->marketingSettingsReadBranchId(null));
         $customFieldDefinitions = $this->service->getCustomFieldDefinitions($this->customFieldDefinitionsBranchFilter(null), true);
         $customFieldValues = [];
-        $fieldCatalog = $this->fieldCatalog;
-        $detailsLayoutKeys = $this->detailsLayoutKeysForForm($customFieldDefinitions);
         require base_path('modules/clients/views/create.php');
     }
 
@@ -182,12 +271,20 @@ final class ClientController
             $marketing = $this->settings->getMarketingSettings($this->marketingSettingsReadBranchId(null));
             $customFieldDefinitions = $this->service->getCustomFieldDefinitions($this->customFieldDefinitionsBranchFilter(null), true);
             $customFieldValues = is_array($data['custom_fields'] ?? null) ? $data['custom_fields'] : [];
-            $fieldCatalog = $this->fieldCatalog;
-            $detailsLayoutKeys = $this->detailsLayoutKeysForForm($customFieldDefinitions);
+            if ($this->isDrawerRequest()) {
+                ob_start();
+                require base_path('modules/clients/views/create.php');
+                $html = ob_get_clean();
+                $this->sendDrawerValidationHtml($html);
+                return;
+            }
             require base_path('modules/clients/views/create.php');
             return;
         }
         $id = $this->service->create($data);
+        if ($this->isDrawerRequest()) {
+            $this->sendDrawerClientCreated($id);
+        }
         flash('success', 'Client created.');
         header('Location: /clients/' . $id);
         exit;
@@ -945,74 +1042,72 @@ final class ClientController
         exit;
     }
 
-    public function mergePreview(): void
-    {
-        $primaryId = (int) ($_GET['primary_id'] ?? 0);
-        $secondaryId = (int) ($_GET['secondary_id'] ?? 0);
-        $preview = null;
-        $error = null;
-        $queuedMergeJob = null;
-        $queuedJobId = (int) ($_GET['queued_job'] ?? 0);
-        if ($queuedJobId > 0) {
-            try {
-                $queuedMergeJob = $this->clientMergeJobs->getJobForCurrentTenant($queuedJobId);
-            } catch (AccessDeniedException) {
-                $queuedMergeJob = null;
-            }
-        }
-        if ($primaryId > 0 && $secondaryId > 0) {
-            try {
-                $preview = $this->service->getMergePreview($primaryId, $secondaryId);
-            } catch (\Throwable $e) {
-                slog('error', 'clients.merge_preview', $e->getMessage(), [
-                    'primary_id' => $primaryId,
-                    'secondary_id' => $secondaryId,
-                ]);
-                $error = $e instanceof SafeDomainException
-                    ? $e->publicMessage
-                    : 'Could not build merge preview.';
-            }
-        }
-        $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
-        $flash = flash();
-        require base_path('modules/clients/views/merge-preview.php');
-    }
-
     public function mergeAction(): void
     {
         $primaryId = (int) ($_POST['primary_id'] ?? 0);
         $secondaryId = (int) ($_POST['secondary_id'] ?? 0);
         $notes = trim((string) ($_POST['notes'] ?? '')) ?: null;
+        $jsonOut = isset($_POST['merge_response']) && (string) $_POST['merge_response'] === 'json';
         $session = Application::container()->get(\Core\Auth\SessionAuth::class);
         $uid = $session->id();
+
+        $respondJson = static function (bool $ok, string $message, array $extra = []) use ($jsonOut): void {
+            if (!$jsonOut) {
+                return;
+            }
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(array_merge([
+                'success' => $ok,
+                'message' => $message,
+            ], $extra), JSON_UNESCAPED_UNICODE);
+            exit;
+        };
+
         if ($uid === null) {
+            if ($jsonOut) {
+                http_response_code(401);
+                $respondJson(false, 'You must be signed in to queue a merge.');
+            }
             flash('error', 'You must be signed in to queue a merge.');
-            header('Location: /clients/merge?primary_id=' . $primaryId . '&secondary_id=' . $secondaryId);
+            header('Location: /clients');
             exit;
         }
         try {
             $jobId = $this->clientMergeJobs->enqueueMergeJob($primaryId, $secondaryId, $notes, $uid);
-            flash(
-                'success',
-                'Merge has been queued (job #' . $jobId . '). It completes when the merge worker runs. Use the status link below to refresh state.'
-            );
-            header('Location: /clients/merge?primary_id=' . $primaryId . '&secondary_id=' . $secondaryId . '&queued_job=' . $jobId);
+            $msg = 'Merge has been queued (job #' . $jobId . '). It completes when the merge worker runs.';
+            if ($jsonOut) {
+                $respondJson(true, $msg, ['job_id' => $jobId]);
+            }
+            flash('success', $msg . ' Use the job status JSON endpoint to refresh state.');
+            header('Location: /clients');
             exit;
         } catch (SafeDomainException $e) {
+            if ($jsonOut) {
+                http_response_code($e->httpStatus >= 400 && $e->httpStatus < 600 ? $e->httpStatus : 400);
+                $respondJson(false, $e->publicMessage);
+            }
             flash('error', $e->publicMessage);
-            header('Location: /clients/merge?primary_id=' . $primaryId . '&secondary_id=' . $secondaryId);
+            header('Location: /clients');
             exit;
         } catch (AccessDeniedException) {
+            if ($jsonOut) {
+                http_response_code(403);
+                $respondJson(false, 'Tenant scope is not available for this merge request.');
+            }
             flash('error', 'Tenant scope is not available for this merge request.');
-            header('Location: /clients/merge?primary_id=' . $primaryId . '&secondary_id=' . $secondaryId);
+            header('Location: /clients');
             exit;
         } catch (\Throwable $e) {
             slog('error', 'clients.merge_action', $e->getMessage(), [
                 'primary_id' => $primaryId,
                 'secondary_id' => $secondaryId,
             ]);
+            if ($jsonOut) {
+                http_response_code(500);
+                $respondJson(false, 'Merge could not be queued. Please try again or contact support.');
+            }
             flash('error', 'Merge could not be queued. Please try again or contact support.');
-            header('Location: /clients/merge?primary_id=' . $primaryId . '&secondary_id=' . $secondaryId);
+            header('Location: /clients');
             exit;
         }
     }
@@ -1057,58 +1152,89 @@ final class ClientController
 
     public function customFieldsIndex(): void
     {
+        $sessionAuth = Application::container()->get(\Core\Auth\SessionAuth::class);
+        $uid = $sessionAuth->id();
+        $perm = Application::container()->get(PermissionService::class);
+        $canEditClientFields = $uid !== null && $perm->has($uid, 'clients.edit');
+
         $definitions = $this->service->getCustomFieldDefinitions(null, false);
-        $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
+        $csrf = $sessionAuth->csrfToken();
         $flash = flash();
-        $clientFieldsSubtab = 'fields';
         $layoutStorageReady = $this->pageLayouts->isLayoutStorageReady();
-        $systemCatalog = $this->fieldCatalog->systemFieldDefinitions();
-        require base_path('modules/clients/views/custom-fields-index.php');
+        $systemCatalog = $this->fieldCatalog->systemFieldsConfigurableForLayouts();
+        $systemFieldDefinitions = $this->fieldCatalog->systemFieldDefinitions();
+        $humanizeFieldType = static fn (string $t): string => ClientFieldCatalogService::humanizeFieldTypeLabel($t);
+
+        $fieldLabels = [];
+        foreach ($systemFieldDefinitions as $k => $meta) {
+            $fieldLabels[(string) $k] = (string) ($meta['label'] ?? $k);
+        }
+        $customFieldLayoutTypes = [];
+        foreach ($definitions as $d) {
+            $ck = $this->fieldCatalog->customFieldLayoutKey((int) $d['id']);
+            $fieldLabels[$ck] = (string) ($d['label'] ?? $ck);
+            $customFieldLayoutTypes[$ck] = (string) ($d['field_type'] ?? 'text');
+        }
+
+        $profiles = [];
+        $selectedProfileKey = trim((string) ($_GET['profile'] ?? 'customer_details'));
+        $layoutItems = [];
+        $availableToAdd = [];
+        $orgId = 0;
+        try {
+            $orgId = $this->pageLayouts->requireOrganizationId();
+            $profiles = $this->pageLayouts->listProfilesForAdmin($orgId);
+            $validKeys = array_map(static fn (array $p) => (string) $p['profile_key'], $profiles);
+            if (!in_array($selectedProfileKey, $validKeys, true)) {
+                $selectedProfileKey = 'customer_details';
+            }
+            $shiftField = trim((string) ($_GET['shift_field'] ?? ''));
+            $shiftDir = (string) ($_GET['shift'] ?? '');
+            if ($shiftField !== '' && in_array($shiftDir, ['up', 'down'], true)) {
+                if (!$layoutStorageReady) {
+                    flash('error', ClientPageLayoutService::LAYOUT_STORAGE_REQUIRES_MIGRATION_MESSAGE);
+                } elseif ($canEditClientFields) {
+                    try {
+                        $this->pageLayouts->shiftItemPosition($orgId, $selectedProfileKey, $shiftField, $shiftDir);
+                        flash('success', 'Field order updated.');
+                    } catch (\Throwable $e) {
+                        slog('error', 'clients.layout_shift', $e->getMessage(), ['profile' => $selectedProfileKey]);
+                        flash('error', $this->operatorSafeErrorMessage($e));
+                    }
+                }
+                header('Location: /clients/custom-fields?profile=' . rawurlencode($selectedProfileKey));
+                exit;
+            }
+            $layoutItems = $layoutStorageReady
+                ? $this->pageLayouts->listLayoutItemsForComposer($orgId, $selectedProfileKey, $canEditClientFields)
+                : [];
+            $catalogKeys = array_keys($systemFieldDefinitions);
+            $assigned = array_map(static fn (array $r) => (string) $r['field_key'], $layoutItems);
+            foreach ($definitions as $d) {
+                $catalogKeys[] = $this->fieldCatalog->customFieldLayoutKey((int) $d['id']);
+            }
+            $availableToAdd = $layoutStorageReady
+                ? array_values(array_filter($catalogKeys, static fn (string $k) => !in_array($k, $assigned, true)))
+                : [];
+        } catch (\Throwable) {
+            $profiles = [];
+            $layoutItems = [];
+            $availableToAdd = [];
+        }
+
+        $intakeImmutableKeys = ($selectedProfileKey ?? '') === 'customer_details'
+            ? $this->fieldCatalog->customerDetailsImmutablePrefixKeys()
+            : [];
+
+        require base_path('modules/clients/views/custom-fields-composer.php');
     }
 
     public function customFieldsLayouts(): void
     {
-        $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
-        $flash = flash();
-        $clientFieldsSubtab = 'layouts';
-        $orgId = $this->pageLayouts->requireOrganizationId();
-        $layoutStorageReady = $this->pageLayouts->isLayoutStorageReady();
-        $profiles = $this->pageLayouts->listProfilesForAdmin($orgId);
-        $selectedProfileKey = trim((string) ($_GET['profile'] ?? 'customer_details'));
-        $validKeys = array_map(static fn (array $p) => (string) $p['profile_key'], $profiles);
-        if (!in_array($selectedProfileKey, $validKeys, true)) {
-            $selectedProfileKey = 'customer_details';
-        }
-        $shiftField = trim((string) ($_GET['shift_field'] ?? ''));
-        $shiftDir = (string) ($_GET['shift'] ?? '');
-        if ($shiftField !== '' && in_array($shiftDir, ['up', 'down'], true)) {
-            if (!$layoutStorageReady) {
-                flash('error', ClientPageLayoutService::LAYOUT_STORAGE_REQUIRES_MIGRATION_MESSAGE);
-            } else {
-                try {
-                    $this->pageLayouts->shiftItemPosition($orgId, $selectedProfileKey, $shiftField, $shiftDir);
-                    flash('success', 'Field order updated.');
-                } catch (\Throwable $e) {
-                    slog('error', 'clients.layout_shift', $e->getMessage(), ['profile' => $selectedProfileKey]);
-                    flash('error', $this->operatorSafeErrorMessage($e));
-                }
-            }
-            header('Location: /clients/custom-fields/layouts?profile=' . rawurlencode($selectedProfileKey));
-            exit;
-        }
-        $layoutItems = $layoutStorageReady
-            ? $this->pageLayouts->listLayoutItems($orgId, $selectedProfileKey)
-            : [];
-        $catalogKeys = array_keys($this->fieldCatalog->systemFieldDefinitions());
-        $assigned = array_map(static fn (array $r) => (string) $r['field_key'], $layoutItems);
-        $customDefs = $this->service->getCustomFieldDefinitions(null, false);
-        foreach ($customDefs as $d) {
-            $catalogKeys[] = $this->fieldCatalog->customFieldLayoutKey((int) $d['id']);
-        }
-        $availableToAdd = $layoutStorageReady
-            ? array_values(array_filter($catalogKeys, static fn (string $k) => !in_array($k, $assigned, true)))
-            : [];
-        require base_path('modules/clients/views/custom-fields-layouts.php');
+        $qs = (string) ($_SERVER['QUERY_STRING'] ?? '');
+        $target = '/clients/custom-fields' . ($qs !== '' ? '?' . $qs : '');
+        header('Location: ' . $target, true, 302);
+        exit;
     }
 
     public function customFieldsLayoutsSave(): void
@@ -1140,6 +1266,10 @@ final class ClientController
                     'field_key' => $fk,
                     'position' => (int) ($row['position'] ?? 0),
                     'is_enabled' => !empty($row['is_enabled']) ? 1 : 0,
+                    'display_label' => ($dl = trim((string) ($row['display_label'] ?? ''))) !== '' ? $dl : null,
+                    'is_required' => array_key_exists('is_required', $row)
+                        ? (!empty($row['is_required']) ? 1 : 0)
+                        : null,
                 ];
             }
             usort($rows, static fn (array $a, array $b) => $a['position'] <=> $b['position']);
@@ -1155,7 +1285,7 @@ final class ClientController
             flash('error', $this->operatorSafeErrorMessage($e));
         }
         $pk = $profileKey !== '' ? $profileKey : 'customer_details';
-        header('Location: /clients/custom-fields/layouts?profile=' . rawurlencode($pk));
+        header('Location: /clients/custom-fields?profile=' . rawurlencode($pk));
         exit;
     }
 
@@ -1184,13 +1314,15 @@ final class ClientController
             }
             $rows = [];
             foreach ($items as $it) {
-                $rows[] = [
-                    'field_key' => (string) $it['field_key'],
-                    'position' => (int) $it['position'],
-                    'is_enabled' => (int) ($it['is_enabled'] ?? 1),
-                ];
+                $rows[] = $this->pageLayouts->layoutRowFromStoredItem($it, (int) $it['position']);
             }
-            $rows[] = ['field_key' => $fieldKey, 'position' => $maxPos + 1, 'is_enabled' => 1];
+            $rows[] = [
+                'field_key' => $fieldKey,
+                'position' => $maxPos + 1,
+                'is_enabled' => 1,
+                'display_label' => null,
+                'is_required' => null,
+            ];
             usort($rows, static fn (array $a, array $b) => $a['position'] <=> $b['position']);
             $p = 0;
             foreach ($rows as &$r) {
@@ -1204,7 +1336,7 @@ final class ClientController
             flash('error', $this->operatorSafeErrorMessage($e));
         }
         $pk = $profileKey !== '' ? $profileKey : 'customer_details';
-        header('Location: /clients/custom-fields/layouts?profile=' . rawurlencode($pk));
+        header('Location: /clients/custom-fields?profile=' . rawurlencode($pk));
         exit;
     }
 
@@ -1221,8 +1353,8 @@ final class ClientController
             if ($profileKey === '' || $fieldKey === '') {
                 throw new \InvalidArgumentException('profile_key and field_key are required.');
             }
-            if (in_array($fieldKey, ['first_name', 'last_name'], true)) {
-                throw new \InvalidArgumentException('Cannot remove required identity fields from layout storage; disable them instead.');
+            if ($profileKey === 'customer_details' && $this->fieldCatalog->isCustomerDetailsImmutableKey($fieldKey)) {
+                throw new \InvalidArgumentException('Cannot remove core intake fields from the customer details layout.');
             }
             $items = $this->pageLayouts->listLayoutItems($orgId, $profileKey);
             $rows = [];
@@ -1230,11 +1362,7 @@ final class ClientController
                 if ((string) $it['field_key'] === $fieldKey) {
                     continue;
                 }
-                $rows[] = [
-                    'field_key' => (string) $it['field_key'],
-                    'position' => (int) $it['position'],
-                    'is_enabled' => (int) ($it['is_enabled'] ?? 1),
-                ];
+                $rows[] = $this->pageLayouts->layoutRowFromStoredItem($it, (int) $it['position']);
             }
             usort($rows, static fn (array $a, array $b) => $a['position'] <=> $b['position']);
             $p = 0;
@@ -1249,7 +1377,7 @@ final class ClientController
             flash('error', $this->operatorSafeErrorMessage($e));
         }
         $pk = $profileKey !== '' ? $profileKey : 'customer_details';
-        header('Location: /clients/custom-fields/layouts?profile=' . rawurlencode($pk));
+        header('Location: /clients/custom-fields?profile=' . rawurlencode($pk));
         exit;
     }
 
@@ -1663,7 +1791,7 @@ final class ClientController
             return isset($_POST[$key]) && $_POST[$key] !== '' && $_POST[$key] !== '0' ? 1 : 0;
         };
 
-        return [
+        $data = [
             'first_name' => $textKeepRequired('first_name', $current),
             'last_name' => $textKeepRequired('last_name', $current),
             'email' => $sKeep('email', $current),
@@ -1706,6 +1834,23 @@ final class ClientController
             'notes' => $sKeep('notes', $current),
             'custom_fields' => is_array($_POST['custom_fields'] ?? null) ? $_POST['custom_fields'] : [],
         ];
+
+        if ($current === null) {
+            $addDelivery = isset($_POST['add_delivery']) && (string) $_POST['add_delivery'] === '1';
+            $data['needs_delivery'] = $addDelivery ? 1 : 0;
+            if (!$addDelivery) {
+                $data['delivery_address_1'] = null;
+                $data['delivery_address_2'] = null;
+                $data['delivery_city'] = null;
+                $data['delivery_postal_code'] = null;
+                $data['delivery_country'] = null;
+                $data['delivery_same_as_home'] = 0;
+            } else {
+                $data['delivery_same_as_home'] = 0;
+            }
+        }
+
+        return $data;
     }
 
     /**
@@ -1718,7 +1863,7 @@ final class ClientController
         $bf = $this->customFieldDefinitionsBranchFilter($clientRowForBranchFilter);
         $definitions = $this->service->getCustomFieldDefinitions($bf, true);
 
-        return $this->inputValidator->validate($data, $definitions);
+        return $this->inputValidator->validate($data, $definitions, $clientRowForBranchFilter === null);
     }
 
     /**
@@ -1753,6 +1898,80 @@ final class ClientController
         return 'Operation failed. Please try again or contact support.';
     }
 
+    /**
+     * Non-terminating branch check for assembling merge UI (list context).
+     */
+    private function clientRowVisibleInCurrentBranchContext(array $entity): bool
+    {
+        try {
+            $branchId = isset($entity['branch_id']) && $entity['branch_id'] !== '' && $entity['branch_id'] !== null ? (int) $entity['branch_id'] : null;
+            Application::container()->get(\Core\Branch\BranchContext::class)->assertBranchMatchOrGlobalEntity($branchId);
+
+            return true;
+        } catch (\DomainException) {
+            return false;
+        }
+    }
+
+    private function formatClientLastVisitLabel(int $clientId): string
+    {
+        try {
+            $s = $this->appointmentsProfile->getSummary($clientId);
+            $raw = $s['last_start_at'] ?? null;
+            if (!is_string($raw) || $raw === '') {
+                return '—';
+            }
+            $t = strtotime($raw);
+
+            return $t ? date('M j, Y', $t) : $raw;
+        } catch (\Throwable) {
+            return '—';
+        }
+    }
+
+    /**
+     * @return list<array{slot:string,record_label:string,id:int,name:string,phone:string,email:string,last_visit:string}>|null
+     */
+    private function buildMergeModalPairCards(int $idA, int $idB): ?array
+    {
+        if ($idA <= 0 || $idB <= 0 || $idA === $idB) {
+            return null;
+        }
+        $rowA = $this->repo->find($idA);
+        $rowB = $this->repo->find($idB);
+        if (!$rowA || !$rowB) {
+            return null;
+        }
+        if (!$this->clientRowVisibleInCurrentBranchContext($rowA) || !$this->clientRowVisibleInCurrentBranchContext($rowB)) {
+            return null;
+        }
+        $pack = static function (array $row, string $slot, string $recordLabel, ClientService $service, callable $lastVisit): array {
+            $name = trim(trim((string) ($row['first_name'] ?? '')) . ' ' . trim((string) ($row['last_name'] ?? '')));
+            if ($name === '') {
+                $name = '—';
+            }
+            $phone = $service->getCanonicalPrimaryPhone($row);
+            $phoneOut = ($phone !== null && trim((string) $phone) !== '') ? trim((string) $phone) : '—';
+            $email = trim((string) ($row['email'] ?? ''));
+
+            return [
+                'slot' => $slot,
+                'record_label' => $recordLabel,
+                'id' => (int) $row['id'],
+                'name' => $name,
+                'phone' => $phoneOut,
+                'email' => $email !== '' ? $email : '—',
+                'last_visit' => $lastVisit((int) $row['id']),
+            ];
+        };
+        $lv = fn (int $cid): string => $this->formatClientLastVisitLabel($cid);
+
+        return [
+            $pack($rowA, 'a', 'Record 1', $this->service, $lv),
+            $pack($rowB, 'b', 'Record 2', $this->service, $lv),
+        ];
+    }
+
     private function ensureBranchAccess(array $entity): bool
     {
         try {
@@ -1765,8 +1984,63 @@ final class ClientController
         }
     }
 
+    /** After bulk POST: restore list search + page from hidden fields. */
+    private function redirectToClientsIndexPostContext(): void
+    {
+        $q = [];
+        $listSearch = isset($_POST['list_search']) ? trim((string) $_POST['list_search']) : '';
+        if ($listSearch !== '') {
+            $q['search'] = $listSearch;
+        }
+        if (isset($_POST['list_page']) && (int) $_POST['list_page'] > 1) {
+            $q['page'] = (string) (int) $_POST['list_page'];
+        }
+        $url = '/clients' . ($q !== [] ? ('?' . http_build_query($q)) : '');
+        header('Location: ' . $url);
+        exit;
+    }
+
     private function getBranches(): array
     {
         return $this->branchDirectory->getActiveBranchesForSelection();
+    }
+
+    private function isDrawerRequest(): bool
+    {
+        return (string) ($_GET['drawer'] ?? '') === '1'
+            || (string) ($_SERVER['HTTP_X_APP_DRAWER'] ?? '') === '1';
+    }
+
+    private function sendDrawerValidationHtml(string $html): void
+    {
+        @ini_set('display_errors', '0');
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        http_response_code(422);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'success' => false,
+            'error' => ['message' => 'Please correct the errors below.'],
+            'data' => ['html' => $html],
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    private function sendDrawerClientCreated(int $id): void
+    {
+        @ini_set('display_errors', '0');
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'success' => true,
+            'data' => [
+                'message' => 'Client created.',
+                'window_assign' => '/clients/' . $id,
+            ],
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
     }
 }

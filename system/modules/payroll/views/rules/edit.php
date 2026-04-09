@@ -1,8 +1,11 @@
 <?php
 $title = $title ?? 'Edit rule';
 ob_start();
+$teamWorkspaceActiveTab = 'payroll';
+$teamWorkspaceShellTitle = 'Team';
+require base_path('modules/staff/views/partials/team-workspace-shell.php');
 ?>
-<h1>Edit compensation rule</h1>
+<h2>Edit compensation rule</h2>
 <?php if (!empty($errors['_general'])): ?>
 <div class="flash flash-error"><?= htmlspecialchars((string) $errors['_general']) ?></div>
 <?php endif; ?>

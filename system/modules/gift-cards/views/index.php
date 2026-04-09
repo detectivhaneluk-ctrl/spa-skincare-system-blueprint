@@ -41,6 +41,9 @@ $bulkFormId = 'gift-cards-bulk-expiry-form';
 <?php endif; ?>
 
 <form method="get" class="search-form" action="/gift-cards">
+    <?php if ((int) ($_GET['client_id'] ?? 0) > 0): ?>
+    <input type="hidden" name="client_id" value="<?= (int) $_GET['client_id'] ?>">
+    <?php endif; ?>
     <div>
         <label for="gc-code">Code / number</label><br>
         <input id="gc-code" type="text" name="code" placeholder="Contains…" value="<?= $getv('code') ?>">
@@ -154,6 +157,7 @@ $bulkFormId = 'gift-cards-bulk-expiry-form';
     <input type="hidden" name="<?= $csrfName ?>" value="<?= $csrfVal ?>">
     <?php if ($indexQuery['code'] ?? ''): ?><input type="hidden" name="ret_code" value="<?= htmlspecialchars((string) $indexQuery['code']) ?>"><?php endif; ?>
     <?php if ($indexQuery['client_name'] ?? ''): ?><input type="hidden" name="ret_client_name" value="<?= htmlspecialchars((string) $indexQuery['client_name']) ?>"><?php endif; ?>
+    <?php if (($indexQuery['client_id'] ?? '') !== '' && (int) $indexQuery['client_id'] > 0): ?><input type="hidden" name="ret_client_id" value="<?= htmlspecialchars((string) $indexQuery['client_id']) ?>"><?php endif; ?>
     <?php if ($indexQuery['status'] ?? ''): ?><input type="hidden" name="ret_status" value="<?= htmlspecialchars((string) $indexQuery['status']) ?>"><?php endif; ?>
     <?php if ($indexQuery['issued_from'] ?? ''): ?><input type="hidden" name="ret_issued_from" value="<?= htmlspecialchars((string) $indexQuery['issued_from']) ?>"><?php endif; ?>
     <?php if ($indexQuery['issued_to'] ?? ''): ?><input type="hidden" name="ret_issued_to" value="<?= htmlspecialchars((string) $indexQuery['issued_to']) ?>"><?php endif; ?>

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -11,13 +11,17 @@
         try {
             var L = 'ollira_app_nav_layout';
             var C = 'ollira_app_sidebar_collapsed';
+            var T = 'ollira_app_theme';
             var v = localStorage.getItem(L) === 'sidebar' ? 'sidebar' : 'top';
             document.documentElement.setAttribute('data-app-nav-layout', v);
             if (localStorage.getItem(C) === '1') {
                 document.documentElement.setAttribute('data-app-sidebar-collapsed', 'true');
             }
+            var th = localStorage.getItem(T) === 'dark' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-app-theme', th);
         } catch (e) {
             document.documentElement.setAttribute('data-app-nav-layout', 'top');
+            document.documentElement.setAttribute('data-app-theme', 'light');
         }
         try {
             if (sessionStorage.getItem('ds-appts-tab-nav')) {
@@ -31,7 +35,10 @@
     <link rel="stylesheet" href="/assets/css/design-tokens.css">
     <link rel="stylesheet" href="/assets/css/design-system.css">
     <link rel="stylesheet" href="/assets/css/app.css">
+    <script src="/assets/js/client-create-delivery.js" defer></script>
+    <script src="/assets/js/client-create-phone-dedupe.js" defer></script>
     <script src="/assets/js/app-drawer.js" defer></script>
+    <script src="/assets/js/app-toast.js" defer></script>
     <script src="/assets/js/app-shell-nav.js" defer></script>
     <script src="/assets/js/ds-segmented-thumb.js" defer></script>
 </head>
@@ -57,6 +64,7 @@
     $navPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
     $navPath = is_string($navPath) && $navPath !== '' ? $navPath : '/';
     $navIsAppointments = str_starts_with($navPath, '/appointments') || str_starts_with($navPath, '/calendar');
+    $navUser = null;
     if (empty($hideNav)) {
         $navUser = \Core\App\Application::container()->get(\Core\Auth\AuthService::class)->user();
         if ($navUser !== null) {
@@ -77,38 +85,41 @@
             break;
         }
     }
-    if (str_starts_with($navPath, '/memberships/refund-review')) {
-        $navIsSettings = true;
+    // Memberships/Packages definition pages (not client-assigned ones) also live under Settings.
+    if (!$navIsSettings) {
+        if (
+            (str_starts_with($navPath, '/memberships') && !str_starts_with($navPath, '/memberships/client-memberships')) ||
+            (str_starts_with($navPath, '/packages') && !str_starts_with($navPath, '/packages/client-packages'))
+        ) {
+            $navIsSettings = true;
+        }
     }
+
 
     $navIsClientsMemberships = str_starts_with($navPath, '/memberships/client-memberships');
     $navIsClientsPackages = str_starts_with($navPath, '/packages/client-packages');
-    /** Definition/policy surfaces (old “Catalog” family): highlight Admin in primary nav, not a separate home. */
-    $navIsCatalog = str_starts_with($navPath, '/services-resources')
-        || (
-            str_starts_with($navPath, '/memberships')
-            && ! $navIsClientsMemberships
-            && ! str_starts_with($navPath, '/memberships/refund-review')
-        )
-        || (
-            str_starts_with($navPath, '/packages')
-            && ! $navIsClientsPackages
-        );
-    $navIsSettings = $navIsSettings || $navIsCatalog;
+    $navIsServices = str_starts_with($navPath, '/services-resources');
+    $navIsMembershipsAny = str_starts_with($navPath, '/memberships') && ! $navIsClientsMemberships;
+    $navIsPackages = str_starts_with($navPath, '/packages') && ! $navIsClientsPackages;
+    $navIsBranches = str_starts_with($navPath, '/branches');
+    /** Definition/policy surfaces: memberships+packages highlight Admin; services-resources gets its own nav item. */
+    // Branches, Memberships, Packages now have their own primary nav items.
     $navIsReports = str_starts_with($navPath, '/reports');
     $navIsTeam = str_starts_with($navPath, '/staff') || str_starts_with($navPath, '/payroll');
 
     $navIsSales = str_starts_with($navPath, '/sales')
-        || str_starts_with($navPath, '/gift-cards');
+        || str_starts_with($navPath, '/gift-cards')
+        || $navIsReports;
     // 5-element tuples: [href, label, active, permission_gate|null, icon_path]
     // permission_gate: null = always visible; string = PermissionService::has() key required
     $navAllItems = [
-        ['/dashboard', 'Home', $navPath === '/' || str_starts_with($navPath, '/dashboard') || $navIsReports, null, 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10'],
+        ['/dashboard', 'Home', $navPath === '/' || str_starts_with($navPath, '/dashboard'), null, 'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10'],
         ['/appointments/calendar/day', 'Calendar', $navIsAppointments, 'appointments.view', 'M8 2v4 M16 2v4 M3 10h18 M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2'],
-        ['/clients', 'Clients', str_starts_with($navPath, '/clients') || $navIsClientsMemberships || $navIsClientsPackages || str_starts_with($navPath, '/marketing'), 'clients.view', 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75'],
+        ['/clients', 'Clients', str_starts_with($navPath, '/clients') || $navIsClientsMemberships || $navIsClientsPackages || str_starts_with($navPath, '/marketing') || str_starts_with($navPath, '/intake'), 'clients.view', 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75'],
         ['/staff', 'Team', $navIsTeam, 'staff.view', 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M12 7a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'],
         ['/sales', 'Cashier', $navIsSales, 'sales.view', 'M12 20V10 M18 20V4 M6 20v-4'],
         ['/inventory', 'Stock', str_starts_with($navPath, '/inventory'), 'inventory.view', 'M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z'],
+        ['/services-resources', 'Services', $navIsServices, 'services-resources.view', 'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2 M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2 M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2 M12 12h.01 M12 16h.01 M8 12h.01 M8 16h.01 M16 12h.01 M16 16h.01'],
         ['/settings', 'Settings', $navIsSettings, 'settings.view', 'M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'],
     ];
     // Filter to only homes the current user has permission to see.
@@ -141,6 +152,16 @@
     $shellUser = \Core\App\Application::container()->get(\Core\Auth\AuthService::class)->user();
     $shellEmail = is_array($shellUser) ? (string) ($shellUser['email'] ?? '') : '';
     $shellDisplay = $shellEmail !== '' ? $shellEmail : 'Signed in';
+    $shellUserName = is_array($shellUser) ? trim((string) ($shellUser['name'] ?? '')) : '';
+    $shellDisplayName = $shellUserName !== '' ? $shellUserName : ($shellEmail !== '' ? (string) preg_replace('/@.*/', '', $shellEmail) : 'Account');
+    if (function_exists('mb_substr') && function_exists('mb_strtoupper')) {
+        $shellInitial = mb_strtoupper(mb_substr($shellDisplayName, 0, 1, 'UTF-8'), 'UTF-8');
+    } else {
+        $shellInitial = strtoupper(substr($shellDisplayName, 0, 1));
+    }
+    if ($shellInitial === '') {
+        $shellInitial = '?';
+    }
     ?>
     <div class="app-shell">
         <header class="app-shell__header app-shell__header--top">
@@ -161,28 +182,11 @@
                 <?php endforeach; ?>
             </nav>
             <div class="app-shell__aside">
-                <div class="app-shell__layout-switch app-shell__layout-switch--segmented" role="group" aria-label="Navigation layout">
-                    <button type="button" class="app-shell__layout-switch-btn" data-app-shell-layout="top" aria-pressed="true">Top</button>
-                    <button type="button" class="app-shell__layout-switch-btn" data-app-shell-layout="sidebar" aria-pressed="false">Sidebar</button>
-                </div>
-                <div class="app-shell__header-tools">
-                    <button type="button" class="app-shell__header-icon" aria-label="Notifications">
-                        <svg class="app-shell__header-icon-svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-                        </svg>
-                    </button>
-                    <a class="app-shell__header-icon" href="/settings" aria-label="Account and settings">
-                        <svg class="app-shell__header-icon-svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                            <circle cx="12" cy="7" r="4"/>
-                        </svg>
-                    </a>
-                </div>
-                <form method="post" action="/logout" class="app-shell__logout-form">
-                    <input type="hidden" name="<?= $csrfName ?>" value="<?= $csrfVal ?>">
-                    <button type="submit" class="app-shell__logout-btn">Log out</button>
-                </form>
+                <?php
+                $accountSuffix = 'top';
+                $accountVariant = 'header';
+                require shared_path('layout/partials/app-shell-account.php');
+                ?>
             </div>
         </header>
 
@@ -246,23 +250,11 @@
                 </nav>
                 <div class="app-shell__sidebar-spacer" aria-hidden="true"></div>
                 <footer class="app-shell__sidebar-footer">
-                    <div class="app-shell__sidebar-user">
-                        <span class="app-shell__sidebar-user-avatar" aria-hidden="true">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>
-                        </span>
-                        <span class="app-shell__sidebar-user-text">
-                            <span class="app-shell__sidebar-user-name">Account</span>
-                            <span class="app-shell__sidebar-user-email"><?= htmlspecialchars($shellDisplay) ?></span>
-                        </span>
-                    </div>
-                    <div class="app-shell__layout-switch app-shell__layout-switch--segmented" role="group" aria-label="Navigation layout">
-                        <button type="button" class="app-shell__layout-switch-btn" data-app-shell-layout="top" aria-pressed="true">Top</button>
-                        <button type="button" class="app-shell__layout-switch-btn" data-app-shell-layout="sidebar" aria-pressed="false">Sidebar</button>
-                    </div>
-                    <form method="post" action="/logout" class="app-shell__logout-form app-shell__sidebar-logout">
-                        <input type="hidden" name="<?= $csrfName ?>" value="<?= $csrfVal ?>">
-                        <button type="submit" class="app-shell__logout-btn app-shell__sidebar-logout-btn">Log out</button>
-                    </form>
+                    <?php
+                    $accountSuffix = 'side';
+                    $accountVariant = 'sidebar';
+                    require shared_path('layout/partials/app-shell-account.php');
+                    ?>
                 </footer>
             </div>
         </aside>
@@ -305,6 +297,7 @@
         </main>
     </div>
     <?php endif; ?>
+    <?php require shared_path('layout/partials/app-toast-bootstrap.php'); ?>
     <div id="app-drawer-host" class="app-drawer-host" aria-live="polite"></div>
 </body>
 </html>

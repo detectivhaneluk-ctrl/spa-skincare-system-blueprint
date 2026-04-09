@@ -1,7 +1,10 @@
 <?php
+$clientsWorkspaceActiveTab = 'intake';
+require base_path('modules/clients/views/partials/clients-workspace-data.php');
 ob_start();
+require base_path('modules/clients/views/partials/clients-workspace-shell.php');
 ?>
-<h1>Create intake template</h1>
+<h2>Create intake template</h2>
 <?php if (!empty($flash['error'])): ?><p><?= htmlspecialchars((string) $flash['error']) ?></p><?php endif; ?>
 <?php foreach ($errors ?? [] as $err): ?><p><?= htmlspecialchars((string) $err) ?></p><?php endforeach; ?>
 <form method="post" action="/intake/templates">

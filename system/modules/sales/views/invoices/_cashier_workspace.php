@@ -114,7 +114,7 @@ foreach (($invoice['items'] ?? []) as $it) {
             <label for="order-number-search">Invoice number</label>
             <div class="cashier-inline">
                 <input type="text" id="order-number-search" placeholder="e.g. INV-1001" autocomplete="off">
-                <button type="button" id="order-search-btn">Go to list</button>
+                <button type="button" id="order-search-btn" class="ds-btn ds-btn--secondary ds-btn--sm">Go to list</button>
             </div>
             <p class="cashier-rail-nav"><a href="/sales">Sales home (new sale)</a></p>
         </div>
@@ -164,7 +164,7 @@ foreach (($invoice['items'] ?? []) as $it) {
                 <?php endif; ?>
             </div>
             <div class="cashier-client-banner__actions">
-                <button type="button" id="toggle-client-context">Choose client</button>
+                <button type="button" id="toggle-client-context" class="ds-btn ds-btn--toolbar">Choose client</button>
                 <div class="cashier-banner-secondary">
                     <a href="/sales/invoices" class="cashier-banner-link">Manage Sales</a>
                     <p class="cashier-banner-microhint">Leave checkout: invoice list, search, and open orders.</p>
@@ -187,9 +187,9 @@ foreach (($invoice['items'] ?? []) as $it) {
         <div class="cashier-workspace">
             <div class="cashier-workspace__head">
                 <div>
-                    <h2>Ordered Articles</h2>
+                    <h2 class="cashier-workspace__title">Ordered articles</h2>
                 </div>
-                <button type="button" data-tab-target="tab-products">Browse branch sellables</button>
+                <button type="button" data-tab-target="tab-products" class="ds-btn ds-btn--toolbar">Browse branch sellables</button>
             </div>
 
             <div class="cashier-ops-strip">
@@ -283,7 +283,7 @@ foreach (($invoice['items'] ?? []) as $it) {
                             </select>
                         </div>
                         <p class="hint">Adds a gift voucher line. If you tie it to a product, that product must exist on this branch&rsquo;s sellable list.</p>
-                        <button type="button" id="cashier-add-voucher">Add voucher line</button>
+                        <button type="button" id="cashier-add-voucher" class="ds-btn ds-btn--primary ds-btn--sm">Add voucher line</button>
                     </div>
                     <div id="cashier-deferred-panel-gift_card" class="cashier-deferred-panel" data-deferred-panel="gift_card" style="display:none;" role="tabpanel">
                         <div class="form-row">
@@ -291,7 +291,7 @@ foreach (($invoice['items'] ?? []) as $it) {
                             <input type="number" id="cashier-gift-card-amount" min="0.01" step="0.01" value="" required>
                         </div>
                         <p class="hint">Adds a gift card line (no tax on the line). When you save a <strong>new</strong> invoice, the system issues the card and links it to this sale.</p>
-                        <button type="button" id="cashier-add-gift-card">Add gift card line</button>
+                        <button type="button" id="cashier-add-gift-card" class="ds-btn ds-btn--primary ds-btn--sm">Add gift card line</button>
                     </div>
                     <div id="cashier-deferred-panel-series" class="cashier-deferred-panel" data-deferred-panel="series" style="display:none;" role="tabpanel">
                         <p id="cashier-series-client-hint" class="hint"><?= $clientId <= 0 ? 'Choose a client on this invoice before selling a package series.' : 'Client is set; you can sell a package series to them here.' ?></p>
@@ -310,7 +310,7 @@ foreach (($invoice['items'] ?? []) as $it) {
                             <input type="number" id="cashier-series-sessions" min="1" step="1" value="1" required>
                         </div>
                         <p class="hint">Adds a package series line. On first save, the sessions are assigned to the client on this invoice.</p>
-                        <button type="button" id="cashier-add-series" <?= $clientId <= 0 ? 'disabled' : '' ?>>Add series line</button>
+                        <button type="button" id="cashier-add-series" class="ds-btn ds-btn--primary ds-btn--sm" <?= $clientId <= 0 ? 'disabled' : '' ?>>Add series line</button>
                     </div>
                     <div id="cashier-deferred-panel-client_account" class="cashier-deferred-panel" data-deferred-panel="client_account" style="display:none;" role="tabpanel">
                         <p class="hint"><strong>Client account</strong> is not available yet — there is no house-account balance to charge. You cannot post this line type from the till.</p>
@@ -346,13 +346,13 @@ foreach (($invoice['items'] ?? []) as $it) {
                 <div class="cashier-panel-toolbar">
                     <input type="text" id="tip-description" value="Tip" placeholder="Tip label">
                     <input type="number" id="tip-amount" min="0" step="0.01" value="0" placeholder="Amount">
-                    <button type="button" id="add-tip-line">Add tip line</button>
+                    <button type="button" id="add-tip-line" class="ds-btn ds-btn--primary ds-btn--sm">Add tip line</button>
                 </div>
             </section>
         </div>
 
         <div class="cashier-lines-panel<?= $cashierLinesQuiet ? ' cashier-lines-panel--quiet' : '' ?>" data-cashier-lines-panel="1">
-            <h3>Current Line Items</h3>
+            <h3 class="cashier-lines-panel__title">Current line items</h3>
             <table class="index-table">
                 <thead><tr><th>Description</th><th>Qty</th><th>Price</th><th></th></tr></thead>
                 <tbody id="invoice-lines-body">
@@ -361,7 +361,7 @@ foreach (($invoice['items'] ?? []) as $it) {
                     <td><input type="text" name="items[<?= $idx ?>][description]" value="<?= htmlspecialchars((string) ($item['description'] ?? '')) ?>"></td>
                     <td><input type="number" name="items[<?= $idx ?>][quantity]" value="<?= htmlspecialchars((string) ($item['quantity'] ?? 1)) ?>" min="0" step="0.01"></td>
                     <td><input type="number" name="items[<?= $idx ?>][unit_price]" value="<?= htmlspecialchars((string) ($item['unit_price'] ?? 0)) ?>" min="0" step="0.01"></td>
-                    <td class="cashier-line-actions"><button type="button" data-remove-line>Remove</button></td>
+                    <td class="cashier-line-actions"><button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" data-remove-line>Remove</button></td>
                     <td hidden><input type="hidden" name="items[<?= $idx ?>][item_type]" value="<?= htmlspecialchars((string) ($item['item_type'] ?? 'manual')) ?>"></td>
                     <td hidden><input type="hidden" name="items[<?= $idx ?>][source_id]" value="<?= (int) ($item['source_id'] ?? 0) ?>"></td>
                     <td hidden><input type="hidden" name="items[<?= $idx ?>][discount_amount]" value="<?= htmlspecialchars((string) ($item['discount_amount'] ?? 0)) ?>"></td>
@@ -379,7 +379,7 @@ foreach (($invoice['items'] ?? []) as $it) {
                 <?php endforeach; ?>
                 </tbody>
             </table>
-            <p><button type="button" id="add-manual-line">+ Add Manual Line</button></p>
+            <p class="cashier-lines-panel__footer-actions"><button type="button" id="add-manual-line" class="ds-btn ds-btn--secondary ds-btn--sm">+ Add manual line</button></p>
         </div>
 
         <details class="cashier-totals-summary" id="cashier-totals-summary" aria-live="polite" <?= $cashierDisclosureExpandedInitially ? 'open' : '' ?>>
@@ -431,11 +431,11 @@ foreach (($invoice['items'] ?? []) as $it) {
                     <textarea id="notes" name="notes" rows="2"><?= htmlspecialchars((string) ($invoice['notes'] ?? '')) ?></textarea>
                 </div>
                 <div class="form-actions">
-                    <button type="submit"><?= htmlspecialchars($submitLabel) ?></button>
+                    <button type="submit" class="ds-btn ds-btn--primary"><?= htmlspecialchars($submitLabel) ?></button>
                     <?php if ($isEdit): ?>
-                    <a href="/sales/invoices/<?= (int) $invoice['id'] ?>">Back to invoice</a>
+                    <a href="/sales/invoices/<?= (int) $invoice['id'] ?>" class="ds-btn ds-btn--secondary ds-btn--sm">Back to invoice</a>
                     <?php else: ?>
-                    <a href="/sales/invoices">Back to Manage Sales</a>
+                    <a href="/sales/invoices" class="ds-btn ds-btn--secondary ds-btn--sm">Back to Manage Sales</a>
                     <?php endif; ?>
                 </div>
             </div>
@@ -572,7 +572,7 @@ foreach (($invoice['items'] ?? []) as $it) {
             '<td><input type="text" name="items[' + lineIndex + '][description]"></td>' +
             '<td><input type="number" name="items[' + lineIndex + '][quantity]" min="0" step="0.01"></td>' +
             '<td><input type="number" name="items[' + lineIndex + '][unit_price]" min="0" step="0.01"></td>' +
-            '<td class="cashier-line-actions"><button type="button" data-remove-line>Remove</button></td>' +
+            '<td class="cashier-line-actions"><button type="button" class="ds-btn ds-btn--ghost ds-btn--sm" data-remove-line>Remove</button></td>' +
             '<td hidden><input type="hidden" name="items[' + lineIndex + '][item_type]"></td>' +
             '<td hidden><input type="hidden" name="items[' + lineIndex + '][source_id]"></td>' +
             '<td hidden><input type="hidden" name="items[' + lineIndex + '][discount_amount]"></td>' +
@@ -658,7 +658,7 @@ foreach (($invoice['items'] ?? []) as $it) {
                 '<td>' + escapeHtml(p.name || '') + '</td>' +
                 '<td>' + Number(p.sell_price || 0).toFixed(2) + '</td>' +
                 '<td><input type="number" min="0.01" step="0.01" value="1" data-product-qty="' + Number(p.id) + '"></td>' +
-                '<td><button type="button" data-add-product="' + Number(p.id) + '">Add</button></td>';
+                '<td><button type="button" class="ds-btn ds-btn--primary ds-btn--sm" data-add-product="' + Number(p.id) + '">Add</button></td>';
             tbody.appendChild(tr);
         });
         tbody.querySelectorAll('[data-add-product]').forEach(function (btn) {
@@ -699,7 +699,7 @@ foreach (($invoice['items'] ?? []) as $it) {
                 '<td>' + escapeHtml(s.name || '') + '</td>' +
                 '<td>' + Number(s.price || 0).toFixed(2) + '</td>' +
                 '<td><input type="number" min="0.01" step="0.01" value="1" data-service-qty="' + Number(s.id) + '"></td>' +
-                '<td><button type="button" data-add-service="' + Number(s.id) + '">Add</button></td>';
+                '<td><button type="button" class="ds-btn ds-btn--primary ds-btn--sm" data-add-service="' + Number(s.id) + '">Add</button></td>';
             tbody.appendChild(tr);
         });
         tbody.querySelectorAll('[data-add-service]').forEach(function (btn) {

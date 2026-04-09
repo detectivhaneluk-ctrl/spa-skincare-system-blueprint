@@ -1,8 +1,10 @@
 <?php
 $title = 'Membership Plans';
 ob_start();
+$memWorkspaceActiveTab = 'plans';
+require base_path('modules/memberships/views/partials/memberships-workspace-shell.php');
 ?>
-<h1>Membership Plans</h1>
+<h2>Membership Plans</h2>
 <p class="hint" style="margin-top:0;">These are the plan definitions — duration, price, and availability. Active client enrollments are managed in Clients (main navigation), not on this screen.</p>
 <?php if ($flash && is_array($flash)): $t = array_key_first($flash); ?>
 <div class="flash flash-<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($flash[$t] ?? '') ?></div>
@@ -57,4 +59,7 @@ ob_start();
 <?php if ($total > $perPage): ?>
 <p>Page <?= (int) $page ?> — <?= count($items) ?> of <?= (int) $total ?>.</p>
 <?php endif; ?>
-<?php $content = ob_get_clean(); require shared_path('layout/base.php'); ?>
+<?php
+$content = ob_get_clean();
+require shared_path('layout/base.php');
+?>

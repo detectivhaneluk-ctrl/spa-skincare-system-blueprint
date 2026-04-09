@@ -113,6 +113,65 @@ final class PackageService
         }, 'package update');
     }
 
+    /**
+     * Soft-delete package plan rows in the current branch catalog (tenant-scoped list).
+     *
+     * @param list<int|string> $packageIds
+     * @return array{removed: int, skipped: int}
+     */
+    public function bulkSoftDeletePackageDefinitions(array $packageIds, int $branchContext): array
+    {
+        $branchContext = $this->requirePositiveBranchId($branchContext);
+        $seen = [];
+        foreach ($packageIds as $raw) {
+            $id = (int) $raw;
+            if ($id > 0) {
+                $seen[$id] = true;
+            }
+        }
+        $removed = 0;
+        $skipped = 0;
+        $userId = $this->currentUserId();
+        foreach (array_keys($seen) as $id) {
+            $row = $this->packages->findInTenantScope($id, $branchContext);
+            if (!$row) {
+                $skipped++;
+                continue;
+            }
+            try {
+                $this->branchContext->assertBranchMatchOrGlobalEntity(
+                    $row['branch_id'] !== null && $row['branch_id'] !== '' ? (int) $row['branch_id'] : null
+                );
+            } catch (\DomainException) {
+                $skipped++;
+                continue;
+            }
+            $this->packages->softDeleteInTenantScope($id, $branchContext);
+            $removed++;
+            $this->audit->log('package_soft_deleted', 'package', $id, $userId, $row['branch_id'] ?? null, [
+                'name' => $row['name'] ?? null,
+            ]);
+        }
+
+        return ['removed' => $removed, 'skipped' => $skipped];
+    }
+
+    public function softDeletePackageDefinition(int $id, int $branchContext): void
+    {
+        $branchContext = $this->requirePositiveBranchId($branchContext);
+        $row = $this->packages->findInTenantScope($id, $branchContext);
+        if (!$row) {
+            throw new \RuntimeException('Package not found.');
+        }
+        $this->branchContext->assertBranchMatchOrGlobalEntity(
+            $row['branch_id'] !== null && $row['branch_id'] !== '' ? (int) $row['branch_id'] : null
+        );
+        $this->packages->softDeleteInTenantScope($id, $branchContext);
+        $this->audit->log('package_soft_deleted', 'package', $id, $this->currentUserId(), $row['branch_id'] ?? null, [
+            'name' => $row['name'] ?? null,
+        ]);
+    }
+
     public function assignPackageToClient(array $data): int
     {
         return $this->transactional(function () use ($data): int {
@@ -452,6 +511,36 @@ final class PackageService
                 'notes' => $notes,
             ]);
         }, 'package cancel');
+    }
+
+    /**
+     * Cancel multiple client packages in the current branch context; each id uses {@see cancelClientPackage()}.
+     * Already-cancelled rows count toward cancelled (no-op). Other failures increment skipped.
+     *
+     * @param list<int|string> $clientPackageIds
+     * @return array{cancelled: int, skipped: int}
+     */
+    public function bulkCancelClientPackages(array $clientPackageIds, ?string $notes, int $branchContext): array
+    {
+        $seen = [];
+        foreach ($clientPackageIds as $raw) {
+            $id = (int) $raw;
+            if ($id > 0) {
+                $seen[$id] = true;
+            }
+        }
+        $cancelled = 0;
+        $skipped = 0;
+        foreach (array_keys($seen) as $id) {
+            try {
+                $this->cancelClientPackage($id, $notes, $branchContext);
+                $cancelled++;
+            } catch (\DomainException | \RuntimeException) {
+                $skipped++;
+            }
+        }
+
+        return ['cancelled' => $cancelled, 'skipped' => $skipped];
     }
 
     public function expireClientPackageIfNeeded(int $clientPackageId, ?int $branchContext = null): bool

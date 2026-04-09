@@ -511,7 +511,7 @@ endif;
      TAB: Schedule
      ══════════════════════════════════════════════════════════════════════ -->
 <div class="pedit-panel" data-drawer-tab-panel="schedule" <?= $activeTab !== 'schedule' ? 'hidden' : '' ?>>
-<form method="post" action="/staff/<?= $staffId ?>/profile/schedule<?= $isDrawer ? '?drawer=1' : '' ?>" class="pedit-form" id="profile-schedule-form" novalidate data-drawer-submit>
+<form method="post" action="/staff/<?= $staffId ?>/profile/schedule<?= $isDrawer ? '?drawer=1' : '' ?>" class="pedit-form" id="profile-schedule-form" novalidate data-drawer-submit data-schedule-display-order="<?= htmlspecialchars(json_encode($displayOrder), ENT_QUOTES, 'UTF-8') ?>">
     <input type="hidden" name="<?= $csrfName ?>" value="<?= $csrfVal ?>">
 
     <?php if (!empty($errors['_schedule_general'])): ?>
@@ -649,6 +649,11 @@ endif;
                 row.classList.toggle('staff-schedule-row--off', !on);
                 inputs.forEach(function (i) { i.disabled = !on; });
                 if (copyBtn) copyBtn.disabled = !on;
+                if (on) {
+                    var arr = Array.from(inputs);
+                    if (arr[0] && !arr[0].value) arr[0].value = '09:00';
+                    if (arr[1] && !arr[1].value) arr[1].value = '17:00';
+                }
             });
         });
 

@@ -1,13 +1,15 @@
 <?php
 $title = 'Spaces';
 ob_start();
+$svcWorkspaceActiveTab = 'spaces';
+require base_path('modules/services-resources/views/partials/services-workspace-shell.php');
 ?>
-<h1>Spaces</h1>
+<h2>Spaces</h2>
 <p class="hint" style="margin-top:0;">Treatment rooms and bookable spaces. Assign spaces to services to control room availability on the calendar.</p>
 <?php if ($flash && is_array($flash)): $t = array_key_first($flash); ?>
 <div class="flash flash-<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($flash[$t] ?? '') ?></div>
 <?php endif; ?>
-<p><a href="/services-resources" class="btn">← Catalog</a> <a href="/services-resources/rooms/create" class="btn">New space</a></p>
+<p><a href="/services-resources/rooms/create" class="btn">New space</a></p>
 <?php
 $rows = $rooms;
 $headers = [

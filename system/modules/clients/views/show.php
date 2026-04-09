@@ -164,9 +164,9 @@ ob_start();
 
             <div class="client-ref-actions-row">
                 <a class="btn" href="/clients/<?= $clientId ?>/edit">Edit profile</a>
-                <a class="btn" href="/clients/merge?primary_id=<?= $clientId ?>">Merge / duplicates</a>
+                <a class="btn" href="/clients?merge_primary=<?= $clientId ?>">Merge / duplicates</a>
                 <?php if (!empty($duplicates)): ?>
-                <a class="btn" href="/clients/merge?primary_id=<?= $clientId ?>&secondary_id=<?= (int) $duplicates[0]['id'] ?>">Merge preview (duplicate detected)</a>
+                <a class="btn" href="/clients?merge_primary=<?= $clientId ?>&merge_secondary=<?= (int) $duplicates[0]['id'] ?>">Merge with suggested duplicate</a>
                 <?php endif; ?>
             </div>
             <?php

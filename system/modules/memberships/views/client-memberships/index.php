@@ -1,14 +1,20 @@
 <?php
 $title = 'Active Client Memberships';
+$clientsWorkspaceActiveTab = 'list';
+require base_path('modules/clients/views/partials/clients-workspace-data.php');
 ob_start();
+require base_path('modules/clients/views/partials/clients-workspace-shell.php');
 ?>
-<h1>Active Client Memberships</h1>
+<h2>Active Client Memberships</h2>
 <p class="hint" style="margin-top:0;">Client-owned membership records. Use filters to find active, paused, or cancelled memberships. To manage plan definitions, see <a href="/memberships">Membership plans</a>.</p>
 <?php if ($flash && is_array($flash)): $t = array_key_first($flash); ?>
 <div class="flash flash-<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($flash[$t] ?? '') ?></div>
 <?php endif; ?>
 
 <form method="get" class="search-form">
+    <?php if (!empty($filterClientId) && (int) $filterClientId > 0): ?>
+    <input type="hidden" name="client_id" value="<?= (int) $filterClientId ?>">
+    <?php endif; ?>
     <input type="text" name="search" placeholder="Search client or plan..." value="<?= htmlspecialchars($search) ?>">
     <select name="status">
         <option value="">All statuses</option>
@@ -68,3 +74,4 @@ ob_start();
 <p>Page <?= (int) $page ?> — <?= count($items) ?> of <?= (int) $total ?>.</p>
 <?php endif; ?>
 <?php $content = ob_get_clean(); require shared_path('layout/base.php'); ?>
+

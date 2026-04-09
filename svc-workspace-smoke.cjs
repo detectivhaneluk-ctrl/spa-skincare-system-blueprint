@@ -126,10 +126,10 @@ async function shot(page, name) {
     });
     verdict('S3.5', 'List view hidden in structure mode', listHidden === true ? 'PASS' : 'FAIL', `hidden=${listHidden}`);
 
-    // Category groups visible (if services exist)
-    const structGroups = await page.$$('.svc-struct-group');
+    const flowRoot = await page.$('#ollira-svc-flow-root');
+    const mapTree = await page.$('#svc-map-tree');
     const structEmpty = await page.$('.svc-empty');
-    verdict('S3.6', 'Structure view shows groups or empty state', (structGroups.length > 0 || structEmpty) ? 'PASS' : 'FAIL', `groups=${structGroups.length}`);
+    verdict('S3.6', 'Structure view shows flow/HTML map or empty', (flowRoot || mapTree || structEmpty) ? 'PASS' : 'FAIL', `flow=${!!flowRoot} tree=${!!mapTree}`);
 
     verdict('S3.7', 'No JS errors on structure view', jsErrors.length === 0 ? 'PASS' : 'FAIL', jsErrors.slice(0, 3).join('; '));
     await shot(page, '03-structure-view');

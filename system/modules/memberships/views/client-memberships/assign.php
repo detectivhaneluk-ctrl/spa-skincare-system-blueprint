@@ -1,9 +1,11 @@
 <?php
 $title = 'Assign Membership to Client';
+$clientsWorkspaceActiveTab = 'list';
+require base_path('modules/clients/views/partials/clients-workspace-data.php');
 ob_start();
+require base_path('modules/clients/views/partials/clients-workspace-shell.php');
 ?>
-<h1>Assign Membership to Client</h1>
-<p><a href="/memberships/client-memberships">← Client Memberships</a></p>
+<h2>Assign Membership to Client</h2>
 <?php if (!empty($membershipSettings['terms_text'])): ?>
 <div class="form-row">
     <label>Membership terms</label>

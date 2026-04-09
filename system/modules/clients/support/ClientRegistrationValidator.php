@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace Modules\Clients\Support;
 
+/**
+ * Validates manual registration intake: full_name, phone, email, notes.
+ * Client record layouts use split name + structured phone block; the fixed `customer_details` prefix in
+ * {@see \Modules\Clients\Services\ClientFieldCatalogService::customerDetailsImmutablePrefixKeys()} matches that model.
+ */
 final class ClientRegistrationValidator
 {
     /**

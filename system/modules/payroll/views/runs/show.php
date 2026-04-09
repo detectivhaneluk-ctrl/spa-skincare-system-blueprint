@@ -1,8 +1,11 @@
 <?php
 $title = $title ?? 'Payroll run';
 ob_start();
+$teamWorkspaceActiveTab = 'payroll';
+$teamWorkspaceShellTitle = 'Team';
+require base_path('modules/staff/views/partials/team-workspace-shell.php');
 ?>
-<h1>Payroll run #<?= (int) ($run['id'] ?? 0) ?></h1>
+<h2>Payroll run #<?= (int) ($run['id'] ?? 0) ?></h2>
 <?php if (!empty($flash) && is_array($flash)): $t = array_key_first($flash); ?>
 <div class="flash flash-<?= htmlspecialchars((string) $t) ?>"><?= htmlspecialchars((string) ($flash[$t] ?? '')) ?></div>
 <?php endif; ?>

@@ -29,7 +29,7 @@ final class ClientPageLayoutItemRepository
     }
 
     /**
-     * @param list<array{field_key:string, position:int, is_enabled:int}> $rows
+     * @param list<array{field_key:string, position:int, is_enabled:int, display_label?:string|null, is_required?:int|null}> $rows
      */
     public function insertRows(int $profileId, array $rows): void
     {
@@ -39,13 +39,20 @@ final class ClientPageLayoutItemRepository
         $values = [];
         $params = [];
         foreach ($rows as $row) {
-            $values[] = '(?, ?, ?, ?)';
+            $values[] = '(?, ?, ?, ?, ?, ?)';
             $params[] = $profileId;
             $params[] = (string) $row['field_key'];
             $params[] = (int) $row['position'];
             $params[] = !empty($row['is_enabled']) ? 1 : 0;
+            $dl = $row['display_label'] ?? null;
+            $params[] = ($dl !== null && trim((string) $dl) !== '') ? trim((string) $dl) : null;
+            if (array_key_exists('is_required', $row) && $row['is_required'] !== null && $row['is_required'] !== '') {
+                $params[] = !empty($row['is_required']) ? 1 : 0;
+            } else {
+                $params[] = null;
+            }
         }
-        $sql = 'INSERT INTO client_page_layout_items (profile_id, field_key, position, is_enabled) VALUES '
+        $sql = 'INSERT INTO client_page_layout_items (profile_id, field_key, position, is_enabled, display_label, is_required) VALUES '
             . implode(', ', $values);
         $this->db->query($sql, $params);
     }

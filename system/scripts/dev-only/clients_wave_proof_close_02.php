@@ -566,71 +566,45 @@ if ($res1['status'] !== 'OK') {
     ];
 }
 
-// --- 2) GET /clients/duplicates?...
-$u2 = '/clients/duplicates?name=' . rawurlencode('CWPF02') . '&partial=1';
+// --- 2) GET /clients — inline duplicate intelligence banner (no dedicated duplicates page)
+$u2 = '/clients';
 $res2 = cwpfc02RunDispatch($stateFile, 'GET', $u2);
 if ($res2['status'] !== 'OK') {
     $report[] = ['check' => '2 GET ' . $u2, 'status' => 'FAIL', 'reason' => $res2['reason'], 'http' => $res2['http'], 'redirect' => $res2['redirect'], 'assertion' => $res2['assertion']];
 } else {
     $b = $res2['_body'] ?? '';
-    if ($normReady) {
-        $report[] = [
-            'check' => '2 GET duplicates (schema ready)',
-            'status' => 'SKIP',
-            'reason' => 'normalized columns ready; blocked-state duplicate surface not asserted on this DB',
-            'http' => $res2['http'],
-            'redirect' => $res2['redirect'],
-            'assertion' => 'SKIP when migration 119 applied',
-        ];
-    } else {
-        $ok = str_contains($b, ClientNormalizedSearchSchemaReadiness::PUBLIC_UNAVAILABLE_MESSAGE)
-            && !str_contains($b, 'No clients matched these criteria');
-        $fakeRow = str_contains($b, '/clients/' . $branchClientId) && str_contains($b, 'clients-ws-table') && str_contains($b, 'CWPF02-Primary');
-        $ok = $ok && !$fakeRow;
-        $report[] = [
-            'check' => '2 GET ' . $u2,
-            'status' => $ok ? 'PASS' : 'FAIL',
-            'reason' => $ok ? 'honest unavailable message; no duplicate results table for fixture client' : 'blocked message or duplicate rows wrong',
-            'http' => $res2['http'],
-            'redirect' => $res2['redirect'],
-            'assertion' => 'PUBLIC_UNAVAILABLE_MESSAGE; no results row linking to fixture primary',
-        ];
+    $ok = str_contains($b, 'clients-directory') && str_contains($b, 'stf-ws-toolbar');
+    $bannerNote = '';
+    if ($ok && $normReady && !str_contains($b, 'cli-dup-intel-banner')) {
+        $bannerNote = '; no strong-dup banner (expected when DB has no same name+phone+email cluster)';
+    } elseif ($ok && str_contains($b, 'cli-dup-intel-banner')) {
+        $bannerNote = '; duplicate banner present';
     }
+    $report[] = [
+        'check' => '2 GET ' . $u2 . ' (clients list)',
+        'status' => $ok ? 'PASS' : 'FAIL',
+        'reason' => $ok ? 'list shell' . $bannerNote : 'missing clients-directory or stf-ws-toolbar',
+        'http' => $res2['http'],
+        'redirect' => $res2['redirect'],
+        'assertion' => 'body contains clients-directory and stf-ws-toolbar',
+    ];
 }
 
-// --- 3) GET /clients/merge?...
-$u3 = '/clients/merge?primary_id=' . $branchClientId . '&secondary_id=' . $mergeSecondaryId;
+// --- 3) GET /clients with merge deep-link — resolution modal markup (no standalone merge page)
+$u3 = '/clients?merge_primary=' . $branchClientId . '&merge_secondary=' . $mergeSecondaryId;
 $res3 = cwpfc02RunDispatch($stateFile, 'GET', $u3);
 if ($res3['status'] !== 'OK') {
-    $report[] = ['check' => '3 GET merge preview', 'status' => 'FAIL', 'reason' => $res3['reason'], 'http' => $res3['http'], 'redirect' => $res3['redirect'], 'assertion' => $res3['assertion']];
+    $report[] = ['check' => '3 GET merge modal context', 'status' => 'FAIL', 'reason' => $res3['reason'], 'http' => $res3['http'], 'redirect' => $res3['redirect'], 'assertion' => $res3['assertion']];
 } else {
     $b = $res3['_body'] ?? '';
-    $ok = str_contains($b, 'Linked Table') && str_contains($b, 'Preview');
-    $skipParts = [];
-    $failParts = [];
-    foreach (['appointment_series', 'marketing_campaign_recipients', 'client_profile_images'] as $tbl) {
-        if (!empty($optCov[$tbl])) {
-            if (!str_contains($b, $tbl)) {
-                $failParts[] = "missing table label {$tbl}";
-            }
-        } else {
-            $skipParts[] = $tbl;
-        }
-    }
-    if ($failParts !== []) {
-        $ok = false;
-    }
-    $reason = $ok
-        ? 'merge preview HTML; optional keys present: ' . implode(',', array_keys(array_filter($optCov)))
-            . ($skipParts !== [] ? ('; SKIP optional absent: ' . implode(',', $skipParts)) : '')
-        : implode('; ', $failParts);
+    $ok = str_contains($b, 'cli-merge-modal') && str_contains($b, 'Merge Duplicate Clients') && str_contains($b, 'cli-merge-card');
     $report[] = [
         'check' => '3 GET ' . $u3,
         'status' => $ok ? 'PASS' : 'FAIL',
-        'reason' => $reason,
+        'reason' => $ok ? 'clients list embeds merge resolution modal shell' : 'missing cli-merge-modal / merge copy / cards',
         'http' => $res3['http'],
         'redirect' => $res3['redirect'],
-        'assertion' => 'index-table lists each existing optional merge table key',
+        'assertion' => 'body contains cli-merge-modal, Merge Duplicate Clients, cli-merge-card',
     ];
 }
 

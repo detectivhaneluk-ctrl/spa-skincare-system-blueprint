@@ -1,9 +1,10 @@
 <?php
-$title = 'Create Membership Definition';
+$title = 'Create Membership Plan';
 ob_start();
+$memWorkspaceActiveTab = 'plans';
+require base_path('modules/memberships/views/partials/memberships-workspace-shell.php');
 ?>
-<h1>Create Membership Definition</h1>
-<p><a href="/memberships">← Membership Definitions</a></p>
+<h2>Create Membership Plan</h2>
 <?php if (!empty($errors)): ?>
 <ul class="form-errors">
     <?php if (!empty($errors['_general'])): ?><li><?= htmlspecialchars($errors['_general']) ?></li><?php endif; ?>
@@ -85,4 +86,7 @@ ob_start();
     </div>
     <div class="form-actions"><button type="submit">Create</button> <a href="/memberships">Cancel</a></div>
 </form>
-<?php $content = ob_get_clean(); require shared_path('layout/base.php'); ?>
+<?php
+$content = ob_get_clean();
+require shared_path('layout/base.php');
+?>

@@ -1,8 +1,11 @@
 <?php
 $title = 'Stock Movements';
 ob_start();
+$stockWorkspaceActiveTab = 'movements';
+$stockWorkspaceShellTitle = 'Stock';
+require base_path('modules/inventory/views/partials/stock-workspace-shell.php');
 ?>
-<h1>Stock Movements</h1>
+<h2>Stock Movements</h2>
 <?php if ($flash && is_array($flash)): $t = array_key_first($flash); ?>
 <div class="flash flash-<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($flash[$t] ?? '') ?></div>
 <?php endif; ?>

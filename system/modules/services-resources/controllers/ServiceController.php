@@ -35,6 +35,7 @@ final class ServiceController
         $trashView = isset($_GET['status']) && $_GET['status'] === 'trash';
         $services = $this->repo->list($categoryId, $listBranchId, $trashView);
         $categories = $this->categoryRepo->list($listBranchId);
+        $serviceMapCategories = $this->categoryRepo->listWithCounts($listBranchId);
         $countActive = $this->repo->count($listBranchId, false);
         $countTrash = $this->repo->count($listBranchId, true);
         $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
@@ -67,6 +68,14 @@ final class ServiceController
             'allow_on_gift_voucher_sale' => 0,
             'billing_code'               => null,
         ];
+        if ($this->isDrawerRequest()) {
+            $isCreate = true;
+            $formAction = '/services-resources/services';
+            $drawerTitle = 'New service';
+            $drawerSubtitle = 'Basics — step 1 of 4';
+            require base_path('modules/services-resources/views/services/drawer/service_step1.php');
+            return;
+        }
         require base_path('modules/services-resources/views/services/create.php');
     }
 
@@ -81,6 +90,13 @@ final class ServiceController
             $vatRates = $this->vatRateService->listActive($scope ?? ($data['branch_id'] ?? null));
             $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
             $service = $data;
+            if ($this->isDrawerRequest()) {
+                $isCreate = true;
+                $formAction = '/services-resources/services';
+                $drawerTitle = 'New service';
+                $drawerSubtitle = 'Basics — step 1 of 4';
+                $this->sendDrawerValidationHtml($this->captureServiceDrawerStep1Html());
+            }
             require base_path('modules/services-resources/views/services/create.php');
             return;
         }
@@ -94,8 +110,21 @@ final class ServiceController
             $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
             $service = $data;
             $errors = $this->mapServiceDomainExceptionToErrors($e);
+            if ($this->isDrawerRequest()) {
+                $isCreate = true;
+                $formAction = '/services-resources/services';
+                $drawerTitle = 'New service';
+                $drawerSubtitle = 'Basics — step 1 of 4';
+                $this->sendDrawerValidationHtml($this->captureServiceDrawerStep1Html());
+            }
             require base_path('modules/services-resources/views/services/create.php');
             return;
+        }
+        if ($this->isDrawerRequest()) {
+            $this->sendDrawerJsonSuccess(
+                'Service created. The map will refresh — open the service from the list to continue setup (steps 2–4).',
+                ['reload_host' => true]
+            );
         }
         flash('success', 'Service created. Now select products used by this service.');
         header('Location: /services-resources/services/' . $id . '/step-2');
@@ -137,6 +166,14 @@ final class ServiceController
         $vatRates = $this->vatRateService->listActive($scope ?? $this->entityBranchId($service));
         $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
         $errors = [];
+        if ($this->isDrawerRequest()) {
+            $isCreate = false;
+            $formAction = '/services-resources/services/' . (int) $service['id'];
+            $drawerTitle = 'Edit service';
+            $drawerSubtitle = 'Basics — step 1 of 4';
+            require base_path('modules/services-resources/views/services/drawer/service_step1.php');
+            return;
+        }
         require base_path('modules/services-resources/views/services/edit.php');
     }
 
@@ -159,6 +196,13 @@ final class ServiceController
             $catTreeRows = $this->loadCatTreeRows($scope);
             $vatRates = $this->vatRateService->listActive($scope ?? $this->entityBranchId($service));
             $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
+            if ($this->isDrawerRequest()) {
+                $isCreate = false;
+                $formAction = '/services-resources/services/' . (int) $id;
+                $drawerTitle = 'Edit service';
+                $drawerSubtitle = 'Basics — step 1 of 4';
+                $this->sendDrawerValidationHtml($this->captureServiceDrawerStep1Html());
+            }
             require base_path('modules/services-resources/views/services/edit.php');
             return;
         }
@@ -177,8 +221,18 @@ final class ServiceController
             $vatRates = $this->vatRateService->listActive($scope ?? $this->entityBranchId($service));
             $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
             $errors = $this->mapServiceDomainExceptionToErrors($e);
+            if ($this->isDrawerRequest()) {
+                $isCreate = false;
+                $formAction = '/services-resources/services/' . (int) $id;
+                $drawerTitle = 'Edit service';
+                $drawerSubtitle = 'Basics — step 1 of 4';
+                $this->sendDrawerValidationHtml($this->captureServiceDrawerStep1Html());
+            }
             require base_path('modules/services-resources/views/services/edit.php');
             return;
+        }
+        if ($this->isDrawerRequest()) {
+            $this->sendDrawerJsonSuccess('Service definition updated.', ['reload_host' => true]);
         }
         flash('success', 'Service definition updated.');
         header('Location: /services-resources/services/' . $id . '/step-2');
@@ -427,9 +481,25 @@ final class ServiceController
         try {
             $this->service->delete($id);
         } catch (\DomainException $e) {
+            if ($this->isDrawerRequest()) {
+                @ini_set('display_errors', '0');
+                while (ob_get_level() > 0) {
+                    ob_end_clean();
+                }
+                http_response_code(422);
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode([
+                    'success' => false,
+                    'error' => ['message' => $e->getMessage()],
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                exit;
+            }
             flash('error', $e->getMessage());
             header('Location: /services-resources/services');
             exit;
+        }
+        if ($this->isDrawerRequest()) {
+            $this->sendDrawerJsonSuccess('Service moved to Trash.', ['reload_host' => true]);
         }
         flash('success', 'Service moved to Trash.');
         header('Location: /services-resources/services');
@@ -813,5 +883,52 @@ final class ServiceController
         }
 
         return ['_general' => $msg];
+    }
+
+    private function isDrawerRequest(): bool
+    {
+        return (string) ($_GET['drawer'] ?? '') === '1'
+            || (string) ($_SERVER['HTTP_X_APP_DRAWER'] ?? '') === '1';
+    }
+
+    /**
+     * @param array<string, mixed> $extra
+     */
+    private function sendDrawerJsonSuccess(string $message, array $extra = []): void
+    {
+        @ini_set('display_errors', '0');
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'success' => true,
+            'data' => array_merge(['message' => $message], $extra),
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    private function sendDrawerValidationHtml(string $html): void
+    {
+        @ini_set('display_errors', '0');
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        http_response_code(422);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'success' => false,
+            'error' => ['message' => 'Please correct the errors below.'],
+            'data' => ['html' => $html],
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
+    private function captureServiceDrawerStep1Html(): string
+    {
+        ob_start();
+        require base_path('modules/services-resources/views/services/drawer/service_step1.php');
+
+        return ob_get_clean();
     }
 }

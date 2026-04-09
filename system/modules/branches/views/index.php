@@ -1,11 +1,14 @@
 <?php
 $title = $title ?? 'Branches';
-$content = ob_start();
 $rows = $rows ?? [];
 $csrfName = config('app.csrf_token_name', 'csrf_token');
+$canManageBranches = \Core\App\Application::container()->get(\Core\Permissions\PermissionService::class)
+    ->has((int) (\Core\App\Application::container()->get(\Core\Auth\AuthService::class)->user()['id'] ?? 0), 'branches.manage');
+ob_start();
+require base_path('modules/branches/views/partials/branches-workspace-shell.php');
 ?>
-<h1>Branches</h1>
-<p><a href="/settings">← Settings</a><?php if (!empty($canManageBranches)): ?> · <a href="/branches/create">Add branch</a><?php endif; ?></p>
+<h2>Branches</h2>
+<?php if (!empty($canManageBranches)): ?><p><a class="btn" href="/branches/create">Add branch</a></p><?php endif; ?>
 <?php if ($flash && is_array($flash)): $t = array_key_first($flash); ?>
 <div class="flash flash-<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($flash[$t] ?? '') ?></div>
 <?php endif; ?>
@@ -45,4 +48,7 @@ $csrfName = config('app.csrf_token_name', 'csrf_token');
     </tbody>
 </table>
 <p class="text-muted">Restoring a deactivated branch is not available in this release; create a new branch or clear <code>deleted_at</code> via DBA if required.</p>
-<?php $content = ob_get_clean(); require shared_path('layout/base.php'); ?>
+<?php
+$content = ob_get_clean();
+require shared_path('layout/base.php');
+?>

@@ -164,6 +164,37 @@ final class ClientService
     }
 
     /**
+     * Soft-delete multiple clients; each id uses the same rules as {@see delete()}.
+     * Invalid, cross-branch, or unauthorized ids are skipped (no partial transaction rollback of successful deletes).
+     *
+     * @param list<int|string> $ids
+     * @return array{deleted: int, skipped: int}
+     */
+    public function bulkDelete(array $ids): array
+    {
+        $unique = [];
+        foreach ($ids as $raw) {
+            $id = (int) $raw;
+            if ($id > 0) {
+                $unique[$id] = true;
+            }
+        }
+        $uniqueIds = array_keys($unique);
+        $deleted = 0;
+        $skipped = 0;
+        foreach ($uniqueIds as $id) {
+            try {
+                $this->delete($id);
+                $deleted++;
+            } catch (AccessDeniedException | SafeDomainException | \RuntimeException) {
+                $skipped++;
+            }
+        }
+
+        return ['deleted' => $deleted, 'skipped' => $skipped];
+    }
+
+    /**
      * Structured CRM note (`client_notes` row). Target audit remains `client` so profile history query stays aligned.
      */
     public function addClientNote(int $clientId, string $content): int

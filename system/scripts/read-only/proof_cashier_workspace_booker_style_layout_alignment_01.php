@@ -31,7 +31,7 @@ $checks['edit_uses_shared_cashier_partial'] = mustContain($editView, "require __
 $checks['create_and_edit_use_cashier_main_class'] = mustContain($createView, '$mainClass = \'cashier-workspace-page\'') && mustContain($editView, '$mainClass = \'cashier-workspace-page\'');
 $checks['workspace_has_left_rail'] = mustContain($workspaceView, 'cashier-left-rail');
 $checks['workspace_has_client_banner'] = mustContain($workspaceView, 'cashier-client-banner');
-$checks['workspace_has_ordered_articles_header'] = mustContain($workspaceView, 'Ordered Articles');
+$checks['workspace_has_ordered_articles_header'] = mustContain($workspaceView, 'Ordered articles');
 $checks['workspace_has_tab_order_reference'] = mustContain($workspaceView, 'data-tab-target="tab-products"')
     && mustContain($workspaceView, 'data-tab-target="tab-services"')
     && mustContain($workspaceView, 'data-tab-target="tab-deferred"')

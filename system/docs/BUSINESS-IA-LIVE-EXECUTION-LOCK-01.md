@@ -3,7 +3,7 @@
 >
 > **New authoritative document:** `system/docs/OLLIRA-IA-7MODULE-MASTER-BACKLOG-V2-01.md`
 >
-> **Current live task:** `STORY-03.2.11` (deep links from client profile) — see §6 of the new document.
+> **Current live task (post-5.2):** Phase **2** navigation restructure — start with `STORY-07.3.9` per `OLLIRA-IA-7MODULE-MASTER-BACKLOG-V2-01.md` §6.
 >
 > **Do not execute new work from this file.** It is kept as a historical record of what was delivered in the 10-module program (Phases 1–5.1 closed). The closed work (2.2, 3.1, 3.2, 4.1, 4.2, 5.1) remains valid and compatible with the new 7-module plan.
 
@@ -13,13 +13,13 @@
 
 **Artifact:** single live cleanup, stale-task elimination, and **one** ordered execution lane for `BUSINESS-IA-CANONICAL-REBUILD-PROGRAM-01`.  
 **Audit anchored:** 2026-04-07 against repo files under `system/` (no archive authority).  
-**Status:** DONE — **2026-04-07:** Phase **5.1** **closed** (`BUSINESS-IA-PHASE-5-1-CLIENT-PROFILE-OWNED-VALUE-AGGREGATION-01`); **next** single lane **Phase 5.2** (see §5–§6, §13).
+**Status:** DONE — **2026-04-07:** Phase **5.2** **closed** (`BUSINESS-IA-PHASE-5-2-CLIENT-LIST-HELD-SURFACE-DEEP-LINKS-01`); **next** Business IA slice **Phase 6.2** (see §5–§6, §14). Canonical live lane: `OLLIRA-IA-7MODULE-MASTER-BACKLOG-V2-01.md` §6.
 
 ---
 
 ## 1. STATUS
 
-**DONE** — Audit + elimination log remain valid. **2026-04-07:** Phase **5.1** **closed** (client profile owned value + obligations summary — §13); next **implementation** slice is **5.2** only (deep links — per backlog).
+**DONE** — Audit + elimination log remain valid. **2026-04-07:** Phase **5.2** **closed** (client list deep links to held surfaces — §14). Next backlog slice in this file: **6.2**. **Authoritative “live task”** for parallel Ollira program: `OLLIRA-IA-7MODULE-MASTER-BACKLOG-V2-01.md` §6.
 
 ---
 
@@ -153,8 +153,8 @@ Strict **phase order**; within a phase, row order. Status applies to **remaining
 | 4 | 4.1 | Sales workspace copy tightening (if any gaps after 3.x) | 4 | **CLOSED** (2026-04-07) |
 | 5 | 4.2 | Packages views: definition vs client-package language | 4 | **CLOSED** (2026-04-07) |
 | 6 | 5.1 | Client profile: aggregate memberships / packages / gift cards / balance **where data exists** | 5 | **CLOSED** (2026-04-07) |
-| 7 | 5.2 | Deep links from client row to client-held surfaces | 5 | **NEXT** |
-| 8 | 6.2 | Admin payroll **policy** copy alignment (runs stay Team) | 6 | **LATER** |
+| 7 | 5.2 | Deep links from client row to client-held surfaces | 5 | **CLOSED** (2026-04-07) |
+| 8 | 6.2 | Admin payroll **policy** copy alignment (runs stay Team) | 6 | **NEXT** |
 | 9 | 7.1 | Report module audit (inventory actions/templates JSON vs HTML) | 7 | **LATER** |
 | 10 | 7.3 | VAT guide position: Reports vs Admin honesty | 7 | **LATER** |
 | 11 | 8.1 | Permission → home map | 8 | **LATER** |
@@ -164,15 +164,15 @@ Strict **phase order**; within a phase, row order. Status applies to **remaining
 | 15 | 10.1 | Empty states / misleading CTAs | 10 | **LATER** |
 | 16 | 10.2 | Final verifier sweep | 10 | **LATER** |
 
-**Blocked-by-prior-slice:** none — through **5.1** closed; execute **5.2** next.
+**Blocked-by-prior-slice:** none — through **5.2** closed; execute **6.2** next (this program) **or** follow `OLLIRA-IA-7MODULE-MASTER-BACKLOG-V2-01.md` §6 for the 7-module lane.
 
 ---
 
 ## 6. SINGLE LIVE EXECUTION LANE
 
-**Next task (only):** **Phase 5.2** — Deep links from client row to client-held surfaces per [`BUSINESS-IA-CANONICAL-BACKLOG-01.md`](BUSINESS-IA-CANONICAL-BACKLOG-01.md) row **5.2**.
+**Next task (only, this backlog):** **Phase 6.2** — Admin payroll **policy** copy alignment per [`BUSINESS-IA-CANONICAL-BACKLOG-01.md`](BUSINESS-IA-CANONICAL-BACKLOG-01.md) row **6.2**.
 
-**Previous slice (closed):** Phase **5.1** — closure record **§13**. Prior: **4.2** — **§12**; **4.1** — **§11**; **3.2** — **§10** (**§10.7**).
+**Previous slice (closed):** Phase **5.2** — closure record **§14**. Prior: **5.1** — **§13**; **4.2** — **§12**; **4.1** — **§11**; **3.2** — **§10** (**§10.7**).
 
 ---
 
@@ -185,7 +185,7 @@ Until a **new** scoped task explicitly permits them, Cursor / implementers **mus
 - Treating `archive/*` or root `docs/ARCHITECTURE-RESET-*` as authority for **Business IA** task selection.
 - Re-adding **module launcher hubs** inside Admin settings sidebar (regresses `verify_admin_ia_business_first_truth_01.php`).
 - Inventing report URLs or dashboard metrics not backed by `register_reports.php`.
-- Running a **second** parallel Business IA lane (e.g. Phase 6 while **5.2** is the named next slice) — finish **5.2** first unless re-scoped.
+- Running a **second** parallel Business IA lane (e.g. Phase 7 while **6.2** is the named next slice in this file) — finish **6.2** first unless re-scoped.
 
 ---
 
@@ -203,7 +203,7 @@ php system/scripts/read-only/verify_admin_ia_business_first_truth_01.php
 
 ## 9. FINAL EXECUTION RECOMMENDATION
 
-Execute **only** **Phase 5.2** next per backlog. **§13** documents closed **5.1**; **§12** closed **4.2**; **§11** closed **4.1**; **§10** closed **3.2** (**§10.7**).
+Execute **only** **Phase 6.2** next per this backlog (or follow **Ollira §6** for the 7-module lane). **§14** documents closed **5.2**; **§13** closed **5.1**; **§12** closed **4.2**; **§11** closed **4.1**; **§10** closed **3.2** (**§10.7**).
 
 ---
 
@@ -325,6 +325,14 @@ Phase **3.2** is **complete** only when all of the following are true:
 **Closed:** 2026-04-07 — task **`BUSINESS-IA-PHASE-5-1-CLIENT-PROFILE-OWNED-VALUE-AGGREGATION-01`**.
 
 **Delivered (read-model + profile copy only; routes, permissions, schema unchanged):** Client profile **`Owned value & obligations`** on `show.php` now groups **invoice rollup** (from existing `ClientSalesProfileProvider::getSummary()` — honest `—` / multi-currency note when totals are null), **packages held**, **gift cards**, and **membership counts + recent rows** wired via `ClientMembershipRepository` in `ClientProfileReadService` (same branch pin as package/gift satellites: client `branch_id` else operator branch context). No per-membership detail route invented; link to existing **`/memberships/client-memberships`**. `register_clients.php` DI extended; `verify_clients_owned_value_profile_phase6_01.php` + `verify_client_profile_read_model_contract_01.php` updated. Mandatory Business IA bundle + `verify_package_ownership_ia_phase3_01.php` + `verify_no_duplicate_first_class_owner_surfaces_phase5_01.php` exited **0**.
+
+---
+
+## 14. PHASE 5.2 — CLOSURE RECORD
+
+**Closed:** 2026-04-07 — task **`BUSINESS-IA-PHASE-5-2-CLIENT-LIST-HELD-SURFACE-DEEP-LINKS-01`**.
+
+**Delivered (list UX + query contract only; route paths and permission keys unchanged):** **`/clients` index** table adds **Client-held** links (gated on `memberships.view`, `packages.view`, `gift_cards.view`) to `/memberships/client-memberships?client_id=…`, `/packages/client-packages?client_id=…`, `/gift-cards?client_id=…`. **`client_id`** is honored on those three list actions (`ClientMembershipController`, `ClientPackageController`, `GiftCardController` + `GiftCardRepository` index filter). Filter GET forms preserve `client_id`; gift-card bulk expiry redirect preserves **`ret_client_id`**. `ClientMembershipController::index` defines **`$branchRaw`** for the client-memberships filter view (fixes undefined variable when branch selector posts).
 
 ---
 

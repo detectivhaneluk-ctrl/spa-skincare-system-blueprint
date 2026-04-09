@@ -1,85 +1,11 @@
 <?php
-$title = 'Catalog';
+$title = 'Services';
 ob_start();
+$svcWorkspaceActiveTab = '';
+require base_path('modules/services-resources/views/partials/services-workspace-shell.php');
 ?>
-<div class="catalog-hub">
-    <header class="catalog-hub__header">
-        <h1 class="catalog-hub__title">Catalog</h1>
-        <p class="catalog-hub__lead">Definitions for what you book and sell: services, package plans, membership plans, spaces, and equipment. Stored-value gift cards are operated in <a href="/sales">Sales</a>; this hub includes a shortcut to that ledger, not a catalog definition.</p>
-    </header>
-
-    <?php if ($flash && is_array($flash)): $t = array_key_first($flash); ?>
-    <div class="flash flash-<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($flash[$t] ?? '') ?></div>
-    <?php endif; ?>
-
-    <div class="catalog-hub__grid">
-
-        <div class="catalog-hub-card">
-            <h2 class="catalog-hub-card__title">Services</h2>
-            <p class="catalog-hub-card__desc">The treatments and services your business offers. Organised by category. Each service sets duration, price, and which staff can deliver it.</p>
-            <div class="catalog-hub-card__links">
-                <a class="catalog-hub-card__link" href="/services-resources/services">View services</a>
-                <a class="catalog-hub-card__link catalog-hub-card__link--secondary" href="/services-resources/categories">Categories</a>
-            </div>
-        </div>
-
-        <div class="catalog-hub-card">
-            <h2 class="catalog-hub-card__title">Packages</h2>
-            <p class="catalog-hub-card__desc">Package <strong>plan definitions</strong> only (what you sell). Packages clients hold are listed under <a href="/clients">Clients</a> &rarr; client packages. Selling happens in <a href="/sales">Sales</a> checkout.</p>
-            <div class="catalog-hub-card__links">
-                <a class="catalog-hub-card__link" href="/packages">View package plans</a>
-                <a class="catalog-hub-card__link catalog-hub-card__link--secondary" href="/packages/create">New package plan</a>
-            </div>
-        </div>
-
-        <div class="catalog-hub-card">
-            <h2 class="catalog-hub-card__title">Memberships</h2>
-            <p class="catalog-hub-card__desc">Membership <strong>plan definitions</strong> only (what you sell). Clients who hold an active membership are listed under <a href="/clients">Clients</a> &rarr; active memberships.</p>
-            <div class="catalog-hub-card__links">
-                <a class="catalog-hub-card__link" href="/memberships">View membership plans</a>
-                <a class="catalog-hub-card__link catalog-hub-card__link--secondary" href="/memberships/create">New membership plan</a>
-            </div>
-        </div>
-
-        <div class="catalog-hub-card">
-            <h2 class="catalog-hub-card__title">Gift cards (Sales)</h2>
-            <p class="catalog-hub-card__desc">Discovery only: operational home is <a href="/sales">Sales</a>. Issue, redeem, and adjust balances there. Public gift-card <em>sales</em> policy is under Admin &rsaquo; Online Channels.</p>
-            <div class="catalog-hub-card__links">
-                <a class="catalog-hub-card__link" href="/gift-cards">Open gift cards (Sales)</a>
-                <a class="catalog-hub-card__link catalog-hub-card__link--secondary" href="/gift-cards/issue">Issue gift card</a>
-            </div>
-        </div>
-
-        <div class="catalog-hub-card">
-            <h2 class="catalog-hub-card__title">Spaces</h2>
-            <p class="catalog-hub-card__desc">Treatment rooms and bookable spaces. Assign spaces to services to control room availability on the calendar.</p>
-            <div class="catalog-hub-card__links">
-                <a class="catalog-hub-card__link" href="/services-resources/rooms">View spaces</a>
-            </div>
-        </div>
-
-        <div class="catalog-hub-card">
-            <h2 class="catalog-hub-card__title">Equipment</h2>
-            <p class="catalog-hub-card__desc">Equipment resources used during services. Assign equipment to services to track resource usage.</p>
-            <div class="catalog-hub-card__links">
-                <a class="catalog-hub-card__link" href="/services-resources/equipment">View equipment</a>
-            </div>
-        </div>
-
-    </div>
-</div>
-<style>
-.catalog-hub { max-width: 72rem; }
-.catalog-hub__header { margin-bottom: 1.5rem; }
-.catalog-hub__title { margin: 0 0 0.3rem; font-size: 1.5rem; font-weight: 700; color: #111827; }
-.catalog-hub__lead { margin: 0; font-size: 0.9rem; color: #4b5563; line-height: 1.5; max-width: 52rem; }
-.catalog-hub__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: 1rem; }
-.catalog-hub-card { padding: 1.1rem 1.15rem; border: 1px solid #e5e7eb; border-radius: 0.75rem; background: #fff; }
-.catalog-hub-card__title { margin: 0 0 0.3rem; font-size: 1rem; font-weight: 600; color: #111827; }
-.catalog-hub-card__desc { margin: 0 0 0.85rem; font-size: 0.84rem; color: #4b5563; line-height: 1.45; }
-.catalog-hub-card__links { display: flex; flex-wrap: wrap; gap: 0.4rem 0.75rem; }
-.catalog-hub-card__link { font-size: 0.85rem; color: #2563eb; text-decoration: none; }
-.catalog-hub-card__link:hover { text-decoration: underline; }
-.catalog-hub-card__link--secondary { color: #4b5563; }
-</style>
+<?php if ($flash && is_array($flash)): $t = array_key_first($flash); ?>
+<div class="flash flash-<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($flash[$t] ?? '') ?></div>
+<?php endif; ?>
+<p style="margin:1rem 0 0;font-size:0.87rem;color:#4b5563;">Select a section above to manage your services and resources.</p>
 <?php $content = ob_get_clean(); require shared_path('layout/base.php'); ?>

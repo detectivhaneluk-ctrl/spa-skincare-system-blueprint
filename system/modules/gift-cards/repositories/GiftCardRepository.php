@@ -157,7 +157,7 @@ final class GiftCardRepository
     /**
      * Supported index filters only; strips internal keys.
      *
-     * @return array{code: ?string, client_name: ?string, status: ?string, issued_from: ?string, issued_to: ?string}
+     * @return array{code: ?string, client_name: ?string, client_id: ?int, status: ?string, issued_from: ?string, issued_to: ?string}
      */
     private function normalizeIndexFieldFilters(array $filters): array
     {
@@ -167,6 +167,13 @@ final class GiftCardRepository
         $clientName = isset($filters['client_name']) && $filters['client_name'] !== null && trim((string) $filters['client_name']) !== ''
             ? trim((string) $filters['client_name'])
             : null;
+        $clientId = null;
+        if (isset($filters['client_id']) && $filters['client_id'] !== null && $filters['client_id'] !== '') {
+            $cid = (int) $filters['client_id'];
+            if ($cid > 0) {
+                $clientId = $cid;
+            }
+        }
         $status = isset($filters['status']) && $filters['status'] !== null && trim((string) $filters['status']) !== ''
             ? trim((string) $filters['status'])
             : null;
@@ -180,6 +187,7 @@ final class GiftCardRepository
         return [
             'code' => $code,
             'client_name' => $clientName,
+            'client_id' => $clientId,
             'status' => $status,
             'issued_from' => $from,
             'issued_to' => $to,
@@ -200,6 +208,10 @@ final class GiftCardRepository
             $sql .= ' AND (c.first_name LIKE ? OR c.last_name LIKE ?)';
             $params[] = $q;
             $params[] = $q;
+        }
+        if ($fieldFilters['client_id'] !== null) {
+            $sql .= ' AND gc.client_id = ?';
+            $params[] = $fieldFilters['client_id'];
         }
         if ($fieldFilters['status'] !== null) {
             $sql .= ' AND gc.status = ?';

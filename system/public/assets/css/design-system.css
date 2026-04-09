@@ -167,8 +167,8 @@
   letter-spacing: -0.01em;
   line-height: 1;
   gap: var(--ds-space-2);
-  background: #111827;
-  border-color: #111827;
+  background: var(--ds-color-toolbar-cta-bg);
+  border-color: var(--ds-color-toolbar-cta-border);
   color: #fff;
   box-shadow: var(--ds-shadow-toolbar-cta);
   /* No background/opacity transitions: hover keeps the same solid ink (avoids “fading” feel). */
@@ -183,8 +183,8 @@
 }
 
 .ds-btn--toolbar:hover {
-  background: #111827;
-  border-color: #111827;
+  background: var(--ds-color-toolbar-cta-bg-hover);
+  border-color: var(--ds-color-toolbar-cta-border-hover);
   color: #fff;
   box-shadow: var(--ds-shadow-toolbar-cta-hover);
   transform: translateY(-1px);
@@ -375,7 +375,7 @@
   font-weight: var(--ds-font-medium);
   letter-spacing: -0.012em;
   line-height: 1;
-  color: #6b7280;
+  color: var(--ds-color-text-secondary);
   white-space: nowrap;
   transition: color 0.2s cubic-bezier(0.25, 0.1, 0.25, 1),
     background 0.2s cubic-bezier(0.25, 0.1, 0.25, 1),
@@ -383,8 +383,12 @@
 }
 
 .ds-segmented--ios .ds-segmented__link:hover {
-  color: #374151;
+  color: var(--ds-color-text);
   background: rgba(255, 255, 255, 0.55);
+}
+
+html[data-app-theme="dark"] .ds-segmented--ios .ds-segmented__link:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .ds-segmented--ios .ds-segmented__link.is-active,
@@ -408,9 +412,9 @@
   transition: color 0.3s ease, background 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* Flat hover: color only (no white wash) when pill + thumb */
-.ds-segmented--ios.ds-segmented--pill-track.ds-segmented--thumb .ds-segmented__link:hover {
-  color: #111827;
+/* Flat hover: color only (no white wash) when pill + thumb — inactive only so active label stays ink on white thumb */
+.ds-segmented--ios.ds-segmented--pill-track.ds-segmented--thumb .ds-segmented__link:hover:not(.is-active):not([aria-current="page"]) {
+  color: var(--ds-color-text);
   background: transparent;
 }
 
