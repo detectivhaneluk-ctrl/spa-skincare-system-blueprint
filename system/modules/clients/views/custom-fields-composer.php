@@ -453,7 +453,13 @@ if ($canEditClientFields && $intakeImmutableKeys !== [] && !empty($layoutItemsSo
 }
 $lockedStackCount = count($lockedStackLabels);
 ?>
-<div class="cf2-root" data-cf-composer-root style="overflow: visible !important;">
+
+<!-- ════════════════════════════════════════════════════════════
+     CLIENT FORM COMPOSER — FOUNDATION SHELL
+     Regions: page-head · tools-bar · editor-canvas
+     Future mounts: data-cfe-mount-add-panel · data-cfe-mount-inspector · data-cfe-mount-library
+     ════════════════════════════════════════════════════════════ -->
+<div class="cfe-root" data-cf-composer-root>
 
     <?php if (!empty($flash) && is_array($flash)): $t = array_key_first($flash); ?>
     <div class="flash flash-<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($flash[$t] ?? '') ?></div>
@@ -466,15 +472,16 @@ $lockedStackCount = count($lockedStackLabels);
     </form>
     <?php endif; ?>
 
-    <!-- ── Body: focused composition canvas ── -->
-    <div class="cf2-body cf2-body--focused" style="overflow: visible !important;">
-        <div class="cf2-content-area" style="overflow: visible !important;">
+    <!-- ── 1. PAGE HEADER ── -->
+    <header class="cfe-page-head">
+        <div class="cfe-page-head__text">
+            <h1 class="cfe-page-head__title">Form composer</h1>
+            <p class="cfe-page-head__sub">Arrange and configure the fields that appear on the client intake form for each profile.</p>
+        </div>
 
-            <?php if (!$canEditClientFields): ?>
-            <p class="cf2-read-only-banner" role="status">You can review how client forms are structured. Ask an administrator for <strong>clients.edit</strong> to change layouts or custom fields.</p>
-            <?php endif; ?>
-
-            <nav class="cf2-profile-seg cf-composer__profile-seg ds-segmented ds-segmented--ios ds-segmented--pill-track ds-segmented--thumb" aria-label="Layout profiles" data-ds-segmented-thumb>
+        <div class="cfe-page-head__controls">
+            <!-- Profile switcher -->
+            <nav class="cfe-profile-seg ds-segmented ds-segmented--ios ds-segmented--pill-track ds-segmented--thumb" aria-label="Layout profiles" data-ds-segmented-thumb>
                 <span class="ds-segmented__thumb" aria-hidden="true"></span>
                 <?php foreach (($profiles ?? []) as $p): ?>
                 <?php $pk = (string) $p['profile_key']; $active = $pk === ($selectedProfileKey ?? ''); ?>
@@ -482,406 +489,416 @@ $lockedStackCount = count($lockedStackLabels);
                 <?php endforeach; ?>
             </nav>
 
-            <?php if (($layoutStorageReady ?? true) === false): ?>
-            <div class="cf2-warn-panel" role="alert">
-                <strong>Layout storage is not available.</strong>
-                <?= htmlspecialchars(\Modules\Clients\Services\ClientPageLayoutService::LAYOUT_STORAGE_REQUIRES_MIGRATION_MESSAGE) ?>
-                <p class="hint" style="margin:0.5rem 0 0">From the <code>system/</code> directory run <code>php scripts/migrate.php</code> to apply pending migrations.</p>
+            <!-- Save area -->
+            <?php if ($showToolbarActions): ?>
+            <div class="cfe-save-area">
+                <span class="cfe-save-state" data-cf-save-state>Saved</span>
+                <button type="submit" form="cf-form-layout-save" class="cfe-btn-save">
+                    <span class="cfe-btn-ic" aria-hidden="true"><?= $iconSvg('checkmark') ?></span>
+                    <span>Save changes</span>
+                </button>
+                <a class="cfe-btn-reload" href="<?= htmlspecialchars($profileUrl($selectedProfileKey ?? '')) ?>" aria-label="Reload layout">
+                    <span class="cfe-btn-ic" aria-hidden="true"><?= $iconSvg('arrowClockwise') ?></span>
+                </a>
             </div>
+            <?php endif; ?>
+        </div>
+    </header>
+    <!-- /page-head -->
 
-            <?php else: ?>
-            <div class="cf2-editor-card">
-            <div class="cf2-toolbar cf2-toolbar--content">
-                <div class="cf2-toolbar-inner">
-                    <div class="cf2-toolbar-brand">
-                        <span class="cf2-toolbar-profile"><?= htmlspecialchars($profileDisplayLabel) ?></span>
-                        <span class="cf2-toolbar-dot" aria-hidden="true"></span>
-                        <span class="cf2-toolbar-title">Composer</span>
-                    </div>
-                    <?php if ($showToolbarActions): ?>
-                    <div class="cf2-toolbar-actions">
-                        <span class="cf2-save-state" data-cf-save-state>Saved</span>
-                        <button type="submit" form="cf-form-layout-save" class="cf2-btn-save">
-                            <span class="cf2-btn-ic" aria-hidden="true"><?= $iconSvg('checkmark') ?></span>
-                            <span>Save changes</span>
-                        </button>
-                        <a class="cf2-btn-reload" href="<?= htmlspecialchars($profileUrl($selectedProfileKey ?? '')) ?>">
-                            <span class="cf2-btn-ic" aria-hidden="true"><?= $iconSvg('arrowClockwise') ?></span>
-                            <span>Reload</span>
-                        </a>
-                    </div>
-                    <?php endif; ?>
-                </div>
-            </div>
+    <?php if (!$canEditClientFields): ?>
+    <p class="cfe-read-only-banner" role="status">You can review how client forms are structured. Ask an administrator for <strong>clients.edit</strong> to change layouts or custom fields.</p>
+    <?php endif; ?>
 
-            <?php if ($canEditClientFields): ?>
-            <section class="cf2-secondary-tools" aria-label="Composer tools">
-                <?php if ($anyAdd): ?>
-                <details class="cf2-tools-disclosure cf2-tools-disclosure--add" data-cf-add-disclosure>
-                    <summary class="cf2-tools-trigger">
-                        <span class="cf2-tools-trigger-icon" aria-hidden="true"><?= $iconSvg('plusCircleFill') ?></span>
-                        <span>Add field</span>
-                    </summary>
-                    <div class="cf2-tools-panel cf2-tools-panel--add">
-                        <label class="cf2-tools-search-wrap" for="cf2-add-search">
-                            <span class="wr-pro__visually-hidden">Search fields to add</span>
-                            <input id="cf2-add-search" type="search" class="cf2-tools-search" placeholder="Search available fields" autocomplete="off" data-cf-add-search>
-                        </label>
-                        <div class="cf2-palette">
-                            <?php foreach (['text', 'phone', 'address', 'date'] as $bucketKey): ?>
-                            <?php $bKeys = $addMenuBuckets[$bucketKey] ?? []; ?>
-                            <div class="cf2-palette-group" data-cf-add-group data-cf-group-label="<?= htmlspecialchars(strtolower($addMenuLabels[$bucketKey] ?? $bucketKey), ENT_QUOTES, 'UTF-8') ?>">
-                                <p class="cf2-palette-group-cap">
-                                    <?= $iconSvg($addMenuIconKeys[$bucketKey] ?? 'alignLeft') ?>
-                                    <span><?= htmlspecialchars($addMenuLabels[$bucketKey] ?? $bucketKey) ?></span>
-                                </p>
-                                <?php if ($bKeys === []): ?>
-                                <p class="cf2-palette-empty">All added</p>
-                                <?php else: ?>
-                                <div class="cf2-palette-chips">
-                                    <?php foreach ($bKeys as $ak): ?>
-                                    <form method="post" action="/clients/custom-fields/layouts/add-item" class="cf2-palette-chip-form" data-cf-add-item data-cf-add-label="<?= htmlspecialchars(strtolower((string) ($fieldLabels[$ak] ?? $ak)), ENT_QUOTES, 'UTF-8') ?>">
-                                        <input type="hidden" name="<?= $csrfTn ?>" value="<?= htmlspecialchars($csrf) ?>">
-                                        <input type="hidden" name="profile_key" value="<?= htmlspecialchars($selectedProfileKey ?? '') ?>">
-                                        <input type="hidden" name="field_key" value="<?= htmlspecialchars($ak) ?>">
-                                        <button type="submit" class="cf2-palette-chip"><?= htmlspecialchars($fieldLabels[$ak] ?? $ak) ?></button>
-                                    </form>
-                                    <?php endforeach; ?>
-                                </div>
-                                <?php endif; ?>
-                            </div>
+    <?php if (($layoutStorageReady ?? true) === false): ?>
+    <div class="cfe-warn-panel" role="alert">
+        <strong>Layout storage is not available.</strong>
+        <?= htmlspecialchars(\Modules\Clients\Services\ClientPageLayoutService::LAYOUT_STORAGE_REQUIRES_MIGRATION_MESSAGE) ?>
+        <p class="hint" style="margin:0.5rem 0 0">From the <code>system/</code> directory run <code>php scripts/migrate.php</code> to apply pending migrations.</p>
+    </div>
+
+    <?php else: ?>
+
+    <!-- ── 2. SECONDARY TOOL ENTRY POINTS ── -->
+    <!-- These are compact disclosure triggers, not permanently expanded blocks -->
+    <?php if ($canEditClientFields): ?>
+    <div class="cfe-tools-bar" aria-label="Composer tools">
+
+        <?php if ($anyAdd): ?>
+        <!-- Mount: add-field panel -->
+        <details class="cfe-tool-item" data-cf-add-disclosure data-cfe-mount-add-panel>
+            <summary class="cfe-tool-trigger">
+                <span class="cfe-tool-ic" aria-hidden="true"><?= $iconSvg('plusCircleFill') ?></span>
+                <span>Add field</span>
+            </summary>
+            <div class="cfe-tool-panel">
+                <label class="cfe-tool-search-wrap" for="cfe-add-search">
+                    <span class="wr-pro__visually-hidden">Search fields to add</span>
+                    <input id="cfe-add-search" type="search" class="cfe-tool-search" placeholder="Search available fields" autocomplete="off" data-cf-add-search>
+                </label>
+                <div class="cfe-palette">
+                    <?php foreach (['text', 'phone', 'address', 'date'] as $bucketKey): ?>
+                    <?php $bKeys = $addMenuBuckets[$bucketKey] ?? []; ?>
+                    <div class="cfe-palette-group" data-cf-add-group data-cf-group-label="<?= htmlspecialchars(strtolower($addMenuLabels[$bucketKey] ?? $bucketKey), ENT_QUOTES, 'UTF-8') ?>">
+                        <p class="cfe-palette-cap">
+                            <?= $iconSvg($addMenuIconKeys[$bucketKey] ?? 'alignLeft') ?>
+                            <span><?= htmlspecialchars($addMenuLabels[$bucketKey] ?? $bucketKey) ?></span>
+                        </p>
+                        <?php if ($bKeys === []): ?>
+                        <p class="cfe-palette-empty">All added</p>
+                        <?php else: ?>
+                        <div class="cfe-palette-chips">
+                            <?php foreach ($bKeys as $ak): ?>
+                            <form method="post" action="/clients/custom-fields/layouts/add-item" class="cfe-palette-chip-form" data-cf-add-item data-cf-add-label="<?= htmlspecialchars(strtolower((string) ($fieldLabels[$ak] ?? $ak)), ENT_QUOTES, 'UTF-8') ?>">
+                                <input type="hidden" name="<?= $csrfTn ?>" value="<?= htmlspecialchars($csrf) ?>">
+                                <input type="hidden" name="profile_key" value="<?= htmlspecialchars($selectedProfileKey ?? '') ?>">
+                                <input type="hidden" name="field_key" value="<?= htmlspecialchars($ak) ?>">
+                                <button type="submit" class="cfe-palette-chip"><?= htmlspecialchars($fieldLabels[$ak] ?? $ak) ?></button>
+                            </form>
                             <?php endforeach; ?>
                         </div>
+                        <?php endif; ?>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </details>
+        <?php endif; ?>
+
+        <!-- Mount: field library manager -->
+        <details class="cfe-tool-item cfe-tool-item--quiet" id="cf-composer-library" data-cfe-mount-library>
+            <summary class="cfe-tool-trigger cfe-tool-trigger--quiet">
+                <span class="cfe-tool-ic" aria-hidden="true"><?= $iconSvg('docText') ?></span>
+                <span>Field library</span>
+            </summary>
+            <div class="cfe-tool-panel">
+                <?php if ($canEditClientFields): ?>
+                <a href="/clients/custom-fields/create" class="cfe-create-btn">
+                    <?= $iconSvg('plus') ?><span>Create custom field</span>
+                </a>
+                <?php endif; ?>
+                <?php if (!empty($definitions)): ?>
+                <div class="cfe-lib-list">
+                    <?php foreach ($definitions as $d): ?>
+                    <div class="cfe-lib-item">
+                        <span class="cfe-lib-name"><?= htmlspecialchars((string) $d['label']) ?></span>
+                        <span class="cfe-lib-type"><?= htmlspecialchars($humanizeFieldType((string) ($d['field_type'] ?? ''))) ?></span>
+                        <?php if ($canEditClientFields): ?>
+                        <div class="cfe-lib-controls">
+                            <form method="post" action="/clients/custom-fields/<?= (int) $d['id'] ?>" class="cfe-lib-toggle-form">
+                                <input type="hidden" name="<?= htmlspecialchars(config('app.csrf_token_name', 'csrf_token')) ?>" value="<?= htmlspecialchars($csrf) ?>">
+                                <input type="hidden" name="label" value="<?= htmlspecialchars((string) $d['label']) ?>">
+                                <input type="hidden" name="field_type" value="<?= htmlspecialchars((string) $d['field_type']) ?>">
+                                <input type="hidden" name="sort_order" value="<?= (int) ($d['sort_order'] ?? 0) ?>">
+                                <input type="hidden" name="is_required" value="<?= (int) ($d['is_required'] ?? 0) === 1 ? '1' : '' ?>">
+                                <button type="submit" class="cfe-lib-toggle">
+                                    <input type="checkbox" name="is_active" value="1" <?= (int) ($d['is_active'] ?? 0) === 1 ? 'checked' : '' ?>>
+                                    <?= (int) ($d['is_active'] ?? 0) === 1 ? 'Active' : 'Inactive' ?>
+                                </button>
+                            </form>
+                            <form method="post" action="/clients/custom-fields/<?= (int) $d['id'] ?>/delete" class="cfe-lib-delete-form" data-cf-confirm-remove>
+                                <input type="hidden" name="<?= htmlspecialchars(config('app.csrf_token_name', 'csrf_token')) ?>" value="<?= htmlspecialchars($csrf) ?>">
+                                <button type="button" class="cfe-lib-delete cfe-action-btn--confirm-trigger" aria-label="Delete <?= htmlspecialchars((string) $d['label']) ?>"><?= $iconSvg('trash') ?></button>
+                                <button type="submit" class="cfe-lib-delete cfe-action-btn--confirm-ok" aria-label="Confirm delete <?= htmlspecialchars((string) $d['label']) ?>" hidden><?= $iconSvg('checkmark') ?></button>
+                            </form>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+                <?php else: ?>
+                <p class="cfe-lib-empty">No custom fields yet.</p>
+                <?php endif; ?>
+                <?php if (!empty($systemCatalog)): ?>
+                <details class="cfe-sub-disclosure">
+                    <summary class="cfe-sub-cap">Built-in fields</summary>
+                    <div class="cfe-lib-list">
+                        <?php foreach (($systemCatalog ?? []) as $skey => $smeta): ?>
+                        <div class="cfe-lib-item">
+                            <span class="cfe-lib-name"><?= htmlspecialchars((string) ($smeta['label'] ?? $skey)) ?></span>
+                            <span class="cfe-lib-type"><?= htmlspecialchars($humanizeFieldType((string) ($smeta['admin_field_type'] ?? ''))) ?></span>
+                            <span class="cfe-lib-lock"><?= $iconSvg('lock') ?></span>
+                        </div>
+                        <?php endforeach; ?>
                     </div>
                 </details>
                 <?php endif; ?>
-                <details class="cf2-tools-disclosure cf2-tools-disclosure--library" id="cf-composer-library">
-                    <summary class="cf2-tools-trigger cf2-tools-trigger--quiet">
-                        <span class="cf2-tools-trigger-icon" aria-hidden="true"><?= $iconSvg('docText') ?></span>
-                        <span>Manage field library</span>
-                    </summary>
-                    <div class="cf2-tools-panel cf2-tools-panel--library">
-                        <?php if ($canEditClientFields): ?>
-                        <a href="/clients/custom-fields/create" class="cf2-create-btn">
-                            <?= $iconSvg('plus') ?><span>Create custom field</span>
-                        </a>
-                        <?php endif; ?>
-                        <?php if (!empty($definitions)): ?>
-                        <div class="cf2-lib-list">
-                            <?php foreach ($definitions as $d): ?>
-                            <div class="cf2-lib-item">
-                                <span class="cf2-lib-name"><?= htmlspecialchars((string) $d['label']) ?></span>
-                                <span class="cf2-lib-type"><?= htmlspecialchars($humanizeFieldType((string) ($d['field_type'] ?? ''))) ?></span>
-                                <?php if ($canEditClientFields): ?>
-                                <div class="cf2-lib-controls">
-                                    <form method="post" action="/clients/custom-fields/<?= (int) $d['id'] ?>" class="cf2-lib-toggle-form">
-                                        <input type="hidden" name="<?= htmlspecialchars(config('app.csrf_token_name', 'csrf_token')) ?>" value="<?= htmlspecialchars($csrf) ?>">
-                                        <input type="hidden" name="label" value="<?= htmlspecialchars((string) $d['label']) ?>">
-                                        <input type="hidden" name="field_type" value="<?= htmlspecialchars((string) $d['field_type']) ?>">
-                                        <input type="hidden" name="sort_order" value="<?= (int) ($d['sort_order'] ?? 0) ?>">
-                                        <input type="hidden" name="is_required" value="<?= (int) ($d['is_required'] ?? 0) === 1 ? '1' : '' ?>">
-                                        <button type="submit" class="cf2-lib-toggle">
-                                            <input type="checkbox" name="is_active" value="1" <?= (int) ($d['is_active'] ?? 0) === 1 ? 'checked' : '' ?>>
-                                            <?= (int) ($d['is_active'] ?? 0) === 1 ? 'Active' : 'Inactive' ?>
-                                        </button>
-                                    </form>
-                                    <form method="post" action="/clients/custom-fields/<?= (int) $d['id'] ?>/delete" class="cf2-lib-delete-form" data-cf-confirm-remove>
-                                        <input type="hidden" name="<?= htmlspecialchars(config('app.csrf_token_name', 'csrf_token')) ?>" value="<?= htmlspecialchars($csrf) ?>">
-                                        <button type="button" class="cf2-lib-delete cf2-action-btn--confirm-trigger" aria-label="Delete <?= htmlspecialchars((string) $d['label']) ?>"><?= $iconSvg('trash') ?></button>
-                                        <button type="submit" class="cf2-lib-delete cf2-action-btn--confirm-ok" aria-label="Confirm delete <?= htmlspecialchars((string) $d['label']) ?>" hidden><?= $iconSvg('checkmark') ?></button>
-                                    </form>
+            </div>
+        </details>
+
+        <!-- Mount: row inspector (placeholder for next phase) -->
+        <!-- data-cfe-mount-inspector is intentionally empty — future task wires this -->
+
+    </div>
+    <!-- /tools-bar -->
+    <?php endif; ?>
+
+    <!-- ── 3. PRIMARY EDITOR CANVAS ── -->
+    <!-- One dominant surface. Contains composed form rows only. No sidebars. -->
+    <div class="cfe-canvas" data-cfe-mount-inspector>
+
+        <?php if ($canEditClientFields): ?>
+            <?php if (!empty($layoutItemsSorted)): ?>
+            <ul class="cfe-field-list" data-cf-field-sortable>
+                <?php if ($lockedStackCount > 0): ?>
+                <?php
+                $lockedHintParts = $lockedStackLabels;
+                if (count($lockedHintParts) > 5) {
+                    $lockedHintParts = array_merge(array_slice($lockedHintParts, 0, 5), ['…']);
+                }
+                $lockedHintLine = implode(', ', $lockedHintParts);
+                ?>
+                <li class="cfe-field-item cfe-field-summary-locked cf-composer__group-row"
+                    data-cf-non-sortable="1"
+                    data-cf-locked-summary="1">
+                    <div class="cf-composer__field-card-wrap">
+                        <div class="cfe-field-row cfe-locked-summary-row__inner">
+                            <span class="cfe-grip cfe-grip--locked" aria-hidden="true"><?= $iconSvg('lock') ?></span>
+                            <div class="cfe-field-center cfe-locked-summary-row__body">
+                                <div class="cfe-field-identity">
+                                    <span class="cfe-field-name">Fixed intake fields</span>
+                                    <span class="cfe-lock-tag"><?= (int) $lockedStackCount ?> · locked</span>
                                 </div>
-                                <?php endif; ?>
+                                <p class="cfe-locked-summary-row__hint" id="cf-readonly-details-hint"><?= htmlspecialchars($lockedHintLine) ?></p>
                             </div>
-                            <?php endforeach; ?>
+                            <div class="cfe-field-actions cfe-locked-summary-row__actions">
+                                <button type="button"
+                                    class="cfe-readonly-details-toggle"
+                                    data-cf-readonly-details-toggle
+                                    aria-expanded="false"
+                                    aria-describedby="cf-readonly-details-hint">
+                                    <span class="cfe-readonly-details-toggle__label">Show fixed fields</span>
+                                </button>
+                            </div>
                         </div>
-                        <?php else: ?>
-                        <p class="cf2-lib-empty">No custom fields yet.</p>
-                        <?php endif; ?>
-                        <?php if (!empty($systemCatalog)): ?>
-                        <details class="cf2-tools-subdisclosure">
-                            <summary class="cf2-sb-mini-cap">Built-in fields</summary>
-                            <div class="cf2-lib-list">
-                                <?php foreach (($systemCatalog ?? []) as $skey => $smeta): ?>
-                                <div class="cf2-lib-item">
-                                    <span class="cf2-lib-name"><?= htmlspecialchars((string) ($smeta['label'] ?? $skey)) ?></span>
-                                    <span class="cf2-lib-type"><?= htmlspecialchars($humanizeFieldType((string) ($smeta['admin_field_type'] ?? ''))) ?></span>
-                                    <span class="cf2-lib-lock"><?= $iconSvg('lock') ?></span>
+                    </div>
+                </li>
+                <?php endif; ?>
+                <?php
+                $layoutRows = array_values($layoutItemsSorted);
+                $layoutRowCount = count($layoutRows);
+                for ($li = 0; $li < $layoutRowCount; $li++) {
+                    $row = $layoutRows[$li];
+                    $fk = (string) $row['field_key'];
+                    $nextFk = ($li + 1 < $layoutRowCount) ? (string) $layoutRows[$li + 1]['field_key'] : '';
+
+                    // ── Name pair ──
+                    if ($fk === 'first_name' && $nextFk === 'last_name') {
+                        $va = $composerRowView($row);
+                        $vb = $composerRowView($layoutRows[$li + 1]);
+                        $pairGripLocked = $va['rowLocked'] || $vb['rowLocked'];
+                        $pairBothLocked = $va['rowLocked'] && $vb['rowLocked'];
+                        $li++;
+                        ?>
+                <li class="cfe-field-item cfe-field-item--pair cf-composer__group-row<?= $pairBothLocked ? ' cfe-field-item--locked cfe-locked-stack-item' : '' ?>"
+                    data-cf-field-key="<?= htmlspecialchars($va['fk'], ENT_QUOTES) ?>"
+                    data-cf-field-pair="1"
+                    data-cf-field-locked="<?= $pairGripLocked ? '1' : '0' ?>">
+                    <div class="cf-composer__field-card-wrap">
+                        <div class="cfe-field-row">
+                            <?php if (!$pairGripLocked): ?>
+                            <span class="cfe-grip cf-composer__field-grip" draggable="true" tabindex="0" role="button" aria-label="Drag to reorder name fields"><?= $iconSvg('lines') ?></span>
+                            <?php else: ?>
+                            <span class="cfe-grip cfe-grip--locked" aria-hidden="true"><?= $iconSvg('lock') ?></span>
+                            <?php endif; ?>
+                            <div class="cfe-field-center cf-composer__group-row-body cf-composer__group-row-body--pair">
+                                <div class="cfe-field-identity">
+                                    <span class="cfe-field-name"><?= htmlspecialchars($va['effectiveDisplayLabel']) ?> · <?= htmlspecialchars($vb['effectiveDisplayLabel']) ?></span>
+                                    <span class="cfe-type-badge cfe-type-badge--name">Name</span>
                                 </div>
+                                <div class="cfe-field-preview">
+                                    <div class="cf-composer__preview-cols">
+                                        <?php $renderComposerBlockBody($va['row'], true, $va['effectiveDisplayLabel'], 'name-pair-col'); ?>
+                                        <?php $renderComposerBlockBody($vb['row'], true, $vb['effectiveDisplayLabel'], 'name-pair-col'); ?>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="cfe-field-actions">
+                                <?php foreach ([$va, $vb] as $vx): ?>
+                                <?php if ($vx['removable']): ?>
+                                <form method="post" action="/clients/custom-fields/layouts/remove-item" class="cfe-remove-form cf-composer__inline-remove" data-cf-confirm-remove>
+                                    <input type="hidden" name="<?= $csrfTn ?>" value="<?= htmlspecialchars($csrf) ?>">
+                                    <input type="hidden" name="profile_key" value="<?= htmlspecialchars($selectedProfileKey ?? '') ?>">
+                                    <input type="hidden" name="field_key" value="<?= htmlspecialchars($vx['fk']) ?>">
+                                    <button type="button" class="cfe-action-btn cfe-action-btn--remove cfe-action-btn--confirm-trigger" aria-label="Remove <?= htmlspecialchars($vx['catalogLabel']) ?> from layout"><?= $iconSvg('trash') ?></button>
+                                    <button type="submit" class="cfe-action-btn cfe-action-btn--remove cfe-action-btn--confirm-ok" aria-label="Confirm remove <?= htmlspecialchars($vx['catalogLabel']) ?>" hidden><?= $iconSvg('checkmark') ?></button>
+                                </form>
+                                <?php endif; ?>
+                                <?php if (!$vx['rowLocked']): ?>
+                                <button type="button"
+                                    class="cfe-action-btn cfe-action-btn--settings cf-composer__field-edit-btn"
+                                    data-cf-settings-key="<?= htmlspecialchars($vx['fk'], ENT_QUOTES) ?>"
+                                    aria-label="Settings for <?= htmlspecialchars($vx['catalogLabel']) ?>"
+                                    aria-expanded="false"
+                                    aria-controls="<?= htmlspecialchars($vx['settingsId'], ENT_QUOTES) ?>"><?= $iconSvg('infoCircle') ?></button>
+                                <?php endif; ?>
                                 <?php endforeach; ?>
                             </div>
-                        </details>
-                        <?php endif; ?>
+                        </div>
+                        <?php $renderComposerSettingsExpand($va); ?>
+                        <?php $renderComposerSettingsExpand($vb); ?>
                     </div>
-                </details>
-            </section>
-            <?php endif; ?>
-
-            <?php if ($canEditClientFields): ?>
-                <?php if (!empty($layoutItemsSorted)): ?>
-                <ul class="cf2-field-list cf-composer__grouped-list cf2-field-list--editor" data-cf-field-sortable>
-                    <?php if ($lockedStackCount > 0): ?>
-                    <?php
-                    $lockedHintParts = $lockedStackLabels;
-                    if (count($lockedHintParts) > 5) {
-                        $lockedHintParts = array_merge(array_slice($lockedHintParts, 0, 5), ['…']);
-                    }
-                    $lockedHintLine = implode(', ', $lockedHintParts);
-                    ?>
-                    <li class="cf2-field-item cf2-field-summary-locked cf-composer__field-item cf-composer__group-row"
-                        data-cf-non-sortable="1"
-                        data-cf-locked-summary="1">
-                        <div class="cf-composer__field-card-wrap">
-                            <div class="cf2-field-row cf2-locked-summary-row__inner">
-                                <span class="cf2-grip cf2-grip--locked" aria-hidden="true"><?= $iconSvg('lock') ?></span>
-                                <div class="cf2-field-center cf2-locked-summary-row__body">
-                                    <div class="cf2-field-identity">
-                                        <span class="cf2-field-name">Fixed intake fields</span>
-                                        <span class="cf2-lock-tag"><?= (int) $lockedStackCount ?> · locked</span>
-                                    </div>
-                                    <p class="cf2-locked-summary-row__hint" id="cf-readonly-details-hint"><?= htmlspecialchars($lockedHintLine) ?></p>
-                                </div>
-                                <div class="cf2-field-actions cf2-locked-summary-row__actions">
-                                    <button type="button"
-                                        class="cf2-readonly-details-toggle"
-                                        data-cf-readonly-details-toggle
-                                        aria-expanded="false"
-                                        aria-describedby="cf-readonly-details-hint">
-                                        <span class="cf2-readonly-details-toggle__label">Show fixed fields</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </li>
+                    <?php foreach ([$va, $vb] as $vx): ?>
+                    <label class="wr-pro__visually-hidden" for="cf-pos-<?= htmlspecialchars($vx['fk']) ?>">Position</label>
+                    <input type="hidden" form="cf-form-layout-save" id="cf-pos-<?= htmlspecialchars($vx['fk']) ?>" name="items[<?= htmlspecialchars($vx['fk']) ?>][position]" value="<?= (int) ($vx['row']['position'] ?? 0) ?>">
+                    <input type="hidden" form="cf-form-layout-save" name="items[<?= htmlspecialchars($vx['fk']) ?>][field_key]" value="<?= htmlspecialchars($vx['fk']) ?>">
+                    <?php if ($vx['rowLocked']): ?>
+                    <input type="hidden" form="cf-form-layout-save" name="items[<?= htmlspecialchars($vx['fk']) ?>][is_enabled]" value="1">
+                    <input type="hidden" form="cf-form-layout-save" name="items[<?= htmlspecialchars($vx['fk']) ?>][display_label]" value="<?= htmlspecialchars($vx['storedLabel']) ?>">
+                    <?php if ($vx['layoutRequiredVal'] !== null): ?>
+                    <input type="hidden" form="cf-form-layout-save" name="items[<?= htmlspecialchars($vx['fk']) ?>][is_required]" value="<?= $vx['layoutRequiredVal'] === 1 ? '1' : '0' ?>">
                     <?php endif; ?>
-                    <?php
-                    $layoutRows = array_values($layoutItemsSorted);
-                    $layoutRowCount = count($layoutRows);
-                    for ($li = 0; $li < $layoutRowCount; $li++) {
-                        $row = $layoutRows[$li];
-                        $fk = (string) $row['field_key'];
-                        $nextFk = ($li + 1 < $layoutRowCount) ? (string) $layoutRows[$li + 1]['field_key'] : '';
+                    <?php endif; ?>
+                    <?php endforeach; ?>
+                </li>
+                        <?php
+                        continue;
+                    }
 
-                        // ── Name pair ──
-                        if ($fk === 'first_name' && $nextFk === 'last_name') {
-                            $va = $composerRowView($row);
-                            $vb = $composerRowView($layoutRows[$li + 1]);
-                            $pairGripLocked = $va['rowLocked'] || $vb['rowLocked'];
-                            $pairBothLocked = $va['rowLocked'] && $vb['rowLocked'];
-                            $li++;
-                            ?>
-                    <li class="cf2-field-item cf2-field-item--pair cf-composer__field-item cf-composer__group-row<?= $pairBothLocked ? ' cf2-field-item--locked cf2-locked-stack-item' : '' ?>"
-                        data-cf-field-key="<?= htmlspecialchars($va['fk'], ENT_QUOTES) ?>"
-                        data-cf-field-pair="1"
-                        data-cf-field-locked="<?= $pairGripLocked ? '1' : '0' ?>">
-                        <div class="cf-composer__field-card-wrap">
-                            <div class="cf2-field-row">
-                                <?php if (!$pairGripLocked): ?>
-                                <span class="cf2-grip cf-composer__field-grip" draggable="true" tabindex="0" role="button" aria-label="Drag to reorder name fields"><?= $iconSvg('lines') ?></span>
-                                <?php else: ?>
-                                <span class="cf2-grip cf2-grip--locked" aria-hidden="true"><?= $iconSvg('lock') ?></span>
-                                <?php endif; ?>
-                                <div class="cf2-field-center cf-composer__group-row-body cf-composer__group-row-body--pair">
-                                    <div class="cf2-field-identity">
-                                        <span class="cf2-field-name"><?= htmlspecialchars($va['effectiveDisplayLabel']) ?> · <?= htmlspecialchars($vb['effectiveDisplayLabel']) ?></span>
-                                        <span class="cf2-type-badge cf2-type-badge--name">Name</span>
-                                    </div>
-                                    <div class="cf2-field-preview">
-                                        <div class="cf-composer__preview-cols">
-                                            <?php $renderComposerBlockBody($va['row'], true, $va['effectiveDisplayLabel'], 'name-pair-col'); ?>
-                                            <?php $renderComposerBlockBody($vb['row'], true, $vb['effectiveDisplayLabel'], 'name-pair-col'); ?>
-                                        </div>
-                                    </div>
+                    // ── Regular row ──
+                    $v = $composerRowView($row);
+                    $badge = $fieldTypeBadge($v['fk'], $systemFieldDefinitions[$v['fk']] ?? null);
+                    ?>
+                <li class="cfe-field-item cf-composer__group-row<?= $v['rowLocked'] ? ' cfe-field-item--locked cfe-locked-stack-item' : '' ?>"
+                    data-cf-field-key="<?= htmlspecialchars($v['fk'], ENT_QUOTES) ?>"
+                    data-cf-field-locked="<?= $v['rowLocked'] ? '1' : '0' ?>">
+                    <div class="cf-composer__field-card-wrap">
+                        <div class="cfe-field-row">
+                            <?php if (!$v['rowLocked']): ?>
+                            <span class="cfe-grip cf-composer__field-grip" draggable="true" tabindex="0" role="button" aria-label="Drag to reorder field"><?= $iconSvg('lines') ?></span>
+                            <?php else: ?>
+                            <span class="cfe-grip cfe-grip--locked" aria-hidden="true"><?= $iconSvg('lock') ?></span>
+                            <?php endif; ?>
+                            <div class="cfe-field-center cf-composer__group-row-body">
+                                <div class="cfe-field-identity">
+                                    <span class="cfe-field-name"><?= htmlspecialchars($v['effectiveDisplayLabel']) ?></span>
+                                    <span class="cfe-type-badge cfe-type-badge--<?= htmlspecialchars($badge['class']) ?>"><?= htmlspecialchars($badge['label']) ?></span>
                                 </div>
-                                <div class="cf2-field-actions">
-                                    <?php foreach ([$va, $vb] as $vx): ?>
-                                    <?php if ($vx['removable']): ?>
-                                    <form method="post" action="/clients/custom-fields/layouts/remove-item" class="cf2-remove-form cf-composer__inline-remove" data-cf-confirm-remove>
-                                        <input type="hidden" name="<?= $csrfTn ?>" value="<?= htmlspecialchars($csrf) ?>">
-                                        <input type="hidden" name="profile_key" value="<?= htmlspecialchars($selectedProfileKey ?? '') ?>">
-                                        <input type="hidden" name="field_key" value="<?= htmlspecialchars($vx['fk']) ?>">
-                                        <button type="button" class="cf2-action-btn cf2-action-btn--remove cf2-action-btn--confirm-trigger" aria-label="Remove <?= htmlspecialchars($vx['catalogLabel']) ?> from layout"><?= $iconSvg('trash') ?></button>
-                                        <button type="submit" class="cf2-action-btn cf2-action-btn--remove cf2-action-btn--confirm-ok" aria-label="Confirm remove <?= htmlspecialchars($vx['catalogLabel']) ?>" hidden><?= $iconSvg('checkmark') ?></button>
-                                    </form>
-                                    <?php endif; ?>
-                                    <?php if (!$vx['rowLocked']): ?>
-                                    <button type="button"
-                                        class="cf2-action-btn cf2-action-btn--settings cf-composer__field-edit-btn"
-                                        data-cf-settings-key="<?= htmlspecialchars($vx['fk'], ENT_QUOTES) ?>"
-                                        aria-label="Settings for <?= htmlspecialchars($vx['catalogLabel']) ?>"
-                                        aria-expanded="false"
-                                        aria-controls="<?= htmlspecialchars($vx['settingsId'], ENT_QUOTES) ?>"><?= $iconSvg('infoCircle') ?></button>
-                                    <?php endif; ?>
-                                    <?php endforeach; ?>
+                                <div class="cfe-field-preview">
+                                    <?php $renderComposerBlockBody($row, true, $v['effectiveDisplayLabel']); ?>
                                 </div>
                             </div>
-                            <?php $renderComposerSettingsExpand($va); ?>
-                            <?php $renderComposerSettingsExpand($vb); ?>
-                        </div>
-                        <?php foreach ([$va, $vb] as $vx): ?>
-                        <label class="wr-pro__visually-hidden" for="cf-pos-<?= htmlspecialchars($vx['fk']) ?>">Position</label>
-                        <input type="hidden" form="cf-form-layout-save" id="cf-pos-<?= htmlspecialchars($vx['fk']) ?>" name="items[<?= htmlspecialchars($vx['fk']) ?>][position]" value="<?= (int) ($vx['row']['position'] ?? 0) ?>">
-                        <input type="hidden" form="cf-form-layout-save" name="items[<?= htmlspecialchars($vx['fk']) ?>][field_key]" value="<?= htmlspecialchars($vx['fk']) ?>">
-                        <?php if ($vx['rowLocked']): ?>
-                        <input type="hidden" form="cf-form-layout-save" name="items[<?= htmlspecialchars($vx['fk']) ?>][is_enabled]" value="1">
-                        <input type="hidden" form="cf-form-layout-save" name="items[<?= htmlspecialchars($vx['fk']) ?>][display_label]" value="<?= htmlspecialchars($vx['storedLabel']) ?>">
-                        <?php if ($vx['layoutRequiredVal'] !== null): ?>
-                        <input type="hidden" form="cf-form-layout-save" name="items[<?= htmlspecialchars($vx['fk']) ?>][is_required]" value="<?= $vx['layoutRequiredVal'] === 1 ? '1' : '0' ?>">
-                        <?php endif; ?>
-                        <?php endif; ?>
-                        <?php endforeach; ?>
-                    </li>
-                            <?php
-                            continue;
-                        }
-
-                        // ── Regular row ──
-                        $v = $composerRowView($row);
-                        $badge = $fieldTypeBadge($v['fk'], $systemFieldDefinitions[$v['fk']] ?? null);
-                        ?>
-                    <li class="cf2-field-item cf-composer__field-item cf-composer__group-row<?= $v['rowLocked'] ? ' cf2-field-item--locked cf2-locked-stack-item' : '' ?>"
-                        data-cf-field-key="<?= htmlspecialchars($v['fk'], ENT_QUOTES) ?>"
-                        data-cf-field-locked="<?= $v['rowLocked'] ? '1' : '0' ?>">
-                        <div class="cf-composer__field-card-wrap">
-                            <div class="cf2-field-row">
+                            <div class="cfe-field-actions">
+                                <?php if ($v['removable']): ?>
+                                <form method="post" action="/clients/custom-fields/layouts/remove-item" class="cfe-remove-form cf-composer__inline-remove" data-cf-confirm-remove>
+                                    <input type="hidden" name="<?= $csrfTn ?>" value="<?= htmlspecialchars($csrf) ?>">
+                                    <input type="hidden" name="profile_key" value="<?= htmlspecialchars($selectedProfileKey ?? '') ?>">
+                                    <input type="hidden" name="field_key" value="<?= htmlspecialchars($v['fk']) ?>">
+                                    <button type="button" class="cfe-action-btn cfe-action-btn--remove cfe-action-btn--confirm-trigger" aria-label="Remove field from layout"><?= $iconSvg('trash') ?></button>
+                                    <button type="submit" class="cfe-action-btn cfe-action-btn--remove cfe-action-btn--confirm-ok" aria-label="Confirm remove" hidden><?= $iconSvg('checkmark') ?></button>
+                                </form>
+                                <?php endif; ?>
                                 <?php if (!$v['rowLocked']): ?>
-                                <span class="cf2-grip cf-composer__field-grip" draggable="true" tabindex="0" role="button" aria-label="Drag to reorder field"><?= $iconSvg('lines') ?></span>
-                                <?php else: ?>
-                                <span class="cf2-grip cf2-grip--locked" aria-hidden="true"><?= $iconSvg('lock') ?></span>
+                                <button type="button"
+                                    class="cfe-action-btn cfe-action-btn--settings cf-composer__field-edit-btn"
+                                    data-cf-settings-key="<?= htmlspecialchars($v['fk'], ENT_QUOTES) ?>"
+                                    aria-label="Field settings"
+                                    aria-expanded="false"
+                                    aria-controls="<?= htmlspecialchars($v['settingsId'], ENT_QUOTES) ?>"><?= $iconSvg('infoCircle') ?></button>
                                 <?php endif; ?>
-                                <div class="cf2-field-center cf-composer__group-row-body">
-                                    <div class="cf2-field-identity">
-                                        <span class="cf2-field-name"><?= htmlspecialchars($v['effectiveDisplayLabel']) ?></span>
-                                        <span class="cf2-type-badge cf2-type-badge--<?= htmlspecialchars($badge['class']) ?>"><?= htmlspecialchars($badge['label']) ?></span>
-                                    </div>
-                                    <div class="cf2-field-preview">
-                                        <?php $renderComposerBlockBody($row, true, $v['effectiveDisplayLabel']); ?>
-                                    </div>
-                                </div>
-                                <div class="cf2-field-actions">
-                                    <?php if ($v['removable']): ?>
-                                    <form method="post" action="/clients/custom-fields/layouts/remove-item" class="cf2-remove-form cf-composer__inline-remove" data-cf-confirm-remove>
-                                        <input type="hidden" name="<?= $csrfTn ?>" value="<?= htmlspecialchars($csrf) ?>">
-                                        <input type="hidden" name="profile_key" value="<?= htmlspecialchars($selectedProfileKey ?? '') ?>">
-                                        <input type="hidden" name="field_key" value="<?= htmlspecialchars($v['fk']) ?>">
-                                        <button type="button" class="cf2-action-btn cf2-action-btn--remove cf2-action-btn--confirm-trigger" aria-label="Remove field from layout"><?= $iconSvg('trash') ?></button>
-                                        <button type="submit" class="cf2-action-btn cf2-action-btn--remove cf2-action-btn--confirm-ok" aria-label="Confirm remove" hidden><?= $iconSvg('checkmark') ?></button>
-                                    </form>
-                                    <?php endif; ?>
-                                    <?php if (!$v['rowLocked']): ?>
-                                    <button type="button"
-                                        class="cf2-action-btn cf2-action-btn--settings cf-composer__field-edit-btn"
-                                        data-cf-settings-key="<?= htmlspecialchars($v['fk'], ENT_QUOTES) ?>"
-                                        aria-label="Field settings"
-                                        aria-expanded="false"
-                                        aria-controls="<?= htmlspecialchars($v['settingsId'], ENT_QUOTES) ?>"><?= $iconSvg('infoCircle') ?></button>
-                                    <?php endif; ?>
-                                </div>
                             </div>
-                            <?php $renderComposerSettingsExpand($v); ?>
                         </div>
-                        <label class="wr-pro__visually-hidden" for="cf-pos-<?= htmlspecialchars($v['fk']) ?>">Position</label>
-                        <input type="hidden" form="cf-form-layout-save" id="cf-pos-<?= htmlspecialchars($v['fk']) ?>" name="items[<?= htmlspecialchars($v['fk']) ?>][position]" value="<?= (int) ($row['position'] ?? 0) ?>">
-                        <input type="hidden" form="cf-form-layout-save" name="items[<?= htmlspecialchars($v['fk']) ?>][field_key]" value="<?= htmlspecialchars($v['fk']) ?>">
-                        <?php if ($v['rowLocked']): ?>
-                        <input type="hidden" form="cf-form-layout-save" name="items[<?= htmlspecialchars($v['fk']) ?>][is_enabled]" value="1">
-                        <input type="hidden" form="cf-form-layout-save" name="items[<?= htmlspecialchars($v['fk']) ?>][display_label]" value="<?= htmlspecialchars($v['storedLabel']) ?>">
-                        <?php if ($v['layoutRequiredVal'] !== null): ?>
-                        <input type="hidden" form="cf-form-layout-save" name="items[<?= htmlspecialchars($v['fk']) ?>][is_required]" value="<?= $v['layoutRequiredVal'] === 1 ? '1' : '0' ?>">
-                        <?php endif; ?>
-                        <?php endif; ?>
-                    </li>
-                    <?php
-                    }
-                    ?>
-                </ul>
-
-                <?php if (!$anyAdd): ?>
-                <p class="cf2-hint" style="margin-top:12px;">All catalog fields are on this profile.</p>
-                <?php endif; ?>
-
-                <?php else: ?>
-                <div class="cf2-empty-state">
-                    <p>No fields on this profile yet.</p>
-                    <?php if ($anyAdd): ?>
-                    <p class="cf2-hint">Use Add field to start composing this profile.</p>
+                        <?php $renderComposerSettingsExpand($v); ?>
+                    </div>
+                    <label class="wr-pro__visually-hidden" for="cf-pos-<?= htmlspecialchars($v['fk']) ?>">Position</label>
+                    <input type="hidden" form="cf-form-layout-save" id="cf-pos-<?= htmlspecialchars($v['fk']) ?>" name="items[<?= htmlspecialchars($v['fk']) ?>][position]" value="<?= (int) ($row['position'] ?? 0) ?>">
+                    <input type="hidden" form="cf-form-layout-save" name="items[<?= htmlspecialchars($v['fk']) ?>][field_key]" value="<?= htmlspecialchars($v['fk']) ?>">
+                    <?php if ($v['rowLocked']): ?>
+                    <input type="hidden" form="cf-form-layout-save" name="items[<?= htmlspecialchars($v['fk']) ?>][is_enabled]" value="1">
+                    <input type="hidden" form="cf-form-layout-save" name="items[<?= htmlspecialchars($v['fk']) ?>][display_label]" value="<?= htmlspecialchars($v['storedLabel']) ?>">
+                    <?php if ($v['layoutRequiredVal'] !== null): ?>
+                    <input type="hidden" form="cf-form-layout-save" name="items[<?= htmlspecialchars($v['fk']) ?>][is_required]" value="<?= $v['layoutRequiredVal'] === 1 ? '1' : '0' ?>">
                     <?php endif; ?>
-                </div>
-                <?php endif; ?>
+                    <?php endif; ?>
+                </li>
+                <?php
+                }
+                ?>
+            </ul>
+
+            <?php if (!$anyAdd): ?>
+            <p class="cfe-hint">All catalog fields are on this profile.</p>
+            <?php endif; ?>
 
             <?php else: ?>
-                <!-- Read-only layout -->
-                <?php if (!empty($layoutItemsSorted)): ?>
-                <ul class="cf2-field-list cf-composer__grouped-list cf-composer__grouped-list--readonly cf2-field-list--editor">
-                    <?php
-                    $roRows = array_values($layoutItemsSorted);
-                    $roN = count($roRows);
-                    for ($ri = 0; $ri < $roN; $ri++) {
-                        $rrow = $roRows[$ri];
-                        $rfk = (string) $rrow['field_key'];
-                        $rnext = ($ri + 1 < $roN) ? (string) $roRows[$ri + 1]['field_key'] : '';
-                        if ($rfk === 'first_name' && $rnext === 'last_name') {
-                            $ri++;
-                            $va = $composerRowView($rrow);
-                            $vb = $composerRowView($roRows[$ri]);
-                            ?>
-                    <li class="cf2-field-item cf2-field-item--pair cf-composer__field-item cf-composer__group-row" data-cf-field-key="<?= htmlspecialchars($va['fk'], ENT_QUOTES) ?>" data-cf-field-pair="1">
-                        <div class="cf2-field-row">
-                            <span class="cf2-grip cf2-grip--locked" aria-hidden="true"><?= $iconSvg('lock') ?></span>
-                            <div class="cf2-field-center cf-composer__group-row-body cf-composer__group-row-body--pair">
-                                <div class="cf2-field-identity">
-                                    <span class="cf2-field-name"><?= htmlspecialchars($va['effectiveDisplayLabel']) ?> · <?= htmlspecialchars($vb['effectiveDisplayLabel']) ?></span>
-                                    <span class="cf2-type-badge cf2-type-badge--name">Name</span>
-                                </div>
-                                <div class="cf2-field-preview">
-                                    <div class="cf-composer__preview-cols">
-                                        <?php $renderComposerBlockBody($rrow, false, $va['effectiveDisplayLabel'], 'name-pair-col'); ?>
-                                        <?php $renderComposerBlockBody($roRows[$ri], false, $vb['effectiveDisplayLabel'], 'name-pair-col'); ?>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="cf2-field-actions"></div>
-                        </div>
-                    </li>
-                            <?php
-                            continue;
-                        }
-                        $roView = $composerRowView($rrow);
-                        $roBadge = $fieldTypeBadge($rfk, $systemFieldDefinitions[$rfk] ?? null);
-                        ?>
-                    <li class="cf2-field-item cf-composer__field-item cf-composer__group-row" data-cf-field-key="<?= htmlspecialchars($rfk, ENT_QUOTES) ?>">
-                        <div class="cf2-field-row">
-                            <span class="cf2-grip cf2-grip--locked" aria-hidden="true"><?= $iconSvg('lock') ?></span>
-                            <div class="cf2-field-center cf-composer__group-row-body">
-                                <div class="cf2-field-identity">
-                                    <span class="cf2-field-name"><?= htmlspecialchars($roView['effectiveDisplayLabel']) ?></span>
-                                    <span class="cf2-type-badge cf2-type-badge--<?= htmlspecialchars($roBadge['class']) ?>"><?= htmlspecialchars($roBadge['label']) ?></span>
-                                </div>
-                                <div class="cf2-field-preview">
-                                    <?php $renderComposerBlockBody($rrow, false); ?>
-                                </div>
-                            </div>
-                            <div class="cf2-field-actions"></div>
-                        </div>
-                    </li>
-                    <?php
-                    }
-                    ?>
-                </ul>
-                <?php else: ?>
-                <div class="cf2-empty-state"><p>No layout rows for this profile.</p></div>
+            <div class="cfe-empty-state">
+                <p>No fields on this profile yet.</p>
+                <?php if ($anyAdd): ?>
+                <p class="cfe-hint">Use <strong>Add field</strong> above to start composing this profile.</p>
                 <?php endif; ?>
-
-            <?php endif; ?>
-            </div><!-- /.cf2-editor-card -->
-
+            </div>
             <?php endif; ?>
 
-        </div><!-- /.cf2-content-area -->
+        <?php else: ?>
+            <!-- Read-only layout -->
+            <?php if (!empty($layoutItemsSorted)): ?>
+            <ul class="cfe-field-list cf-composer__grouped-list--readonly">
+                <?php
+                $roRows = array_values($layoutItemsSorted);
+                $roN = count($roRows);
+                for ($ri = 0; $ri < $roN; $ri++) {
+                    $rrow = $roRows[$ri];
+                    $rfk = (string) $rrow['field_key'];
+                    $rnext = ($ri + 1 < $roN) ? (string) $roRows[$ri + 1]['field_key'] : '';
+                    if ($rfk === 'first_name' && $rnext === 'last_name') {
+                        $ri++;
+                        $va = $composerRowView($rrow);
+                        $vb = $composerRowView($roRows[$ri]);
+                        ?>
+                <li class="cfe-field-item cfe-field-item--pair cf-composer__group-row" data-cf-field-key="<?= htmlspecialchars($va['fk'], ENT_QUOTES) ?>" data-cf-field-pair="1">
+                    <div class="cfe-field-row">
+                        <span class="cfe-grip cfe-grip--locked" aria-hidden="true"><?= $iconSvg('lock') ?></span>
+                        <div class="cfe-field-center cf-composer__group-row-body cf-composer__group-row-body--pair">
+                            <div class="cfe-field-identity">
+                                <span class="cfe-field-name"><?= htmlspecialchars($va['effectiveDisplayLabel']) ?> · <?= htmlspecialchars($vb['effectiveDisplayLabel']) ?></span>
+                                <span class="cfe-type-badge cfe-type-badge--name">Name</span>
+                            </div>
+                            <div class="cfe-field-preview">
+                                <div class="cf-composer__preview-cols">
+                                    <?php $renderComposerBlockBody($rrow, false, $va['effectiveDisplayLabel'], 'name-pair-col'); ?>
+                                    <?php $renderComposerBlockBody($roRows[$ri], false, $vb['effectiveDisplayLabel'], 'name-pair-col'); ?>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="cfe-field-actions"></div>
+                    </div>
+                </li>
+                        <?php
+                        continue;
+                    }
+                    $roView = $composerRowView($rrow);
+                    $roBadge = $fieldTypeBadge($rfk, $systemFieldDefinitions[$rfk] ?? null);
+                    ?>
+                <li class="cfe-field-item cf-composer__group-row" data-cf-field-key="<?= htmlspecialchars($rfk, ENT_QUOTES) ?>">
+                    <div class="cfe-field-row">
+                        <span class="cfe-grip cfe-grip--locked" aria-hidden="true"><?= $iconSvg('lock') ?></span>
+                        <div class="cfe-field-center cf-composer__group-row-body">
+                            <div class="cfe-field-identity">
+                                <span class="cfe-field-name"><?= htmlspecialchars($roView['effectiveDisplayLabel']) ?></span>
+                                <span class="cfe-type-badge cfe-type-badge--<?= htmlspecialchars($roBadge['class']) ?>"><?= htmlspecialchars($roBadge['label']) ?></span>
+                            </div>
+                            <div class="cfe-field-preview">
+                                <?php $renderComposerBlockBody($rrow, false); ?>
+                            </div>
+                        </div>
+                        <div class="cfe-field-actions"></div>
+                    </div>
+                </li>
+                <?php
+                }
+                ?>
+            </ul>
+            <?php else: ?>
+            <div class="cfe-empty-state"><p>No layout rows for this profile.</p></div>
+            <?php endif; ?>
 
-    </div><!-- /.cf2-body -->
+        <?php endif; ?>
 
-</div><!-- /.cf2-root -->
+    </div><!-- /.cfe-canvas -->
+
+    <?php endif; ?>
+
+</div><!-- /.cfe-root -->
 <script>
 (function () {
     'use strict';
@@ -948,14 +965,14 @@ $lockedStackCount = count($lockedStackLabels);
     function syncReadonlyMasterToggle() {
         var btn = root.querySelector('[data-cf-readonly-details-toggle]');
         if (!btn) return;
-        var on = root.classList.contains('cf2-readonly-details-expanded');
+        var on = root.classList.contains('cfe-readonly-details-expanded');
         btn.setAttribute('aria-expanded', on ? 'true' : 'false');
-        var lab = btn.querySelector('.cf2-readonly-details-toggle__label');
+        var lab = btn.querySelector('.cfe-readonly-details-toggle__label');
         if (lab) lab.textContent = on ? 'Hide fixed fields' : 'Show fixed fields';
     }
 
     function applyComposerEditState() {
-        var readonlyExpanded = root.classList.contains('cf2-readonly-details-expanded');
+        var readonlyExpanded = root.classList.contains('cfe-readonly-details-expanded');
         root.querySelectorAll('[data-cf-field-settings-panel]').forEach(function (panel) {
             var owner = panel.getAttribute('data-cf-settings-owner');
             var ro = panel.getAttribute('data-cf-settings-readonly') === '1';
@@ -967,13 +984,13 @@ $lockedStackCount = count($lockedStackLabels);
         root.querySelectorAll('.cf-composer__field-card-wrap').forEach(function (wrap) {
             wrap.classList.toggle('cf-composer__field-card-wrap--edit-open', !!wrap.querySelector('[data-cf-field-settings-panel].is-open'));
         });
-        root.querySelectorAll('.cf2-field-item').forEach(function (item) {
+        root.querySelectorAll('.cfe-field-item').forEach(function (item) {
             var fid = item.getAttribute('data-cf-field-key');
-            item.classList.toggle('cf2-field-item--settings-open', fid !== null && fid === activeEditFieldId);
+            item.classList.toggle('cfe-field-item--settings-open', fid !== null && fid === activeEditFieldId);
         });
         root.querySelectorAll('.cf-composer__field-edit-btn').forEach(function (btn) {
             var sk = btn.getAttribute('data-cf-settings-key');
-            var li = btn.closest('.cf2-field-item, .cf-composer__field-item');
+            var li = btn.closest('.cfe-field-item, .cf-composer__field-item');
             var id = sk || (li ? li.getAttribute('data-cf-field-key') : '') || '';
             var active = activeEditFieldId !== null && id === activeEditFieldId;
             btn.setAttribute('aria-expanded', active ? 'true' : 'false');
@@ -983,9 +1000,9 @@ $lockedStackCount = count($lockedStackLabels);
 
     function setActiveEditFieldId(id) {
         if (id !== null) {
-            var li = root.querySelector('.cf2-field-item[data-cf-field-key="' + id + '"]');
+            var li = root.querySelector('.cfe-field-item[data-cf-field-key="' + id + '"]');
             if (!li || li.getAttribute('data-cf-field-locked') !== '1') {
-                root.classList.remove('cf2-readonly-details-expanded');
+                root.classList.remove('cfe-readonly-details-expanded');
                 syncReadonlyMasterToggle();
             }
         }
@@ -995,16 +1012,16 @@ $lockedStackCount = count($lockedStackLabels);
 
     document.addEventListener('click', function (e) {
         if (!root.contains(e.target)) return;
-        if (e.target.closest('.cf-composer__field-edit-btn, [data-cf-field-settings-panel], .cf2-field-actions, .cf2-palette-chip-form, .cf2-palette-chip, [data-cf-locked-summary], [data-cf-readonly-details-toggle]')) return;
-        if (e.target.closest('.cf2-field-item, .cf-composer__field-item')) return;
-        root.classList.remove('cf2-readonly-details-expanded');
+        if (e.target.closest('.cf-composer__field-edit-btn, [data-cf-field-settings-panel], .cfe-field-actions, .cfe-palette-chip-form, .cfe-palette-chip, [data-cf-locked-summary], [data-cf-readonly-details-toggle]')) return;
+        if (e.target.closest('.cfe-field-item, .cf-composer__field-item')) return;
+        root.classList.remove('cfe-readonly-details-expanded');
         syncReadonlyMasterToggle();
         setActiveEditFieldId(null);
     });
 
     document.addEventListener('keydown', function (e) {
         if (e.key !== 'Escape') return;
-        root.classList.remove('cf2-readonly-details-expanded');
+        root.classList.remove('cfe-readonly-details-expanded');
         syncReadonlyMasterToggle();
         if (activeEditFieldId !== null) setActiveEditFieldId(null);
         else applyComposerEditState();
@@ -1016,7 +1033,7 @@ $lockedStackCount = count($lockedStackLabels);
             var doneBtn = e.target.closest('.cf-composer__field-edit-done');
             if (doneBtn) {
                 e.preventDefault();
-                root.classList.remove('cf2-readonly-details-expanded');
+                root.classList.remove('cfe-readonly-details-expanded');
                 syncReadonlyMasterToggle();
                 setActiveEditFieldId(null);
                 return;
@@ -1027,18 +1044,18 @@ $lockedStackCount = count($lockedStackLabels);
                 e.preventDefault();
                 e.stopPropagation();
                 var sk = editBtn.getAttribute('data-cf-settings-key');
-                var li = editBtn.closest('.cf2-field-item, .cf-composer__field-item');
+                var li = editBtn.closest('.cfe-field-item, .cf-composer__field-item');
                 var fid = sk || (li ? li.getAttribute('data-cf-field-key') : null);
                 if (!fid) return;
                 setActiveEditFieldId(activeEditFieldId === fid ? null : fid);
                 return;
             }
 
-            var li = e.target.closest('.cf2-field-item, .cf-composer__field-item');
+            var li = e.target.closest('.cfe-field-item, .cf-composer__field-item');
             if (!li || !sortableList.contains(li)) return;
-            if (e.target.closest('a, button, input, textarea, select, label, .cf2-field-actions, [data-cf-field-settings-panel], [data-cf-delivery-block], .cf-composer__ios-switch, .cf2-remove-form')) return;
+            if (e.target.closest('a, button, input, textarea, select, label, .cfe-field-actions, [data-cf-field-settings-panel], [data-cf-delivery-block], .cf-composer__ios-switch, .cfe-remove-form')) return;
             if (li.getAttribute('data-cf-locked-summary') === '1') return;
-            if (li.classList.contains('cf2-field-item--locked')) return;
+            if (li.classList.contains('cfe-field-item--locked')) return;
             var fid = li.getAttribute('data-cf-field-key');
             if (!fid) return;
             setActiveEditFieldId(activeEditFieldId === fid ? null : fid);
@@ -1059,7 +1076,7 @@ $lockedStackCount = count($lockedStackLabels);
         if (!mt || !root.contains(mt)) return;
         e.preventDefault();
         e.stopPropagation();
-        root.classList.toggle('cf2-readonly-details-expanded');
+        root.classList.toggle('cfe-readonly-details-expanded');
         syncReadonlyMasterToggle();
         setActiveEditFieldId(null);
     });
@@ -1088,7 +1105,7 @@ $lockedStackCount = count($lockedStackLabels);
         function removePlaceholder() { if (placeholder.parentNode) placeholder.parentNode.removeChild(placeholder); }
 
         function isFieldItem(el) {
-            return el.classList && (el.classList.contains('cf2-field-item') || el.classList.contains('cf-composer__field-item')) && el.getAttribute('data-cf-non-sortable') !== '1';
+            return el.classList && (el.classList.contains('cfe-field-item') || el.classList.contains('cf-composer__field-item')) && el.getAttribute('data-cf-non-sortable') !== '1';
         }
 
         function fieldItemsInList(ul) {
@@ -1162,7 +1179,7 @@ $lockedStackCount = count($lockedStackLabels);
         list.addEventListener('dragstart', function (e) {
             var grip = e.target.closest('.cf-composer__field-grip');
             if (!grip) return;
-            var item = e.target.closest('.cf2-field-item, .cf-composer__field-item');
+            var item = e.target.closest('.cfe-field-item, .cf-composer__field-item');
             if (!item || !list.contains(item) || item.getAttribute('data-cf-field-locked') === '1') { e.preventDefault(); return; }
             dragging = item;
             e.dataTransfer.effectAllowed = 'move';
@@ -1241,15 +1258,15 @@ $lockedStackCount = count($lockedStackLabels);
 
     /* ── Inline destructive confirmation (replaces native confirm()) ── */
     (function initInlineConfirm() {
-        var PENDING_CLASS = 'cf2-confirm-pending';
+        var PENDING_CLASS = 'cfe-confirm-pending';
         var pendingForm = null;
         var pendingTimer = null;
 
         function resetConfirm(form) {
             if (!form) return;
             form.classList.remove(PENDING_CLASS);
-            var ok = form.querySelector('.cf2-action-btn--confirm-ok, .cf2-lib-delete.cf2-action-btn--confirm-ok');
-            var trigger = form.querySelector('.cf2-action-btn--confirm-trigger, .cf2-lib-delete.cf2-action-btn--confirm-trigger');
+            var ok = form.querySelector('.cfe-action-btn--confirm-ok, .cfe-lib-delete.cfe-action-btn--confirm-ok');
+            var trigger = form.querySelector('.cfe-action-btn--confirm-trigger, .cfe-lib-delete.cfe-action-btn--confirm-trigger');
             if (ok) ok.hidden = true;
             if (trigger) trigger.hidden = false;
         }
@@ -1261,7 +1278,7 @@ $lockedStackCount = count($lockedStackLabels);
         }
 
         document.addEventListener('click', function (e) {
-            var trigger = e.target.closest('.cf2-action-btn--confirm-trigger');
+            var trigger = e.target.closest('.cfe-action-btn--confirm-trigger');
             if (trigger) {
                 var form = trigger.closest('[data-cf-confirm-remove]');
                 if (!form) return;
@@ -1270,11 +1287,10 @@ $lockedStackCount = count($lockedStackLabels);
                 if (pendingTimer) clearTimeout(pendingTimer);
                 resetAllExcept(form);
                 form.classList.add(PENDING_CLASS);
-                var ok = form.querySelector('.cf2-action-btn--confirm-ok, .cf2-lib-delete.cf2-action-btn--confirm-ok');
+                var ok = form.querySelector('.cfe-action-btn--confirm-ok, .cfe-lib-delete.cfe-action-btn--confirm-ok');
                 if (ok) ok.hidden = false;
                 trigger.hidden = true;
                 pendingForm = form;
-                /* Auto-reset after 4 seconds if not confirmed */
                 pendingTimer = setTimeout(function () {
                     resetConfirm(form);
                     pendingForm = null;
@@ -1282,7 +1298,6 @@ $lockedStackCount = count($lockedStackLabels);
                 return;
             }
 
-            /* Cancel pending confirm if clicking outside */
             if (pendingForm && !e.target.closest('[data-cf-confirm-remove]')) {
                 if (pendingTimer) clearTimeout(pendingTimer);
                 resetConfirm(pendingForm);
@@ -1290,7 +1305,6 @@ $lockedStackCount = count($lockedStackLabels);
             }
         });
 
-        /* Escape also cancels */
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape' && pendingForm) {
                 if (pendingTimer) clearTimeout(pendingTimer);

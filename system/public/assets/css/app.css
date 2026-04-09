@@ -1,4 +1,4 @@
-.app-drawer-lock {
+﻿.app-drawer-lock {
   overflow: hidden;
 }
 
@@ -14853,1609 +14853,64 @@ details.cashier-totals-summary:not([open]) {
   max-width: 40rem;
 }
 
-/* --- Clients ? Page layouts (WR-PRO / Jobs Pro admin, 2026) --- */
-.cf-composer-page .client-fields-subtabs,
-.wr-pro-page .client-fields-subtabs {
-  margin-bottom: 1.25rem;
-}
-
-.cf-composer {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  margin: 0;
-  box-sizing: border-box;
-  /* Align with appointments / workspace canvas (slate SaaS) */
-  --cf-sys-accent: #0f172a;
-  --cf-sys-accent-press: #1e293b;
-  --cf-sys-accent-soft: color-mix(in srgb, var(--cf-sys-accent) 10%, transparent);
-  --cf-sys-focus-ring: color-mix(in srgb, var(--cf-sys-accent) 22%, transparent);
-  --cf-sys-blue: var(--cf-sys-accent);
-  --cf-sys-blue-press: var(--cf-sys-accent-press);
-  --cf-sys-red: #ef4444;
-  --cf-sys-red-soft: rgba(239, 68, 68, 0.12);
-  --cf-sys-bg: var(--ds-color-bg-canvas, #f8fafc);
-  --cf-sys-card: var(--ds-color-bg-surface, #ffffff);
-  --cf-sys-label: var(--ds-color-text, #0f172a);
-  --cf-sys-secondary: var(--ds-color-text-secondary, #64748b);
-  --cf-sys-tertiary: #94a3b8;
-  --cf-sys-fill: #f1f5f9;
-  --cf-sys-border: var(--ds-color-border-light, #e2e8f0);
-  --cf-sys-row-hover: #f1f5f9;
-  --cf-radius-card: 16px;
-  --cf-radius-ctrl: 10px;
-  --cf-font: var(--ds-font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif);
-  --wr-accent: var(--cf-sys-accent);
-  --wr-accent-soft: color-mix(in srgb, var(--cf-sys-accent) 14%, transparent);
-  /* Form column cap (HIG-style readability on large desktops; F-pattern left rail) */
-  --cf-form-column-max: 800px;
-  --cf-field-row-gap: 0.875rem;
-  --cf-section-stack-gap: 1.35rem;
-  font-family: var(--cf-font);
-  -webkit-font-smoothing: antialiased;
-}
-
-.cf-composer__shell {
-  background: var(--cf-sys-bg);
-  border-radius: var(--cf-radius-card);
-  padding: 1.25rem 1.25rem 2rem;
-  box-sizing: border-box;
-}
-
-@media (min-width: 768px) {
-  .cf-composer__shell {
-    padding: 1.5rem 1.75rem 2.25rem;
-  }
-}
-
-/* Fixed bottom bar (Save / Reload) ? keep content clear of the bar */
-.cf-composer--sticky-actions .cf-composer__shell {
-  padding-bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px));
-}
-
-@media (min-width: 768px) {
-  .cf-composer--sticky-actions .cf-composer__shell {
-    padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
-  }
-}
-
-/* Full-width profile strip; form preview column left-aligned (no horizontal centering) */
-@media (min-width: 768px) {
-  .cf-composer__shell > .cf-composer__hero,
-  .cf-composer__shell > .cf-composer__grouped-list,
-  .cf-composer__shell > .cf-composer__empty-hint,
-  .cf-composer__shell > p.cf-composer__add-all-used {
-    max-width: min(100%, var(--cf-form-column-max));
-    margin-left: 0;
-    margin-right: 0;
-    width: 100%;
-    box-sizing: border-box;
-  }
-}
-
-/* Composer uses full app main width (avoid ds-content-max + margin:auto island) */
-main.app-shell__main.main.cf-composer-page {
-  max-width: none;
-  margin-left: 0;
-  margin-right: 0;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.cf-composer__sticky-actions {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 120;
-  padding: 0.65rem var(--ds-shell-pad-x, 1rem) calc(0.65rem + env(safe-area-inset-bottom, 0px));
-  background: color-mix(in srgb, var(--cf-sys-card) 94%, transparent);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-  border-top: 1px solid color-mix(in srgb, var(--cf-sys-border) 90%, white);
-  box-shadow: 0 -8px 32px rgba(15, 23, 42, 0.08);
-}
-
-@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-  .cf-composer__sticky-actions {
-    background: var(--cf-sys-card);
-  }
-}
-
-.cf-composer__sticky-actions-inner {
-  max-width: min(100%, var(--cf-form-column-max));
-  margin-left: 0;
-  margin-right: auto;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.5rem 0.75rem;
-}
-
-.cf-composer__btn-ghost--on-bar {
-  color: var(--cf-sys-label);
-  background: color-mix(in srgb, var(--cf-sys-fill) 65%, transparent);
-}
-
-.cf-composer__btn-ghost--on-bar:hover {
-  background: var(--cf-sys-fill);
-}
-
-.cf-composer__hero {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  margin: 0.5rem 0 1.25rem;
-}
-
-.cf-composer__hero--toolbar {
-  align-items: center;
-}
-
-.cf-composer__hero--toolbar .cf-composer__hero-text {
-  flex: 1 1 12rem;
-  min-width: 0;
-}
-
-.cf-composer__hero--toolbar .cf-composer__hero-actions {
-  flex-shrink: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 0.75rem;
-}
-
-.cf-composer__page-title {
-  margin: 0;
-  font-size: clamp(1.5rem, 4vw, 2rem);
-  font-weight: 700;
-  letter-spacing: -0.04em;
-  color: var(--cf-sys-label);
-  line-height: 1.15;
-}
-
-.cf-composer__page-lead {
-  margin: 0.35rem 0 0;
-  font-size: 0.8125rem;
-  color: var(--cf-sys-secondary);
-  line-height: 1.4;
-}
-
-.cf-composer__hero-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 0.75rem;
-  align-items: center;
-}
-
-/* Layout profile picker: same segmented track as appointments workspace */
-.cf-composer__profile-seg.ds-segmented--pill-track {
-  width: 100%;
-  margin: 0 0 1rem;
-  background: var(--ds-color-segmented-track-strong, #e5e7eb) !important;
-  box-sizing: border-box;
-}
-
-.cf-composer__profile-seg .ds-segmented__link {
-  flex: 1 1 0;
-  min-width: 0;
-  text-align: center;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  padding-left: 0.45rem;
-  padding-right: 0.45rem;
-}
-
-.cf-composer__hidden-form {
-  display: none;
-}
-
-.cf-composer__grouped-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  background: var(--cf-sys-card);
-  border-radius: var(--cf-radius-card);
-  overflow: hidden;
-  box-shadow: var(--ds-shadow-control-rest, 0 1px 2px rgba(15, 23, 42, 0.04));
-  border: 1px solid color-mix(in srgb, var(--cf-sys-border) 88%, white);
-}
-
-/* Containing block for off-screen drag source; visible overflow so inline add popover is not clipped */
-.cf-composer__grouped-list[data-cf-field-sortable] {
-  position: relative;
-  overflow: visible;
-}
-
-.cf-composer__group-row {
-  position: relative;
-}
-
-.cf-composer__grouped-list > .cf-composer__group-row + .cf-composer__group-row::before {
-  content: '';
-  display: block;
-  margin-left: 1rem;
-  border-top: 1px solid var(--ds-color-border-light, #e5e7eb);
-}
-
-.cf-composer__field-item {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  position: relative;
-}
-
-.cf-composer__field-card-wrap {
-  position: relative;
-}
-
-.cf-composer__field-card-wrap--tools-hover:hover {
-  background: var(--cf-sys-row-hover);
-}
-
-.cf-composer__field-float-tools {
-  position: absolute;
-  top: 0.55rem;
-  right: 0.55rem;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 0.12rem;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s ease;
-}
-
-.cf-composer__field-card-wrap--tools-hover:hover .cf-composer__field-float-tools,
-.cf-composer__field-card-wrap--tools-hover:focus-within .cf-composer__field-float-tools {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.cf-composer__field-info-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  margin: 0;
-  padding: 0;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--cf-sys-secondary);
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.cf-composer__field-info-btn:hover,
-.cf-composer__field-info-btn:focus-visible {
-  color: var(--cf-sys-label);
-  background: rgba(0, 0, 0, 0.05);
-}
-
-.cf-composer__field-info-btn:focus-visible {
-  outline: 2px solid var(--cf-sys-blue);
-  outline-offset: 2px;
-}
-
-.cf-composer__field-info-ic {
-  display: block;
-  pointer-events: none;
-}
-
-.cf-composer__field-grip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  margin: 0;
-  cursor: grab;
-  color: var(--cf-sys-tertiary);
-  border-radius: 8px;
-  flex-shrink: 0;
-  -webkit-user-select: none;
-  user-select: none;
-  touch-action: none;
-  transition: color 0.15s ease, background 0.15s ease;
-}
-
-.cf-composer__field-grip:hover,
-.cf-composer__field-grip:focus-visible {
-  color: var(--cf-sys-secondary);
-  background: var(--cf-sys-accent-soft);
-}
-
-.cf-composer__field-grip:active {
-  cursor: grabbing;
-  color: var(--cf-sys-secondary);
-}
-
-.cf-composer__field-grip:focus-visible {
-  outline: 2px solid var(--cf-sys-blue);
-  outline-offset: 2px;
-}
-
-.cf-composer__grip-ic {
-  display: block;
-  pointer-events: none;
-}
-
-.cf-composer__group-row-body {
-  position: relative;
-  padding: 0.85rem 1rem;
-  background: transparent;
-}
-
-.cf-composer__field-card-wrap--tools-hover .cf-composer__group-row-body {
-  padding-right: 5.1rem;
-}
-
-.cf-composer__field-card-wrap--tools-hover-locked .cf-composer__group-row-body {
-  padding-right: 2.65rem;
-}
-
-.cf-composer__field-card-wrap--pair.cf-composer__field-card-wrap--tools-hover:not(.cf-composer__field-card-wrap--tools-hover-locked) .cf-composer__group-row-body {
-  padding-right: 8.5rem;
-}
-
-.cf-composer__field-card-wrap--pair.cf-composer__field-card-wrap--tools-hover-locked .cf-composer__group-row-body {
-  padding-right: 4.75rem;
-}
-
-.cf-composer__field-float-tools--pair {
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 0.15rem 0.25rem;
-}
-
-/* Side-by-side preview columns (e.g. first + last name) */
-.cf-composer__preview-cols {
-  display: flex;
-  flex-direction: column;
-  gap: var(--cf-field-row-gap);
-  width: 100%;
-  min-width: 0;
-}
-
-@media (min-width: 640px) {
-  .cf-composer__preview-cols {
-    flex-direction: row;
-    align-items: flex-start;
-    gap: 1rem 1.35rem;
-  }
-
-  .cf-composer__preview-cols > .cf-composer__labeled-field--grow {
-    flex: 1 1 0;
-    min-width: 0;
-    max-width: 100%;
-  }
-}
-
-/* Split rows: phones, address lines, delivery lines */
-.cf-composer__field-row--split {
-  display: flex;
-  flex-direction: column;
-  gap: var(--cf-field-row-gap);
-  width: 100%;
-  min-width: 0;
-}
-
-@media (min-width: 640px) {
-  .cf-composer__field-row--split {
-    flex-direction: row;
-    align-items: flex-start;
-  }
-
-  .cf-composer__field-row--split > .cf-composer__field-cell {
-    flex: 1 1 0;
-    min-width: 0;
-  }
-}
-
-.cf-composer__field-cell {
-  min-width: 0;
-}
-
-.cf-composer__labeled-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.625rem;
-  align-items: stretch;
-  min-width: 0;
-}
-
-.cf-composer__labeled-field--full {
-  max-width: 100%;
-}
-
-.cf-composer__input-cap {
-  display: block;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--cf-sys-secondary);
-  line-height: 1.35;
-}
-
-/* Proportional control widths on desktop; full width on narrow viewports */
-@media (min-width: 640px) {
-  .cf-composer__labeled-field--full .cf-composer__ctrl--email {
-    max-width: min(100%, 22rem);
-  }
-
-  .cf-composer__field-row--split .cf-composer__ctrl--phone {
-    max-width: min(100%, 14rem);
-  }
-
-  .cf-composer__field-row--split .cf-composer__ctrl--line {
-    max-width: 100%;
-  }
-
-  .cf-composer__ctrl-field--solo .cf-composer__ctrl--name {
-    max-width: min(100%, 18rem);
-  }
-}
-
-.cf-composer__preview-cols .cf-composer__ctrl--name {
-  max-width: 100%;
-}
-
-.cf-composer__block-stack--delivery .cf-composer__delivery-expand-inner {
-  margin-top: 0.35rem;
-}
-
-.cf-composer__block-stack + .cf-composer__block-stack {
-  margin-top: var(--cf-section-stack-gap);
-}
-
-.cf-composer__field-settings-expand {
-  border-top: 1px solid color-mix(in srgb, var(--cf-sys-border) 80%, white);
-  background: var(--cf-sys-fill);
-  max-height: 0;
-  opacity: 0;
-  overflow: hidden;
-  visibility: hidden;
-  pointer-events: none;
-  transition: max-height 0.32s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.22s ease, visibility 0.22s;
-}
-
-.cf-composer__field-settings-expand.is-open {
-  max-height: 28rem;
-  opacity: 1;
-  overflow: visible;
-  visibility: visible;
-  pointer-events: auto;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .cf-composer__field-settings-expand {
-    transition: none;
-  }
-}
-
-.cf-composer__field-card-wrap--edit-open {
-  z-index: 1;
-}
-
-.cf-composer__field-settings-inner {
-  padding: 0.75rem 1rem 0.95rem;
-}
-
-.cf-composer__settings-panel-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.35rem;
-}
-
-.cf-composer__settings-field-name {
-  margin: 0;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--cf-sys-label);
-  flex: 1;
-  min-width: 0;
-}
-
-.cf-composer__field-edit-done {
-  flex-shrink: 0;
-  margin: 0;
-  padding: 0.35rem 0.65rem;
-  border: none;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--cf-sys-accent) 10%, white);
-  color: var(--cf-sys-accent);
-  font-size: 0.875rem;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.cf-composer__field-edit-done:hover,
-.cf-composer__field-edit-done:focus-visible {
-  background: color-mix(in srgb, var(--cf-sys-accent) 16%, white);
-}
-
-.cf-composer__field-edit-done:focus-visible {
-  outline: 2px solid var(--cf-sys-blue);
-  outline-offset: 2px;
-}
-
-.cf-composer__settings-field {
-  margin-top: 0.5rem;
-}
-
-.cf-composer__settings-input-label {
-  display: block;
-  margin: 0 0 0.35rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--cf-sys-secondary);
-}
-
-.cf-composer__settings-text-input {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-  padding: 0.55rem 0.65rem;
-  border-radius: 10px;
-  border: 1px solid var(--cf-sys-border);
-  background: var(--cf-sys-card);
-  font-size: 0.9375rem;
-  font-family: inherit;
-  color: var(--cf-sys-label);
-}
-
-.cf-composer__settings-text-input:focus {
-  outline: none;
-  border-color: var(--cf-sys-accent);
-  box-shadow: 0 0 0 3px var(--cf-sys-focus-ring);
-}
-
-.cf-composer__settings-switch-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-top: 0.65rem;
-}
-
-.cf-composer__settings-switch-label {
-  font-size: 0.9375rem;
-  color: var(--cf-sys-label);
-}
-
-.cf-composer__settings-hint,
-.cf-composer__settings-foot {
-  margin: 0.5rem 0 0;
-  font-size: 0.8125rem;
-  color: var(--cf-sys-secondary);
-  line-height: 1.4;
-}
-
-.cf-composer__settings-foot a {
-  color: var(--cf-sys-blue);
-  font-weight: 500;
-  text-decoration: none;
-}
-
-.cf-composer__settings-foot a:hover {
-  text-decoration: underline;
-}
-
-.cf-composer__add-field-slot {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.cf-composer__inline-add {
-  position: relative;
-}
-
-.cf-composer__inline-add > summary {
-  list-style: none;
-}
-
-.cf-composer__inline-add > summary::-webkit-details-marker {
-  display: none;
-}
-
-.cf-composer__add-field-row {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  padding: 0.85rem 1rem;
-  margin: 0;
-  cursor: pointer;
-  font-size: 1rem;
-  font-weight: 500;
-  font-family: inherit;
-  color: var(--cf-sys-accent);
-  background: transparent;
-  border: none;
-  width: 100%;
-  text-align: left;
-  transition: background 0.18s ease;
-  border-radius: 0;
-}
-
-.cf-composer__add-field-row:hover {
-  background: var(--cf-sys-row-hover);
-}
-
-.cf-composer__add-field-row:focus-visible {
-  outline: 2px solid var(--cf-sys-blue);
-  outline-offset: -2px;
-}
-
-.cf-composer__add-field-row-plus {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  color: var(--cf-sys-accent);
-}
-
-.cf-composer__add-field-plus-ic {
-  display: block;
-}
-
-.cf-composer__add-panel--inline {
-  position: absolute;
-  left: 0.65rem;
-  right: 0.65rem;
-  width: auto;
-  bottom: calc(100% + 8px);
-  top: auto;
-  z-index: 50;
-}
-
-@media (max-width: 520px) {
-  .cf-composer__add-panel--inline {
-    left: 0.4rem;
-    right: 0.4rem;
-  }
-}
-
-.cf-composer__grouped-list--readonly .cf-composer__group-row-body {
-  padding-right: 1rem;
-}
-
-/* Legacy single-card preview (unused in grouped composer; kept for safety) */
-.cf-composer__block-surface {
-  background: var(--cf-sys-card);
-  border-radius: var(--cf-radius-card);
-  padding: 1rem 2.85rem 1.1rem 1.15rem;
-  box-shadow: var(--ds-shadow-control-rest, 0 1px 2px rgba(15, 23, 42, 0.04));
-  border: 1px solid color-mix(in srgb, var(--cf-sys-border) 88%, white);
-}
-
-.cf-composer__field-item--dragging .cf-composer__block-surface {
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-  opacity: 0.96;
-}
-
-.cf-composer__field-item--dragging .cf-composer__field-card-wrap {
-  opacity: 0.9;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
-}
-
-.cf-composer__field-item--drag-source {
-  position: absolute !important;
-  left: -9999px !important;
-  top: 0 !important;
-  width: 1px !important;
-  height: 1px !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  overflow: hidden !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-  z-index: 0;
-}
-
-.cf-composer__sort-placeholder {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  min-height: 2.75rem;
-  border: none;
-  border-radius: 0;
-  border-top: 2px dashed color-mix(in srgb, var(--cf-sys-accent) 28%, transparent);
-  border-bottom: 2px dashed color-mix(in srgb, var(--cf-sys-accent) 28%, transparent);
-  background: color-mix(in srgb, var(--cf-sys-accent) 6%, white);
-  box-sizing: border-box;
-}
-
-@keyframes cf-composer-ph-breathe {
-  0%,
-  100% {
-    background-color: color-mix(in srgb, var(--cf-sys-accent) 6%, white);
-    opacity: 1;
-  }
-
-  50% {
-    background-color: color-mix(in srgb, var(--cf-sys-accent) 10%, white);
-    opacity: 0.92;
-  }
-}
-
-.cf-composer__grouped-list--is-dragging .cf-composer__sort-placeholder {
-  animation: cf-composer-ph-breathe 1.25s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .cf-composer__grouped-list--is-dragging .cf-composer__sort-placeholder {
-    animation: none;
-  }
-}
-
-@keyframes cf-composer-row-settle {
-  0% {
-    transform: scale(0.988);
-  }
-
-  55% {
-    transform: scale(1.006);
-  }
-
-  100% {
-    transform: scale(1);
-  }
-}
-
-.cf-composer__field-item--drop-settle .cf-composer__field-card-wrap {
-  animation: cf-composer-row-settle 0.42s cubic-bezier(0.34, 1.15, 0.64, 1) both;
-  transform-origin: center center;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .cf-composer__field-item--drop-settle .cf-composer__field-card-wrap {
-    animation: none;
-  }
-}
-
-.cf-composer__section-cap {
-  margin: 0 0 0.65rem;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--cf-sys-secondary);
-  line-height: 1.3;
-}
-
-.cf-composer__block-row-head {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  margin-bottom: 0.5rem;
-}
-
-.cf-composer__block-icon {
-  display: inline-flex;
-  flex-shrink: 0;
-  color: var(--cf-sys-secondary);
-}
-
-.cf-composer__block-icon svg {
-  color: inherit;
-}
-
-.cf-composer__block-title {
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--cf-sys-label);
-  letter-spacing: -0.02em;
-}
-
-.cf-composer__block-title--muted {
-  font-weight: 500;
-  color: var(--cf-sys-secondary);
-  font-size: 0.8125rem;
-}
-
-.cf-composer__field-cap {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--cf-sys-secondary);
-  letter-spacing: -0.01em;
-}
-
-.cf-composer__block-stack .cf-composer__ctrl-field {
-  margin-top: 0.5rem;
-}
-
-.cf-composer__block-stack .cf-composer__ctrl-field:first-of-type {
-  margin-top: 0.35rem;
-}
-
-.cf-composer__ctrl-field {
-  margin: 0;
-}
-
-.cf-composer__ctrl-field--solo {
-  margin: 0;
-}
-
-.cf-composer__ctrl {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-  border: 1px solid var(--cf-sys-border);
-  border-radius: var(--cf-radius-ctrl);
-  padding: 0.8125rem 1rem;
-  font-size: 1rem;
-  font-family: inherit;
-  color: var(--cf-sys-label);
-  background: var(--cf-sys-card);
-  transition: box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease;
-}
-
-.cf-composer__ctrl::placeholder {
-  color: var(--cf-sys-tertiary);
-}
-
-.cf-composer__ctrl:focus {
-  outline: none;
-  border-color: var(--cf-sys-accent);
-  box-shadow: 0 0 0 3px var(--cf-sys-focus-ring);
-  background: var(--cf-sys-card);
-}
-
-.cf-composer__ctrl--area {
-  min-height: 5.5rem;
-  resize: none;
-}
-
-.cf-composer__ctrl--autosize {
-  min-height: 2.75rem;
-  max-height: 40vh;
-  resize: none;
-  overflow-y: auto;
-  field-sizing: content;
-}
-
-.cf-composer__ctrl-check {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9375rem;
-  color: var(--cf-sys-label);
-}
-
-.cf-composer__inline-remove {
-  display: inline-flex;
-  margin: 0;
-}
-
-.cf-composer__remove-icon-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 32px;
-  min-height: 32px;
-  padding: 0;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--cf-sys-red);
-  cursor: pointer;
-  transition: background 0.15s ease, transform 0.1s ease;
-}
-
-.cf-composer__remove-icon-btn svg {
-  stroke: currentColor;
-  fill: none;
-  stroke-width: 1.75;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.cf-composer__remove-icon-btn:hover {
-  background: var(--cf-sys-red-soft);
-}
-
-.cf-composer__remove-icon-btn:focus-visible {
-  outline: 2px solid var(--cf-sys-red);
-  outline-offset: 2px;
-}
-
-.cf-composer__btn-primary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-  min-height: 44px;
-  padding: 0 1.25rem;
-  border: none;
-  border-radius: 9999px;
-  font-size: 1rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  color: #fff;
-  background: var(--cf-sys-accent);
-  cursor: pointer;
-  transition: background 0.18s ease, transform 0.1s ease;
-}
-
-.cf-composer__btn-primary .cf-composer__btn-ic {
-  flex-shrink: 0;
-}
-
-.cf-composer__btn-primary .cf-composer__btn-ic svg {
-  display: block;
-}
-
-.cf-composer__btn-primary:hover {
-  background: var(--cf-sys-accent-press);
-}
-
-.cf-composer__btn-primary:active {
-  transform: scale(0.98);
-}
-
-.cf-composer__btn-ghost {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.9375rem;
-  font-weight: 500;
-  color: var(--cf-sys-accent);
-  text-decoration: none;
-  padding: 0.5rem 0.4rem;
-  border-radius: 8px;
-}
-
-.cf-composer__btn-ghost .cf-composer__btn-ic {
-  flex-shrink: 0;
-}
-
-.cf-composer__btn-ghost .cf-composer__btn-ic svg {
-  display: block;
-}
-
-.cf-composer__btn-ghost:hover {
-  background: var(--cf-sys-accent-soft);
-}
-
-.cf-composer__switch-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  min-height: 2.75rem;
-}
-
-.cf-composer__switch-label {
-  flex: 1;
-  font-size: 1rem;
-  color: var(--cf-sys-label);
-  letter-spacing: -0.02em;
-  padding-right: 0.35rem;
-}
-
-.cf-composer__ios-switch {
-  position: relative;
-  display: inline-flex;
-  flex-shrink: 0;
-  cursor: pointer;
-  vertical-align: middle;
-}
-
-.cf-composer__ios-switch input {
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
-  margin: 0;
-}
-
-.cf-composer__ios-switch-ui {
-  display: block;
-  width: 51px;
-  height: 31px;
-  border-radius: 16px;
-  background: #e5e5ea;
-  position: relative;
-  transition: background 0.28s cubic-bezier(0.25, 0.1, 0.25, 1);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.04);
-}
-
-.cf-composer__ios-switch-ui::after {
-  content: '';
-  position: absolute;
-  width: 27px;
-  height: 27px;
-  border-radius: 50%;
-  background: #fff;
-  top: 2px;
-  left: 2px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
-  transition: transform 0.28s cubic-bezier(0.25, 0.1, 0.25, 1);
-}
-
-.cf-composer__ios-switch input:checked + .cf-composer__ios-switch-ui,
-.cf-composer__ios-switch-ui.is-on {
-  background: #22c55e;
-}
-
-.cf-composer__ios-switch input:checked + .cf-composer__ios-switch-ui::after,
-.cf-composer__ios-switch-ui.is-on::after {
-  transform: translateX(20px);
-}
-
-.cf-composer__ios-switch--readonly {
-  cursor: default;
-  pointer-events: none;
-}
-
-.cf-composer__delivery-expand {
-  display: grid;
-  grid-template-rows: 1fr;
-  transition: grid-template-rows 0.35s cubic-bezier(0.25, 0.1, 0.25, 1);
-}
-
-.cf-composer__delivery-expand--collapsed {
-  grid-template-rows: 0fr;
-}
-
-.cf-composer__delivery-expand--static {
-  transition: none;
-}
-
-.cf-composer__delivery-expand-inner {
-  min-height: 0;
-  overflow: hidden;
-}
-
-.cf-composer__delivery-expand-inner .cf-composer__ctrl-field {
-  margin-top: 0.5rem;
-}
-
-.cf-composer__delivery-expand-inner .cf-composer__ctrl-field:first-child {
-  margin-top: 0.35rem;
-}
-
-.cf-composer__block-stack--delivery .cf-composer__section-cap {
-  margin-bottom: 0.35rem;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .cf-composer__delivery-expand {
-    transition: none;
-  }
-
-  .cf-composer__ios-switch-ui,
-  .cf-composer__ios-switch-ui::after {
-    transition: none;
-  }
-}
-
-.cf-composer__empty-hint,
-.cf-composer__add-all-used {
-  margin: 0.5rem 0 0;
-  font-size: 0.875rem;
-  color: var(--cf-sys-secondary);
-}
-
-.cf-composer__add-anchor {
-  position: relative;
-  margin-top: 1rem;
-}
-
-.cf-composer__add-popover {
-  position: relative;
-  display: inline-block;
-}
-
-.cf-composer__add-popover > summary {
-  list-style: none;
-}
-
-.cf-composer__add-popover > summary::-webkit-details-marker {
-  display: none;
-}
-
-.cf-composer__add-trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.45rem 0.65rem;
-  margin: 0;
-  border: none;
-  border-radius: 10px;
-  background: transparent;
-  color: var(--cf-sys-accent);
-  font-size: 1rem;
-  font-weight: 500;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.cf-composer__add-trigger:hover {
-  background: var(--cf-sys-accent-soft);
-}
-
-.cf-composer__add-plus {
-  display: inline-flex;
-  color: var(--cf-sys-accent);
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--cf-sys-accent) 12%, white);
-}
-
-.cf-composer__add-panel {
-  position: absolute;
-  left: 0;
-  top: calc(100% + 8px);
-  min-width: min(100vw - 3rem, 280px);
-  max-height: 70vh;
-  overflow-y: auto;
-  padding: 0.65rem 0.5rem;
-  background: var(--cf-sys-card);
-  border-radius: 14px;
-  box-shadow: var(--ds-shadow-popover, 0 8px 40px rgba(15, 23, 42, 0.12)),
-    0 0 0 1px color-mix(in srgb, var(--cf-sys-border) 88%, white);
-  z-index: 40;
-}
-
-.cf-composer__add-group {
-  padding: 0.35rem 0.5rem 0.75rem;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-.cf-composer__add-group:last-child {
-  border-bottom: none;
-}
-
-.cf-composer__add-group-cap {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  margin: 0 0 0.35rem;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--cf-sys-secondary);
-}
-
-.cf-composer__add-group-cap-ic {
-  flex-shrink: 0;
-  display: flex;
-  color: var(--cf-sys-tertiary);
-}
-
-.cf-composer__add-group-cap-ic svg {
-  display: block;
-}
-
-.cf-composer__add-group-empty {
-  margin: 0;
-  font-size: 0.8125rem;
-  color: var(--cf-sys-tertiary);
-}
-
-.cf-composer__add-inline-form {
-  margin: 0;
-}
-
-.cf-composer__add-sublist {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.cf-composer__add-sublist li + li {
-  margin-top: 0.25rem;
-}
-
-.cf-composer__add-option {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 0.55rem 0.65rem;
-  border: none;
-  border-radius: 10px;
-  background: transparent;
-  font-size: 0.9375rem;
-  font-family: inherit;
-  color: var(--cf-sys-label);
-  cursor: pointer;
-  transition: background 0.12s ease;
-}
-
-.cf-composer__add-option:hover {
-  background: var(--cf-sys-fill);
-}
-
-.cf-composer__library {
-  margin-top: 2rem;
-  border-radius: var(--cf-radius-card);
-  border: 1px solid color-mix(in srgb, var(--cf-sys-border) 88%, white);
-  background: var(--cf-sys-card);
-  overflow: hidden;
-  box-shadow: var(--ds-shadow-control-rest, 0 1px 2px rgba(15, 23, 42, 0.04));
-}
-
-.cf-composer__library-summary {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.9rem 1rem;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--cf-sys-label);
-  cursor: pointer;
-  list-style: none;
-}
-
-.cf-composer__library-summary::-webkit-details-marker {
-  display: none;
-}
-
-.cf-composer__library-chevron {
-  flex-shrink: 0;
-  color: var(--cf-sys-tertiary);
-  transition: transform 0.22s ease;
-}
-
-.cf-composer__library-chevron svg {
-  display: block;
-}
-
-.cf-composer__library[open] > .cf-composer__library-summary .cf-composer__library-chevron {
-  transform: rotate(-180deg);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .cf-composer__library-chevron {
-    transition: none;
-  }
-}
-
-.cf-composer__library-summary-text {
-  min-width: 0;
-}
-
-.cf-composer__library-body {
-  padding: 0 1rem 1.15rem;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-.cf-composer__lib-h {
-  margin: 1rem 0 0.35rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--cf-sys-label);
-}
-
-.cf-composer__lib-lead {
-  margin: 0 0 0.5rem !important;
-  color: var(--cf-sys-secondary) !important;
-}
-
-.cf-composer__lib-cta .calendar-btn--primary {
-  background: var(--cf-sys-blue);
-  border-color: transparent;
-  color: #fff;
-}
-
-.cf-composer__lib-cta .calendar-btn--primary:hover {
-  background: var(--cf-sys-blue-press);
-}
-
-.cf-composer__lib-table .cf-fields-table {
-  font-size: 0.8125rem;
-}
-
-.cf-composer__table-form {
-  display: inline-block;
-  margin-right: 0.35rem;
-  margin-bottom: 0.25rem;
-}
-
-.cf-composer__inline-label {
-  display: inline-flex;
-  gap: 0.35rem;
-  align-items: center;
-  margin-right: 0.35rem;
-  font-size: 0.75rem;
-  color: var(--cf-sys-secondary);
-}
-
-.cf-composer__shell .cf-fields-table thead th {
-  color: var(--cf-sys-secondary);
-  border-bottom-color: rgba(0, 0, 0, 0.08);
-}
-
-.cf-composer__shell .cf-fields-table tbody td {
-  color: var(--cf-sys-label);
-  border-bottom-color: rgba(0, 0, 0, 0.06);
-}
-
-.cf-composer__build {
-  background: linear-gradient(165deg, #0f172a 0%, #1e293b 48%, #172554 100%);
-  color: #e2e8f0;
-  border-radius: 20px;
-  padding: 1.35rem 1.35rem 1.65rem;
-  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.22);
-  border: 1px solid rgba(148, 163, 184, 0.12);
-}
-
-.cf-composer__build .hint,
-.cf-composer__build .cf-composer__section-lead {
-  color: #94a3b8;
-}
-
-.cf-composer__build-head {
-  margin-bottom: 1.25rem;
-}
-
-.cf-composer__title {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 650;
-  letter-spacing: -0.03em;
-  color: #f8fafc;
-  line-height: 1.2;
-}
-
-.cf-composer__lede {
-  margin: 0.45rem 0 0;
-  font-size: 0.9375rem;
-  line-height: 1.55;
-  color: #94a3b8;
-  max-width: 46rem;
-}
-
-/* Sits outside .cf-composer on the workspace page ? keep light-surfaces readable */
-.cf-composer__read-only-banner {
-  margin: 0 0 1rem;
-  padding: 0.85rem 1rem;
-  border-radius: 14px;
-  background: #fffbeb;
-  border: 1px solid #fcd34d;
-  color: #92400e;
-}
-
-.cf-composer__panel--warn {
-  margin-bottom: 1rem;
-  padding: 1rem 1.15rem;
-  border-radius: 14px;
-  background: rgba(255, 59, 48, 0.1);
-  border: 1px solid rgba(255, 59, 48, 0.28);
-  color: #3a2b2a;
-  font-size: 0.875rem;
-  line-height: 1.55;
-}
-
-.cf-composer__panel--warn strong {
-  color: #000;
-}
-
 /* =============================================================
-   CF2 ? Apple 2026 Desktop Form Composer
-   Two-panel layout: liquid-glass sidebar + white content card
+   CFE — Client Form composer Editor foundation (2026)
+   New clean cfe-* namespace. Old cf2-* / cf-composer__* page
+   architecture removed. Preview sub-classes (.cf2-field-preview
+   .cf-composer__ctrl etc.) kept because renderComposerBlockBody
+   still uses them for field wireframe previews.
    ============================================================= */
 
-/* Bound html+body to the viewport ? same pattern as calendar ? so main's overflow-y:auto
-   actually creates a bounded scroll surface instead of growing the document. */
-html:has(.cf-composer-page),
-body:has(.cf-composer-page) {
-  height: 100%;
-  overflow: hidden;
-}
-
-/*
- * Form Composer: one scroll surface on main.
- * main scrolls; sidebar is sticky; toolbar is sticky inside main.
- */
+/* ── Page: full-width scroll, no viewport lock ── */
 main.app-shell__main.main.cf-composer-page {
-  /*
-   * main already sits below the app header in the current shell layout.
-   * Do not add the old workspace-nav offset again, or the list will climb into the gap
-   * above the sticky composer bar instead of scrolling directly underneath it.
-   */
-  --clients-ws-nav-sticky-h: 0px;
-  /* Sticky composer toolbar only: keep scroll targets / focus from hiding under the bar */
-  --cf-composer-sticky-pad: calc(52px + 0.75rem);
-  background: #F5F5F7;
   max-width: none;
   margin-left: 0;
   margin-right: 0;
   width: 100%;
   box-sizing: border-box;
   padding: 0;
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior-y: contain;
-  -webkit-overflow-scrolling: touch;
-  scroll-padding-top: var(--cf-composer-sticky-pad);
+  background: var(--ds-color-bg-page, #f5f5f7);
 }
 
-html[data-app-nav-layout="sidebar"] main.app-shell__main.main.cf-composer-page,
-html[data-app-nav-layout="top"]     main.app-shell__main.main.cf-composer-page {
-  max-height: none;
-}
-
-/* Toolbar: sticky under the workspace tab row ? opaque surface so scrolled content
-   never shows through (glass/backdrop on .cf2-toolbar would bleed content behind text). */
-main.app-shell__main.main.cf-composer-page .cf2-root .cf2-toolbar {
-  position: sticky;
-  top: var(--clients-ws-nav-sticky-h);
-  z-index: 50;
-  /* Opaque canvas (same as cards); blocks scroll bleed without glass */
-  background: var(--ds-color-bg-canvas);
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-  box-shadow:
-    0 1px 0 rgba(0, 0, 0, 0.08),
-    0 4px 12px -2px rgba(0, 0, 0, 0.06);
-}
-
-/*
- * Stacked composer: one outer card owner (.cf2-composer-stack) owns border + radius + shadow.
- * Sticky toolbar + .cf2-stack-card-shell are children with flat seams (no duplicate outer chrome).
- * Avoid clip-path / extra pseudo paint layers on position:sticky ? they often flatten rounded corners while scrolling.
- */
-.cf2-composer-stack {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-  margin: 0 0 0.75rem;
-  border: 1px solid var(--ds-color-border-light);
-  border-radius: var(--cf2-radius-card);
-  box-shadow: var(--ds-shadow-xs);
-  background: var(--ds-color-bg-canvas);
-  overflow: visible;
-}
-
-main.app-shell__main.main.cf-composer-page .cf2-composer-stack > .cf2-stack-card-shell {
-  position: relative;
-  z-index: 0;
-}
-
-main.app-shell__main.main.cf-composer-page .cf2-composer-stack > .cf2-toolbar.cf2-toolbar--content.cf2-stack-card-top {
-  margin: 0;
-  border: none;
-  box-shadow: none;
-  border-radius: var(--cf2-radius-card) var(--cf2-radius-card) 0 0;
-  background: var(--ds-color-bg-canvas) !important;
-  background-color: var(--ds-color-bg-canvas) !important;
-  -webkit-backdrop-filter: none !important;
-  backdrop-filter: none !important;
-  overflow: hidden;
-  box-sizing: border-box;
-}
-
-/* Long profile titles: wrap instead of ellipsis so labels stay readable while scrolling */
-main.app-shell__main.main.cf-composer-page .cf2-toolbar--content .cf2-toolbar-brand {
-  overflow: visible;
-  align-items: center;
-}
-
-main.app-shell__main.main.cf-composer-page .cf2-toolbar--content .cf2-toolbar-profile {
-  white-space: normal;
-  overflow: visible;
-  text-overflow: clip;
-  overflow-wrap: break-word;
-  word-break: break-word;
-  line-height: 1.35;
-  max-width: min(100%, 36rem);
-}
-
-/* In-page / focus scroll: field rows settle below sticky tabs + composer bar */
-main.app-shell__main.main.cf-composer-page .cf2-field-item {
-  scroll-margin-top: var(--cf-composer-sticky-pad);
-}
-
-/*
- * Stacked composer: shell wraps ONLY .cf2-stack-scroll (toolbar is a sibling above).
- * overflow:hidden here does not contain the sticky toolbar, so Save stays pinned while main scrolls.
- * Bottom radius + clip keeps scrolled rows inside the card silhouette under the toolbar seam.
- */
-.cf2-stack-card-shell {
-  border-radius: 0 0 var(--cf2-radius-card) var(--cf2-radius-card);
-  overflow: hidden;
-  border: 1px solid var(--ds-color-border-light);
-  border-top: none;
-  box-shadow: var(--ds-shadow-xs);
-  background: var(--ds-color-bg-canvas);
-  margin: 0 0 0.75rem;
-  padding-top: 12px;
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
-/* Inside unified stack: outer .cf2-composer-stack already has border, radius, shadow */
-.cf2-composer-stack > .cf2-stack-card-shell {
-  margin: 0;
-  border: none;
-  box-shadow: none;
-  border-radius: 0 0 var(--cf2-radius-card) var(--cf2-radius-card);
-}
-
-.cf2-stack-card-shell > .cf2-stack-scroll {
-  margin: 0;
-  border: none !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  background: var(--ds-color-bg-canvas);
-  overflow: visible;
-}
-
-/* Field list card ? sits directly below the sticky toolbar, shares the unified card silhouette.
-   overflow:visible so the list renders at full height inside main's scroll surface. */
-.cf2-stack-scroll {
-  border-radius: 0 0 var(--cf2-radius-card) var(--cf2-radius-card);
-  border: 1px solid var(--ds-color-border-light);
-  border-top: none;
-  box-shadow: var(--ds-shadow-xs);
-  background: var(--ds-color-bg-canvas);
-  overflow: visible;
-}
-
-/* Root ? tokens mapped to the app --ds-* design system */
-.cf2-root {
-  /* -- Accent: ink black, matching the app's primary CTA (Calendar toolbar) -- */
-  --cf2-blue: var(--ds-color-accent);             /* #111827 */
-  --cf2-blue-press: var(--ds-color-accent-hover); /* #000000 */
-  --cf2-blue-soft: var(--ds-color-accent-muted);  /* rgba(17,24,39,0.08) */
-  --cf2-blue-xsoft: rgba(17, 24, 39, 0.04);
-  /* -- Semantic: danger / success / status -- */
-  --cf2-red: var(--ds-color-danger);              /* #b00020 */
-  --cf2-red-soft: var(--ds-color-danger-bg);      /* rgba(176,0,32,0.06) */
-  --cf2-green: var(--ds-color-apple-system-green);/* #34c759 */
-  /* -- Surface palette -- */
-  --cf2-canvas: var(--ds-color-bg-page);          /* #f5f5f7 */
-  --cf2-surface: var(--ds-color-bg-canvas);       /* #ffffff */
-  --cf2-text: var(--ds-color-text);               /* #1d1d1f */
-  --cf2-secondary: var(--ds-color-text-secondary);/* #86868b */
-  --cf2-tertiary: var(--ds-color-text-tertiary);  /* #aeaeb2 */
-  --cf2-fill: var(--ds-color-bg-muted);           /* #f0f0f3 */
-  --cf2-fill-hover: rgba(0, 0, 0, 0.04);
-  --cf2-border: var(--ds-color-border);           /* rgba(0,0,0,0.08) */
-  /* -- Radius: aligned to app ds scale -- */
-  --cf2-radius-card: var(--ds-radius-lg);         /* 14px */
-  --cf2-radius-ctrl: var(--ds-radius-md);         /* 10px */
-  --cf2-radius-badge: var(--ds-radius-sm);        /* 6px */
-  /* -- Typography: Inter (same as appointments, clients, etc.) -- */
+/* ── Root scope: design tokens ── */
+.cfe-root {
+  --cfe-accent: var(--ds-color-accent, #111827);
+  --cfe-accent-soft: var(--ds-color-accent-muted, rgba(17,24,39,.08));
+  --cfe-red: var(--ds-color-danger, #b00020);
+  --cfe-red-soft: var(--ds-color-danger-bg, rgba(176,0,32,.06));
+  --cfe-canvas: var(--ds-color-bg-page, #f5f5f7);
+  --cfe-surface: var(--ds-color-bg-canvas, #ffffff);
+  --cfe-text: var(--ds-color-text, #1d1d1f);
+  --cfe-secondary: var(--ds-color-text-secondary, #86868b);
+  --cfe-tertiary: var(--ds-color-text-tertiary, #aeaeb2);
+  --cfe-fill: var(--ds-color-bg-muted, #f0f0f3);
+  --cfe-border: var(--ds-color-border, rgba(0,0,0,.08));
+  --cfe-radius-card: var(--ds-radius-lg, 14px);
+  --cfe-radius-ctrl: var(--ds-radius-md, 10px);
+  --cfe-radius-badge: var(--ds-radius-sm, 6px);
+  --cfe-font: var(--ds-font-sans);
+  /* cf2 / cf-sys aliases — still consumed by preview sub-closures */
+  --cf2-blue: var(--ds-color-accent);
+  --cf2-blue-press: var(--ds-color-accent-hover);
+  --cf2-blue-soft: var(--ds-color-accent-muted);
+  --cf2-blue-xsoft: rgba(17,24,39,.04);
+  --cf2-red: var(--ds-color-danger);
+  --cf2-red-soft: var(--ds-color-danger-bg);
+  --cf2-text: var(--ds-color-text);
+  --cf2-secondary: var(--ds-color-text-secondary);
+  --cf2-tertiary: var(--ds-color-text-tertiary);
+  --cf2-fill: var(--ds-color-bg-muted);
+  --cf2-border: var(--ds-color-border);
+  --cf2-canvas: var(--ds-color-bg-page);
+  --cf2-surface: var(--ds-color-bg-canvas);
+  --cf2-radius-card: var(--ds-radius-lg, 14px);
+  --cf2-radius-ctrl: var(--ds-radius-md, 10px);
+  --cf2-radius-badge: var(--ds-radius-sm, 6px);
   --cf2-font: var(--ds-font-sans);
   --cf2-font-display: var(--ds-font-sans);
-  --cf2-sidebar-w: 264px;
-  --cf2-toolbar-h: 52px;
-  /* -- Legacy cf-sys-* aliases used by preview sub-closures -- */
   --cf-sys-accent: var(--ds-color-accent);
   --cf-sys-accent-press: var(--ds-color-accent-hover);
   --cf-sys-accent-soft: var(--ds-color-accent-muted);
-  --cf-sys-focus-ring: var(--ds-color-focus-ring);
-  --cf-sys-blue: var(--ds-color-accent);
-  --cf-sys-blue-press: var(--ds-color-accent-hover);
   --cf-sys-red: var(--ds-color-danger);
   --cf-sys-red-soft: var(--ds-color-danger-bg);
   --cf-sys-bg: var(--ds-color-bg-page);
@@ -16465,340 +14920,84 @@ main.app-shell__main.main.cf-composer-page .cf2-field-item {
   --cf-sys-tertiary: var(--ds-color-text-tertiary);
   --cf-sys-fill: var(--ds-color-bg-muted);
   --cf-sys-border: var(--ds-color-border);
-  --cf-sys-row-hover: rgba(0, 0, 0, 0.03);
-  --cf-radius-card: var(--ds-radius-lg);
-  --cf-radius-ctrl: var(--ds-radius-md);
-  --cf-font: var(--ds-font-sans);
+  --cf-sys-row-hover: rgba(0,0,0,.03);
+  --cf-radius-card: var(--ds-radius-lg, 14px);
+  --cf-radius-ctrl: var(--ds-radius-md, 10px);
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  font-family: var(--cf2-font);
+  font-family: var(--cfe-font);
   -webkit-font-smoothing: antialiased;
-  background: var(--cf2-canvas);
+  padding: clamp(1rem, 2.5vw, 1.5rem) clamp(1rem, 3vw, 1.75rem) 2rem;
 }
 
-/* Compact iOS-style toggle ? matches cf2 field row density (preview + settings) */
-.cf2-root .cf-composer__switch-row {
-  min-height: 2.125rem;
-  gap: 0.625rem;
-}
-
-.cf2-root .cf-composer__switch-label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--cf2-secondary);
-  letter-spacing: -0.01em;
-}
-
-.cf2-root .cf-composer__ios-switch-ui {
-  width: 40px;
-  height: 24px;
-  border-radius: 12px;
-}
-
-.cf2-root .cf-composer__ios-switch-ui::after {
-  width: 20px;
-  height: 20px;
-  top: 2px;
-  left: 2px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
-}
-
-.cf2-root .cf-composer__ios-switch input:checked + .cf-composer__ios-switch-ui::after,
-.cf2-root .cf-composer__ios-switch-ui.is-on::after {
-  transform: translateX(16px);
-}
-
-.cf2-root .cf-composer__ios-switch input:checked + .cf-composer__ios-switch-ui,
-.cf2-root .cf-composer__ios-switch-ui.is-on {
-  background: var(--cf2-green);
-}
-
-/* -- Sticky toolbar ? matches app workspace header glass style -- */
-.cf2-toolbar {
-  position: sticky;
-  top: 0;
-  z-index: 200;
-  flex-shrink: 0;
-  height: var(--cf2-toolbar-h);
-  background: var(--ds-glass-bg-strong);
-  -webkit-backdrop-filter: var(--ds-glass-blur-strong);
-  backdrop-filter: var(--ds-glass-blur-strong);
-  border-bottom: 1px solid var(--ds-color-border-light);
+/* ── 1. PAGE HEADER ── */
+.cfe-page-head {
   display: flex;
-  align-items: stretch;
-}
-
-/* Content-column toolbar: same width as field list card, sits directly above layout rows */
-.cf2-toolbar--content {
-  height: auto;
-  min-height: var(--cf2-toolbar-h);
-  margin: 0 0 0.75rem;
-  border: 1px solid var(--ds-color-border-light);
-  border-radius: var(--cf2-radius-card);
-  box-shadow: var(--ds-shadow-xs);
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-  /* Clip glass / backdrop to radius so corners are not visually square or ?bleeding? */
-  overflow: hidden;
-}
-
-/*
- * Stacked toolbar + list (no .cf2-stack-scroll): split outer silhouette ? fallback only.
- * With .cf2-stack-scroll, the scroll box owns border-radius; toolbar + list are flat inside it.
- */
-.cf2-toolbar--content.cf2-stack-card-top,
-.cf2-toolbar--content:has(+ .cf2-field-list) {
-  border-radius: var(--cf2-radius-card) var(--cf2-radius-card) 0 0;
-  border-bottom: none;
-  margin-bottom: 0;
-  box-shadow: none;
-  background: var(--ds-color-bg-canvas);
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-  overflow: hidden;
-  /* Do not set position: relative here ? it overrides .cf2-toolbar { position: sticky } and the bar scrolls away. */
-}
-
-.cf2-stack-scroll .cf2-toolbar--content.cf2-stack-card-top,
-.cf2-stack-scroll .cf2-toolbar--content:has(+ .cf2-field-list) {
-  border-radius: 0;
-  border: none;
-  margin: 0;
-  box-shadow: none;
-}
-
-.cf2-content-area .cf2-field-list.cf2-stack-card-body,
-.cf2-content-area > .cf2-toolbar--content + .cf2-field-list {
-  border-radius: 0 0 var(--cf2-radius-card) var(--cf2-radius-card);
-  border-top: 1px solid var(--ds-color-border-light);
-  margin-top: 0;
-  box-shadow: var(--ds-shadow-xs);
-  overflow: hidden;
-}
-
-/* .cf2-stack-card-shell clips the card; list stays flat inside (overrides rule above). */
-.cf2-content-area .cf2-stack-card-shell .cf2-field-list.cf2-stack-card-body {
-  border-radius: 0 !important;
-  border: none !important;
-  border-top: 1px solid var(--ds-color-border-light) !important;
-  margin-top: 0 !important;
-  box-shadow: none !important;
-  overflow: visible !important;
-}
-
-.cf2-stack-scroll .cf2-field-list.cf2-stack-card-body,
-.cf2-stack-scroll > .cf2-toolbar--content + .cf2-field-list {
-  border-radius: 0;
-  border-left: none;
-  border-right: none;
-  border-bottom: none;
-  box-shadow: none;
-  overflow: visible;
-  border-top: 1px solid var(--ds-color-border-light);
-}
-
-/*
- * Seam under toolbar: outer top of the list is square (radius 0), so the first row?s card shell
- * stays square on top ? no double arc; any row can sit flush under the sticky bar when scrolled.
- */
-.cf2-content-area .cf2-field-list.cf2-stack-card-body > .cf2-field-item:first-child > .cf-composer__field-card-wrap,
-.cf2-content-area > .cf2-toolbar--content + .cf2-field-list > .cf2-field-item:first-child > .cf-composer__field-card-wrap {
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
-}
-
-/*
- * .cf2-grip uses a large border-top-left-radius by default; that paints a ?round? corner on every row.
- * When a row scrolls to the top of the stack (below sticky toolbar), that curve clashes with the flat seam.
- * Square off the grip column top for all rows inside a stacked list.
- */
-.cf2-content-area .cf2-field-list.cf2-stack-card-body .cf2-grip {
-  border-top-left-radius: 0;
-}
-
-/* Align toolbar title/actions with field row insets (grip column width + .cf2-field-center horizontal padding). */
-.cf2-toolbar--content .cf2-toolbar-inner {
-  padding: 0 8px 0 calc(44px + 1.125rem);
-  min-height: var(--cf2-toolbar-h);
-  box-sizing: border-box;
-}
-
-.cf2-toolbar-inner {
-  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  width: 100%;
-  padding: 0 20px;
-  gap: 1rem;
+  gap: 0.875rem 1.25rem;
+  margin: 0 0 1.25rem;
+  min-height: 52px;
 }
 
-.cf2-toolbar-brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.cfe-page-head__text {
+  flex: 1 1 18rem;
   min-width: 0;
-  overflow: hidden;
 }
 
-.cf2-toolbar-title {
-  font-family: var(--cf2-font);
-  font-size: 0.75rem;
-  font-weight: 400;
-  letter-spacing: 0;
-  color: var(--cf2-tertiary);
+.cfe-page-head__title {
   margin: 0;
-  white-space: nowrap;
+  font-size: 1.4375rem;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  color: var(--cfe-text);
+  line-height: 1.2;
+}
+
+.cfe-page-head__sub {
+  margin: 0.2rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--cfe-secondary);
+  line-height: 1.4;
+}
+
+.cfe-page-head__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.625rem 0.875rem;
   flex-shrink: 0;
 }
 
-.cf2-toolbar-dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.18);
-  flex-shrink: 0;
+/* Profile switcher */
+.cfe-profile-seg.ds-segmented--pill-track {
+  margin: 0;
+  background: var(--ds-color-segmented-track-strong, #e5e7eb) !important;
 }
 
-.cf2-toolbar-profile {
-  font-family: var(--cf2-font-display);
-  font-size: 0.9375rem;
-  font-weight: 600;
-  letter-spacing: -0.022em;
-  color: var(--cf2-text);
+.cfe-profile-seg .ds-segmented__link {
+  min-width: 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
 }
 
-.cf2-toolbar-actions {
+/* Save area */
+.cfe-save-area {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 0.5rem;
   flex-shrink: 0;
 }
 
-.cf2-btn-save {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 32px;
-  padding: 0 14px;
-  border: 1px solid var(--ds-color-toolbar-cta-border);
-  border-radius: var(--ds-radius-pill);
-  background: var(--ds-color-toolbar-cta-bg);
-  color: #fff;
-  font-family: var(--cf2-font);
-  font-size: var(--ds-text-sm);
-  font-weight: var(--ds-font-semibold);
-  letter-spacing: -0.01em;
-  cursor: pointer;
-  transition: background 0.15s var(--ds-ease-standard), transform 0.1s var(--ds-ease-standard), box-shadow 0.15s var(--ds-ease-standard);
-  white-space: nowrap;
-  box-shadow: var(--ds-shadow-toolbar-cta);
-}
-
-.cf2-btn-save:hover {
-  background: var(--ds-color-toolbar-cta-bg-hover);
-  border-color: var(--ds-color-toolbar-cta-border-hover);
-  box-shadow: var(--ds-shadow-toolbar-cta-hover);
-}
-
-.cf2-btn-save:active {
-  transform: scale(0.97);
-  box-shadow: var(--ds-shadow-toolbar-cta-active);
-}
-
-.cf2-btn-save:focus-visible {
-  outline: 2px solid var(--ds-color-focus-ring-ui);
-  outline-offset: 2px;
-}
-
-.cf2-btn-save .cf2-btn-ic {
-  flex-shrink: 0;
-  display: inline-flex;
-}
-
-.cf2-btn-save .cf2-btn-ic svg {
-  display: block;
-}
-
-.cf2-btn-reload {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 32px;
-  padding: 0 14px;
-  border-radius: var(--ds-radius-pill);
-  background: transparent;
-  color: var(--ds-color-text-secondary);
-  font-family: var(--cf2-font);
-  font-size: var(--ds-text-sm);
-  font-weight: var(--ds-font-medium);
-  text-decoration: none;
-  transition: background 0.15s var(--ds-ease-standard), color 0.15s var(--ds-ease-standard);
-  white-space: nowrap;
-}
-
-.cf2-btn-reload:hover {
-  background: var(--ds-color-bg-muted);
-  color: var(--ds-color-text);
-}
-
-.cf2-btn-reload .cf2-btn-ic {
-  flex-shrink: 0;
-  display: inline-flex;
-}
-
-.cf2-btn-reload .cf2-btn-ic svg {
-  display: block;
-}
-
-/* -- Body: sidebar + content grid -- */
-.cf2-body {
-  display: grid;
-  grid-template-columns: var(--cf2-sidebar-w) 1fr;
-  gap: clamp(1.25rem, 3vw, 2rem);
-  padding: clamp(1.25rem, 3vw, 2rem) clamp(1.25rem, 3.5vw, 2.25rem);
-  align-items: start;
-  box-sizing: border-box;
-}
-
-.cf2-body.cf2-body--focused {
-  grid-template-columns: 1fr;
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: clamp(1rem, 2.8vw, 1.75rem) clamp(1rem, 3vw, 1.75rem) 1.5rem;
-}
-
-.cf2-body--focused .cf2-content-area {
-  width: 100%;
-  max-width: 1040px;
-  margin: 0 auto;
-}
-
-.cf2-profile-seg {
-  margin: 0 0 0.875rem;
-}
-
-.cf2-editor-card {
-  background: var(--ds-color-bg-canvas);
-  border: 1px solid var(--ds-color-border-light);
-  border-radius: var(--cf2-radius-card);
-  box-shadow: var(--ds-shadow-xs);
-  overflow: hidden;
-}
-
-.cf2-editor-card > .cf2-toolbar--content {
-  margin: 0;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-  border-bottom: 1px solid var(--ds-color-border-light);
-}
-
-.cf2-save-state {
+.cfe-save-state {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -16809,529 +15008,73 @@ main.app-shell__main.main.cf-composer-page .cf2-field-item {
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--cf2-secondary);
-  background: var(--cf2-fill);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: var(--cfe-secondary);
+  background: var(--cfe-fill);
+  border: 1px solid rgba(0,0,0,.08);
 }
 
-.cf2-save-state.is-dirty {
+.cfe-save-state.is-dirty {
   color: #7c2d12;
   background: #fff7ed;
   border-color: #fdba74;
 }
 
-.cf2-secondary-tools {
-  display: grid;
-  gap: 0.5rem;
-  padding: 0.875rem 1rem;
-  border-bottom: 1px solid var(--ds-color-border-light);
-  background: color-mix(in srgb, var(--cf2-fill) 42%, white);
-}
-
-.cf2-tools-disclosure {
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 12px;
-  background: #fff;
-  overflow: hidden;
-}
-
-.cf2-tools-trigger {
-  list-style: none;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-height: 40px;
-  padding: 0.5rem 0.75rem;
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--cf2-text);
-}
-
-.cf2-tools-trigger::-webkit-details-marker {
-  display: none;
-}
-
-.cf2-tools-trigger-icon {
+.cfe-btn-save {
   display: inline-flex;
-  color: var(--cf2-blue);
-}
-
-.cf2-tools-trigger--quiet .cf2-tools-trigger-icon {
-  color: var(--cf2-secondary);
-}
-
-.cf2-tools-panel {
-  padding: 0 0.75rem 0.75rem;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-.cf2-tools-panel--add {
-  padding-top: 0.65rem;
-}
-
-.cf2-tools-search-wrap {
-  display: block;
-  margin: 0 0 0.6rem;
-}
-
-.cf2-tools-search {
-  width: 100%;
-  min-height: 36px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 9px;
-  padding: 0 0.65rem;
-  font-size: 0.875rem;
-  background: #fff;
-}
-
-.cf2-tools-subdisclosure {
-  margin-top: 0.65rem;
-  border-top: 1px dashed rgba(0, 0, 0, 0.08);
-  padding-top: 0.55rem;
-}
-
-.cf2-tools-subdisclosure > .cf2-sb-mini-cap {
-  cursor: pointer;
-  margin: 0 0 0.35rem;
-  list-style: none;
-}
-
-.cf2-tools-subdisclosure > .cf2-sb-mini-cap::-webkit-details-marker {
-  display: none;
-}
-
-.cf2-field-list--editor {
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 34px;
+  padding: 0 0.9rem;
   border: none;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-/* -- Sidebar ? glass panel matching appointments side panel -- */
-.cf2-sidebar {
-  position: sticky;
-  top: clamp(1.25rem, 3vw, 2rem);
-  background: var(--ds-glass-bg);
-  -webkit-backdrop-filter: var(--ds-glass-blur);
-  backdrop-filter: var(--ds-glass-blur);
-  border-radius: var(--cf2-radius-card);
-  border: 1px solid var(--ds-color-border-light);
-  box-shadow: var(--ds-shadow-sm);
-  overflow: hidden;
-  /* Subtract workspace sticky nav (3.5rem) + outer padding so sidebar never exceeds viewport height */
-  max-height: calc(100dvh - var(--clients-ws-nav-sticky-h, 3.5rem) - 2rem);
-  max-height: calc(100vh - var(--clients-ws-nav-sticky-h, 3.5rem) - 2rem);
-  overflow-y: auto;
-}
-
-/* Form composer: sidebar sticks under the workspace tab row */
-.cf-composer-page .cf2-sidebar {
-  top: var(--clients-ws-nav-sticky-h, 3.5rem);
-  max-height: calc(100dvh - var(--clients-ws-nav-sticky-h, 3.5rem));
-  max-height: calc(100vh  - var(--clients-ws-nav-sticky-h, 3.5rem));
-}
-
-@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-  .cf2-sidebar {
-    background: var(--ds-glass-bg-strong);
-  }
-}
-
-.cf2-sidebar::-webkit-scrollbar {
-  width: 4px;
-}
-
-.cf2-sidebar::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.cf2-sidebar::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.12);
-  border-radius: 2px;
-}
-
-.cf2-sidebar::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.22);
-}
-
-.cf2-sb-section {
-  padding: 1rem 0.875rem 0.875rem;
-  border-bottom: 0.5px solid rgba(0, 0, 0, 0.07);
-}
-
-.cf2-sb-section:last-child {
-  border-bottom: none;
-}
-
-.cf2-sb-cap {
-  margin: 0 0 8px 4px;
-  font-size: 0.625rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--cf2-tertiary);
-  line-height: 1.25;
-}
-
-/* Form composer only: align Profile header band with content toolbar row (same 52px rhythm) */
-.cf-composer-page .cf2-sidebar > .cf2-sb-section:first-child {
-  padding-top: 0;
-  padding-left: 0.875rem;
-  padding-right: 0.875rem;
-}
-
-.cf-composer-page .cf2-sidebar > .cf2-sb-section:first-child .cf2-sb-cap {
-  min-height: var(--cf2-toolbar-h);
-  margin-top: 0;
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-  box-sizing: border-box;
-}
-
-/* Profile nav */
-.cf2-profile-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.cf2-pnav-link {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 7px 10px;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  letter-spacing: -0.015em;
-  color: var(--cf2-secondary);
-  text-decoration: none;
-  transition: background 0.12s ease, color 0.12s ease;
-  position: relative;
-}
-
-.cf2-pnav-link:hover {
-  background: var(--cf2-fill);
-  color: var(--cf2-text);
-}
-
-.cf2-pnav-link.is-active {
-  background: var(--cf2-blue-soft);
-  color: var(--cf2-blue);
-  font-weight: 600;
-}
-
-.cf2-pnav-link.is-active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 20%;
-  height: 60%;
-  width: 2.5px;
-  border-radius: 2px;
-  background: var(--cf2-blue);
-}
-
-.cf2-pnav-badge {
-  font-size: 0.5625rem;
-  font-weight: 500;
-  color: var(--cf2-tertiary);
-  letter-spacing: 0;
-  text-transform: none;
-  background: var(--cf2-fill);
-  padding: 1px 5px;
-  border-radius: 4px;
-  flex-shrink: 0;
-}
-
-/* Field palette */
-.cf2-palette {
-  display: flex;
-  flex-direction: column;
-}
-
-.cf2-palette-group {
-  padding: 6px 0 8px;
-  border-bottom: 0.5px solid rgba(0, 0, 0, 0.05);
-}
-
-.cf2-palette-group:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.cf2-palette-group-cap {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin: 0 0 5px 1px;
-  font-size: 0.5625rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--cf2-tertiary);
-}
-
-.cf2-palette-group-cap svg {
-  display: block;
-  opacity: 0.6;
-}
-
-.cf2-palette-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.cf2-palette-chip-form {
-  margin: 0;
-}
-
-.cf2-palette-chip {
-  display: inline-flex;
-  align-items: center;
-  /* HIG: minimum tappable height 28pt for compact controls; 32px is the macOS small-button standard */
-  height: 32px;
-  padding: 0 12px;
-  border: 0.5px solid rgba(0, 0, 0, 0.14);
-  border-radius: 100px;
-  background: #fff;
-  color: var(--cf2-text);
-  font-family: var(--cf2-font);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  cursor: pointer;
-  transition: background 0.12s ease, border-color 0.12s ease, transform 0.1s ease, color 0.12s ease;
-  white-space: nowrap;
-}
-
-.cf2-palette-chip:hover {
-  background: var(--cf2-blue-soft);
-  border-color: var(--ds-color-accent-border);
-  color: var(--cf2-text);
-}
-
-.cf2-palette-chip:active {
-  transform: scale(0.95);
-}
-
-.cf2-palette-empty {
-  margin: 2px 0 0;
-  font-size: 0.75rem;
-  color: var(--cf2-tertiary);
-}
-
-/* Library in sidebar */
-.cf2-create-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-bottom: 10px;
-  padding: 5px 12px;
-  border-radius: var(--ds-radius-pill);
-  border: 1px solid var(--ds-color-toolbar-cta-border);
-  background: var(--ds-color-toolbar-cta-bg);
+  border-radius: var(--cfe-radius-ctrl);
+  background: var(--cfe-accent);
   color: #fff;
-  font-family: var(--cf2-font);
-  font-size: var(--ds-text-xs);
-  font-weight: var(--ds-font-semibold);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
   letter-spacing: -0.01em;
-  text-decoration: none;
-  transition: background 0.12s var(--ds-ease-standard), box-shadow 0.12s var(--ds-ease-standard);
-}
-
-.cf2-create-btn:hover {
-  background: var(--ds-color-toolbar-cta-bg-hover);
-  box-shadow: var(--ds-shadow-control-hover);
-}
-
-.cf2-create-btn svg {
-  display: block;
-  flex-shrink: 0;
-}
-
-.cf2-sb-mini-cap {
-  margin: 10px 0 5px 4px;
-  font-size: 0.625rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--cf2-tertiary);
-}
-
-.cf2-lib-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.cf2-lib-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 6px;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  color: var(--cf2-text);
-}
-
-.cf2-lib-item:hover {
-  background: var(--cf2-fill);
-}
-
-.cf2-lib-name {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 500;
-}
-
-.cf2-lib-type {
-  font-size: 0.5625rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--cf2-tertiary);
-  text-transform: uppercase;
-  flex-shrink: 0;
-}
-
-.cf2-lib-lock {
-  display: inline-flex;
-  color: var(--cf2-tertiary);
-  flex-shrink: 0;
-}
-
-.cf2-lib-lock svg {
-  display: block;
-}
-
-.cf2-lib-origin-custom {
-  font-size: 0.5rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--cf2-blue);
-  background: var(--cf2-blue-soft);
-  border-radius: 3px;
-  padding: 1px 4px;
-  flex-shrink: 0;
-}
-
-.cf2-lib-controls {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  flex-shrink: 0;
-}
-
-.cf2-lib-toggle-form,
-.cf2-lib-delete-form {
-  display: inline-flex;
-  margin: 0;
-}
-
-.cf2-lib-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  /* HIG: minimum button height 28pt */
-  height: 28px;
-  padding: 0 8px;
-  border-radius: 6px;
-  border: 0.5px solid rgba(0, 0, 0, 0.1);
-  background: transparent;
-  font-family: var(--cf2-font);
-  font-size: 0.6875rem;
-  font-weight: 500;
-  color: var(--cf2-secondary);
   cursor: pointer;
-  transition: background 0.1s ease;
+  transition: opacity 0.12s ease;
+  text-decoration: none;
 }
 
-/* HIG: don't mix a raw checkbox inside a button ? hide it, use a status dot via ::before */
-.cf2-lib-toggle input[type="checkbox"] {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  border: 0;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  pointer-events: none;
+.cfe-btn-save:hover { opacity: 0.82; }
+
+.cfe-btn-save:focus-visible {
+  outline: 2px solid var(--ds-color-focus-ring-ui, var(--cfe-accent));
+  outline-offset: 2px;
 }
 
-/* Status indicator dot */
-.cf2-lib-toggle::before {
-  content: '';
-  display: inline-block;
-  flex-shrink: 0;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--cf2-tertiary);
-  transition: background 0.15s ease;
-}
-
-/* Active state: green dot when the checkbox is checked */
-.cf2-lib-toggle:has(input:checked)::before {
-  background: var(--cf2-green);
-}
-
-.cf2-lib-toggle:hover {
-  background: var(--cf2-fill);
-  color: var(--cf2-text);
-}
-
-.cf2-lib-delete {
+.cfe-btn-reload {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  /* HIG: minimum 28pt for sidebar compact controls */
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  border: none;
-  background: transparent;
-  color: var(--cf2-tertiary);
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--cfe-border);
+  border-radius: var(--cfe-radius-ctrl);
+  background: var(--cfe-surface);
+  color: var(--cfe-secondary);
   cursor: pointer;
-  transition: background 0.1s ease, color 0.1s ease;
-  padding: 0;
+  text-decoration: none;
+  transition: background 0.12s ease, color 0.12s ease;
 }
 
-.cf2-lib-delete svg {
-  display: block;
+.cfe-btn-reload:hover {
+  background: var(--cfe-fill);
+  color: var(--cfe-text);
 }
 
-.cf2-lib-delete:hover {
-  background: var(--cf2-red-soft);
-  color: var(--cf2-red);
+.cfe-btn-ic {
+  display: inline-flex;
+  flex-shrink: 0;
 }
 
-.cf2-lib-empty {
-  margin: 0;
-  padding: 4px 4px;
-  font-size: 0.75rem;
-  color: var(--cf2-tertiary);
-}
-
-/* -- Content area -- */
-.cf2-content-area {
-  min-width: 0;
-  padding-bottom: 0.5rem;
-}
-
-/* Read-only / status banners */
-.cf2-read-only-banner {
-  margin: 0 0 16px;
+/* Status banners */
+.cfe-read-only-banner {
+  margin: 0 0 1rem;
   padding: 12px 16px;
-  border-radius: var(--cf2-radius-card);
+  border-radius: var(--cfe-radius-card);
   background: #fffbeb;
   border: 0.5px solid #fcd34d;
   color: #92400e;
@@ -17339,83 +15082,353 @@ main.app-shell__main.main.cf-composer-page .cf2-field-item {
   line-height: 1.5;
 }
 
-.cf2-warn-panel {
-  margin: 0 0 16px;
+.cfe-warn-panel {
+  margin: 0 0 1rem;
   padding: 14px 16px;
-  border-radius: var(--cf2-radius-card);
-  background: rgba(255, 59, 48, 0.07);
-  border: 0.5px solid rgba(255, 59, 48, 0.25);
+  border-radius: var(--cfe-radius-card);
+  background: rgba(255,59,48,.07);
+  border: 0.5px solid rgba(255,59,48,.25);
   color: #3a2b2a;
   font-size: 0.875rem;
   line-height: 1.55;
 }
 
-/* Mobile profile nav (hidden on desktop) */
-.cf2-profile-seg-mobile {
-  display: none;
+/* ── 2. SECONDARY TOOL ENTRY POINTS ── */
+.cfe-tools-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 0.875rem;
 }
 
-/* -- Field list card ? same elevation as appointments calendar panels -- */
-.cf2-field-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  min-width: 0;
-  background: var(--ds-color-bg-canvas);
-  border-radius: var(--cf2-radius-card);
-  border: 1px solid var(--ds-color-border-light);
-  box-shadow: var(--ds-shadow-xs);
+.cfe-tool-item {
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 12px;
+  background: var(--cfe-surface);
   overflow: visible;
   position: relative;
 }
 
-/* -- Field item (list row) -- */
-.cf2-field-item {
+.cfe-tool-trigger {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 36px;
+  padding: 0.375rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--cfe-text);
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.cfe-tool-trigger::-webkit-details-marker { display: none; }
+
+.cfe-tool-item[open] > .cfe-tool-trigger {
+  border-bottom: 1px solid rgba(0,0,0,.06);
+}
+
+.cfe-tool-ic {
+  display: inline-flex;
+  color: var(--cfe-accent);
+  flex-shrink: 0;
+}
+
+.cfe-tool-trigger--quiet .cfe-tool-ic {
+  color: var(--cfe-secondary);
+}
+
+.cfe-tool-panel {
+  padding: 0.625rem 0.75rem 0.75rem;
+  min-width: 260px;
+  max-width: min(100vw - 2rem, 400px);
+}
+
+.cfe-tool-search-wrap {
+  display: block;
+  margin: 0 0 0.6rem;
+}
+
+.cfe-tool-search {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid rgba(0,0,0,.1);
+  border-radius: 9px;
+  padding: 0 0.6rem;
+  font-size: 0.875rem;
+  background: var(--cfe-fill);
+  box-sizing: border-box;
+}
+
+/* Add-field palette */
+.cfe-palette {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.cfe-palette-group { }
+
+.cfe-palette-cap {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.35rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--cfe-tertiary);
+}
+
+.cfe-palette-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.cfe-palette-chip-form { display: contents; }
+
+.cfe-palette-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0.25rem 0.65rem;
+  border: 1px solid var(--cfe-border);
+  border-radius: 999px;
+  background: var(--cfe-fill);
+  color: var(--cfe-text);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.1s ease, border-color 0.1s ease;
+}
+
+.cfe-palette-chip:hover {
+  background: var(--cfe-accent);
+  border-color: var(--cfe-accent);
+  color: #fff;
+}
+
+.cfe-palette-empty {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--cfe-tertiary);
+}
+
+/* Library panel */
+.cfe-create-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 30px;
+  padding: 0.25rem 0.6rem;
+  margin: 0 0 0.625rem;
+  border: 1px solid var(--cfe-accent);
+  border-radius: var(--cfe-radius-ctrl);
+  background: transparent;
+  color: var(--cfe-accent);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.cfe-create-btn:hover {
+  background: var(--cfe-accent-soft);
+}
+
+.cfe-lib-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.cfe-lib-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 34px;
+  padding: 0.3rem 0.25rem;
+  border-radius: 8px;
+}
+
+.cfe-lib-item:hover {
+  background: var(--cfe-fill);
+}
+
+.cfe-lib-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--cfe-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cfe-lib-type {
+  font-size: 0.7rem;
+  color: var(--cfe-secondary);
+  flex-shrink: 0;
+}
+
+.cfe-lib-lock {
+  display: inline-flex;
+  color: var(--cfe-tertiary);
+  opacity: 0.5;
+}
+
+.cfe-lib-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.cfe-lib-toggle-form,
+.cfe-lib-delete-form {
+  display: contents;
+}
+
+.cfe-lib-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 26px;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--cfe-border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--cfe-secondary);
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cfe-lib-toggle input[type="checkbox"] {
+  width: 12px;
+  height: 12px;
+  accent-color: var(--cfe-accent);
+}
+
+.cfe-lib-toggle:hover {
+  background: var(--cfe-fill);
+}
+
+.cfe-lib-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--cfe-tertiary);
+  cursor: pointer;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+.cfe-lib-delete:hover {
+  background: var(--cfe-red-soft);
+  color: var(--cfe-red);
+}
+
+.cfe-lib-empty {
+  margin: 0.25rem 0;
+  font-size: 0.8125rem;
+  color: var(--cfe-tertiary);
+}
+
+.cfe-sub-disclosure {
+  margin-top: 0.5rem;
+  border-top: 1px dashed rgba(0,0,0,.07);
+  padding-top: 0.45rem;
+}
+
+.cfe-sub-cap {
+  cursor: pointer;
+  margin: 0 0 0.3rem;
+  list-style: none;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cfe-tertiary);
+}
+
+.cfe-sub-cap::-webkit-details-marker { display: none; }
+
+/* ── 3. PRIMARY EDITOR CANVAS ── */
+.cfe-canvas {
+  background: var(--cfe-surface);
+  border: 1px solid var(--ds-color-border-light, rgba(0,0,0,.08));
+  border-radius: var(--cfe-radius-card);
+  box-shadow: var(--ds-shadow-xs, 0 1px 3px rgba(0,0,0,.06));
+  overflow: visible;
+  position: relative;
+}
+
+/* Field list (inside canvas) */
+.cfe-field-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+/* Field item row */
+.cfe-field-item {
   position: relative;
   min-width: 0;
 }
 
-.cf2-field-item + .cf2-field-item {
-  border-top: 0.5px solid rgba(0, 0, 0, 0.06);
+.cfe-field-item + .cfe-field-item {
+  border-top: 0.5px solid rgba(0,0,0,.06);
 }
 
-/* Card shell: clip row hover tint + align with list corner radius (white ?panel? behind the row) */
-.cf2-field-list > .cf2-field-item > .cf-composer__field-card-wrap {
+/* Card shell: clip row hover tint; connect corner radius of list to card */
+.cfe-field-list > .cfe-field-item > .cf-composer__field-card-wrap {
   overflow: hidden;
 }
 
-.cf2-field-list > .cf2-field-item:first-child > .cf-composer__field-card-wrap {
-  border-top-left-radius: var(--cf2-radius-card);
-  border-top-right-radius: var(--cf2-radius-card);
+.cfe-field-list > .cfe-field-item:first-child > .cf-composer__field-card-wrap {
+  border-top-left-radius: var(--cfe-radius-card);
+  border-top-right-radius: var(--cfe-radius-card);
 }
 
-.cf2-field-list > .cf2-field-item:last-child > .cf-composer__field-card-wrap {
-  border-bottom-left-radius: var(--cf2-radius-card);
-  border-bottom-right-radius: var(--cf2-radius-card);
+.cfe-field-list > .cfe-field-item:last-child > .cf-composer__field-card-wrap {
+  border-bottom-left-radius: var(--cfe-radius-card);
+  border-bottom-right-radius: var(--cfe-radius-card);
 }
 
-/* Active state ? settings open */
-.cf2-field-item--settings-open > .cf-composer__field-card-wrap {
-  background: rgba(0, 0, 0, 0.02);
+/* Settings-open active state */
+.cfe-field-item--settings-open > .cf-composer__field-card-wrap {
+  background: rgba(0,0,0,.015);
 }
 
-.cf2-field-item--settings-open > .cf-composer__field-card-wrap::before {
+.cfe-field-item--settings-open > .cf-composer__field-card-wrap::before {
   content: '';
   position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
+  left: 0; top: 0; bottom: 0;
   width: 3px;
-  background: var(--cf2-blue);
-  border-radius: var(--cf2-radius-card) 0 0 0;
+  background: var(--cfe-accent);
+  border-radius: var(--cfe-radius-card) 0 0 0;
   z-index: 1;
 }
 
-/* Row: grip | center | actions */
-.cf2-field-row {
+/* Row layout: grip | center | actions */
+.cfe-field-row {
   display: flex;
   align-items: flex-start;
-  /* HIG: let content drive height; 72px is comfortable for two-line identity + actions without forcing tall rows on simple fields */
   min-height: 72px;
   min-width: 0;
   padding-block: 0.625rem;
@@ -17424,8 +15437,7 @@ main.app-shell__main.main.cf-composer-page .cf2-field-item {
   isolation: isolate;
 }
 
-/* Hover tint ? paint-only layer so flex children keep identical geometry (no layout shift) */
-.cf2-field-row::after {
+.cfe-field-row::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -17435,218 +15447,165 @@ main.app-shell__main.main.cf-composer-page .cf2-field-item {
   transition: background 0.15s ease;
 }
 
-.cf2-field-item:not(.cf2-field-item--settings-open) .cf2-field-row:hover::after {
-  background: rgba(0, 0, 0, 0.025);
+.cfe-field-item:not(.cfe-field-item--settings-open) .cfe-field-row:hover::after {
+  background: rgba(0,0,0,.02);
 }
 
-.cf2-field-row > .cf2-grip,
-.cf2-field-row > .cf2-field-center,
-.cf2-field-row > .cf2-field-actions {
+.cfe-field-row > .cfe-grip,
+.cfe-field-row > .cfe-field-center,
+.cfe-field-row > .cfe-field-actions {
   position: relative;
   z-index: 1;
 }
 
-/* Vertically center action column (info ?donut? buttons) with the row ? was top-stuck on tall rows */
-.cf2-field-row > .cf2-field-actions {
+.cfe-field-row > .cfe-field-actions {
   align-self: center;
 }
 
-/* -- Grip (left, always visible) -- */
-.cf2-grip {
+/* Grip */
+.cfe-grip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   align-self: stretch;
-  /* HIG: minimum interactive column width 44pt; grip column is purely visual on desktop but pad to 44px so the hit-column aligns with action buttons */
   width: 44px;
-  color: var(--cf2-tertiary);
+  color: var(--cfe-tertiary);
   cursor: grab;
   -webkit-user-select: none;
   user-select: none;
   touch-action: none;
   transition: color 0.15s ease, background 0.15s ease;
-  border-radius: var(--cf2-radius-card) 0 0 0;
+  border-radius: var(--cfe-radius-card) 0 0 0;
 }
 
-.cf2-grip:hover {
-  color: var(--cf2-secondary);
-  background: var(--cf2-fill);
+.cfe-grip:hover {
+  color: var(--cfe-secondary);
+  background: var(--cfe-fill);
 }
 
-.cf2-grip:active {
-  cursor: grabbing;
-}
+.cfe-grip:active { cursor: grabbing; }
 
-.cf2-grip svg {
-  display: block;
-  flex-shrink: 0;
-}
+.cfe-grip svg { display: block; flex-shrink: 0; }
 
-.cf2-grip--locked {
+.cfe-grip--locked {
   cursor: default;
   opacity: 0.3;
   pointer-events: none;
 }
 
-/* -- Center area -- */
-.cf2-field-center {
+/* Center */
+.cfe-field-center {
   flex: 1;
   min-width: 0;
-  padding: 1.375rem 1.125rem 1.625rem;
+  padding: 1.25rem 1.125rem 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
 }
 
-/* Identity row: name + badge */
-.cf2-field-identity {
+/* Identity: name + badge */
+.cfe-field-identity {
   display: flex;
   align-items: center;
-  gap: 0.875rem;
-  margin-bottom: 0;
+  gap: 0.75rem;
   flex-wrap: wrap;
   min-width: 0;
-  row-gap: 0.625rem;
-  padding: 0.375rem 0 0.5rem;
+  row-gap: 0.5rem;
+  padding: 0.25rem 0 0.375rem;
 }
 
-.cf2-field-name {
-  font-family: var(--cf2-font-display);
+.cfe-field-name {
   font-size: 1rem;
   font-weight: 600;
   letter-spacing: -0.02em;
-  color: var(--cf2-text);
-  line-height: 1.55;
-  white-space: normal;
-  overflow: visible;
+  color: var(--cfe-text);
+  line-height: 1.5;
   word-break: break-word;
   padding-block: 0.1875rem;
-  max-width: 100%;
 }
 
 /* Type badges */
-.cf2-type-badge {
+.cfe-type-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 1.375rem;
-  padding: 0.1875rem 0.5625rem;
-  border-radius: var(--cf2-radius-badge);
-  font-size: 0.65625rem;
+  min-height: 1.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--cfe-radius-badge);
+  font-size: 0.625rem;
   font-weight: 700;
-  letter-spacing: 0.045em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  line-height: 1.25;
   flex-shrink: 0;
-  background: var(--cf2-blue-soft);
-  color: var(--cf2-blue);
+  background: var(--cfe-accent-soft);
+  color: var(--cfe-accent);
 }
 
-.cf2-type-badge--phone {
-  background: var(--ds-color-success-bg);
-  color: var(--ds-color-success);
-}
-
-.cf2-type-badge--address {
-  background: rgba(255, 149, 0, 0.1);
-  color: #834500;
-}
-
-.cf2-type-badge--date {
-  background: rgba(90, 200, 250, 0.15);
-  color: #005d7a;
-}
-
-.cf2-type-badge--name {
-  background: rgba(175, 82, 222, 0.1);
-  color: #6b1a9c;
-}
-
-.cf2-type-badge--email {
-  background: var(--ds-color-accent-muted);
-  color: var(--ds-color-text);
-}
-
-.cf2-type-badge--notes {
-  background: rgba(0, 0, 0, 0.05);
-  color: var(--cf2-secondary);
-}
-
-.cf2-type-badge--boolean {
-  background: var(--ds-color-success-bg);
-  color: var(--ds-color-success);
-}
+.cfe-type-badge--phone  { background: var(--ds-color-success-bg); color: var(--ds-color-success); }
+.cfe-type-badge--address { background: rgba(255,149,0,.1); color: #834500; }
+.cfe-type-badge--date   { background: rgba(90,200,250,.15); color: #005d7a; }
+.cfe-type-badge--name   { background: rgba(175,82,222,.1); color: #6b1a9c; }
+.cfe-type-badge--email  { background: var(--ds-color-accent-muted); color: var(--ds-color-text); }
+.cfe-type-badge--notes  { background: rgba(0,0,0,.05); color: var(--cfe-secondary); }
+.cfe-type-badge--boolean { background: var(--ds-color-success-bg); color: var(--ds-color-success); }
 
 /* Lock tag */
-.cf2-lock-tag {
+.cfe-lock-tag {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
   height: 17px;
   padding: 0 6px;
-  border-radius: var(--cf2-radius-badge);
+  border-radius: var(--cfe-radius-badge);
   font-size: 0.5625rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  background: rgba(0, 0, 0, 0.04);
-  color: var(--cf2-tertiary);
+  background: rgba(0,0,0,.04);
+  color: var(--cfe-tertiary);
   flex-shrink: 0;
 }
 
-.cf2-lock-tag svg {
-  display: block;
+/* Field preview wireframe */
+.cfe-field-preview {
+  border-top: 0.5px solid rgba(0,0,0,.05);
+  padding-top: 1rem;
 }
 
-/* Field preview ? ghost/wireframe mode, not an active form */
-.cf2-field-preview {
-  border-top: 0.5px solid rgba(0, 0, 0, 0.05);
-  padding-top: 1.125rem;
-  margin-top: 0;
-}
-
-/* Core / intake-locked rows: hide wireframe until operator expands fixed-fields group */
-.cf2-field-item--locked .cf2-field-preview {
+.cfe-field-item--locked .cfe-field-preview {
   display: none;
 }
 
-.cf2-root.cf2-readonly-details-expanded .cf2-field-item--locked .cf2-field-preview {
+.cfe-root.cfe-readonly-details-expanded .cfe-field-item--locked .cfe-field-preview {
   display: block;
 }
 
-/* Collapsed: one summary row; individual locked cards hidden until expanded */
-.cf2-root:not(.cf2-readonly-details-expanded) .cf2-locked-stack-item {
+.cfe-root:not(.cfe-readonly-details-expanded) .cfe-locked-stack-item {
   display: none;
 }
 
-/* Summary row at top of list (non-sortable) */
-.cf2-field-summary-locked {
+/* Locked summary row */
+.cfe-field-summary-locked {
   list-style: none;
 }
 
-.cf2-field-summary-locked .cf2-locked-summary-row__inner {
+.cfe-locked-summary-row__inner {
   align-items: flex-start;
 }
 
-.cf2-field-summary-locked .cf2-locked-summary-row__body {
+.cfe-locked-summary-row__body {
   flex: 1;
   min-width: 0;
 }
 
-.cf2-field-summary-locked .cf2-field-identity {
-  flex-wrap: wrap;
-  gap: 0.35rem 0.5rem;
-}
-
-.cf2-field-summary-locked .cf2-locked-summary-row__hint {
-  margin: 0.25rem 0 0;
+.cfe-locked-summary-row__hint {
+  margin: 0.2rem 0 0;
   font-size: 0.75rem;
   line-height: 1.4;
-  color: var(--cf2-tertiary, rgba(0, 0, 0, 0.45));
+  color: var(--cfe-tertiary);
 }
 
-.cf2-field-summary-locked .cf2-locked-summary-row__actions {
+.cfe-locked-summary-row__actions {
   flex-direction: row;
   align-items: flex-start;
   justify-content: flex-end;
@@ -17654,2374 +15613,546 @@ main.app-shell__main.main.cf-composer-page .cf2-field-item {
   padding-top: 2px;
 }
 
-.cf2-readonly-details-toggle {
+/* Expand toggle for locked summary */
+.cfe-readonly-details-toggle {
   font: inherit;
   font-size: 0.8125rem;
   font-weight: 600;
-  line-height: 1.25;
   margin: 0;
-  padding: 0.4rem 0.55rem;
-  border: 1px solid var(--cf2-border, rgba(0, 0, 0, 0.1));
-  border-radius: var(--cf2-radius-badge, 6px);
-  background: var(--cf2-surface-elevated, #fff);
-  color: var(--cf2-text);
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--cfe-border);
+  border-radius: var(--cfe-radius-badge);
+  background: var(--cfe-surface);
+  color: var(--cfe-text);
   cursor: pointer;
   text-align: left;
   box-sizing: border-box;
+  transition: background 0.1s ease, border-color 0.1s ease, color 0.1s ease;
 }
 
-.cf2-readonly-details-toggle:hover {
-  background: var(--cf2-blue-soft);
-  border-color: var(--cf2-blue);
-  color: var(--cf2-blue);
+.cfe-readonly-details-toggle:hover {
+  background: var(--cfe-accent-soft);
+  border-color: var(--cfe-accent);
+  color: var(--cfe-accent);
 }
 
-.cf2-readonly-details-toggle:focus-visible {
-  outline: 2px solid var(--ds-color-focus-ring-ui, var(--cf2-blue));
+.cfe-readonly-details-toggle:focus-visible {
+  outline: 2px solid var(--ds-color-focus-ring-ui, var(--cfe-accent));
   outline-offset: 2px;
 }
 
-
-.cf2-field-preview .cf-composer__block-row-head {
-  margin-bottom: 0.75rem;
-}
-
-.cf2-field-preview .cf-composer__section-cap {
-  margin-bottom: 0.75rem;
-  line-height: 1.45;
-}
-
-.cf2-field-preview .cf-composer__labeled-field {
-  gap: 0.8125rem;
-}
-
-.cf2-field-preview .cf-composer__input-cap {
-  font-size: 0.71875rem;
-  line-height: 1.45;
-  letter-spacing: 0.04em;
-}
-
-.cf2-field-preview .cf-composer__ctrl {
-  background: transparent !important;
-  border-color: rgba(0, 0, 0, 0.08) !important;
-  border-style: dashed !important;
-  color: var(--cf2-secondary) !important;
-  box-shadow: none !important;
-  pointer-events: none;
-  -webkit-user-select: none;
-  user-select: none;
-}
-
-.cf2-field-preview .cf-composer__ctrl::placeholder {
-  color: var(--cf2-tertiary) !important;
-  opacity: 1;
-}
-
-.cf2-field-preview .cf-composer__block-title {
-  color: var(--cf2-secondary);
-  font-size: 0.8125rem;
-}
-
-.cf2-field-preview .cf-composer__field-cap {
-  color: var(--cf2-tertiary);
-  font-size: 0.78125rem;
-  line-height: 1.45;
-}
-
-.cf2-field-preview label {
-  color: var(--cf2-secondary) !important;
-}
-
-/* Read-only switch chrome in preview rows only; interactive delivery toggle keeps full color (matches field settings). */
-.cf2-field-preview .cf-composer__ios-switch--readonly .cf-composer__ios-switch-ui {
-  opacity: 0.45;
-  pointer-events: none;
-}
-
-.cf2-field-preview .cf-composer__preview-cols {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: start;
-  justify-items: stretch;
-  gap: 1rem clamp(1.125rem, 3.5vw, 1.5rem);
-}
-
-.cf2-field-preview .cf-composer__preview-cols .cf-composer__labeled-field--grow {
-  min-width: 0;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-/* -- Actions column (right, always visible) -- */
-.cf2-field-actions {
+/* Actions column */
+.cfe-field-actions {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
-  width: auto;
-  /* HIG: column must accommodate 44px buttons with comfortable margin */
   min-width: 52px;
-  max-width: min(10.5rem, 100%);
   padding: 8px 4px;
   box-sizing: border-box;
   opacity: 0.35;
   transition: opacity 0.15s ease;
 }
 
-.cf2-field-item--locked .cf2-field-actions:empty {
+.cfe-field-item--locked .cfe-field-actions:empty {
   display: none;
   min-width: 0;
   width: 0;
   padding: 0;
-  overflow: hidden;
 }
 
-.cf2-field-item:hover .cf2-field-actions,
-.cf2-field-item:focus-within .cf2-field-actions,
-.cf2-field-item--settings-open .cf2-field-actions,
-.cf2-field-summary-locked .cf2-field-actions {
+.cfe-field-item:hover .cfe-field-actions,
+.cfe-field-item:focus-within .cfe-field-actions,
+.cfe-field-item--settings-open .cfe-field-actions,
+.cfe-field-summary-locked .cfe-field-actions {
   opacity: 1;
 }
 
-.cf2-action-btn {
+.cfe-action-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  /* HIG: minimum touch/click target 44?44pt ? visual bg stays 32px via padding, hit area is 44px */
   width: 44px;
   height: 44px;
   border: none;
   border-radius: 10px;
   background: transparent;
-  color: var(--cf2-tertiary);
+  color: var(--cfe-tertiary);
   cursor: pointer;
   transition: background 0.12s ease, color 0.12s ease;
   padding: 0;
   flex-shrink: 0;
 }
 
-.cf2-action-btn:hover {
-  background: var(--cf2-fill);
-  color: var(--cf2-secondary);
+.cfe-action-btn:hover {
+  background: var(--cfe-fill);
+  color: var(--cfe-secondary);
 }
 
-.cf2-action-btn:focus-visible {
+.cfe-action-btn:focus-visible {
   outline: 2px solid var(--ds-color-focus-ring-ui);
   outline-offset: 2px;
 }
 
-.cf2-action-btn svg {
-  display: block;
+.cfe-action-btn svg { display: block; }
+
+.cfe-action-btn--settings:hover {
+  color: var(--cfe-accent);
+  background: var(--cfe-accent-soft);
 }
 
-.cf2-action-btn--settings:hover {
-  color: var(--cf2-blue);
-  background: var(--cf2-blue-soft);
+.cfe-action-btn--settings.is-active {
+  color: var(--cfe-accent);
+  background: var(--cfe-accent-soft);
 }
 
-.cf2-action-btn--settings.is-active {
-  color: var(--cf2-blue);
-  background: var(--cf2-blue-soft);
+.cfe-action-btn--remove:hover {
+  background: var(--cfe-red-soft);
+  color: var(--cfe-red);
 }
 
-.cf2-action-btn--remove {
-  color: var(--cf2-tertiary);
-}
-
-.cf2-action-btn--remove:hover {
-  color: var(--cf2-red);
-  background: var(--cf2-red-soft);
-}
-
-.cf2-remove-form {
-  display: inline-flex;
-  margin: 0;
-}
-
-/* -- Settings panel (below-row accordion, Apple-styled) -- */
-.cf2-field-item .cf-composer__field-settings-expand {
-  border-top: 0.5px solid rgba(0, 0, 0, 0.07);
-  background: var(--cf2-fill);
-  border-radius: 0 0 var(--cf2-radius-card) var(--cf2-radius-card);
-  max-height: 0;
-  opacity: 0;
-  overflow: hidden;
-  visibility: hidden;
-  pointer-events: none;
-  transition: max-height 0.28s cubic-bezier(0.25, 0.1, 0.25, 1),
-              opacity 0.2s ease,
-              visibility 0.2s;
-}
-
-.cf2-field-item .cf-composer__field-settings-expand.is-open {
-  max-height: 32rem;
-  opacity: 1;
-  overflow: visible;
-  visibility: visible;
-  pointer-events: auto;
-}
-
-.cf2-field-item .cf-composer__field-settings-inner {
-  padding: 14px 16px 18px 16px;
-}
-
-.cf2-field-item .cf-composer__settings-panel-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-bottom: 10px;
-  margin-bottom: 12px;
-  border-bottom: 0.5px solid rgba(0, 0, 0, 0.08);
-}
-
-.cf2-field-item .cf-composer__settings-field-name {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--cf2-secondary);
-}
-
-.cf2-field-item .cf-composer__field-edit-done {
-  background: var(--cf2-blue);
-  color: #fff;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  border-radius: 7px;
-  padding: 5px 13px;
-}
-
-.cf2-field-item .cf-composer__field-edit-done:hover {
-  background: var(--cf2-blue-press);
-}
-
-.cf2-field-item .cf-composer__field-edit-done:focus-visible {
-  outline: 2px solid var(--cf2-blue);
-  outline-offset: 2px;
-}
-
-.cf2-field-item .cf-composer__settings-text-input {
-  border-radius: var(--cf2-radius-ctrl);
-  border-color: rgba(0, 0, 0, 0.12);
-}
-
-.cf2-field-item .cf-composer__settings-text-input:focus {
-  border-color: var(--ds-color-focus-ring-ui);
-  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
-}
-
-.cf2-field-item .cf-composer__ios-switch-ui {
-  background: #D1D1D6;
-}
-
-.cf2-field-item .cf-composer__ios-switch input:checked + .cf-composer__ios-switch-ui {
-  background: var(--cf2-green);
-}
-
-.cf2-field-item .cf-composer__settings-hint,
-.cf2-field-item .cf-composer__settings-foot {
-  font-size: 0.8125rem;
-  color: var(--cf2-secondary);
-}
-
-.cf2-field-item .cf-composer__settings-foot a {
-  color: var(--cf2-blue);
-}
-
-/* Override: hide old float-tools (replaced by cf2-field-actions) */
-.cf2-field-item .cf-composer__field-float-tools {
-  display: none !important;
-}
-
-/* Override: remove old padding from group-row-body in new layout */
-.cf2-field-item .cf-composer__group-row-body {
-  padding: 0;
-}
-
-.cf2-field-item .cf-composer__field-card-wrap--tools-hover .cf-composer__group-row-body,
-.cf2-field-item .cf-composer__field-card-wrap--tools-hover-locked .cf-composer__group-row-body,
-.cf2-field-item .cf-composer__field-card-wrap--pair .cf-composer__group-row-body {
-  padding-right: 0;
-}
-
-/* Blue left-bar when settings open (uses existing card-wrap hook) */
-.cf2-field-item .cf-composer__field-card-wrap--edit-open::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: var(--cf2-blue);
-  border-radius: var(--cf2-radius-card) 0 0 var(--cf2-radius-card);
-  z-index: 1;
-}
-
-/* Apple-style ctrl inputs */
-.cf2-root .cf-composer__ctrl {
-  border-radius: 8px;
-  border-color: rgba(0, 0, 0, 0.12);
-  background: #FAFAFA;
-  font-size: 0.9375rem;
-  min-height: 2.75rem;
-  box-sizing: border-box;
-}
-
-.cf2-root .cf-composer__ctrl:focus {
-  border-color: var(--ds-color-focus-ring-ui);
-  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
-}
-
-.cf2-root .cf-composer__section-cap {
-  color: var(--cf2-tertiary);
-}
-
-.cf2-root .cf-composer__block-title {
-  color: var(--cf2-text);
-  font-size: 0.875rem;
-}
-
-.cf2-root .cf-composer__field-cap {
-  color: var(--cf2-secondary);
-}
-
-.cf2-root .cf-composer__block-icon {
-  color: var(--cf2-secondary);
-}
-
-/* Drag states ? keep item in flow (placeholder holds the gap) so layout does not reflow */
-.cf2-field-item.cf-composer__field-item--drag-source {
-  opacity: 0 !important;
-  pointer-events: none !important;
-  /* Visually collapse without removing from flow; placeholder already reserves the space */
-  visibility: hidden !important;
-}
-
-.cf2-field-list.cf-composer__grouped-list--is-dragging .cf-composer__sort-placeholder {
-  min-height: 104px;
-  border-top: 2px dashed rgba(0, 0, 0, 0.18);
-  border-bottom: 2px dashed rgba(0, 0, 0, 0.18);
-  border-left: none;
-  border-right: none;
-  background: rgba(0, 0, 0, 0.03);
-  border-radius: 0;
-}
-
-/* Drop feedback: avoid scale on cf2 (was stacking with .cf-composer__field-card-wrap scale > jitter / unequal columns) */
-.cf2-field-item.cf-composer__field-item--drop-settle .cf-composer__field-card-wrap {
-  animation: none;
-}
-
-@keyframes cf2-composer-row-settle {
-  0% {
-    opacity: 0.94;
-  }
-
-  100% {
-    opacity: 1;
-  }
-}
-
-.cf2-field-item.cf-composer__field-item--drop-settle .cf2-field-row {
-  animation: cf2-composer-row-settle 0.35s ease-out both;
-}
-
-/* -- Inline confirm: trash > checkmark two-step (HIG: no native confirm dialogs) -- */
-.cf2-action-btn--confirm-ok {
-  color: var(--cf2-green) !important;
-}
-
-.cf2-action-btn--confirm-ok:hover {
-  background: rgba(52, 199, 89, 0.12) !important;
-  color: var(--cf2-green) !important;
-}
-
-/* Library delete confirm */
-.cf2-lib-delete.cf2-action-btn--confirm-ok {
-  color: var(--cf2-green) !important;
-}
-
-.cf2-lib-delete.cf2-action-btn--confirm-ok:hover {
-  background: rgba(52, 199, 89, 0.12) !important;
-  color: var(--cf2-green) !important;
+/* Remove form confirm state */
+.cfe-remove-form {
+  display: contents;
 }
 
 /* Empty state */
-.cf2-empty-state {
-  padding: 48px 24px;
+.cfe-empty-state {
+  padding: 2.5rem 1.5rem;
   text-align: center;
-  color: var(--cf2-secondary);
+  color: var(--cfe-secondary);
   font-size: 0.9375rem;
 }
 
-.cf2-empty-state p {
-  margin: 0 0 8px;
-}
-
-.cf2-hint {
-  margin: 8px 0 0;
-  font-size: 0.875rem;
-  color: var(--cf2-secondary);
-}
-
-/* -- Responsive -- */
-
-/* Medium: sidebar collapses, profile nav shown inline */
-@media (max-width: 1024px) {
-  .cf2-body {
-    grid-template-columns: 1fr;
-    padding: 1.125rem 1.25rem;
-    gap: 1.25rem;
-  }
-
-  .cf2-sidebar {
-    display: none;
-  }
-
-  .cf2-profile-seg-mobile {
-    display: block;
-    margin-bottom: 16px;
-  }
-
-  .cf2-body.cf2-body--focused {
-    padding: 0.875rem 1rem 1.25rem;
-  }
-
-  .cf2-body--focused .cf2-content-area {
-    max-width: none;
-  }
-}
-
-/* Small desktop / tablet */
-@media (max-width: 768px) {
-  .cf2-toolbar-title,
-  .cf2-toolbar-dot {
-    display: none;
-  }
-
-  .cf2-body {
-    padding: 1rem;
-    gap: 1rem;
-  }
-}
-
-/* Reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  .cf2-field-item .cf-composer__field-settings-expand {
-    transition: none;
-  }
-
-  .cf2-grip,
-  .cf2-action-btn,
-  .cf2-btn-save,
-  .cf2-btn-reload,
-  .cf2-pnav-link,
-  .cf2-palette-chip,
-  .cf2-create-btn {
-    transition: none;
-  }
-
-  .cf2-field-item.cf-composer__field-item--drop-settle .cf2-field-row {
-    animation: none;
-  }
-}
-
-.cf-composer__profiles {
-  margin-bottom: 1.25rem !important;
-}
-
-.cf-composer__build .wr-pro {
-  --wr-text: #f1f5f9;
-  --wr-muted: #94a3b8;
-  --wr-surface: rgba(30, 41, 59, 0.72);
-  --wr-border: rgba(148, 163, 184, 0.14);
-  --wr-border-strong: rgba(148, 163, 184, 0.22);
-  --wr-accent: #2dd4bf;
-  --wr-accent-soft: rgba(45, 212, 191, 0.14);
-  max-width: none;
-  margin: 0;
-  padding: 0 0 0.5rem;
-}
-
-.cf-composer__build .wr-pro__card-lead--emphasis {
-  color: #cbd5e1;
-}
-
-.cf-composer__build .wr-pro__card-lead--emphasis code {
-  color: #f8fafc;
-}
-
-.cf-composer__build .wr-pro__search {
-  background: rgba(15, 23, 42, 0.55);
-  color: #f1f5f9;
-  border-color: rgba(148, 163, 184, 0.2);
-}
-
-.cf-composer__build .wr-pro__pick-row {
-  border-color: rgba(148, 163, 184, 0.14);
-}
-
-.cf-composer__build .wr-pro__profile-chip {
-  background: rgba(15, 23, 42, 0.45);
-  border-color: rgba(148, 163, 184, 0.2);
-  color: #f1f5f9;
-}
-
-.cf-composer__build .wr-pro__profile-chip:hover {
-  background: rgba(30, 41, 59, 0.85);
-}
-
-.cf-composer__build .calendar-btn {
-  border-color: rgba(148, 163, 184, 0.25);
-}
-
-.cf-composer-page .wr-pro__workspace {
-  grid-template-columns: 1fr;
-}
-
-@media (min-width: 900px) {
-  .cf-composer-page .wr-pro__workspace {
-    grid-template-columns: minmax(220px, 1fr) minmax(120px, 0.55fr) minmax(240px, 1fr);
-    gap: 0.85rem 0.75rem;
-  }
-}
-
-@media (min-width: 1200px) {
-  .cf-composer-page .wr-pro__workspace {
-    grid-template-columns: minmax(240px, 1fr) minmax(128px, 0.52fr) minmax(260px, 1fr);
-  }
-}
-
-.wr-pro__pick-label {
-  display: block;
-  margin-top: 0.2rem;
+.cfe-hint {
+  margin: 0.75rem 0 0;
   font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--wr-muted);
-  letter-spacing: -0.01em;
+  color: var(--cfe-tertiary);
 }
 
-.wr-pro__selected-human {
-  display: block;
-  margin-top: 0.15rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--wr-muted);
+/* ── Preview sub-components (used by renderComposerBlockBody) ── */
+/* These keep cf-composer__* names because the PHP render closures output them directly */
+
+.cfe-field-preview .cf-composer__block-row-head {
+  margin-bottom: 0.7rem;
 }
 
-.cf-composer__ro-meta {
-  font-size: 0.75rem;
-  color: var(--wr-muted);
-  white-space: nowrap;
-}
-
-.cf-composer__section-title {
-  margin: 1.5rem 0 0.35rem;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #cbd5e1;
-}
-
-.cf-composer__section-lead {
-  margin: 0 0 0.65rem;
-}
-
-.cf-composer__cta {
-  margin: 0 0 0.75rem;
-}
-
-.cf-composer__build .cf-fields-table {
-  color: #e2e8f0;
-}
-
-.cf-composer__build .cf-fields-table th {
-  color: #94a3b8;
-}
-
-.cf-composer__preview {
-  position: sticky;
-  top: 1rem;
-}
-
-.cf-composer__preview-inner {
-  background: #f8fafc;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 20px;
-  padding: 1.35rem 1.35rem 1.5rem;
-  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
-}
-
-.cf-composer__preview-head {
-  margin-bottom: 1rem;
-}
-
-.cf-composer__preview-title {
-  margin: 0;
-  font-size: 1.125rem;
-  font-weight: 650;
-  letter-spacing: -0.02em;
-  color: #0f172a;
-}
-
-.cf-composer__preview-sub {
-  margin: 0.35rem 0 0;
-  font-size: 0.8125rem;
+.cfe-field-preview .cf-composer__section-cap {
+  margin-bottom: 0.7rem;
   line-height: 1.45;
-  color: #64748b;
 }
 
-.cf-composer__preview-card {
-  background: #fff;
-  border: 1px solid rgba(15, 23, 42, 0.07);
-  border-radius: 16px;
-  padding: 1.15rem 1.2rem 1.25rem;
+.cfe-field-preview .cf-composer__labeled-field {
+  gap: 0.75rem;
 }
 
-.cf-composer__preview-form-title {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 650;
-  color: #0f172a;
-}
-
-.cf-composer__preview-form-hint {
-  margin: 0.25rem 0 1rem;
-  font-size: 0.75rem;
-  color: #94a3b8;
-}
-
-.cf-composer__preview-fields {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-}
-
-.cf-composer__preview-fake-row {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.cf-composer__fake-label {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: #334155;
-}
-
-.cf-composer__fake-input,
-.cf-composer__fake-textarea {
-  width: 100%;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  border-radius: 10px;
-  padding: 0.5rem 0.65rem;
-  font-size: 0.875rem;
-  background: #f1f5f9;
-  color: #64748b;
-}
-
-.cf-composer__fake-textarea {
-  resize: none;
-  min-height: 4rem;
-}
-
-.cf-composer__fake-check {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  color: #334155;
-}
-
-.cf-composer__preview-block {
-  padding: 0.65rem 0 0.35rem;
-  border-top: 1px dashed rgba(15, 23, 42, 0.1);
-}
-
-.cf-composer__preview-block:first-child {
-  border-top: none;
-  padding-top: 0;
-}
-
-.cf-composer__preview-block-title {
-  font-size: 0.8125rem;
-  font-weight: 700;
-  color: #0f172a;
-  text-transform: uppercase;
+.cfe-field-preview .cf-composer__input-cap {
+  font-size: 0.71875rem;
   letter-spacing: 0.04em;
 }
 
-.cf-composer__preview-block-hint {
-  margin: 0.2rem 0 0.5rem;
-  font-size: 0.72rem;
-  color: #94a3b8;
-}
-
-.cf-composer__preview-foot {
-  margin: 1.15rem 0 0;
-}
-
-.cf-composer__fake-submit {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  padding: 0 1.35rem;
-  border: none;
-  border-radius: 10px;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: #fff;
-  background: var(--cf-accent);
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.cf-composer__canvas .cf-composer__fake-label {
-  color: var(--cf-preview-ink);
-  font-weight: 600;
-  font-size: 0.8125rem;
-}
-
-.cf-composer__canvas .cf-composer__fake-input,
-.cf-composer__canvas .cf-composer__fake-textarea {
-  background: #fff;
-  border: 1px solid #d1d1d6;
-  border-radius: 10px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-  color: var(--cf-preview-muted);
-}
-
-.cf-composer__canvas .cf-composer__fake-check {
-  color: var(--cf-preview-ink);
-}
-
-/* Page layouts: full-width SaaS control plane (not a centered narrow card) */
-.wr-pro-page .wr-pro,
-.wr-pro-page .wr-pro--muted {
-  max-width: min(100%, 1600px);
-  width: 100%;
-  margin: 0;
-}
-
-.wr-pro {
-  --wr-surface: rgba(255, 255, 255, 0.72);
-  --wr-border: rgba(15, 23, 42, 0.08);
-  --wr-border-strong: rgba(15, 23, 42, 0.12);
-  --wr-text: #0f172a;
-  --wr-muted: #64748b;
-  --wr-accent: #0d9488;
-  --wr-accent-soft: rgba(13, 148, 136, 0.12);
-  --wr-ease: cubic-bezier(0.25, 0.1, 0.25, 1);
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 0 2rem;
-}
-
-.wr-pro--muted {
-  padding: 1.25rem 1.35rem;
-  background: var(--wr-surface);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--wr-border);
-  border-radius: 16px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-}
-.wr-pro__muted-copy {
-  margin: 0;
-  font-size: 0.9375rem;
-  line-height: 1.55;
-  color: var(--wr-muted);
-}
-
-.wr-pro__intro {
-  margin-bottom: 1.75rem;
-}
-.wr-pro__title {
-  margin: 0;
-  font-size: 1.75rem;
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  color: var(--wr-text);
-  line-height: 1.15;
-}
-.wr-pro__subtitle {
-  margin: 0.5rem 0 0;
-  max-width: 42rem;
-  font-size: 0.9375rem;
-  line-height: 1.55;
-  color: var(--wr-muted);
-  font-weight: 400;
-}
-@media (min-width: 1024px) {
-  .wr-pro-page .wr-pro__subtitle {
-    max-width: 56rem;
-  }
-}
-
-.wr-pro__profiles {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 1.5rem;
-}
-.wr-pro__profile-chip {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.15rem;
-  padding: 0.55rem 1rem;
-  min-height: 44px;
-  justify-content: center;
-  border-radius: 999px;
-  border: 1px solid var(--wr-border);
-  background: rgba(255, 255, 255, 0.55);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  text-decoration: none;
-  color: var(--wr-text);
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition: border-color 0.18s var(--wr-ease), background 0.18s var(--wr-ease), box-shadow 0.18s var(--wr-ease);
-}
-.wr-pro__profile-chip:hover {
-  border-color: var(--wr-border-strong);
-  background: rgba(255, 255, 255, 0.9);
-}
-.wr-pro__profile-chip:focus-visible {
-  outline: 2px solid var(--wr-accent);
-  outline-offset: 2px;
-}
-.wr-pro__profile-chip--active {
-  border-color: rgba(13, 148, 136, 0.35);
-  background: var(--wr-accent-soft);
-  box-shadow: 0 0 0 1px rgba(13, 148, 136, 0.08);
-}
-.wr-pro__profile-chip-label {
-  letter-spacing: -0.01em;
-}
-.wr-pro__profile-chip-note {
-  font-size: 0.6875rem;
-  font-weight: 500;
-  color: var(--wr-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-@media (min-width: 1024px) {
-  .wr-pro-page .wr-pro__profiles {
-    gap: 0.35rem 0.5rem;
-    row-gap: 0.4rem;
-  }
-  .wr-pro-page .wr-pro__profile-chip {
-    flex-direction: row;
-    align-items: center;
-    gap: 0.45rem;
-    padding: 0.32rem 0.8rem;
-    min-height: 36px;
-    border-radius: 10px;
-    font-size: 0.8125rem;
-  }
-  .wr-pro-page .wr-pro__profile-chip-note {
-    font-size: 0.625rem;
-    letter-spacing: 0.05em;
-  }
-}
-
-.wr-pro__workspace {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-  align-items: start;
-}
-@media (min-width: 768px) {
-  .wr-pro__workspace {
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.7fr) minmax(0, 1.25fr);
-    gap: 1rem 1.15rem;
-  }
-}
-@media (min-width: 1024px) {
-  .wr-pro-page .wr-pro__workspace {
-    grid-template-columns: minmax(260px, 1.1fr) minmax(148px, 0.7fr) minmax(300px, 1.25fr);
-    gap: 1.15rem 1.5rem;
-  }
-}
-@media (min-width: 1280px) {
-  .wr-pro-page .wr-pro__workspace {
-    grid-template-columns: minmax(280px, 1.1fr) minmax(156px, 0.7fr) minmax(320px, 1.25fr);
-    gap: 1.2rem 1.65rem;
-  }
-}
-@media (max-width: 767px) {
-  .wr-pro__rail {
-    flex-direction: row !important;
-    flex-wrap: wrap;
-    justify-content: center;
-    padding: 0.5rem 0 !important;
-  }
-}
-
-.wr-pro__card {
-  background: var(--wr-surface);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--wr-border);
-  border-radius: 18px;
-  padding: 1.25rem 1.35rem 1.35rem;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
-  min-height: 200px;
-  display: flex;
-  flex-direction: column;
-}
-.wr-pro__card--selected {
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
-}
-.wr-pro__card-head {
-  margin-bottom: 1rem;
-}
-.wr-pro__card-title {
-  margin: 0;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--wr-muted);
-}
-.wr-pro__card-lead {
-  margin: 0.35rem 0 0;
-  font-size: 0.8125rem;
-  line-height: 1.45;
-  color: var(--wr-muted);
-}
-.wr-pro__card-lead--emphasis {
-  color: #475569;
-  font-weight: 500;
-}
-.wr-pro__card-lead--emphasis code {
-  font-size: 0.8em;
-  font-weight: 600;
-  color: var(--wr-text);
-}
-
-.wr-pro__search {
-  width: 100%;
-  margin-bottom: 0.75rem;
-  padding: 0.65rem 0.85rem;
-  min-height: 44px;
-  border: 1px solid var(--wr-border);
-  border-radius: 12px;
-  font-size: 0.9375rem;
-  background: rgba(255, 255, 255, 0.85);
-  transition: border-color 0.18s var(--wr-ease), box-shadow 0.18s var(--wr-ease);
-}
-.wr-pro__search::placeholder {
-  color: #94a3b8;
-}
-.wr-pro__search:focus {
-  outline: none;
-  border-color: rgba(13, 148, 136, 0.45);
-  box-shadow: 0 0 0 3px var(--wr-accent-soft);
-}
-
-.wr-pro__scroll {
-  flex: 1;
-  min-height: 120px;
-  max-height: min(52vh, 420px);
-  overflow-y: auto;
-  margin: 0 -0.25rem;
-  padding: 0 0.25rem;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(15, 23, 42, 0.2) transparent;
-}
-@media (min-width: 1024px) {
-  .wr-pro-page .wr-pro__scroll {
-    max-height: min(58vh, 520px);
-  }
-}
-.wr-pro__scroll--compact {
-  max-height: 200px;
-}
-
-.wr-pro__fieldset {
-  border: none;
-  margin: 0;
-  padding: 0;
-}
-
-.wr-pro__pick-row {
-  display: flex;
-  align-items: center;
-  min-height: 44px;
-  margin-bottom: 0.35rem;
-  padding: 0.35rem 0.65rem;
-  border-radius: 12px;
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: background 0.18s var(--wr-ease), border-color 0.18s var(--wr-ease);
-}
-.wr-pro__pick-row:last-child {
-  margin-bottom: 0;
-}
-.wr-pro__pick-row:hover {
-  background: rgba(15, 23, 42, 0.03);
-}
-.wr-pro__pick-row:focus-within {
-  border-color: rgba(13, 148, 136, 0.35);
-  background: var(--wr-accent-soft);
-}
-.wr-pro__pick-row:has(.wr-pro__pick-input:checked) {
-  border-color: rgba(13, 148, 136, 0.28);
-  background: rgba(13, 148, 136, 0.08);
-}
-.wr-pro__pick-input {
-  width: 1.125rem;
-  height: 1.125rem;
-  margin: 0 0.65rem 0 0;
-  accent-color: var(--wr-accent);
-  flex-shrink: 0;
-}
-.wr-pro__pick-body {
-  flex: 1;
-  min-width: 0;
-}
-.wr-pro__pick-key code {
-  font-size: 0.8125rem;
-  color: var(--wr-text);
-  font-weight: 500;
-}
-
-.wr-pro__rail {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: flex-start;
-  gap: 0.75rem;
-  padding: 0.35rem 0.4rem 0;
-  min-width: 0;
-}
-@media (min-width: 768px) {
-  .wr-pro__rail {
-    padding: 0.15rem 0.5rem 0;
-  }
-}
-.wr-pro__rail-label {
-  margin: 0 0 0.35rem;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--wr-muted);
-  text-align: center;
-}
-.wr-pro__rail-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  min-height: 44px;
-  padding: 0 1rem;
-  border-radius: 12px;
-  border: 1px solid var(--wr-border);
-  background: rgba(255, 255, 255, 0.9);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  cursor: pointer;
-  color: var(--wr-text);
-  transition: background 0.18s var(--wr-ease), border-color 0.18s var(--wr-ease), transform 0.15s var(--wr-ease);
-}
-@media (min-width: 768px) {
-  .wr-pro__rail-btn {
-    width: 100%;
-    min-width: 9.5rem;
-  }
-}
-.wr-pro__rail-btn:hover {
-  background: #fff;
-  border-color: var(--wr-border-strong);
-}
-.wr-pro__rail-btn:focus-visible {
-  outline: 2px solid var(--wr-accent);
-  outline-offset: 2px;
-}
-.wr-pro__rail-btn:active {
-  transform: scale(0.98);
-}
-.wr-pro__rail-btn--primary {
-  background: var(--wr-text);
-  color: #fff;
-  border-color: var(--wr-text);
-}
-.wr-pro__rail-btn--primary:hover {
-  background: #1e293b;
-  border-color: #1e293b;
-}
-.wr-pro__rail-btn--secondary {
-  border-color: rgba(185, 28, 28, 0.25);
-  color: #b91c1c;
-  background: rgba(254, 242, 242, 0.6);
-}
-.wr-pro__rail-btn--secondary:hover {
-  background: #fef2f2;
-  border-color: rgba(185, 28, 28, 0.4);
-}
-.wr-pro__rail-btn-hint {
-  font-size: 0.875rem;
-  opacity: 0.65;
-  font-weight: 400;
-}
-
-.wr-pro__form {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-}
-.wr-pro__form--remove {
-  margin-top: 0.5rem;
-}
-
-.wr-pro__selected-list {
-  list-style: none;
-  margin: 0 0 1rem;
-  padding: 0;
-}
-.wr-pro__selected-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  min-height: 52px;
-  padding: 0.5rem 0.65rem;
-  margin-bottom: 0.4rem;
-  border-radius: 14px;
-  border: 1px solid var(--wr-border);
-  background: rgba(255, 255, 255, 0.65);
-  transition: border-color 0.18s var(--wr-ease), box-shadow 0.18s var(--wr-ease);
-}
-.wr-pro__selected-row:last-child {
-  margin-bottom: 0;
-}
-.wr-pro__selected-row:hover {
-  border-color: var(--wr-border-strong);
-}
-.wr-pro__selected-main {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.65rem 1rem;
-  flex: 1;
-  min-width: 0;
-}
-.wr-pro__selected-key {
-  min-width: 0;
-}
-.wr-pro__selected-key code {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--wr-text);
-}
-@media (min-width: 1024px) {
-  .wr-pro-page .wr-pro__selected-main {
-    flex-wrap: nowrap;
-    gap: 0.75rem 1.1rem;
-  }
-  .wr-pro-page .wr-pro__selected-key {
-    flex: 1 1 10rem;
-    min-width: 0;
-  }
-  .wr-pro-page .wr-pro__selected-key code {
-    display: block;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .wr-pro-page .wr-pro__pos {
-    flex-shrink: 0;
-  }
-  .wr-pro-page .wr-pro__toggle {
-    flex-shrink: 0;
-  }
-  .wr-pro-page .wr-pro__pos-input {
-    width: 4.75rem;
-  }
-}
-.wr-pro__pos-input {
-  width: 4.25rem;
-  min-height: 40px;
-  padding: 0 0.5rem;
-  border: 1px solid var(--wr-border);
-  border-radius: 10px;
-  font-size: 0.875rem;
-  background: rgba(255, 255, 255, 0.95);
-}
-.wr-pro__pos-input:focus {
-  outline: none;
-  border-color: rgba(13, 148, 136, 0.45);
-  box-shadow: 0 0 0 3px var(--wr-accent-soft);
-}
-.wr-pro__toggle {
-  display: flex;
-  align-items: center;
-}
-.wr-pro__toggle-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  min-height: 44px;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--wr-muted);
-}
-.wr-pro__toggle-input {
-  position: absolute;
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-.wr-pro__toggle-ui {
-  width: 2.75rem;
-  height: 1.625rem;
-  border-radius: 999px;
-  background: #e2e8f0;
-  position: relative;
-  transition: background 0.22s var(--wr-ease);
-  flex-shrink: 0;
-}
-.wr-pro__toggle-ui::after {
-  content: '';
-  position: absolute;
-  top: 0.2rem;
-  left: 0.2rem;
-  width: 1.2rem;
-  height: 1.2rem;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.15);
-  transition: transform 0.22s var(--wr-ease);
-}
-.wr-pro__toggle-input:checked + .wr-pro__toggle-ui {
-  background: var(--wr-accent);
-}
-.wr-pro__toggle-input:checked + .wr-pro__toggle-ui::after {
-  transform: translateX(1.05rem);
-}
-.wr-pro__toggle-input:focus-visible + .wr-pro__toggle-ui {
-  box-shadow: 0 0 0 3px var(--wr-accent-soft);
-}
-.wr-pro__toggle-text {
+.cfe-field-preview .cf-composer__ctrl {
+  background: transparent !important;
+  border-color: rgba(0,0,0,.08) !important;
+  border-style: dashed !important;
+  color: var(--cfe-secondary) !important;
+  box-shadow: none !important;
+  pointer-events: none;
+  -webkit-user-select: none;
   user-select: none;
 }
 
-.wr-pro__selected-move {
+.cfe-field-preview .cf-composer__ctrl::placeholder {
+  color: var(--cfe-tertiary) !important;
+  opacity: 1;
+}
+
+.cfe-field-preview .cf-composer__block-title {
+  color: var(--cfe-secondary);
+  font-size: 0.8125rem;
+}
+
+.cfe-field-preview .cf-composer__field-cap {
+  color: var(--cfe-tertiary);
+  font-size: 0.78125rem;
+}
+
+.cfe-field-preview label { color: var(--cfe-secondary) !important; }
+
+.cfe-field-preview .cf-composer__ios-switch--readonly .cf-composer__ios-switch-ui {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.cfe-field-preview .cf-composer__preview-cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 1rem clamp(1rem, 3vw, 1.5rem);
+}
+
+.cfe-field-preview .cf-composer__preview-cols .cf-composer__labeled-field--grow {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ── Field settings expand panel ── */
+/* Still uses cf-composer__ names; output by renderComposerSettingsExpand */
+.cfe-root .cf-composer__field-settings-expand {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+  opacity: 0;
+  will-change: max-height, opacity;
+}
+
+.cfe-root .cf-composer__field-settings-expand.is-open {
+  max-height: 600px;
+  opacity: 1;
+  overflow: visible;
+}
+
+.cfe-root .cf-composer__field-settings-inner {
+  padding: 1rem 1rem 1.125rem;
+  border-top: 0.5px solid rgba(0,0,0,.07);
+  background: color-mix(in srgb, var(--cfe-fill) 55%, white);
+}
+
+.cfe-root .cf-composer__settings-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.cfe-root .cf-composer__settings-field-name {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--cfe-text);
+}
+
+.cfe-root .cf-composer__field-edit-done {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 0.7rem;
+  border: 1px solid var(--cfe-border);
+  border-radius: var(--cfe-radius-badge);
+  background: var(--cfe-surface);
+  color: var(--cfe-secondary);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+
+.cfe-root .cf-composer__field-edit-done:hover {
+  background: var(--cfe-fill);
+  color: var(--cfe-text);
+}
+
+.cfe-root .cf-composer__settings-field {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.35rem;
+  margin-bottom: 0.875rem;
+}
+
+.cfe-root .cf-composer__settings-input-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--cfe-secondary);
+  letter-spacing: -0.01em;
+}
+
+.cfe-root .cf-composer__settings-text-input {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid rgba(0,0,0,.12);
+  border-radius: var(--cfe-radius-ctrl);
+  padding: 0 0.65rem;
+  font: inherit;
+  font-size: 0.875rem;
+  background: var(--cfe-surface);
+  box-sizing: border-box;
+}
+
+.cfe-root .cf-composer__settings-text-input:focus {
+  outline: 2px solid var(--ds-color-focus-ring-ui, var(--cfe-accent));
+  outline-offset: 1px;
+  border-color: var(--cfe-accent);
+}
+
+.cfe-root .cf-composer__settings-hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  color: var(--cfe-tertiary);
+  line-height: 1.45;
+}
+
+.cfe-root .cf-composer__settings-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.cfe-root .cf-composer__settings-switch-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--cfe-text);
+}
+
+.cfe-root .cf-composer__settings-foot {
+  margin: 0.875rem 0 0;
+  font-size: 0.75rem;
+  color: var(--cfe-tertiary);
+}
+
+/* iOS toggle switch — shared by settings expand and delivery preview */
+.cfe-root .cf-composer__ios-switch {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
   flex-shrink: 0;
 }
-.wr-pro__move-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  border: 1px solid var(--wr-border);
-  background: rgba(255, 255, 255, 0.9);
-  text-decoration: none;
-  color: var(--wr-text);
-  font-size: 1rem;
-  line-height: 1;
-  transition: background 0.18s var(--wr-ease), border-color 0.18s var(--wr-ease);
-}
-.wr-pro__move-link:hover {
-  background: #fff;
-  border-color: var(--wr-border-strong);
-}
-.wr-pro__move-link:focus-visible {
-  outline: 2px solid var(--wr-accent);
-  outline-offset: 2px;
+
+.cfe-root .cf-composer__ios-switch input {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  border: 0; overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
 }
 
-.wr-pro__empty {
-  flex: 1;
+.cfe-root .cf-composer__ios-switch-ui {
+  display: block;
+  width: 40px; height: 24px;
+  background: rgba(120,120,128,.16);
+  border-radius: 12px;
+  position: relative;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+
+.cfe-root .cf-composer__ios-switch-ui::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,.25);
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.cfe-root .cf-composer__ios-switch input:checked + .cf-composer__ios-switch-ui::after,
+.cfe-root .cf-composer__ios-switch-ui.is-on::after {
+  transform: translateX(16px);
+}
+
+.cfe-root .cf-composer__ios-switch input:checked + .cf-composer__ios-switch-ui,
+.cfe-root .cf-composer__ios-switch-ui.is-on {
+  background: var(--ds-color-apple-system-green, #34c759);
+}
+
+/* Switch row (delivery block) */
+.cfe-root .cf-composer__switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 2.125rem;
+  gap: 0.625rem;
+  margin-bottom: 0.5rem;
+}
+
+.cfe-root .cf-composer__switch-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--cfe-secondary);
+}
+
+/* Input controls in preview rows */
+.cfe-root .cf-composer__ctrl {
+  display: block;
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid rgba(0,0,0,.1);
+  border-radius: var(--cfe-radius-ctrl);
+  padding: 0 0.65rem;
+  font: inherit;
+  font-size: 0.875rem;
+  background: var(--cfe-surface);
+  box-sizing: border-box;
+}
+
+.cfe-root .cf-composer__ctrl:focus {
+  outline: 2px solid var(--ds-color-focus-ring-ui, var(--cfe-accent));
+  outline-offset: 1px;
+}
+
+.cfe-root .cf-composer__section-cap {
+  margin: 0 0 0.5rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cfe-tertiary);
+}
+
+.cfe-root .cf-composer__block-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--cfe-text);
+}
+
+.cfe-root .cf-composer__field-cap {
+  font-size: 0.8125rem;
+  color: var(--cfe-secondary);
+}
+
+.cfe-root .cf-composer__block-icon {
+  display: inline-flex;
+  color: var(--cfe-secondary);
+  flex-shrink: 0;
+}
+
+.cfe-root .cf-composer__block-row-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.cfe-root .cf-composer__field-row--split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.cfe-root .cf-composer__ctrl-field {
+  width: 100%;
+}
+
+.cfe-root .cf-composer__ctrl--area {
+  min-height: 60px;
+  resize: vertical;
+  padding: 0.4rem 0.65rem;
+  line-height: 1.5;
+}
+
+.cfe-root .cf-composer__labeled-field {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  padding: 1.5rem 0.5rem;
-  text-align: center;
-}
-.wr-pro__empty-title {
-  margin: 0;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--wr-text);
-  letter-spacing: -0.02em;
-}
-.wr-pro__empty-text {
-  margin: 0.35rem 0 0;
-  font-size: 0.8125rem;
-  line-height: 1.5;
-  color: var(--wr-muted);
-  max-width: 16rem;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.wr-pro__footer {
-  position: sticky;
-  bottom: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.65rem;
-  margin: 0 -1.35rem -1.35rem;
-  margin-top: auto;
-  padding: 1rem 1.35rem 1.15rem;
-  background: linear-gradient(to top, rgba(248, 250, 252, 0.97) 60%, rgba(248, 250, 252, 0));
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border-top: 1px solid var(--wr-border);
-  border-radius: 0 0 17px 17px;
-}
-@media (min-width: 1024px) {
-  .wr-pro-page .wr-pro__footer {
-    position: static;
-    margin-top: 1.15rem;
-  }
-}
-.wr-pro__footer-primary {
-  min-height: 44px;
-  padding: 0 1.35rem;
-  border-radius: 12px;
-  border: none;
-  background: var(--wr-text);
-  color: #fff;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  cursor: pointer;
-  transition: background 0.18s var(--wr-ease), transform 0.15s var(--wr-ease);
-}
-.wr-pro__footer-primary:hover {
-  background: #1e293b;
-}
-.wr-pro__footer-primary:focus-visible {
-  outline: 2px solid var(--wr-accent);
-  outline-offset: 2px;
-}
-.wr-pro__footer-primary:active {
-  transform: scale(0.99);
-}
-.wr-pro__footer-secondary {
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-  padding: 0 1rem;
-  border-radius: 12px;
-  border: 1px solid var(--wr-border);
-  background: rgba(255, 255, 255, 0.85);
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--wr-text);
-  text-decoration: none;
-  transition: background 0.18s var(--wr-ease), border-color 0.18s var(--wr-ease);
-}
-.wr-pro__footer-secondary:hover {
-  background: #fff;
-  border-color: var(--wr-border-strong);
-}
-.wr-pro__footer-secondary:focus-visible {
-  outline: 2px solid var(--wr-accent);
-  outline-offset: 2px;
-}
-
-.wr-pro__visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-/* --- Clients ? Web registrations (WR-REG-PRO) --- */
-.wr-reg-pro-page .wr-reg-pro {
-  max-width: 1080px;
-}
-
-.wr-reg-pro {
-  --reg-text: #0f172a;
-  --reg-muted: #64748b;
-  --reg-border: rgba(15, 23, 42, 0.08);
-  --reg-border-strong: rgba(15, 23, 42, 0.12);
-  --reg-surface: rgba(255, 255, 255, 0.78);
-  --reg-accent: #0d9488;
-  --reg-accent-soft: rgba(13, 148, 136, 0.12);
-  --reg-ease: cubic-bezier(0.25, 0.1, 0.25, 1);
-  margin: 0 auto;
-  padding: 0 0 2.5rem;
-}
-
-.wr-reg-pro__intro {
-  margin-bottom: 1.5rem;
-}
-.wr-reg-pro__intro--detail {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem 1.5rem;
-}
-.wr-reg-pro__intro-main {
-  min-width: 0;
-}
-.wr-reg-pro__eyebrow {
-  margin: 0 0 0.25rem;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--reg-muted);
-}
-.wr-reg-pro__title {
-  margin: 0;
-  font-size: 1.65rem;
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  color: var(--reg-text);
-  line-height: 1.15;
-}
-.wr-reg-pro__subtitle {
-  margin: 0.5rem 0 0;
-  max-width: 40rem;
-  font-size: 0.9375rem;
-  line-height: 1.55;
-  color: var(--reg-muted);
-  font-weight: 400;
-}
-.wr-reg-pro__subtitle--tight {
-  margin-top: 0.35rem;
-  font-weight: 500;
-  color: #475569;
-}
-
-.wr-reg-pro__flash {
-  margin-bottom: 1rem;
-}
-
-.wr-reg-pro__intro--list {
-  margin-bottom: 1rem;
-}
-
-.wr-reg-pro__toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 0.5rem 1rem;
-  margin-bottom: 1rem;
-}
-
-.wr-reg-pro__filters-inline {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  margin: 0;
-  padding: 0;
-  border: none;
-  background: transparent;
-  box-shadow: none;
-  flex: 1 1 auto;
-  min-width: min(100%, 12rem);
-}
-
-@media (min-width: 720px) {
-  .wr-reg-pro__filters-inline {
-    flex: 0 1 auto;
-    margin-left: auto;
-    justify-content: flex-end;
-  }
-}
-
-.wr-reg-pro__filter-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.125rem 0.25rem 0.125rem 0.5rem;
-  border-radius: 999px;
-  border: 1px solid var(--reg-border);
-  background: rgba(255, 255, 255, 0.72);
-}
-
-.wr-reg-pro__filter-chip-label {
-  font-size: 0.625rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--reg-muted);
-  white-space: nowrap;
-}
-
-.wr-reg-pro__filter-chip:focus-within {
-  border-color: rgba(13, 148, 136, 0.45);
-  box-shadow: 0 0 0 3px var(--reg-accent-soft);
-}
-
-.wr-reg-pro__btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  padding: 0 1.15rem;
-  border-radius: 12px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  text-decoration: none;
-  border: 1px solid var(--reg-border);
-  background: rgba(255, 255, 255, 0.9);
-  color: var(--reg-text);
-  cursor: pointer;
-  transition: background 0.18s var(--reg-ease), border-color 0.18s var(--reg-ease), transform 0.12s var(--reg-ease);
-}
-.wr-reg-pro__btn:hover {
-  background: #fff;
-  border-color: var(--reg-border-strong);
-}
-.wr-reg-pro__btn:focus-visible {
-  outline: 2px solid var(--reg-accent);
-  outline-offset: 2px;
-}
-.wr-reg-pro__btn:active {
-  transform: scale(0.99);
-}
-.wr-reg-pro__btn--primary {
-  background: var(--reg-text);
-  color: #fff;
-  border-color: var(--reg-text);
-}
-.wr-reg-pro__btn--primary:hover {
-  background: #1e293b;
-  border-color: #1e293b;
-}
-.wr-reg-pro__btn--ghost {
-  background: rgba(255, 255, 255, 0.55);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-.wr-reg-pro__btn--secondary {
-  background: rgba(248, 250, 252, 0.95);
-  border-color: var(--reg-border-strong);
-}
-.wr-reg-pro__btn--compact {
-  min-height: 44px;
-  padding: 0 0.95rem;
-  font-size: 0.8125rem;
-}
-
-.wr-reg-pro__btn--toolbar {
-  min-height: 40px;
-  padding: 0 1rem;
-  border-radius: 10px;
-}
-
-.wr-reg-pro__btn--filter-apply {
-  min-height: 32px;
-  padding: 0 0.75rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.wr-reg-pro__select {
-  min-height: 44px;
-  padding: 0 0.75rem;
-  border-radius: 12px;
-  border: 1px solid var(--reg-border);
-  background: rgba(255, 255, 255, 0.95);
-  font-size: 0.875rem;
-  color: var(--reg-text);
-  transition: border-color 0.18s var(--reg-ease), box-shadow 0.18s var(--reg-ease);
-}
-.wr-reg-pro__select:focus {
-  outline: none;
-  border-color: rgba(13, 148, 136, 0.45);
-  box-shadow: 0 0 0 3px var(--reg-accent-soft);
-}
-.wr-reg-pro__select--full {
-  width: 100%;
-}
-
-.wr-reg-pro__select--inline {
-  min-height: 32px;
-  padding: 0 0.375rem 0 0.125rem;
-  border-radius: 999px;
-  border: none;
-  background: transparent;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--reg-text);
-  max-width: 10rem;
-  cursor: pointer;
-  box-shadow: none;
-}
-.wr-reg-pro__select--inline:focus {
-  outline: none;
-  box-shadow: none;
-}
-
-.wr-reg-pro__empty {
-  padding: 2rem 1rem 2.5rem;
-  text-align: center;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-}
-.wr-reg-pro__empty--illustrated .wr-reg-pro__empty-icon {
-  color: #d1d5db;
-  margin: 0 auto 1rem;
-  line-height: 0;
-}
-.wr-reg-pro__empty--illustrated .wr-reg-pro__empty-icon svg {
-  display: block;
-  margin: 0 auto;
-}
-.wr-reg-pro__empty-title {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  color: var(--reg-text);
-}
-.wr-reg-pro__empty-text {
-  margin: 0.5rem 0 0;
-  font-size: 0.875rem;
-  line-height: 1.55;
-  color: var(--reg-muted);
-  max-width: 22rem;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.wr-reg-pro__cell-empty {
-  display: inline-block;
-  min-height: 1em;
-}
-
-.wr-reg-pro__table-card {
-  background: var(--reg-surface);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid var(--reg-border);
-  border-radius: 18px;
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
-  overflow: hidden;
-}
-.wr-reg-pro__table-scroll {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-.wr-reg-pro__table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.875rem;
-}
-.wr-reg-pro__table thead th {
-  text-align: left;
-  padding: 0.85rem 1rem;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--reg-muted);
-  background: rgba(255, 255, 255, 0.5);
-  border-bottom: 1px solid var(--reg-border);
-  white-space: nowrap;
-}
-.wr-reg-pro__table tbody td {
-  padding: 0.95rem 1rem;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
-  vertical-align: middle;
-  color: var(--reg-text);
-}
-.wr-reg-pro__table tbody tr:last-child td {
-  border-bottom: none;
-}
-.wr-reg-pro__table tbody tr:hover td {
-  background: rgba(13, 148, 136, 0.04);
-}
-.wr-reg-pro__mono {
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: #475569;
-}
-.wr-reg-pro__cell-muted {
-  font-size: 0.8125rem;
-  color: var(--reg-muted);
-  white-space: nowrap;
-}
-.wr-reg-pro__muted {
-  color: var(--reg-muted);
-}
-.wr-reg-pro__pill {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  background: rgba(15, 23, 42, 0.06);
-  color: #334155;
-}
-.wr-reg-pro__pill--status {
-  background: var(--reg-accent-soft);
-  color: #0f766e;
-}
-.wr-reg-pro__link {
-  color: #0f766e;
-  font-weight: 500;
-  text-decoration: none;
-  border-bottom: 1px solid transparent;
-  transition: border-color 0.15s var(--reg-ease);
-}
-.wr-reg-pro__link:hover {
-  border-bottom-color: rgba(13, 148, 136, 0.45);
-}
-.wr-reg-pro__link:focus-visible {
-  outline: 2px solid var(--reg-accent);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
-.wr-reg-pro__table-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  padding: 0 0.85rem;
-  border-radius: 10px;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--reg-text);
-  text-decoration: none;
-  border: 1px solid var(--reg-border);
-  background: rgba(255, 255, 255, 0.9);
-  transition: background 0.15s var(--reg-ease), border-color 0.15s var(--reg-ease);
-}
-.wr-reg-pro__table-action:hover {
-  background: #fff;
-  border-color: var(--reg-border-strong);
-}
-.wr-reg-pro__table-action:focus-visible {
-  outline: 2px solid var(--reg-accent);
-  outline-offset: 2px;
-}
-
-.wr-reg-pro__pagination {
-  margin: 1.25rem 0 0;
-  font-size: 0.8125rem;
-  color: var(--reg-muted);
-}
-
-.wr-reg-pro__form-card {
-  max-width: 36rem;
-  padding: 1.35rem 1.4rem 1.5rem;
-  background: var(--reg-surface);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid var(--reg-border);
-  border-radius: 18px;
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
-}
-.wr-reg-pro__form {
-  margin: 0;
-}
-.wr-reg-pro__form--spaced {
-  margin-top: 1.25rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid var(--reg-border);
-}
-.wr-reg-pro__field {
-  margin-bottom: 1.15rem;
-}
-.wr-reg-pro__field:last-of-type {
-  margin-bottom: 0;
-}
-.wr-reg-pro__label {
-  display: block;
-  margin-bottom: 0.4rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--reg-text);
-}
-.wr-reg-pro__req {
-  color: #b91c1c;
-  font-weight: 700;
-}
-.wr-reg-pro__optional {
-  font-weight: 500;
-  color: var(--reg-muted);
-  font-size: 0.8125rem;
-}
-.wr-reg-pro__input,
-.wr-reg-pro__textarea {
-  width: 100%;
-  min-height: 44px;
-  padding: 0.65rem 0.85rem;
-  border-radius: 12px;
-  border: 1px solid var(--reg-border);
-  background: rgba(255, 255, 255, 0.95);
-  font-size: 0.9375rem;
-  color: var(--reg-text);
-  font-family: inherit;
-  transition: border-color 0.18s var(--reg-ease), box-shadow 0.18s var(--reg-ease);
-}
-.wr-reg-pro__textarea {
-  min-height: auto;
-  resize: vertical;
-}
-.wr-reg-pro__input:focus,
-.wr-reg-pro__textarea:focus {
-  outline: none;
-  border-color: rgba(13, 148, 136, 0.45);
-  box-shadow: 0 0 0 3px var(--reg-accent-soft);
-}
-.wr-reg-pro__input--flex {
-  flex: 1;
-  min-width: 0;
-}
-
-.wr-reg-pro__form-footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.65rem;
-  margin-top: 1.5rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid var(--reg-border);
-}
-.wr-reg-pro__form-footer--inline {
-  margin-top: 1.15rem;
-  padding-top: 0;
-  border-top: none;
-}
-
-.wr-reg-pro__detail-card,
-.wr-reg-pro__panel {
-  margin-bottom: 1.25rem;
-  padding: 1.35rem 1.4rem 1.45rem;
-  background: var(--reg-surface);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid var(--reg-border);
-  border-radius: 18px;
-  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
-}
-.wr-reg-pro__card-title {
-  margin: 0 0 1rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--reg-muted);
-}
-.wr-reg-pro__panel-title {
-  margin: 0 0 0.35rem;
-  font-size: 1.05rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  color: var(--reg-text);
-}
-.wr-reg-pro__panel-lead {
-  margin: 0 0 1.1rem;
-  font-size: 0.8125rem;
-  line-height: 1.5;
-  color: var(--reg-muted);
-  max-width: 40rem;
-}
-
-.wr-reg-pro__dl {
-  margin: 0;
-}
-.wr-reg-pro__dl-row {
-  display: grid;
-  grid-template-columns: minmax(0, 140px) 1fr;
-  gap: 0.35rem 1.25rem;
-  padding: 0.65rem 0;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
-}
-.wr-reg-pro__dl-row:first-of-type {
-  padding-top: 0;
-}
-.wr-reg-pro__dl-row:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-.wr-reg-pro__dl-row--block {
-  grid-template-columns: 1fr;
-  gap: 0.35rem;
-}
-@media (max-width: 520px) {
-  .wr-reg-pro__dl-row:not(.wr-reg-pro__dl-row--block) {
-    grid-template-columns: 1fr;
-  }
-}
-.wr-reg-pro__dt {
-  margin: 0;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--reg-muted);
-}
-.wr-reg-pro__dd {
-  margin: 0;
-  font-size: 0.9375rem;
-  line-height: 1.45;
-  color: var(--reg-text);
-}
-.wr-reg-pro__dd--multiline {
-  white-space: pre-line;
-  word-break: break-word;
-}
-
-.wr-reg-pro__search-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-  align-items: stretch;
-  margin-bottom: 0;
-}
-
-.wr-reg-pro__visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-.clients-ws-dup-form {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 0.65rem;
-  margin-bottom: 0.75rem;
-}
-.clients-ws-dup-table {
-  margin-top: 0.5rem;
-}
-
-/* Client dedicated appointments page: layout and print rules live in
-   modules/clients/views/partials/client-ref-shell-styles.php under .client-ref--appointments-page */
-/* Client dedicated details page: scoped under .client-ref--details-page in the same partial */
-/* Client secondary tabs (sales, billing, photos, mail marketing, documents): .client-ref--client-tab in client-ref-shell-styles.php */
-
-/* ?? Smart Calendar Rail: Apple-style refresh ???????????????????????????? */
-
-.appts-smart-calendar-rail {
-  /* Align shell with day grid chrome (inherited --appts-cal-* from .appts-calendar-body). */
-  --appts-rail-shell-radius: var(--appts-cal-surface-radius, var(--ds-radius-lg));
-  /* Match workspace .ds-segmented--ios.ds-segmented--pill-track (full capsule track + thumb). */
-  --appts-rail-track-radius: var(--ds-radius-pill);
-  --appts-rail-segment-radius: var(--ds-radius-pill);
-  --appts-rail-track-fill: var(--ds-color-segmented-track-strong, #e5e7eb);
-  --appts-rail-body-chrome-radius: var(--appts-cal-inset-radius, var(--ds-radius-md));
-}
-
-/* Base layout for the new __header-row element (title + nav inline) */
-.appts-cal-card__header-row {
-  display: flex;
-  align-items: center;
   gap: 0.4rem;
 }
-.appts-cal-card__header-row .appts-cal-card__title-month {
-  flex: 1;
-  min-width: 0;
-}
-.appts-cal-card__header-row .appts-cal-card__nav {
-  flex: 0 0 auto;
-}
 
-/* Rail card: structural panel (not a floating popover) */
-.appts-smart-calendar-rail .appts-cal-card {
-  border-radius: var(--appts-rail-shell-radius);
-  border: 1px solid var(--ds-color-border-light);
-  background: var(--ds-color-bg-subtle);
-  box-shadow: var(--ds-shadow-control-rest);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  padding: var(--ds-space-3) var(--ds-space-3) var(--ds-space-3);
-  gap: var(--ds-space-2);
-  min-width: 0;
-  overflow: visible;
-}
-
-/* Segmented control */
-.appts-smart-calendar-rail .appts-cal-card__top {
-  gap: 0;
-}
-.appts-smart-calendar-rail .appts-cal-card__mode {
-  width: 100%;
-  align-self: stretch;
-  background: var(--appts-rail-track-fill);
-  border-radius: var(--appts-rail-track-radius);
-  padding: var(--ds-segmented-track-padding);
-  gap: var(--ds-space-1);
-}
-.appts-smart-calendar-rail .appts-cal-card__mode-btn {
-  flex: 1 1 0;
-  min-height: calc(var(--ds-workspace-control-height) - 6px);
-  border-radius: var(--appts-rail-segment-radius);
-  font-size: var(--ds-text-sm, 0.875rem);
-  text-transform: none;
-  letter-spacing: -0.012em;
-  font-weight: var(--ds-font-medium);
-  color: var(--ds-color-text-secondary, #6b7280);
-  padding: 0.28rem 0.5rem;
-  transition: color 0.2s cubic-bezier(0.25, 0.1, 0.25, 1),
-    background 0.2s cubic-bezier(0.25, 0.1, 0.25, 1),
-    box-shadow 0.2s cubic-bezier(0.25, 0.1, 0.25, 1);
-}
-.appts-smart-calendar-rail .appts-cal-card__mode-btn:hover:not(.appts-cal-card__mode-btn--active) {
-  color: var(--ds-color-text, #111827);
-  background: rgba(255, 255, 255, 0.45);
-}
-.appts-smart-calendar-rail .appts-cal-card__mode-btn--active {
-  background: var(--ds-color-bg-canvas, #fff);
-  color: var(--ds-color-text, #111827);
-  box-shadow: var(--ds-shadow-segmented-active);
-  font-weight: var(--ds-font-semibold);
-}
-.appts-smart-calendar-rail .appts-cal-card__mode-btn:focus-visible {
-  outline: 2px solid var(--ds-color-accent);
-  outline-offset: 1px;
-}
-
-/* Header row: title left, arrows right */
-.appts-smart-calendar-rail .appts-cal-card__header-row .appts-cal-card__title-month {
-  margin: 0;
-  font-size: 0.95rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  text-transform: none;
-  color: #111827;
-  line-height: 1.25;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.appts-smart-calendar-rail .appts-cal-card__header-row .appts-cal-card__nav {
-  display: flex;
-  align-items: center;
-  gap: var(--ds-space-1);
-  background: var(--appts-rail-track-fill);
-  padding: 2px var(--ds-space-1);
-  border-radius: var(--ds-radius-pill);
-}
-.appts-smart-calendar-rail .appts-cal-card__header-row .appts-cal-card__today {
-  display: none !important;
-}
-.appts-smart-calendar-rail .appts-cal-card__header-row .appts-cal-card__chev {
-  width: 28px;
-  height: 28px;
-  flex: 0 0 28px;
-  border-radius: 50%;
-  background: var(--ds-color-bg-canvas);
-  border: 1px solid var(--ds-color-border-light);
-  box-shadow: none;
-  color: #374151;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-}
-.appts-smart-calendar-rail .appts-cal-card__header-row .appts-cal-card__chev:hover {
-  background: var(--ds-color-bg-subtle);
-  border-color: var(--ds-color-border);
-  box-shadow: var(--ds-shadow-control-rest);
-}
-.appts-smart-calendar-rail .appts-cal-card__header-row .appts-cal-card__chev:focus-visible {
-  outline: 2px solid var(--ds-color-accent);
-  outline-offset: 1px;
-}
-
-/* Hero: hidden in rail ? kept in DOM for JS compatibility */
-.appts-smart-calendar-rail .appts-cal-card__hero {
-  display: none !important;
-}
-
-/* Grid region: soft inset so the week/month area matches the rounded shell */
-.appts-smart-calendar-rail .appts-cal-card__body {
-  padding: var(--ds-space-2) var(--ds-space-2) var(--ds-space-1);
-  border-radius: var(--appts-rail-body-chrome-radius);
-  background: rgba(255, 255, 255, 0.55);
-}
-
-/* Weekday labels */
-.appts-smart-calendar-rail .appts-cal-month__dow,
-.appts-smart-calendar-rail .appts-cal-card__weekday-ribbon {
-  font-size: 0.57rem;
+.cfe-root .cf-composer__input-cap {
+  font-size: 0.75rem;
   font-weight: 600;
-  color: #9ca3af;
-  letter-spacing: 0.02em;
-  gap: 0.18rem;
-}
-
-/* Grid gap ? smaller gap so 7 columns breathe in the rail */
-.appts-smart-calendar-rail .appts-cal-month__grid,
-.appts-smart-calendar-rail .appts-cal-card__strip {
-  gap: 0.18rem;
-  overflow: visible;
-  overflow-x: visible;
-}
-
-/* Day cells: auto-responsive circles ? fills the 1fr column, never overflows */
-.appts-smart-calendar-rail .appts-cal-card__dow,
-.appts-smart-calendar-rail .appts-cal-month__cell--day {
-  width: 100%;
-  height: auto;
-  aspect-ratio: 1;
-  min-height: 0;
-  justify-self: stretch;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  border: 1px solid transparent;
-  background: transparent;
-  color: #111827;
-  box-shadow: none;
-  padding: 0;
-  position: relative;
-  overflow: visible;
-}
-.appts-smart-calendar-rail .appts-cal-card__dow-num,
-.appts-smart-calendar-rail .appts-cal-month__cell-num {
-  font-size: 0.78rem;
-  font-weight: 500;
-  line-height: 1;
-}
-
-/* Pad cells same size so alignment matches */
-.appts-smart-calendar-rail .appts-cal-month__cell--pad {
-  aspect-ratio: 1;
-  min-height: 0;
-}
-
-/* Today: subtle ink ring */
-.appts-smart-calendar-rail .appts-cal-month__cell--today:not(.appts-cal-month__cell--selected),
-.appts-smart-calendar-rail .appts-cal-card__dow--today:not(.appts-cal-card__dow--selected) {
-  background: rgba(17, 24, 39, 0.08);
-  box-shadow: inset 0 0 0 1.5px rgba(17, 24, 39, 0.35);
-}
-.appts-smart-calendar-rail .appts-cal-month__cell--today .appts-cal-month__cell-num,
-.appts-smart-calendar-rail .appts-cal-card__dow--today .appts-cal-card__dow-num {
-  color: var(--ds-color-accent);
-}
-
-/* Hover */
-.appts-smart-calendar-rail .appts-cal-card__dow:hover:not(.appts-cal-card__dow--selected),
-.appts-smart-calendar-rail .appts-cal-month__cell--day:hover:not(.appts-cal-month__cell--selected) {
-  background: rgba(255, 255, 255, 0.72);
-  border-color: rgba(255, 255, 255, 0.9);
-}
-
-/* Selected: black circle */
-.appts-smart-calendar-rail .appts-cal-card__dow--selected,
-.appts-smart-calendar-rail .appts-cal-month__cell--selected {
-  background: #111827;
-  color: #fff;
-  border-color: #111827;
-  box-shadow: none;
-}
-.appts-smart-calendar-rail .appts-cal-card__dow--selected .appts-cal-card__dow-num,
-.appts-smart-calendar-rail .appts-cal-month__cell--selected .appts-cal-month__cell-num {
-  color: #fff;
-}
-
-/* Past/closed dim */
-.appts-smart-calendar-rail .appts-cal-month__cell--past:not(.appts-cal-month__cell--selected),
-.appts-smart-calendar-rail .appts-cal-card__dow--past:not(.appts-cal-card__dow--selected) {
-  opacity: 0.42;
-}
-
-/* Activity dots ? absolute inside the circle, centred horizontally */
-.appts-smart-calendar-rail .appts-cal-card__dow-dot,
-.appts-smart-calendar-rail .appts-cal-month__cell-dot {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  position: absolute;
-  bottom: 3px;
-  left: 50%;
-  transform: translateX(-50%);
-  opacity: 0;
-  transition: opacity 0.18s ease;
-  margin: 0;
-}
-.appts-smart-calendar-rail .appts-cal-card__dow--has-appts .appts-cal-card__dow-dot,
-.appts-smart-calendar-rail .appts-cal-month__cell--has-appts .appts-cal-month__cell-dot {
-  opacity: 1;
-  background: #34c759;
-}
-.appts-smart-calendar-rail .appts-cal-card__dow--busy-heavy.appts-cal-card__dow--has-appts .appts-cal-card__dow-dot,
-.appts-smart-calendar-rail .appts-cal-month__cell--busy-heavy.appts-cal-month__cell--has-appts .appts-cal-month__cell-dot {
-  background: #ff3b30;
-  box-shadow: none;
-}
-.appts-smart-calendar-rail .appts-cal-card__dow--selected .appts-cal-card__dow-dot,
-.appts-smart-calendar-rail .appts-cal-month__cell--selected .appts-cal-month__cell-dot {
-  display: none;
-}
-
-/* Hide appointment count badges */
-.appts-smart-calendar-rail .appts-cal-month__cell-count,
-.appts-smart-calendar-rail .appts-cal-card__dow-count {
-  display: none;
-}
-
-/* 2-months: no scroll ? both months fully visible, cells auto-size to fit */
-.appts-smart-calendar-rail .appts-cal-two-months {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  overflow: visible;
-}
-.appts-smart-calendar-rail .appts-cal-two-months__month {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  padding-bottom: 0.6rem;
-}
-.appts-smart-calendar-rail .appts-cal-two-months__month + .appts-cal-two-months__month {
-  border-top: 1px solid var(--ds-color-divider);
-  padding-top: 0.4rem;
-  padding-bottom: 0;
-}
-.appts-smart-calendar-rail .appts-cal-two-months__label {
-  margin: 0;
-  padding: 0.25rem 0.1rem 0.15rem;
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--ds-color-text);
   letter-spacing: -0.01em;
-}
-.appts-smart-calendar-rail .appts-cal-month__grid--two {
-  padding-top: 0.05rem;
+  color: var(--cfe-secondary);
 }
 
-/* Tools stack: second shell + segmented icon row (same geometry as mode switcher) */
-.appts-smart-calendar-rail .cal-tools-panel {
-  margin-top: var(--ds-space-3);
-  border-top: none;
-  padding: var(--ds-space-2);
-  border-radius: var(--appts-rail-shell-radius);
-  border: 1px solid var(--ds-color-border-light);
-  background: var(--ds-color-bg-subtle);
-  box-shadow: var(--ds-shadow-control-rest);
-}
-.appts-smart-calendar-rail .cal-tools-tabs {
-  gap: var(--ds-space-1);
-  padding: var(--ds-segmented-track-padding);
-  margin-bottom: var(--ds-space-2);
-  border-bottom: none;
-  background: var(--appts-rail-track-fill);
-  border-radius: var(--appts-rail-track-radius);
-}
-.appts-smart-calendar-rail .cal-tools-tab {
-  flex: 1;
-  margin: 0;
-  min-height: calc(var(--ds-workspace-control-height) - 6px);
-  padding: 0.35rem 0.2rem;
-  border: none;
-  border-radius: var(--appts-rail-segment-radius);
-  background: transparent;
-}
-.appts-smart-calendar-rail .cal-tools-tab:hover:not(.cal-tools-tab--active) {
-  color: var(--ds-color-text-secondary);
-  background: rgba(255, 255, 255, 0.45);
-}
-.appts-smart-calendar-rail .cal-tools-tab--active {
-  color: var(--ds-color-text);
-  background: var(--ds-color-bg-canvas);
-  box-shadow: var(--ds-shadow-segmented-active);
-  font-weight: var(--ds-font-semibold);
-}
-.appts-smart-calendar-rail .cal-tools-tab:focus-visible {
-  border-radius: var(--appts-rail-segment-radius);
-  outline: 2px solid var(--ds-color-accent);
-  outline-offset: 1px;
-}
-.appts-smart-calendar-rail .cal-tools-body {
-  border-radius: 0 0 var(--appts-rail-body-chrome-radius) var(--appts-rail-body-chrome-radius);
-  min-height: 0;
-}
-.appts-smart-calendar-rail .cal-tools-pane {
-  border-radius: 0 0 var(--appts-rail-body-chrome-radius) var(--appts-rail-body-chrome-radius);
-}
-
-/* -- Service Category Tree UI ------------------------------------------ */
-.svc-cat-header {
-  display: flex;
+.cfe-root .cf-composer__ctrl-check {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-bottom: 1.25rem;
+  gap: 0.45rem;
+  font-size: 0.875rem;
+  color: var(--cfe-text);
 }
-.svc-cat-header-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-.svc-cat-empty { color: var(--ds-color-text-secondary); margin: 2rem 0; }
 
-.svc-cat-tree-table { width: 100%; border-collapse: collapse; }
-.svc-cat-tree-table th,
-.svc-cat-tree-table td {
-  padding: 0.45rem 0.75rem;
-  border-bottom: 1px solid var(--ds-color-border-light);
-  vertical-align: middle;
-  text-align: left;
+/* Delivery expand */
+.cfe-root .cf-composer__delivery-expand {
+  overflow: hidden;
+  transition: max-height 0.22s ease, opacity 0.18s ease;
+  max-height: 300px;
+  opacity: 1;
 }
-.svc-cat-tree-table th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ds-color-text-secondary); }
-.svc-cat-tree-table tr:hover td { background: var(--ds-color-bg-subtle); }
-.svc-cat-indent { display: inline-block; }
-.svc-cat-branch-symbol { color: var(--ds-color-text-muted, #9ca3af); }
-.svc-cat-path { font-size: 0.82rem; color: var(--ds-color-text-secondary); }
-.svc-cat-actions { white-space: nowrap; font-size: 0.84rem; }
-.svc-cat-actions a,
-.svc-cat-actions button { margin-right: 0.4rem; }
-.btn-link-danger {
-  background: none; border: none; padding: 0; cursor: pointer;
-  color: var(--ds-color-danger, #dc2626); font-size: inherit; text-decoration: underline;
-}
-.btn-link-danger:hover { opacity: 0.8; }
 
-/* show page */
-.svc-cat-show-header {
-  display: flex; align-items: flex-start; justify-content: space-between;
-  flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;
+.cfe-root .cf-composer__delivery-expand--collapsed {
+  max-height: 0;
+  opacity: 0;
 }
-.svc-cat-breadcrumb { font-size: 0.84rem; color: var(--ds-color-text-secondary); margin-bottom: 0.25rem; }
-.svc-cat-breadcrumb a { color: inherit; text-decoration: underline; }
-.svc-cat-detail dl { display: grid; grid-template-columns: 10rem 1fr; gap: 0.35rem 1rem; margin-bottom: 1rem; }
-.svc-cat-detail dt { font-weight: 600; color: var(--ds-color-text-secondary); font-size: 0.84rem; }
-.svc-cat-children { margin-top: 1rem; }
-.svc-cat-child-list { list-style: none; padding: 0; margin: 0.5rem 0; }
-.svc-cat-child-list li { padding: 0.25rem 0; border-bottom: 1px solid var(--ds-color-border-light); }
-.svc-cat-child-list li a + a { margin-left: 0.5rem; font-size: 0.82rem; }
+
+.cfe-root .cf-composer__delivery-expand--static {
+  max-height: none;
+  opacity: 1;
+  overflow: visible;
+}
+
+.cfe-root .cf-composer__delivery-expand-inner {
+  padding-top: 0.625rem;
+}
+
+/* Drag-and-drop */
+.cf-composer__field-item--dragging {
+  opacity: 0.45;
+}
+
+.cf-composer__sort-placeholder {
+  list-style: none;
+  background: color-mix(in srgb, var(--cfe-accent-soft) 80%, white);
+  border: 2px dashed var(--cfe-accent);
+  border-radius: var(--cfe-radius-card);
+  min-height: 72px;
+  box-sizing: border-box;
+}
+
+.cf-composer__grouped-list--is-dragging * {
+  pointer-events: none;
+}
+
+.cf-composer__field-item--drop-settle {
+  animation: cfe-settle 0.42s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+@keyframes cfe-settle {
+  0%   { box-shadow: 0 0 0 3px var(--cfe-accent-soft); }
+  100% { box-shadow: none; }
+}
+
+/* cf-composer__hidden-form utility (shared) */
+.cf-composer__hidden-form {
+  display: none;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .cfe-root {
+    padding: 0.75rem 0.875rem 1.5rem;
+  }
+
+  .cfe-page-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .cfe-page-head__controls {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .cfe-profile-seg.ds-segmented--pill-track {
+    width: 100%;
+  }
+
+  .cfe-save-area {
+    flex-wrap: wrap;
+  }
+
+  .cfe-tool-panel {
+    min-width: min(90vw, 320px);
+  }
+}
 
 /* -- Service Step 1 ? category tree select ----------------------------- */
 .svc-cat-tree-select {
