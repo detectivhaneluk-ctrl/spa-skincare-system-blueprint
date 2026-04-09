@@ -16765,6 +16765,148 @@ main.app-shell__main.main.cf-composer-page .cf2-field-item {
   box-sizing: border-box;
 }
 
+.cf2-body.cf2-body--focused {
+  grid-template-columns: 1fr;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: clamp(1rem, 2.8vw, 1.75rem) clamp(1rem, 3vw, 1.75rem) 1.5rem;
+}
+
+.cf2-body--focused .cf2-content-area {
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+}
+
+.cf2-profile-seg {
+  margin: 0 0 0.875rem;
+}
+
+.cf2-editor-card {
+  background: var(--ds-color-bg-canvas);
+  border: 1px solid var(--ds-color-border-light);
+  border-radius: var(--cf2-radius-card);
+  box-shadow: var(--ds-shadow-xs);
+  overflow: hidden;
+}
+
+.cf2-editor-card > .cf2-toolbar--content {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  border-bottom: 1px solid var(--ds-color-border-light);
+}
+
+.cf2-save-state {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cf2-secondary);
+  background: var(--cf2-fill);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.cf2-save-state.is-dirty {
+  color: #7c2d12;
+  background: #fff7ed;
+  border-color: #fdba74;
+}
+
+.cf2-secondary-tools {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid var(--ds-color-border-light);
+  background: color-mix(in srgb, var(--cf2-fill) 42%, white);
+}
+
+.cf2-tools-disclosure {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.cf2-tools-trigger {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 40px;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cf2-text);
+}
+
+.cf2-tools-trigger::-webkit-details-marker {
+  display: none;
+}
+
+.cf2-tools-trigger-icon {
+  display: inline-flex;
+  color: var(--cf2-blue);
+}
+
+.cf2-tools-trigger--quiet .cf2-tools-trigger-icon {
+  color: var(--cf2-secondary);
+}
+
+.cf2-tools-panel {
+  padding: 0 0.75rem 0.75rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.cf2-tools-panel--add {
+  padding-top: 0.65rem;
+}
+
+.cf2-tools-search-wrap {
+  display: block;
+  margin: 0 0 0.6rem;
+}
+
+.cf2-tools-search {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 9px;
+  padding: 0 0.65rem;
+  font-size: 0.875rem;
+  background: #fff;
+}
+
+.cf2-tools-subdisclosure {
+  margin-top: 0.65rem;
+  border-top: 1px dashed rgba(0, 0, 0, 0.08);
+  padding-top: 0.55rem;
+}
+
+.cf2-tools-subdisclosure > .cf2-sb-mini-cap {
+  cursor: pointer;
+  margin: 0 0 0.35rem;
+  list-style: none;
+}
+
+.cf2-tools-subdisclosure > .cf2-sb-mini-cap::-webkit-details-marker {
+  display: none;
+}
+
+.cf2-field-list--editor {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
 /* -- Sidebar ? glass panel matching appointments side panel -- */
 .cf2-sidebar {
   position: sticky;
@@ -17623,6 +17765,8 @@ main.app-shell__main.main.cf-composer-page .cf2-field-item {
   max-width: min(10.5rem, 100%);
   padding: 8px 4px;
   box-sizing: border-box;
+  opacity: 0.35;
+  transition: opacity 0.15s ease;
 }
 
 .cf2-field-item--locked .cf2-field-actions:empty {
@@ -17631,6 +17775,13 @@ main.app-shell__main.main.cf-composer-page .cf2-field-item {
   width: 0;
   padding: 0;
   overflow: hidden;
+}
+
+.cf2-field-item:hover .cf2-field-actions,
+.cf2-field-item:focus-within .cf2-field-actions,
+.cf2-field-item--settings-open .cf2-field-actions,
+.cf2-field-summary-locked .cf2-field-actions {
+  opacity: 1;
 }
 
 .cf2-action-btn {
@@ -17931,6 +18082,14 @@ main.app-shell__main.main.cf-composer-page .cf2-field-item {
   .cf2-profile-seg-mobile {
     display: block;
     margin-bottom: 16px;
+  }
+
+  .cf2-body.cf2-body--focused {
+    padding: 0.875rem 1rem 1.25rem;
+  }
+
+  .cf2-body--focused .cf2-content-area {
+    max-width: none;
   }
 }
 
