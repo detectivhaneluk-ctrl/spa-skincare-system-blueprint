@@ -1413,10 +1413,16 @@ final class ClientController
             'is_active' => isset($_POST['is_active']) ? 1 : 0,
             'sort_order' => (int) ($_POST['sort_order'] ?? 0),
         ];
+        $redirectTo = '/clients/custom-fields';
+        $rawRedirect = trim((string) ($_POST['_redirect_to'] ?? ''));
+        if ($rawRedirect !== '' && str_starts_with($rawRedirect, '/clients/custom-fields')) {
+            $redirectTo = $rawRedirect;
+        }
+
         try {
             $this->service->createCustomFieldDefinition($payload);
             flash('success', 'Custom field created.');
-            header('Location: /clients/custom-fields');
+            header('Location: ' . $redirectTo);
             exit;
         } catch (\Throwable $e) {
             slog('error', 'clients.custom_field_create', $e->getMessage(), []);

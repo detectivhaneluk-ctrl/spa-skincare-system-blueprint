@@ -134,6 +134,7 @@ $iconSvg = static function (string $name, string $class = ''): string {
         'checkmark' => $wrap('<path d="M20 6 9 17l-5-5"/>', '18', '18'),
         'arrowClockwise' => $wrap('<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>', '18', '18'),
         'chevronDown' => $wrap('<path d="m6 9 6 6 6-6"/>', '16', '16'),
+        'xMark' => $wrap('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>', '16', '16'),
         'docText' => $wrap($lucideFileText, '18', '18'),
         'checkSquare' => $wrap('<rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 12 2 2 4-4"/>', '18', '18'),
         default => '',
@@ -489,6 +490,51 @@ $lockedStackCount = count($lockedStackLabels);
                 <?php endforeach; ?>
             </nav>
 
+            <?php if ($canEditClientFields && ($layoutStorageReady ?? true)): ?>
+            <!-- Quick create custom field (restored after accidental checkout) -->
+            <details class="cfe-new-field-details" data-cf-new-field-details>
+                <summary class="cfe-new-field-summary" aria-label="Create a new custom field">
+                    <span class="cfe-new-field-summary__ic" aria-hidden="true"><?= $iconSvg('plus') ?></span>
+                    <span>New field</span>
+                </summary>
+                <div class="cfe-new-field-panel">
+                    <div class="cfe-new-field-panel__head">
+                        <span class="cfe-new-field-panel__title">New custom field</span>
+                        <button type="button" class="cfe-new-field-panel__close" data-cf-new-field-close aria-label="Close"><?= $iconSvg('xMark') ?></button>
+                    </div>
+                    <form method="post" action="/clients/custom-fields" class="cfe-new-field-form" autocomplete="off">
+                        <input type="hidden" name="<?= $csrfTn ?>" value="<?= htmlspecialchars($csrf) ?>">
+                        <input type="hidden" name="_redirect_to" value="<?= htmlspecialchars('/clients/custom-fields?profile=' . rawurlencode($selectedProfileKey ?? '')) ?>">
+                        <input type="hidden" name="is_active" value="1">
+
+                        <div class="cfe-new-field-row">
+                            <label class="cfe-new-field-label" for="cf-new-field-label">Label</label>
+                            <input id="cf-new-field-label" type="text" name="label" class="cfe-new-field-input" placeholder="e.g. Skin type" maxlength="150" required autocomplete="off">
+                        </div>
+                        <div class="cfe-new-field-row">
+                            <label class="cfe-new-field-label" for="cf-new-field-type">Type</label>
+                            <select id="cf-new-field-type" name="field_type" class="cfe-new-field-select">
+                                <option value="text">Single line text</option>
+                                <option value="textarea">Paragraph text</option>
+                                <option value="number">Number</option>
+                                <option value="date">Date</option>
+                                <option value="phone">Phone</option>
+                                <option value="email">Email</option>
+                                <option value="select">Picklist</option>
+                                <option value="multiselect">Multiselect</option>
+                                <option value="boolean">Yes / No</option>
+                                <option value="address">Address block</option>
+                            </select>
+                        </div>
+                        <div class="cfe-new-field-actions">
+                            <button type="submit" class="cfe-new-field-submit">Create field</button>
+                            <button type="button" class="cfe-new-field-cancel" data-cf-new-field-close>Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </details>
+            <?php endif; ?>
+
             <!-- Save area -->
             <?php if ($showToolbarActions): ?>
             <div class="cfe-save-area">
@@ -656,8 +702,8 @@ $lockedStackCount = count($lockedStackLabels);
                             <span class="cfe-grip cfe-grip--locked" aria-hidden="true"><?= $iconSvg('lock') ?></span>
                             <div class="cfe-field-center cfe-locked-summary-row__body">
                                 <div class="cfe-field-identity">
-                                    <span class="cfe-field-name">Fixed intake fields</span>
-                                    <span class="cfe-lock-tag"><?= (int) $lockedStackCount ?> · locked</span>
+                                    <span class="cfe-field-name">Fixed fields</span>
+                                    <span class="cfe-lock-tag"><?= (int) $lockedStackCount ?></span>
                                 </div>
                                 <p class="cfe-locked-summary-row__hint" id="cf-readonly-details-hint"><?= htmlspecialchars($lockedHintLine) ?></p>
                             </div>
@@ -1310,6 +1356,38 @@ $lockedStackCount = count($lockedStackLabels);
                 if (pendingTimer) clearTimeout(pendingTimer);
                 resetConfirm(pendingForm);
                 pendingForm = null;
+            }
+        });
+    })();
+
+    /* ── Header: quick new-field popover ── */
+    (function () {
+        var det = root.querySelector('[data-cf-new-field-details]');
+        if (!det) return;
+        var labelIn = det.querySelector('#cf-new-field-label');
+        var form = det.querySelector('.cfe-new-field-form');
+
+        function closeNewField() {
+            det.removeAttribute('open');
+            if (form) form.reset();
+        }
+
+        det.querySelectorAll('[data-cf-new-field-close]').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                closeNewField();
+            });
+        });
+
+        det.addEventListener('toggle', function () {
+            if (det.open && labelIn) {
+                window.requestAnimationFrame(function () { labelIn.focus(); });
+            }
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && det.open) {
+                closeNewField();
             }
         });
     })();
