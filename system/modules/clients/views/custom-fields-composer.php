@@ -605,21 +605,21 @@ $lockedStackCount = count($lockedStackLabels);
 
             <?php else: ?>
             <?php
-            /** When a field list follows the toolbar, pair with .cf2-stack-card-body for one card + scroll-safe corners (no :has-only CSS). */
+            /** When a field list follows the toolbar, pair with .cf2-stack-card-body; .cf2-composer-stack owns one card silhouette (border/radius/shadow). */
             $cf2ToolbarListStack = !empty($layoutItemsSorted);
-            /** Stacked: outer toolbar same opaque white as inner so rounded corners never composite “holes” over scrolling rows. Use a slightly larger top radius on the sticky cap so the curve stays visibly soft while scrolling. */
-            $cf2ToolbarOuterStyle = 'position: sticky !important; top: var(--clients-ws-nav-sticky-h, 3.5rem) !important; z-index: 9999 !important; background-image: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; overflow: hidden !important; box-sizing: border-box; isolation: isolate;';
-            $cf2ToolbarOuterStyle .= $cf2ToolbarListStack
-                ? ' background-color: #ffffff !important; border-top-left-radius: 18px !important; border-top-right-radius: 18px !important; border-bottom-left-radius: 0 !important; border-bottom-right-radius: 0 !important;'
-                : ' background-color: var(--cf2-canvas, #F5F5F7) !important; border-radius: 14px !important;';
-            $cf2ToolbarInnerStyle = 'background-color: #fff !important; width: 100%; box-sizing: border-box; flex: 1 1 auto; align-self: stretch; min-height: var(--cf2-toolbar-h, 52px);';
-            $cf2ToolbarInnerStyle .= $cf2ToolbarListStack
-                ? ' border-top-left-radius: 18px !important; border-top-right-radius: 18px !important; border-bottom-left-radius: 0 !important; border-bottom-right-radius: 0 !important;'
-                : ' border-radius: 14px !important;';
+            $cf2ToolbarOuterStyle = $cf2ToolbarListStack
+                ? ''
+                : 'background-color: var(--cf2-canvas, #F5F5F7) !important; border-radius: 14px !important; background-image: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important;';
+            $cf2ToolbarInnerStyle = $cf2ToolbarListStack
+                ? ''
+                : 'background-color: #fff !important; width: 100%; box-sizing: border-box; flex: 1 1 auto; align-self: stretch; min-height: var(--cf2-toolbar-h, 52px); border-radius: 14px !important;';
             ?>
-            <!-- Toolbar: sibling before shell + stack-scroll so sticky pins to main; list scrolls underneath -->
-            <div class="cf2-toolbar cf2-toolbar--content<?= $cf2ToolbarListStack ? ' cf2-stack-card-top' : '' ?>" style="<?= htmlspecialchars($cf2ToolbarOuterStyle, ENT_QUOTES, 'UTF-8') ?>">
-                <div class="cf2-toolbar-inner" style="<?= htmlspecialchars($cf2ToolbarInnerStyle, ENT_QUOTES, 'UTF-8') ?>">
+            <?php if ($cf2ToolbarListStack): ?>
+            <div class="cf2-composer-stack">
+            <?php endif; ?>
+            <!-- Toolbar: sticky inside main; stacked mode is wrapped with .cf2-composer-stack so one element owns the outer card chrome -->
+            <div class="cf2-toolbar cf2-toolbar--content<?= $cf2ToolbarListStack ? ' cf2-stack-card-top' : '' ?>"<?= $cf2ToolbarOuterStyle !== '' ? ' style="' . htmlspecialchars($cf2ToolbarOuterStyle, ENT_QUOTES, 'UTF-8') . '"' : '' ?>>
+                <div class="cf2-toolbar-inner"<?= $cf2ToolbarInnerStyle !== '' ? ' style="' . htmlspecialchars($cf2ToolbarInnerStyle, ENT_QUOTES, 'UTF-8') . '"' : '' ?>>
                     <div class="cf2-toolbar-brand">
                         <span class="cf2-toolbar-profile"><?= htmlspecialchars($profileDisplayLabel) ?></span>
                         <span class="cf2-toolbar-dot" aria-hidden="true"></span>
@@ -912,6 +912,7 @@ $lockedStackCount = count($lockedStackLabels);
 
             <?php if ($cf2ToolbarListStack): ?>
             </div><!-- /.cf2-stack-card-shell -->
+            </div><!-- /.cf2-composer-stack -->
             <?php endif; ?>
 
             <?php endif; ?>

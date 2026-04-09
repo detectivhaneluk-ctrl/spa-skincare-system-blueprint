@@ -16315,47 +16315,41 @@ main.app-shell__main.main.cf-composer-page .cf2-root .cf2-toolbar {
     0 4px 12px -2px rgba(0, 0, 0, 0.06);
 }
 
-/* Stacked composer: list scrolls in sibling shell ? keep shell under the sticky bar in paint order */
-main.app-shell__main.main.cf-composer-page .cf2-content-area > .cf2-stack-card-shell {
+/*
+ * Stacked composer: one outer card owner (.cf2-composer-stack) owns border + radius + shadow.
+ * Sticky toolbar + .cf2-stack-card-shell are children with flat seams (no duplicate outer chrome).
+ * Avoid clip-path / extra pseudo paint layers on position:sticky ? they often flatten rounded corners while scrolling.
+ */
+.cf2-composer-stack {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 0 0 0.75rem;
+  border: 1px solid var(--ds-color-border-light);
+  border-radius: var(--cf2-radius-card);
+  box-shadow: var(--ds-shadow-xs);
+  background: var(--ds-color-bg-canvas);
+  overflow: visible;
+}
+
+main.app-shell__main.main.cf-composer-page .cf2-composer-stack > .cf2-stack-card-shell {
   position: relative;
   z-index: 0;
 }
 
-/* Solid white sticky slab (matches PHP inline when stacked); beats any stray glass token */
-main.app-shell__main.main.cf-composer-page .cf2-content-area > .cf2-toolbar.cf2-toolbar--content.cf2-stack-card-top {
-  background: #ffffff !important;
-  background-color: #ffffff !important;
+main.app-shell__main.main.cf-composer-page .cf2-composer-stack > .cf2-toolbar.cf2-toolbar--content.cf2-stack-card-top {
+  margin: 0;
+  border: none;
+  box-shadow: none;
+  border-radius: var(--cf2-radius-card) var(--cf2-radius-card) 0 0;
+  background: var(--ds-color-bg-canvas) !important;
+  background-color: var(--ds-color-bg-canvas) !important;
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
-  border-top-left-radius: 18px !important;
-  border-top-right-radius: 18px !important;
-  clip-path: inset(0 round 18px 18px 0 0);
-  box-shadow:
-    inset 0 -1px 0 rgba(0, 0, 0, 0.06),
-    0 10px 18px -14px rgba(0, 0, 0, 0.16) !important;
-  isolation: isolate;
-  backface-visibility: hidden;
-}
-
-/*
- * Paint shield for stacked sticky toolbar.
- * Some browsers still composite scrolled row content through the sticky slab during overlap,
- * especially around the rounded seam. Force an opaque mask inside the toolbar stacking context.
- */
-main.app-shell__main.main.cf-composer-page .cf2-content-area > .cf2-toolbar.cf2-toolbar--content.cf2-stack-card-top::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: #ffffff;
-  border-top-left-radius: inherit;
-  border-top-right-radius: inherit;
-  pointer-events: none;
-  z-index: 0;
-}
-
-main.app-shell__main.main.cf-composer-page .cf2-content-area > .cf2-toolbar.cf2-toolbar--content.cf2-stack-card-top > .cf2-toolbar-inner {
-  position: relative;
-  z-index: 1;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 /* Long profile titles: wrap instead of ellipsis so labels stay readable while scrolling */
@@ -16398,30 +16392,12 @@ main.app-shell__main.main.cf-composer-page .cf2-field-item {
   box-sizing: border-box;
 }
 
-/*
- * Corner cut masks: hide the first few pixels of the scrolling stack under the sticky cap,
- * so content never visually reaches into the rounded top corners.
- */
-.cf2-stack-card-shell::before,
-.cf2-stack-card-shell::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  width: 36px;
-  height: 36px;
-  background: #ffffff;
-  pointer-events: none;
-  z-index: 3;
-}
-
-.cf2-stack-card-shell::before {
-  left: 0;
-  border-bottom-right-radius: 36px;
-}
-
-.cf2-stack-card-shell::after {
-  right: 0;
-  border-bottom-left-radius: 36px;
+/* Inside unified stack: outer .cf2-composer-stack already has border, radius, shadow */
+.cf2-composer-stack > .cf2-stack-card-shell {
+  margin: 0;
+  border: none;
+  box-shadow: none;
+  border-radius: 0 0 var(--cf2-radius-card) var(--cf2-radius-card);
 }
 
 .cf2-stack-card-shell > .cf2-stack-scroll {
