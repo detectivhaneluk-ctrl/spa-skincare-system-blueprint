@@ -2620,8 +2620,9 @@
       badge.hidden = count === 0;
     }
     if (count === 0) {
-      pane.innerHTML = '<p class="cal-tools-hint">No active waitlist entries for this date.</p>'
-        + '<a href="' + url + '" class="cal-tools-link">Open full waitlist</a>';
+      pane.innerHTML =
+        '<span class="visually-hidden">No active waitlist entries for this date.</span>'
+        + '<a href="' + url + '" class="cal-tools-link cal-tools-link--primary">Open full waitlist</a>';
     } else {
       pane.innerHTML = '<p class="cal-tools-count">' + count + ' waiting</p>'
         + '<a href="' + url + '" class="cal-tools-link cal-tools-link--primary">View &amp; manage waitlist →</a>';
