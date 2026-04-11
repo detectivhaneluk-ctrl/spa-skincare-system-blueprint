@@ -1633,20 +1633,48 @@ body {
   padding-bottom: 0;
   padding-left: var(--ds-space-6);
   padding-right: var(--ds-space-6);
-  border-bottom: 1px solid #e5e7eb;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 4px 14px rgba(15, 23, 42, 0.05);
-  background: rgba(245, 245, 247, 0.85);
+}
+
+/* Light theme: liquid glass top rail (same language as calendar workspace — not flat gray film) */
+html:not([data-app-theme='dark']) .app-shell__header--top:not(.app-shell__header--founder) {
+  border-bottom: 1px solid rgba(15, 23, 42, 0.065);
+  box-shadow: var(--ds-cal-liquid-outer-shadow), var(--ds-cal-liquid-inset-rim);
+  background-color: transparent;
+  background-image: var(--ds-cal-liquid-fill-lifted);
+  -webkit-backdrop-filter: var(--ds-cal-liquid-blur);
+  backdrop-filter: var(--ds-cal-liquid-blur);
+}
+
+html[data-app-theme='dark'] .app-shell__header--top:not(.app-shell__header--founder) {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 4px 18px rgba(0, 0, 0, 0.45);
+  background-color: rgba(20, 20, 22, 0.88);
+  background-image: none;
   -webkit-backdrop-filter: saturate(180%) blur(24px);
   backdrop-filter: saturate(180%) blur(24px);
 }
+
 @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-  .app-shell__header--top:not(.app-shell__header--founder) {
-    background: var(--ds-color-bg-canvas);
+  html:not([data-app-theme='dark']) .app-shell__header--top:not(.app-shell__header--founder) {
+    background-color: var(--ds-color-bg-canvas);
+    background-image: none;
+  }
+  html[data-app-theme='dark'] .app-shell__header--top:not(.app-shell__header--founder) {
+    background-color: rgba(20, 20, 22, 0.96);
+    background-image: none;
   }
 }
+
 @media (prefers-reduced-transparency: reduce) {
-  .app-shell__header--top:not(.app-shell__header--founder) {
-    background: var(--ds-color-bg-canvas);
+  html:not([data-app-theme='dark']) .app-shell__header--top:not(.app-shell__header--founder) {
+    background-color: var(--ds-color-bg-canvas);
+    background-image: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  html[data-app-theme='dark'] .app-shell__header--top:not(.app-shell__header--founder) {
+    background-color: var(--ds-color-bg-canvas);
+    background-image: none;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
@@ -2237,11 +2265,6 @@ html[data-app-sidebar-collapsed="true"] .app-shell__account--sidebar .app-shell_
   padding: var(--ds-space-2);
 }
 
-html[data-app-theme="dark"] .app-shell__header--top:not(.app-shell__header--founder) {
-  background: rgba(20, 20, 22, 0.92);
-  border-bottom-color: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 4px 18px rgba(0, 0, 0, 0.45);
-}
 html[data-app-theme="dark"] .app-shell__header--top:not(.app-shell__header--founder) .app-shell__nav-link {
   color: var(--ds-color-text-secondary);
 }
