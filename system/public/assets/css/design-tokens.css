@@ -170,12 +170,12 @@
   --ds-color-selection-fill: #0d3b66;
   --ds-color-selection-shadow: rgba(13, 59, 102, 0.28);
 
-  /* Appointments workspace header — segmented switch + primary CTA (liquid glass; see app.css) */
+  /* Appointments workspace header — near-colorless glass (see app.css; keep saturation restrained) */
   --ds-appts-header-control-height: var(--ds-workspace-control-height);
   --ds-appts-header-pad: 5px;
   --ds-appts-header-font-size: 0.9375rem;
   --ds-appts-header-tracking: -0.028em;
-  --ds-appts-header-blur: blur(22px) saturate(168%);
+  --ds-appts-header-blur: blur(22px) saturate(118%);
 }
 
 /* Native controls: brand jade for checkboxes/radios (see accent tokens for CTAs/text). */
@@ -234,5 +234,5 @@ html[data-app-theme="dark"] {
   --ds-split-pill-accent-from: #34d399;
   --ds-split-pill-accent-to: #059669;
 
-  --ds-appts-header-blur: blur(22px) saturate(155%);
+  --ds-appts-header-blur: blur(22px) saturate(112%);
 }

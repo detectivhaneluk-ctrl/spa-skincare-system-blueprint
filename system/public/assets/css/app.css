@@ -3696,7 +3696,7 @@ body:has(.calendar-workspace) {
 }
 
 /*
- * Appointments header primary — liquid glass CTA (all routes: list / waitlist / calendar / …).
+ * Appointments header primary — pale glass CTA + whisper cool tint (not sapphire / navy paint).
  * Neutralizes global .ds-btn--toolbar ink + icon spin for this control only.
  */
 .appts-workspace-header .appts-workspace-header__new.ds-btn--toolbar {
@@ -3705,26 +3705,27 @@ body:has(.calendar-workspace) {
   max-height: var(--ds-appts-header-control-height);
   padding: 0 var(--ds-space-6);
   gap: var(--ds-space-2);
-  color: #f8fafc;
-  border: 1px solid rgba(255, 255, 255, 0.38);
-  background: linear-gradient(
-    165deg,
-    rgba(255, 255, 255, 0.44) 0%,
-    rgba(13, 59, 102, 0.4) 42%,
-    rgba(9, 42, 71, 0.55) 100%
-  );
-  background-color: rgba(13, 59, 102, 0.28);
+  color: rgba(24, 42, 66, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  background-color: transparent;
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.62) 0%, rgba(255, 255, 255, 0.2) 100%),
+    linear-gradient(
+      180deg,
+      rgba(214, 228, 242, 0.56) 0%,
+      rgba(255, 255, 255, 0.3) 52%,
+      rgba(205, 221, 236, 0.28) 100%
+    );
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.58),
-    inset 0 -1px 0 rgba(9, 42, 71, 0.38),
-    0 4px 16px rgba(9, 42, 71, 0.24),
-    0 1px 2px rgba(15, 23, 42, 0.06);
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    inset 0 -1px 0 rgba(15, 23, 42, 0.04),
+    0 4px 14px rgba(15, 23, 42, 0.05),
+    0 2px 6px rgba(15, 23, 42, 0.03);
   backdrop-filter: var(--ds-appts-header-blur);
   -webkit-backdrop-filter: var(--ds-appts-header-blur);
   transition:
     transform 0.2s var(--ds-ease-spring),
     box-shadow 0.2s var(--ds-ease-spring),
-    background-color 0.2s ease,
     border-color 0.2s ease,
     color 0.2s ease;
 }
@@ -3732,24 +3733,25 @@ body:has(.calendar-workspace) {
 .appts-workspace-header .appts-workspace-header__new.ds-btn--toolbar svg {
   flex-shrink: 0;
   transform: none;
+  color: inherit;
   transition: opacity 0.18s ease;
 }
 
 .appts-workspace-header .appts-workspace-header__new.ds-btn--toolbar:hover {
-  color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.48);
-  background: linear-gradient(
-    165deg,
-    rgba(255, 255, 255, 0.54) 0%,
-    rgba(13, 59, 102, 0.46) 40%,
-    rgba(9, 42, 71, 0.62) 100%
-  );
-  background-color: rgba(13, 59, 102, 0.36);
+  color: rgba(18, 34, 54, 0.96);
+  border-color: rgba(255, 255, 255, 0.62);
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.68) 0%, rgba(255, 255, 255, 0.24) 100%),
+    linear-gradient(
+      180deg,
+      rgba(214, 228, 242, 0.58) 0%,
+      rgba(255, 255, 255, 0.34) 52%,
+      rgba(205, 221, 236, 0.32) 100%
+    );
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.68),
-    inset 0 -1px 0 rgba(9, 42, 71, 0.3),
-    0 8px 24px rgba(9, 42, 71, 0.3),
-    0 2px 4px rgba(15, 23, 42, 0.08);
+    0 10px 24px rgba(15, 23, 42, 0.07),
+    0 3px 10px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.74);
   transform: translateY(-1px);
 }
 
@@ -3760,48 +3762,61 @@ body:has(.calendar-workspace) {
 .appts-workspace-header .appts-workspace-header__new.ds-btn--toolbar:active {
   transform: translateY(0.5px);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.42),
-    inset 0 -1px 0 rgba(9, 42, 71, 0.42),
-    0 2px 8px rgba(9, 42, 71, 0.22);
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -1px 0 rgba(15, 23, 42, 0.06),
+    0 2px 8px rgba(15, 23, 42, 0.05);
 }
 
 .appts-workspace-header .appts-workspace-header__new.ds-btn--toolbar:focus-visible {
   outline: none;
   box-shadow:
     0 0 0 2px var(--ds-color-bg-page),
-    0 0 0 4px var(--ds-color-focus-ring-ui),
-    inset 0 1px 0 rgba(255, 255, 255, 0.58),
-    0 4px 16px rgba(9, 42, 71, 0.24);
+    0 0 0 4px rgba(15, 23, 42, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 4px 14px rgba(15, 23, 42, 0.06);
 }
 
 html[data-app-theme="dark"] .appts-workspace-header .appts-workspace-header__new.ds-btn--toolbar {
-  color: #f4f4f5;
-  border-color: rgba(255, 255, 255, 0.22);
-  background: linear-gradient(
-    165deg,
-    rgba(91, 142, 196, 0.4) 0%,
-    rgba(13, 59, 102, 0.58) 45%,
-    rgba(5, 20, 38, 0.75) 100%
-  );
-  background-color: rgba(13, 59, 102, 0.42);
+  color: rgba(236, 240, 247, 0.92);
+  border-color: rgba(255, 255, 255, 0.16);
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 100%),
+    linear-gradient(
+      180deg,
+      rgba(110, 140, 175, 0.22) 0%,
+      rgba(42, 48, 58, 0.42) 48%,
+      rgba(55, 68, 88, 0.32) 100%
+    );
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.48),
-    0 6px 22px rgba(0, 0, 0, 0.48);
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35),
+    0 4px 16px rgba(0, 0, 0, 0.35);
 }
 
 html[data-app-theme="dark"] .appts-workspace-header .appts-workspace-header__new.ds-btn--toolbar:hover {
-  border-color: rgba(255, 255, 255, 0.32);
-  background: linear-gradient(
-    165deg,
-    rgba(120, 168, 220, 0.44) 0%,
-    rgba(13, 59, 102, 0.62) 42%,
-    rgba(5, 20, 38, 0.82) 100%
-  );
+  color: rgba(245, 247, 252, 0.96);
+  border-color: rgba(255, 255, 255, 0.22);
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.04) 100%),
+    linear-gradient(
+      180deg,
+      rgba(120, 155, 195, 0.26) 0%,
+      rgba(48, 54, 64, 0.48) 48%,
+      rgba(58, 72, 92, 0.38) 100%
+    );
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.42),
-    0 10px 30px rgba(0, 0, 0, 0.52);
+    0 10px 24px rgba(0, 0, 0, 0.4),
+    0 3px 10px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
+}
+
+html[data-app-theme="dark"] .appts-workspace-header .appts-workspace-header__new.ds-btn--toolbar:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--ds-color-bg-page),
+    0 0 0 4px rgba(255, 255, 255, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 4px 16px rgba(0, 0, 0, 0.35);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -3841,26 +3856,29 @@ html[data-app-theme="dark"] .appts-workspace-header .appts-workspace-header__new
   overflow: hidden;
   -webkit-overflow-scrolling: touch;
   isolation: isolate;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0.38) 100%);
-  background-color: rgba(255, 255, 255, 0.22);
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.88),
-    inset 0 -1px 0 rgba(15, 23, 42, 0.05),
-    0 6px 20px rgba(15, 23, 42, 0.06),
-    0 1px 2px rgba(15, 23, 42, 0.04);
+  /* Near-colorless track — not a gray slab */
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.44) 0%,
+    rgba(255, 255, 255, 0.22) 50%,
+    rgba(255, 255, 255, 0.14) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.52);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05), 0 2px 8px rgba(15, 23, 42, 0.03);
   backdrop-filter: var(--ds-appts-header-blur);
   -webkit-backdrop-filter: var(--ds-appts-header-blur);
 }
 
 html[data-app-theme="dark"] .appts-view-switch {
-  background: linear-gradient(180deg, rgba(56, 56, 62, 0.78) 0%, rgba(24, 24, 28, 0.52) 100%);
-  background-color: rgba(20, 20, 24, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.35),
-    0 8px 28px rgba(0, 0, 0, 0.38);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.04) 55%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  background-color: rgba(28, 28, 32, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.22);
 }
 
 .appts-view-switch__thumb {
@@ -3874,39 +3892,32 @@ html[data-app-theme="dark"] .appts-view-switch {
   pointer-events: none;
   transform: translateX(0);
   isolation: isolate;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.92) 0%,
-    rgba(255, 255, 255, 0.48) 48%,
-    rgba(255, 255, 255, 0.32) 100%
-  );
-  background-color: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.62);
+  /* Brighter translucent glass — not chalk white */
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0.34) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.66);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    inset 0 -1px 0 rgba(15, 23, 42, 0.06),
-    0 2px 6px rgba(15, 23, 42, 0.05),
-    0 12px 32px rgba(15, 23, 42, 0.1);
-  backdrop-filter: blur(14px) saturate(175%);
-  -webkit-backdrop-filter: blur(14px) saturate(175%);
+    0 4px 12px rgba(15, 23, 42, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(12px) saturate(125%);
+  -webkit-backdrop-filter: blur(12px) saturate(125%);
   transition: transform 0.2s var(--ds-ease-spring), width 0.2s var(--ds-ease-spring);
 }
 
 html[data-app-theme="dark"] .appts-view-switch__thumb {
   background: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.32) 0%,
-    rgba(255, 255, 255, 0.12) 52%,
-    rgba(255, 255, 255, 0.06) 100%
+    rgba(255, 255, 255, 0.26) 0%,
+    rgba(255, 255, 255, 0.1) 55%,
+    rgba(255, 255, 255, 0.05) 100%
   );
-  background-color: rgba(60, 60, 68, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.26);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.38),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.35),
-    0 4px 14px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(14px) saturate(160%);
-  -webkit-backdrop-filter: blur(14px) saturate(160%);
+    0 4px 12px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px) saturate(118%);
+  -webkit-backdrop-filter: blur(12px) saturate(118%);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -3938,7 +3949,7 @@ html[data-app-theme="dark"] .appts-view-switch__thumb {
   font-weight: var(--ds-font-medium);
   letter-spacing: var(--ds-appts-header-tracking);
   line-height: 1.06;
-  color: rgba(16, 33, 59, 0.58);
+  color: rgba(15, 23, 42, 0.56);
   white-space: nowrap;
   text-align: center;
   cursor: pointer;
@@ -3946,7 +3957,7 @@ html[data-app-theme="dark"] .appts-view-switch__thumb {
 }
 
 html[data-app-theme="dark"] .appts-view-switch__segment {
-  color: rgba(226, 232, 240, 0.62);
+  color: rgba(226, 232, 240, 0.56);
 }
 
 /* Phantom line reserves semibold width — zero layout shift between routes */
@@ -3966,16 +3977,12 @@ html[data-app-theme="dark"] .appts-view-switch__segment {
 
 .appts-view-switch:not(.is-appts-view-switch-ready) .appts-view-switch__segment.is-active,
 .appts-view-switch:not(.is-appts-view-switch-ready) .appts-view-switch__segment[aria-current='page'] {
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.92) 0%,
-    rgba(255, 255, 255, 0.48) 48%,
-    rgba(255, 255, 255, 0.32) 100%
-  );
-  border: 1px solid rgba(255, 255, 255, 0.62);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0.34) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.66);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    0 10px 28px rgba(15, 23, 42, 0.1);
+    0 4px 12px rgba(15, 23, 42, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.18);
 }
 
 html[data-app-theme="dark"] .appts-view-switch:not(.is-appts-view-switch-ready) .appts-view-switch__segment.is-active,
@@ -3997,19 +4004,19 @@ html[data-app-theme="dark"] .appts-view-switch:not(.is-appts-view-switch-ready) 
 
 .appts-view-switch__segment.is-active,
 .appts-view-switch__segment[aria-current='page'] {
-  color: var(--ds-color-sapphire);
+  color: rgba(15, 23, 42, 0.92);
   font-weight: var(--ds-font-semibold);
   letter-spacing: var(--ds-appts-header-tracking);
 }
 
 html[data-app-theme="dark"] .appts-view-switch__segment.is-active,
 html[data-app-theme="dark"] .appts-view-switch__segment[aria-current='page'] {
-  color: var(--ds-color-brand);
+  color: rgba(244, 244, 247, 0.92);
 }
 
 .appts-view-switch__segment:hover:not(.is-active):not([aria-current='page']) {
-  color: rgba(16, 33, 59, 0.82);
-  background-color: rgba(255, 255, 255, 0.28);
+  color: rgba(15, 23, 42, 0.72);
+  background-color: rgba(255, 255, 255, 0.2);
 }
 
 html[data-app-theme="dark"] .appts-view-switch__segment:hover:not(.is-active):not([aria-current='page']) {
