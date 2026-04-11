@@ -4257,20 +4257,133 @@ html:not([data-app-theme='dark']) .calendar-workspace .appts-cal-card {
   background: var(--ds-cal-liquid-fill-lifted), rgba(255, 255, 255, 0.12);
 }
 
-/* Week/Month toggles: softer track + glassy active chip (still readable on frosted card) */
+/*
+ * Smart-calendar Week/Month/2M track — match Appointments header .appts-view-switch (same glass + thumb chip).
+ * Scoped to #appts-cal-card so list/month pages elsewhere keep default segmented track.
+ */
 html:not([data-app-theme='dark']) .calendar-workspace #appts-cal-card .appts-cal-card__mode {
-  background: rgba(15, 23, 42, 0.05);
+  display: inline-flex;
+  align-self: center;
+  align-items: stretch;
+  flex-wrap: nowrap;
+  box-sizing: border-box;
+  min-height: var(--ds-appts-header-control-height);
+  max-width: 100%;
+  padding: var(--ds-appts-header-pad);
+  gap: var(--ds-appts-header-pad);
+  border-radius: var(--ds-radius-pill);
+  overflow: hidden;
+  isolation: isolate;
+  background-color: rgba(255, 255, 255, 0.04);
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.34) 0%, transparent 44%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0.16) 52%, rgba(255, 255, 255, 0.09) 100%);
   border: 1px solid var(--ds-cal-liquid-stroke-soft);
-  backdrop-filter: blur(12px) saturate(160%);
-  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  box-shadow: var(--ds-cal-liquid-outer-shadow), var(--ds-cal-liquid-inset-rim), inset 0 -1px 0 rgba(15, 23, 42, 0.03);
+  backdrop-filter: var(--ds-cal-liquid-blur);
+  -webkit-backdrop-filter: var(--ds-cal-liquid-blur);
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace #appts-cal-card .appts-cal-card__mode-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: var(--ds-appts-header-font-size);
+  font-weight: var(--ds-font-medium);
+  letter-spacing: var(--ds-appts-header-tracking);
+  line-height: 1.06;
+  color: rgba(15, 23, 42, 0.58);
+  border: 1px solid transparent;
+  border-radius: var(--ds-radius-pill);
+  transition: color 0.14s ease, background-color 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
+}
+
+html:not([data-app-theme='dark'])
+  .calendar-workspace
+  #appts-cal-card
+  .appts-cal-card__mode-btn:hover:not(.appts-cal-card__mode-btn--active) {
+  color: rgba(15, 23, 42, 0.72);
+  background-color: rgba(255, 255, 255, 0.14);
+}
+
+html:not([data-app-theme='dark'])
+  .calendar-workspace
+  #appts-cal-card
+  .appts-cal-card__mode-btn:active:not(.appts-cal-card__mode-btn--active) {
+  background-color: rgba(15, 23, 42, 0.04);
 }
 
 html:not([data-app-theme='dark']) .calendar-workspace #appts-cal-card .appts-cal-card__mode-btn--active {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0.38) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.45);
+  color: rgba(15, 23, 42, 0.9);
+  font-weight: 600;
+  letter-spacing: var(--ds-appts-header-tracking);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.56) 0%, rgba(255, 255, 255, 0.22) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.58);
   box-shadow:
-    0 2px 8px rgba(15, 23, 42, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+    0 3px 10px rgba(15, 23, 42, 0.042),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(12px) saturate(118%);
+  -webkit-backdrop-filter: blur(12px) saturate(118%);
+}
+
+html[data-app-theme='dark'] .calendar-workspace #appts-cal-card .appts-cal-card__mode {
+  display: inline-flex;
+  align-self: center;
+  align-items: stretch;
+  box-sizing: border-box;
+  min-height: var(--ds-appts-header-control-height);
+  max-width: 100%;
+  padding: var(--ds-appts-header-pad);
+  gap: var(--ds-appts-header-pad);
+  border-radius: var(--ds-radius-pill);
+  overflow: hidden;
+  isolation: isolate;
+  background-color: rgba(24, 24, 28, 0.36);
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.09) 0%, transparent 46%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 55%, rgba(255, 255, 255, 0.015) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.22),
+    0 10px 28px rgba(0, 0, 0, 0.32),
+    0 2px 8px rgba(0, 0, 0, 0.2);
+  backdrop-filter: var(--ds-appts-header-blur);
+  -webkit-backdrop-filter: var(--ds-appts-header-blur);
+}
+
+html[data-app-theme='dark'] .calendar-workspace #appts-cal-card .appts-cal-card__mode-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: var(--ds-appts-header-font-size);
+  letter-spacing: var(--ds-appts-header-tracking);
+  color: rgba(226, 232, 240, 0.58);
+  border: 1px solid transparent;
+}
+
+html[data-app-theme='dark']
+  .calendar-workspace
+  #appts-cal-card
+  .appts-cal-card__mode-btn:hover:not(.appts-cal-card__mode-btn--active) {
+  color: #f1f5f9;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+html[data-app-theme='dark'] .calendar-workspace #appts-cal-card .appts-cal-card__mode-btn--active {
+  color: rgba(244, 244, 247, 0.9);
+  font-weight: 600;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.28) 0%,
+    rgba(255, 255, 255, 0.1) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  box-shadow:
+    0 3px 10px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px) saturate(112%);
+  -webkit-backdrop-filter: blur(12px) saturate(112%);
 }
 
 html:not([data-app-theme='dark']) .calendar-workspace .ops-calendar {
