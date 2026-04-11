@@ -47,7 +47,7 @@
    * to fit the workday but must not use zoom bumps to manufacture overflow; Tools ▸ Fit is explicit zoom only.
    */
   let timeZoomPercent = 100;
-  let columnWidthPx = 160;
+  let columnWidthPx = 176;
   /** How many staff columns should fill the visible scroll area. null = legacy free-px mode. */
   let staffColumnsPerView = 2;
   let showInProgressAppointments = true;
@@ -519,6 +519,96 @@
     return { overlay: calendarOverlayHeadEl, scroll: calendarOverlayHeadScrollEl };
   }
 
+  function getStaffHeaderMetaLabel(staffType) {
+    const raw = typeof staffType === 'string' ? staffType.trim().toLowerCase() : '';
+    if (raw === 'freelancer') return 'Freelancer';
+    if (raw === 'scheduled') return 'Scheduled';
+    return '';
+  }
+
+  function buildStaffHeaderAriaLabel(col) {
+    const parts = [String(col && col.label ? col.label : '').trim()];
+    if (col && col.metaLabel) parts.push(String(col.metaLabel).trim());
+    parts.push('open options menu');
+    return parts.filter(Boolean).join(', ');
+  }
+
+  function buildStaffHeaderCopy(col) {
+    const copy = document.createElement('span');
+    copy.className = 'ops-staff-head-copy';
+
+    const name = document.createElement('span');
+    name.className = 'ops-staff-head-name';
+    name.textContent = String(col && col.label ? col.label : '');
+    copy.appendChild(name);
+
+    if (col && col.metaLabel) {
+      const meta = document.createElement('span');
+      meta.className = 'ops-staff-head-meta';
+      meta.textContent = String(col.metaLabel);
+      copy.appendChild(meta);
+    }
+
+    return copy;
+  }
+
+  function syncStaffHeaderOpenState(staffId, expanded) {
+    const id = String(staffId || '');
+    if (!id) return;
+
+    const originalHead = wrap.querySelector('.ops-staff-head[data-staff-id="' + id + '"]');
+    if (originalHead instanceof HTMLElement) {
+      originalHead.classList.toggle('ops-staff-head--open', !!expanded);
+      originalHead.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    }
+
+    const grid = document.getElementById('appts-calendar-grid');
+    const overlayCell = grid
+      ? grid.querySelector('.ops-calendar-head-overlay__cell[data-staff-id="' + id + '"]')
+      : null;
+    if (overlayCell instanceof HTMLElement) {
+      overlayCell.classList.toggle('ops-calendar-head-overlay__cell--open', !!expanded);
+      overlayCell.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    }
+  }
+
+  function focusStaffHeaderTrigger(staffId) {
+    const id = String(staffId || '');
+    if (!id) return;
+
+    const grid = document.getElementById('appts-calendar-grid');
+    const overlayCell = grid
+      ? grid.querySelector('.ops-calendar-head-overlay__cell[data-staff-id="' + id + '"]')
+      : null;
+    if (overlayCell instanceof HTMLElement && !overlayCell.hidden) {
+      overlayCell.focus();
+      return;
+    }
+
+    const originalHead = wrap.querySelector('.ops-staff-head[data-staff-id="' + id + '"]');
+    if (originalHead instanceof HTMLElement) {
+      originalHead.focus();
+    }
+  }
+
+  function openStaffMenuForTrigger(staffId, trigger, menu) {
+    if (!(trigger instanceof HTMLElement) || !(menu instanceof HTMLElement)) return false;
+    const wasOpen = menu.classList.contains('ops-staff-menu--open');
+    closeAllStaffMenus();
+    if (wasOpen) return false;
+
+    positionStaffMenuFixed(trigger, menu);
+    menu.classList.add('ops-staff-menu--open');
+    menu.removeAttribute('inert');
+    menu.setAttribute('aria-hidden', 'false');
+    menu.dataset.staffId = String(staffId || '');
+    syncStaffHeaderOpenState(staffId, true);
+
+    const first = menu.querySelector('[role="menuitem"]');
+    if (first) requestAnimationFrame(() => first.focus());
+    return true;
+  }
+
   function ensureCalendarOverlayHead(vm) {
     const grid = document.getElementById('appts-calendar-grid');
     if (!(grid instanceof HTMLElement)) return null;
@@ -573,12 +663,9 @@
       c.setAttribute('role', 'button');
       c.setAttribute('tabindex', '0');
       c.setAttribute('aria-haspopup', 'true');
-      c.setAttribute('aria-label', col.label + ', open options menu');
-
-      const name = document.createElement('div');
-      name.className = 'ops-staff-head-name';
-      name.textContent = col.label;
-      c.appendChild(name);
+      c.setAttribute('aria-expanded', 'false');
+      c.setAttribute('aria-label', buildStaffHeaderAriaLabel(col));
+      c.appendChild(buildStaffHeaderCopy(col));
 
       /* Delegate to the hidden original .ops-staff-head — use the overlay cell's
          getBoundingClientRect() for menu positioning since the original element
@@ -590,18 +677,7 @@
         if (!(originalHead instanceof HTMLElement)) return;
         const menu = originalHead.querySelector('.ops-staff-menu');
         if (!(menu instanceof HTMLElement)) return;
-        const wasOpen = menu.classList.contains('ops-staff-menu--open');
-        closeAllStaffMenus();
-        if (!wasOpen) {
-          positionStaffMenuFixed(c, menu);
-          menu.classList.add('ops-staff-menu--open');
-          menu.removeAttribute('inert');
-          menu.setAttribute('aria-hidden', 'false');
-          originalHead.setAttribute('aria-expanded', 'true');
-          originalHead.classList.add('ops-staff-head--open');
-          const first = menu.querySelector('[role="menuitem"]');
-          if (first) requestAnimationFrame(() => first.focus());
-        }
+        openStaffMenuForTrigger(staffId, c, menu);
       });
       c.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); c.click(); }
@@ -1993,10 +2069,9 @@
       m.setAttribute('aria-hidden', 'true');
       m.setAttribute('inert', '');
       const head = m.closest('.ops-staff-head');
-      if (head) {
-        head.classList.remove('ops-staff-head--open');
-        head.setAttribute('aria-expanded', 'false');
-      }
+      const staffId = m.dataset.staffId || (head instanceof HTMLElement ? head.dataset.staffId : '');
+      syncStaffHeaderOpenState(staffId, false);
+      delete m.dataset.staffId;
     });
   }
 
@@ -3354,6 +3429,7 @@
       return {
         id: Number(s.id || 0),
         label: ((s.first_name || '') + ' ' + (s.last_name || '')).trim() || ('Staff #' + s.id),
+        metaLabel: getStaffHeaderMetaLabel(s.staff_type),
         items
       };
     });
@@ -3414,7 +3490,8 @@
        No +0.15 peek — columns fill the full viewport width precisely.
        The ‹ › nav arrows signal scrollability; no partial column needed. */
     const cols = (nVisible != null && nVisible > 0) ? Math.min(n, nVisible) : n;
-    return Math.max(64, Math.floor(viewW / cols));
+    const minWidthPx = cols <= 2 ? 176 : (cols === 3 ? 152 : 136);
+    return Math.max(minWidthPx, Math.floor(viewW / cols));
   }
 
   function renderCalendar(payload) {
@@ -3521,13 +3598,10 @@
       h.setAttribute('tabindex', '0');
       h.setAttribute('aria-haspopup', 'true');
       h.setAttribute('aria-expanded', 'false');
-      h.setAttribute('aria-label', col.label + ', open options menu');
+      h.setAttribute('aria-label', buildStaffHeaderAriaLabel(col));
       const inner = document.createElement('div');
       inner.className = 'ops-staff-head-inner';
-      const name = document.createElement('div');
-      name.className = 'ops-staff-head-name';
-      name.textContent = col.label;
-      inner.appendChild(name);
+      inner.appendChild(buildStaffHeaderCopy(col));
       h.appendChild(inner);
       const exp = document.createElement('span');
       exp.className = 'ops-staff-head__exp';
@@ -3576,18 +3650,7 @@
 
       h.addEventListener('click', (e) => {
         if (e.target.closest('.ops-staff-menu')) return;
-        const expanded = h.getAttribute('aria-expanded') === 'true';
-        closeAllStaffMenus();
-        if (!expanded) {
-          positionStaffMenuFixed(h, menu);
-          menu.classList.add('ops-staff-menu--open');
-          menu.removeAttribute('inert');
-          menu.setAttribute('aria-hidden', 'false');
-          h.setAttribute('aria-expanded', 'true');
-          h.classList.add('ops-staff-head--open');
-          const first = menu.querySelector('[role="menuitem"]');
-          if (first) requestAnimationFrame(() => first.focus());
-        }
+        openStaffMenuForTrigger(col.id, h, menu);
         e.stopPropagation();
       });
 
@@ -3612,9 +3675,9 @@
       menu.addEventListener('keydown', (e) => {
         const items = [...menu.querySelectorAll('[role="menuitem"]')];
         const idx = items.indexOf(document.activeElement);
-        if (e.key === 'Escape') { closeAllStaffMenus(); h.focus(); }
+        if (e.key === 'Escape') { closeAllStaffMenus(); focusStaffHeaderTrigger(col.id); }
         if (e.key === 'ArrowDown') { e.preventDefault(); if (idx < items.length - 1) items[idx + 1].focus(); }
-        if (e.key === 'ArrowUp')   { e.preventDefault(); if (idx > 0) items[idx - 1].focus(); else { closeAllStaffMenus(); h.focus(); } }
+        if (e.key === 'ArrowUp')   { e.preventDefault(); if (idx > 0) items[idx - 1].focus(); else { closeAllStaffMenus(); focusStaffHeaderTrigger(col.id); } }
         if (e.key === 'Tab') { closeAllStaffMenus(); }
       });
 
