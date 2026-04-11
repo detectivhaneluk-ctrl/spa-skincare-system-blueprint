@@ -4228,18 +4228,30 @@ html[data-app-theme="dark"] .appts-view-switch__segment:hover:not(.is-active):no
   --appts-cal-grid-line-strong: rgba(15, 23, 42, 0.09);
 }
 
-/* Light theme: rail + grid — liquid glass (one fill stack + rim pseudo; no second white shine layer) */
+/*
+ * Calendar workspace body: grid layout only — no extra frosted plate behind rail + grid
+ * (avoids double glass vs #appts-cal-card / #appts-calendar-grid).
+ */
 html:not([data-app-theme='dark']) .calendar-workspace .appts-calendar-body {
   position: relative;
   isolation: isolate;
-  overflow: hidden;
-  border: 1px solid var(--ds-cal-liquid-stroke-soft);
-  background-color: transparent;
-  background-image: var(--ds-cal-liquid-fill-lifted);
-  backdrop-filter: var(--ds-cal-liquid-blur);
-  -webkit-backdrop-filter: var(--ds-cal-liquid-blur);
-  border-radius: var(--appts-cal-surface-radius, var(--ds-radius-lg));
-  box-shadow: var(--ds-cal-liquid-outer-shadow), var(--ds-cal-liquid-inset-rim);
+  overflow: visible;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  background-image: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+html[data-app-theme='dark'] .calendar-workspace .appts-calendar-body {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 /*
