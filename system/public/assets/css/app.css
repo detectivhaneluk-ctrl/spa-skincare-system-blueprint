@@ -4403,6 +4403,98 @@ html:not([data-app-theme='dark']) .calendar-workspace .ops-calendar {
 }
 
 /*
+ * Day grid: one liquid shell (#appts-calendar-grid). Inner .ops-calendar drops its own box
+ * so we do not stack two frosted panels (was flat white rim + inner glass).
+ */
+html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid.appts-calendar-grid {
+  border: 1px solid var(--ds-cal-liquid-stroke-soft);
+  background: var(--ds-cal-liquid-fill-lifted), rgba(255, 255, 255, 0.06);
+  box-shadow: var(--ds-cal-liquid-outer-shadow), var(--ds-cal-liquid-inset-rim);
+  -webkit-backdrop-filter: var(--ds-cal-liquid-blur);
+  backdrop-filter: var(--ds-cal-liquid-blur);
+  isolation: isolate;
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-calendar {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  background-image: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .calendar-day-wrap {
+  background: transparent;
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-lanes {
+  background: transparent;
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-lane {
+  background: transparent;
+  border-right-color: rgba(15, 23, 42, 0.06);
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-lane:nth-child(even) {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-lane:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-lane:nth-child(even):hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-lane--selected {
+  background: rgba(119, 171, 255, 0.14) !important;
+  box-shadow: inset 0 0 0 1px rgba(119, 171, 255, 0.28);
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-calendar-head,
+html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-calendar-head-nav-slot {
+  background: rgba(255, 255, 255, 0.38);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-calendar-head-overlay,
+html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-calendar-head-overlay__nav {
+  background: rgba(255, 255, 255, 0.4);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-calendar-head-overlay__nav {
+  border-left: 1px solid rgba(15, 23, 42, 0.07);
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-calendar-head-overlay__cell {
+  border-right-color: rgba(15, 23, 42, 0.055);
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-calendar-head-overlay__cell:hover {
+  background: rgba(15, 23, 42, 0.045);
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-grid-line {
+  border-top-color: rgba(15, 23, 42, 0.045);
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-grid-line--hour {
+  border-top-color: rgba(15, 23, 42, 0.078);
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-grid-line--half {
+  border-top-color: rgba(15, 23, 42, 0.04);
+  opacity: 0.85;
+}
+
+/*
  * Header segmented + CTA + premium date chip: base rules already paint glass fills.
  * Calendar-only: match atmosphere (stroke + blur + shadow) — do not stack extra ::before/::after (was double-white).
  */
@@ -8046,6 +8138,78 @@ html[data-app-theme="dark"] .appts-calendar-body {
 html[data-app-theme="dark"] .appts-calendar-grid,
 html[data-app-theme="dark"] #appts-calendar-grid.appts-calendar-grid {
   color-scheme: dark;
+}
+
+/* Calendar workspace day grid: single dark glass shell; inner ops surface transparent (parity with light). */
+html[data-app-theme="dark"] .calendar-workspace #appts-calendar-grid.appts-calendar-grid {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 42%),
+    linear-gradient(180deg, rgba(40, 40, 44, 0.55) 0%, rgba(22, 22, 26, 0.72) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 12px 32px rgba(0, 0, 0, 0.35),
+    0 2px 8px rgba(0, 0, 0, 0.22);
+  -webkit-backdrop-filter: saturate(180%) blur(22px);
+  backdrop-filter: saturate(180%) blur(22px);
+  isolation: isolate;
+}
+
+html[data-app-theme="dark"] .calendar-workspace #appts-calendar-grid .ops-calendar {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  background-image: none;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+html[data-app-theme="dark"] .calendar-workspace #appts-calendar-grid .calendar-day-wrap {
+  background: transparent;
+}
+
+html[data-app-theme="dark"] .calendar-workspace #appts-calendar-grid .ops-lanes {
+  background: transparent;
+}
+
+html[data-app-theme="dark"] .calendar-workspace #appts-calendar-grid .ops-lane {
+  background: transparent;
+}
+
+html[data-app-theme="dark"] .calendar-workspace #appts-calendar-grid .ops-lane:nth-child(even) {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+html[data-app-theme="dark"] .calendar-workspace #appts-calendar-grid .ops-lane:hover {
+  background: rgba(255, 255, 255, 0.055);
+}
+
+html[data-app-theme="dark"] .calendar-workspace #appts-calendar-grid .ops-lane:nth-child(even):hover {
+  background: rgba(255, 255, 255, 0.065);
+}
+
+html[data-app-theme="dark"] .calendar-workspace #appts-calendar-grid .ops-lane--selected {
+  background: rgba(91, 142, 196, 0.16) !important;
+  box-shadow: inset 0 0 0 1px rgba(91, 142, 196, 0.35);
+}
+
+html[data-app-theme="dark"] .calendar-workspace #appts-calendar-grid .ops-calendar-head,
+html[data-app-theme="dark"] .calendar-workspace #appts-calendar-grid .ops-calendar-head-nav-slot {
+  background: rgba(30, 30, 34, 0.72);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+html[data-app-theme="dark"] .calendar-workspace #appts-calendar-grid .ops-calendar-head-overlay,
+html[data-app-theme="dark"] .calendar-workspace #appts-calendar-grid .ops-calendar-head-overlay__nav {
+  background: rgba(30, 30, 34, 0.78);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+html[data-app-theme="dark"] .calendar-workspace #appts-calendar-grid .ops-calendar-head-overlay__nav {
+  border-left-color: rgba(255, 255, 255, 0.1);
 }
 
 html[data-app-theme="dark"] .appts-cal-card__nav {
