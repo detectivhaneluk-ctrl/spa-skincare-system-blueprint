@@ -178,11 +178,13 @@
   --ds-appts-header-blur: blur(22px) saturate(114%);
 
   /* Day calendar workspace — liquid atmosphere (radials + base ramp; see app.css) */
-  --ds-cal-atmos-bg-top: #f8fbff;
-  --ds-cal-atmos-bg-mid: #edf4ff;
-  --ds-cal-atmos-bg-bottom: #dde8f5;
-  --ds-cal-atmos-orb-a: linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(151, 191, 255, 0.24));
-  --ds-cal-atmos-orb-b: linear-gradient(135deg, rgba(184, 216, 255, 0.24), rgba(255, 255, 255, 0.52));
+  /* Cooler top, neutral center, faint warm-violet low field — gives the glass something to refract. */
+  --ds-cal-atmos-bg-top: #f4f8ff;
+  --ds-cal-atmos-bg-mid: #eff3fb;
+  --ds-cal-atmos-bg-bottom: #ece8f5;
+  /* Orb A: soft cool-blue bloom (top-left); orb B: warm champagne bloom (bottom-right). */
+  --ds-cal-atmos-orb-a: radial-gradient(circle, rgba(155, 195, 255, 0.65) 0%, rgba(100, 148, 255, 0.18) 100%);
+  --ds-cal-atmos-orb-b: radial-gradient(circle, rgba(255, 220, 190, 0.42) 0%, rgba(255, 245, 235, 0.55) 100%);
   /* Legacy single-layer fill; calendar chrome uses --ds-cal-liquid-* instead */
   --ds-cal-atmos-body-surface: rgba(255, 255, 255, 0.78);
   --ds-cal-atmos-body-blur: blur(18px) saturate(142%);
