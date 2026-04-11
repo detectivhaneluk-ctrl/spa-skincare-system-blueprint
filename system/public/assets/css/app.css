@@ -4189,31 +4189,277 @@ html[data-app-theme="dark"] .appts-view-switch__segment:hover:not(.is-active):no
   --appts-cal-grid-line-strong: rgba(15, 23, 42, 0.09);
 }
 
-/* Light theme: rail + grid sit on a frosted sheet so atmosphere shows in gaps; glass controls stack correctly */
+/* Light theme: rail + grid — liquid-panel style fusion (inner shine + rim + soft stroke; content above pseudos) */
 html:not([data-app-theme='dark']) .calendar-workspace .appts-calendar-body {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.22);
   background: var(--ds-cal-atmos-body-surface);
-  backdrop-filter: var(--ds-cal-atmos-body-blur);
-  -webkit-backdrop-filter: var(--ds-cal-atmos-body-blur);
+  backdrop-filter: blur(22px) saturate(150%) brightness(1.04);
+  -webkit-backdrop-filter: blur(22px) saturate(150%) brightness(1.04);
   border-radius: var(--appts-cal-surface-radius, var(--ds-radius-lg));
   box-shadow:
-    0 12px 32px rgba(15, 23, 42, 0.07),
-    0 2px 8px rgba(15, 23, 42, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.58);
+    0 12px 32px rgba(15, 23, 42, 0.08),
+    0 3px 10px rgba(15, 23, 42, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.64);
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace .appts-calendar-body::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border-radius: calc(var(--appts-cal-surface-radius, var(--ds-radius-lg)) - 1px);
+  pointer-events: none;
+  z-index: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.52) 0%,
+    rgba(255, 255, 255, 0.16) 24%,
+    rgba(255, 255, 255, 0.06) 64%,
+    rgba(255, 255, 255, 0.12) 100%
+  );
+  opacity: 0.82;
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace .appts-calendar-body::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 1;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72), inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace .appts-calendar-body > * {
+  position: relative;
+  z-index: 2;
 }
 
 html:not([data-app-theme='dark']) .calendar-workspace .appts-cal-card {
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(18px) saturate(150%) brightness(1.03);
+  -webkit-backdrop-filter: blur(18px) saturate(150%) brightness(1.03);
   box-shadow:
-    var(--appts-cal-surface-elev, var(--ds-shadow-control-rest)),
+    0 12px 32px rgba(15, 23, 42, 0.07),
+    0 3px 10px rgba(15, 23, 42, 0.045),
     inset 0 1px 0 rgba(255, 255, 255, 0.62);
 }
 
+html:not([data-app-theme='dark']) .calendar-workspace .appts-cal-card::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border-radius: calc(var(--appts-cal-surface-radius, var(--ds-radius-lg)) - 1px);
+  pointer-events: none;
+  z-index: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.48) 0%,
+    rgba(255, 255, 255, 0.14) 42%,
+    rgba(255, 255, 255, 0.08) 100%
+  );
+  opacity: 0.85;
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace .appts-cal-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 1;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.68), inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace .appts-cal-card > * {
+  position: relative;
+  z-index: 2;
+}
+
 html:not([data-app-theme='dark']) .calendar-workspace .ops-calendar {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px) saturate(130%);
-  -webkit-backdrop-filter: blur(12px) saturate(130%);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--appts-cal-inset-radius, var(--ds-radius-md));
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(18px) saturate(140%) brightness(1.03);
+  -webkit-backdrop-filter: blur(18px) saturate(140%) brightness(1.03);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 8px 24px rgba(15, 23, 42, 0.05);
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace .ops-calendar::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border-radius: calc(var(--appts-cal-inset-radius, var(--ds-radius-md)) - 1px);
+  pointer-events: none;
+  z-index: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.06) 70%);
+  opacity: 0.75;
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace .ops-calendar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 1;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.58), inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace .ops-calendar > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* Calendar workspace header chrome: nested liquid glass (demo-aligned), no harsh cut from atmosphere */
+html:not([data-app-theme='dark']) .calendar-workspace .appts-view-switch {
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(22px) saturate(155%) brightness(1.04);
+  -webkit-backdrop-filter: blur(22px) saturate(155%) brightness(1.04);
+  box-shadow:
+    0 12px 32px rgba(15, 23, 42, 0.08),
+    0 3px 10px rgba(15, 23, 42, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.58),
+    inset 0 -1px 0 rgba(15, 23, 42, 0.03);
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace .appts-view-switch::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.52) 0%,
+    rgba(255, 255, 255, 0.16) 24%,
+    rgba(255, 255, 255, 0.06) 64%,
+    rgba(255, 255, 255, 0.12) 100%
+  );
+  opacity: 0.88;
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace .appts-view-switch::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 3;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72), inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace .appts-view-switch__thumb {
+  z-index: 1;
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace .appts-view-switch__segment {
+  z-index: 2;
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace .appts-workspace-header .appts-workspace-header__new.ds-btn--toolbar {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(22px) saturate(155%) brightness(1.04);
+  -webkit-backdrop-filter: blur(22px) saturate(155%) brightness(1.04);
+  box-shadow:
+    0 12px 32px rgba(15, 23, 42, 0.08),
+    0 3px 10px rgba(15, 23, 42, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.64);
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace .appts-workspace-header .appts-workspace-header__new.ds-btn--toolbar::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.42) 0%, rgba(255, 255, 255, 0.1) 100%);
+  opacity: 0.95;
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace .appts-workspace-header .appts-workspace-header__new.ds-btn--toolbar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 1;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72), inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace .appts-workspace-header .appts-workspace-header__new.ds-btn--toolbar svg,
+html:not([data-app-theme='dark']) .calendar-workspace .appts-workspace-header .appts-workspace-header__new.ds-btn--toolbar .appts-workspace-header__new-label {
+  position: relative;
+  z-index: 2;
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace .appts-calendar-control-surface--premium .appts-cal-context-anchor {
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(22px) saturate(155%) brightness(1.04);
+  -webkit-backdrop-filter: blur(22px) saturate(155%) brightness(1.04);
+  box-shadow:
+    0 12px 32px rgba(15, 23, 42, 0.08),
+    0 3px 10px rgba(15, 23, 42, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.58),
+    inset 0 -1px 0 rgba(15, 23, 42, 0.028);
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace .appts-calendar-control-surface--premium .appts-cal-context-anchor--active {
+  box-shadow:
+    0 12px 32px rgba(15, 23, 42, 0.09),
+    0 4px 12px rgba(15, 23, 42, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.64),
+    inset 0 -1px 0 rgba(15, 23, 42, 0.03);
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace .appts-calendar-control-surface--premium .appts-cal-context-anchor::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.5) 0%,
+    rgba(255, 255, 255, 0.14) 28%,
+    rgba(255, 255, 255, 0.06) 65%,
+    rgba(255, 255, 255, 0.1) 100%
+  );
+  opacity: 0.86;
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace .appts-calendar-control-surface--premium .appts-cal-context-anchor::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 1;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72), inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace .appts-calendar-control-surface--premium .appts-cal-context-anchor > * {
+  position: relative;
+  z-index: 2;
 }
 
 /* Left: weekly-first smart calendar control card (backend week summary; not a top strip) */
