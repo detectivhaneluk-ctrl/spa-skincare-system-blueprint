@@ -106,8 +106,8 @@ $addMenuIconKeys = [
 ];
 
 /**
- * Lucide icons — https://lucide.dev/icons/ (package v0.469.0, ISC License).
- * Paths match dist/esm/icons/*.js from unpkg lucide@0.469.0; default stroke 2, round caps/joins.
+ * Lucide icons — https://lucide.dev/icons/ (ISC License).
+ * Paths match Lucide icon specifications; default stroke 2, round caps/joins.
  */
 $iconSvg = static function (string $name, string $class = ''): string {
     $c = $class !== '' ? ' class="' . htmlspecialchars($class, ENT_QUOTES, 'UTF-8') . '"' : '';
@@ -122,6 +122,10 @@ $iconSvg = static function (string $name, string $class = ''): string {
         'lock' => $wrap('<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>', '16', '16'),
         'lines' => $wrap('<circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/>', '20', '20'),
         'alignLeft' => $wrap('<path d="M15 12H3"/><path d="M17 18H3"/><path d="M21 6H3"/>', '18', '18'),
+        'type' => $wrap('<path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/>', '18', '18'),
+        'mail' => $wrap('<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>', '18', '18'),
+        'user' => $wrap('<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>', '18', '18'),
+        'fileText' => $wrap($lucideFileText, '18', '18'),
         'envelope' => $wrap('<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>', '20', '16'),
         'house' => $wrap('<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>', '20', '18'),
         'note' => $wrap($lucideFileText, '18', '20'),
@@ -130,13 +134,15 @@ $iconSvg = static function (string $name, string $class = ''): string {
         'calendar' => $wrap('<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>', '18', '18'),
         'plusCircleFill' => $wrap('<circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/>', '22', '22'),
         'infoCircle' => $wrap('<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>', '20', '20'),
-        'trash' => $wrap('<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>', '18', '18'),
+        'trash' => $wrap('<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>', '18', '18'),
         'checkmark' => $wrap('<path d="M20 6 9 17l-5-5"/>', '18', '18'),
         'arrowClockwise' => $wrap('<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>', '18', '18'),
         'chevronDown' => $wrap('<path d="m6 9 6 6 6-6"/>', '16', '16'),
+        'chevronRight' => $wrap('<path d="m9 18 6-6-6-6"/>', '16', '16'),
         'xMark' => $wrap('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>', '16', '16'),
         'docText' => $wrap($lucideFileText, '18', '18'),
         'checkSquare' => $wrap('<rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 12 2 2 4-4"/>', '18', '18'),
+        'toggleRight' => $wrap('<rect width="20" height="12" x="2" y="6" rx="6"/><circle cx="16" cy="12" r="2.5"/>', '18', '18'),
         default => '',
     };
 };
@@ -351,76 +357,77 @@ $renderComposerSettingsExpand = static function (array $v) use ($csrfTn, $csrf, 
     $fk = $v['fk'];
     $settingsId = $v['settingsId'];
     $rowLocked = $v['rowLocked'];
+    if ($rowLocked) {
+        return;
+    }
     $effectiveDisplayLabel = $v['effectiveDisplayLabel'];
-    $storedLabel = $v['storedLabel'];
     $layoutRequiredVal = $v['layoutRequiredVal'];
     $effectiveRequired = $v['effectiveRequired'];
     $rowEnabled = $v['rowEnabled'];
-    $customDefId = $v['customDefId'];
-    echo '<div class="cf-composer__field-settings-expand" id="' . htmlspecialchars($settingsId, ENT_QUOTES, 'UTF-8') . '" data-cf-field-settings-panel data-cf-settings-owner="' . htmlspecialchars($fk, ENT_QUOTES, 'UTF-8') . '" data-cf-settings-readonly="' . ($rowLocked ? '1' : '0') . '" role="region" aria-label="Field configuration" aria-hidden="true">';
+    echo '<div class="cf-composer__field-settings-expand" id="' . htmlspecialchars($settingsId, ENT_QUOTES, 'UTF-8') . '" data-cf-field-settings-panel data-cf-settings-owner="' . htmlspecialchars($fk, ENT_QUOTES, 'UTF-8') . '" data-cf-settings-readonly="0" role="region" aria-label="Field configuration" aria-hidden="true">';
     echo '<div class="cf-composer__field-settings-inner">';
-    echo '<div class="cf-composer__settings-panel-head">';
-    echo '<p class="cf-composer__settings-field-name" id="' . htmlspecialchars($settingsId, ENT_QUOTES, 'UTF-8') . '-title">' . htmlspecialchars($rowLocked ? 'Core field' : 'Field options') . '</p>';
-    echo '<button type="button" class="cf-composer__field-edit-done">' . htmlspecialchars($rowLocked ? 'Close' : 'Done') . '</button>';
+    echo '<div class="cf-composer__settings-field">';
+    echo '<label class="cf-composer__settings-input-label" for="' . htmlspecialchars($settingsId, ENT_QUOTES, 'UTF-8') . '-label">Label</label>';
+    echo '<input type="text" class="cf-composer__settings-text-input" form="cf-form-layout-save" id="' . htmlspecialchars($settingsId, ENT_QUOTES, 'UTF-8') . '-label" name="items[' . htmlspecialchars($fk) . '][display_label]" value="' . htmlspecialchars($effectiveDisplayLabel) . '" autocomplete="off" maxlength="150" aria-describedby="' . htmlspecialchars($settingsId, ENT_QUOTES, 'UTF-8') . '-label-hint">';
+    echo '<p class="cf-composer__settings-hint" id="' . htmlspecialchars($settingsId, ENT_QUOTES, 'UTF-8') . '-label-hint">Shown on the client form. Clear and save to reset to default.</p>';
     echo '</div>';
-    if ($rowLocked) {
-        echo '<p class="cf-composer__settings-hint">' . htmlspecialchars($effectiveDisplayLabel) . ' stays at the top of the intake form for this profile. Label and visibility are fixed.</p>';
-    } else {
-        echo '<div class="cf-composer__settings-field">';
-        echo '<label class="cf-composer__settings-input-label" for="' . htmlspecialchars($settingsId, ENT_QUOTES, 'UTF-8') . '-label">Field label</label>';
-        echo '<input type="text" class="cf-composer__settings-text-input" form="cf-form-layout-save" id="' . htmlspecialchars($settingsId, ENT_QUOTES, 'UTF-8') . '-label" name="items[' . htmlspecialchars($fk) . '][display_label]" value="' . htmlspecialchars($effectiveDisplayLabel) . '" autocomplete="off" maxlength="150" aria-describedby="' . htmlspecialchars($settingsId, ENT_QUOTES, 'UTF-8') . '-label-hint">';
-        echo '<p class="cf-composer__settings-hint" id="' . htmlspecialchars($settingsId, ENT_QUOTES, 'UTF-8') . '-label-hint">Shown on the client form. Leave as the catalog name or customize. Clear and save to reset to the default name.</p>';
-        echo '</div>';
-        echo '<div class="cf-composer__settings-switch-row">';
-        echo '<span class="cf-composer__settings-switch-label" id="' . htmlspecialchars($settingsId, ENT_QUOTES, 'UTF-8') . '-req-label">Required field</span>';
-        echo '<input type="hidden" form="cf-form-layout-save" name="items[' . htmlspecialchars($fk) . '][is_required]" value="0">';
-        echo '<label class="cf-composer__ios-switch">';
-        echo '<input type="checkbox" role="switch" form="cf-form-layout-save" name="items[' . htmlspecialchars($fk) . '][is_required]" value="1"' . ($effectiveRequired ? ' checked' : '') . ' aria-labelledby="' . htmlspecialchars($settingsId, ENT_QUOTES, 'UTF-8') . '-req-label">';
-        echo '<span class="cf-composer__ios-switch-ui" aria-hidden="true"></span>';
-        echo '</label></div>';
-        echo '<div class="cf-composer__settings-switch-row">';
-        echo '<span class="cf-composer__settings-switch-label" id="' . htmlspecialchars($settingsId, ENT_QUOTES, 'UTF-8') . '-vis-label">Show on form</span>';
-        echo '<label class="cf-composer__ios-switch">';
-        echo '<input type="checkbox" role="switch" form="cf-form-layout-save" name="items[' . htmlspecialchars($fk) . '][is_enabled]" value="1"' . ($rowEnabled ? ' checked' : '') . ' aria-labelledby="' . htmlspecialchars($settingsId, ENT_QUOTES, 'UTF-8') . '-vis-label">';
-        echo '<span class="cf-composer__ios-switch-ui" aria-hidden="true"></span>';
-        echo '</label></div>';
-        echo '<p class="cf-composer__settings-hint">Use <strong>Save changes</strong> in the toolbar above to apply layout updates.</p>';
-    }
-    if ($customDefId !== null && !$rowLocked) {
-        echo '<p class="cf-composer__settings-foot">Field format is edited in <a href="#cf-composer-library">Manage field library</a>.</p>';
-    } elseif (!$rowLocked) {
-        echo '<p class="cf-composer__settings-foot hint">Built-in field. System validation still applies.</p>';
-    }
+    echo '<div class="cf-composer__settings-switch-row">';
+    echo '<span class="cf-composer__settings-switch-label" id="' . htmlspecialchars($settingsId, ENT_QUOTES, 'UTF-8') . '-req-label">Required</span>';
+    echo '<input type="hidden" form="cf-form-layout-save" name="items[' . htmlspecialchars($fk) . '][is_required]" value="0">';
+    echo '<label class="cf-composer__ios-switch">';
+    echo '<input type="checkbox" role="switch" form="cf-form-layout-save" name="items[' . htmlspecialchars($fk) . '][is_required]" value="1"' . ($effectiveRequired ? ' checked' : '') . ' aria-labelledby="' . htmlspecialchars($settingsId, ENT_QUOTES, 'UTF-8') . '-req-label">';
+    echo '<span class="cf-composer__ios-switch-ui" aria-hidden="true"></span>';
+    echo '</label></div>';
+    echo '<div class="cf-composer__settings-switch-row">';
+    echo '<span class="cf-composer__settings-switch-label" id="' . htmlspecialchars($settingsId, ENT_QUOTES, 'UTF-8') . '-vis-label">Show on form</span>';
+    echo '<label class="cf-composer__ios-switch">';
+    echo '<input type="checkbox" role="switch" form="cf-form-layout-save" name="items[' . htmlspecialchars($fk) . '][is_enabled]" value="1"' . ($rowEnabled ? ' checked' : '') . ' aria-labelledby="' . htmlspecialchars($settingsId, ENT_QUOTES, 'UTF-8') . '-vis-label">';
+    echo '<span class="cf-composer__ios-switch-ui" aria-hidden="true"></span>';
+    echo '</label></div>';
     echo '</div></div>';
 };
 
-/** Returns ['label' => string, 'class' => string] for a field key's type badge. */
+/** Returns ['label' => string, 'class' => string, 'icon' => string, 'glyph' => string] for a field key's type badge. */
 $fieldTypeBadge = static function (string $fk, ?array $pmeta) use ($classifyKeyForAddMenu, $customFieldLayoutTypes): array {
     if ($fk === 'first_name' || $fk === 'last_name') {
-        return ['label' => 'Name', 'class' => 'name'];
+        return ['label' => 'Name', 'class' => 'name', 'icon' => 'user', 'glyph' => ''];
     }
     if ($fk === 'email') {
-        return ['label' => 'Email', 'class' => 'email'];
+        return ['label' => 'Email', 'class' => 'email', 'icon' => 'mail', 'glyph' => ''];
     }
     if ($fk === 'notes') {
-        return ['label' => 'Notes', 'class' => 'notes'];
+        return ['label' => 'Notes', 'class' => 'notes', 'icon' => 'fileText', 'glyph' => ''];
     }
     if ($pmeta !== null && ($pmeta['admin_field_type'] ?? '') === 'boolean') {
-        return ['label' => 'Toggle', 'class' => 'boolean'];
+        return ['label' => 'Toggle', 'class' => 'boolean', 'icon' => 'toggleRight', 'glyph' => ''];
     }
     $cft = $customFieldLayoutTypes[$fk] ?? null;
     if ($cft === 'boolean') {
-        return ['label' => 'Toggle', 'class' => 'boolean'];
+        return ['label' => 'Toggle', 'class' => 'boolean', 'icon' => 'toggleRight', 'glyph' => ''];
     }
     $cat = $classifyKeyForAddMenu($fk);
     $map = [
-        'phone'   => ['label' => 'Phone', 'class' => 'phone'],
-        'address' => ['label' => 'Address', 'class' => 'address'],
-        'date'    => ['label' => 'Date', 'class' => 'date'],
-        'text'    => ['label' => 'Text', 'class' => 'text'],
+        'phone'   => ['label' => 'Phone', 'class' => 'phone', 'icon' => 'phone', 'glyph' => ''],
+        'address' => ['label' => 'Address', 'class' => 'address', 'icon' => 'mapPin', 'glyph' => ''],
+        'date'    => ['label' => 'Date', 'class' => 'date', 'icon' => 'calendar', 'glyph' => ''],
+        'text'    => ['label' => 'Text', 'class' => 'text', 'icon' => 'type', 'glyph' => ''],
     ];
 
-    return $map[$cat ?? 'text'] ?? ['label' => 'Text', 'class' => 'text'];
+    return $map[$cat ?? 'text'] ?? ['label' => 'Text', 'class' => 'text', 'icon' => 'type', 'glyph' => ''];
+};
+
+$renderFieldTypeBadge = static function (array $badge) use ($iconSvg): void {
+    $label = (string) ($badge['label'] ?? 'Field');
+    $class = (string) ($badge['class'] ?? 'text');
+    $icon = (string) ($badge['icon'] ?? '');
+    $glyph = (string) ($badge['glyph'] ?? '');
+    echo '<span class="cfe-type-pill cfe-type-pill--' . htmlspecialchars($class, ENT_QUOTES, 'UTF-8') . '" title="' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '" aria-label="' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '">';
+    if ($icon !== '') {
+        echo '<span class="cfe-type-pill__icon" aria-hidden="true">' . $iconSvg($icon) . '</span>';
+    } else {
+        echo '<span class="cfe-type-pill__glyph" aria-hidden="true">' . htmlspecialchars($glyph !== '' ? $glyph : strtoupper(substr($label, 0, 1)), ENT_QUOTES, 'UTF-8') . '</span>';
+    }
+    echo '</span>';
 };
 
 ob_start();
@@ -429,6 +436,8 @@ ob_start();
 <?php
 $anyAdd = array_sum(array_map('count', $addMenuBuckets)) > 0;
 $showToolbarActions = $canEditClientFields && ($layoutStorageReady ?? true) && !empty($layoutItemsSorted);
+$showSidebarSave = $canEditClientFields && ($layoutStorageReady ?? true);
+$catalogStatusText = $anyAdd ? 'Catalog fields are still available for this profile.' : 'All catalog fields are on this profile.';
 $lockedStackLabels = [];
 if ($canEditClientFields && $intakeImmutableKeys !== [] && !empty($layoutItemsSorted)) {
     $scanRows = array_values($layoutItemsSorted);
@@ -453,6 +462,8 @@ if ($canEditClientFields && $intakeImmutableKeys !== [] && !empty($layoutItemsSo
     }
 }
 $lockedStackCount = count($lockedStackLabels);
+/** Fixed fields stay collapsed until the operator explicitly expands them. */
+$cfeFixedExpandedDefault = false;
 ?>
 
 <!-- ════════════════════════════════════════════════════════════
@@ -460,10 +471,12 @@ $lockedStackCount = count($lockedStackLabels);
      Regions: page-head · tools-bar · editor-canvas
      Future mounts: data-cfe-mount-add-panel · data-cfe-mount-inspector · data-cfe-mount-library
      ════════════════════════════════════════════════════════════ -->
-<div class="cfe-root" data-cf-composer-root>
+<div class="cfe-root<?= $cfeFixedExpandedDefault ? ' cfe-readonly-details-expanded' : '' ?>" data-cf-composer-root>
 
-    <?php if (!empty($flash) && is_array($flash)): $t = array_key_first($flash); ?>
-    <div class="flash flash-<?= htmlspecialchars($t) ?>"><?= htmlspecialchars($flash[$t] ?? '') ?></div>
+    <?php if (!empty($flash) && is_array($flash)): $t = array_key_first($flash); $tm = (string) ($flash[$t] ?? ''); ?>
+    <?php if ($tm !== ''): ?>
+    <div class="flash flash-<?= htmlspecialchars((string) $t) ?>" role="status" aria-live="polite"><?= htmlspecialchars($tm) ?></div>
+    <?php endif; ?>
     <?php endif; ?>
 
     <?php if ($canEditClientFields): ?>
@@ -473,215 +486,47 @@ $lockedStackCount = count($lockedStackLabels);
     </form>
     <?php endif; ?>
 
-    <!-- ── 1. PAGE HEADER ── -->
-    <header class="cfe-page-head">
-        <div class="cfe-page-head__text">
-            <h1 class="cfe-page-head__title">Form composer</h1>
-            <p class="cfe-page-head__sub">Arrange and configure the fields that appear on the client intake form for each profile.</p>
-        </div>
-
-        <div class="cfe-page-head__controls">
-            <!-- Profile switcher -->
-            <nav class="cfe-profile-seg ds-segmented ds-segmented--ios ds-segmented--pill-track ds-segmented--thumb" aria-label="Layout profiles" data-ds-segmented-thumb>
-                <span class="ds-segmented__thumb" aria-hidden="true"></span>
+    <div class="cfe-layout">
+        <aside class="cfe-sidebar" aria-label="Layout profiles">
+            <p class="cfe-sidebar__cap">Profile</p>
+            <nav class="cfe-sidebar__nav">
                 <?php foreach (($profiles ?? []) as $p): ?>
-                <?php $pk = (string) $p['profile_key']; $active = $pk === ($selectedProfileKey ?? ''); ?>
-                <a href="<?= htmlspecialchars($profileUrl($pk)) ?>" class="ds-segmented__link<?= $active ? ' is-active' : '' ?>"<?= $active ? ' aria-current="page"' : '' ?>><?= htmlspecialchars((string) $p['display_label']) ?></a>
+                <?php $pk = (string) ($p['profile_key'] ?? ''); $active = $pk === ($selectedProfileKey ?? ''); ?>
+                <a href="<?= htmlspecialchars($profileUrl($pk)) ?>" class="cfe-sidebar__link<?= $active ? ' is-active' : '' ?>"<?= $active ? ' aria-current="page"' : '' ?>>
+                    <?= htmlspecialchars((string) ($p['display_label'] ?? $pk)) ?>
+                </a>
                 <?php endforeach; ?>
             </nav>
 
-            <?php if ($canEditClientFields && ($layoutStorageReady ?? true)): ?>
-            <!-- Quick create custom field (restored after accidental checkout) -->
-            <details class="cfe-new-field-details" data-cf-new-field-details>
-                <summary class="cfe-new-field-summary" aria-label="Create a new custom field">
-                    <span class="cfe-new-field-summary__ic" aria-hidden="true"><?= $iconSvg('plus') ?></span>
-                    <span>New field</span>
-                </summary>
-                <div class="cfe-new-field-panel">
-                    <div class="cfe-new-field-panel__head">
-                        <span class="cfe-new-field-panel__title">New custom field</span>
-                        <button type="button" class="cfe-new-field-panel__close" data-cf-new-field-close aria-label="Close"><?= $iconSvg('xMark') ?></button>
-                    </div>
-                    <form method="post" action="/clients/custom-fields" class="cfe-new-field-form" autocomplete="off">
-                        <input type="hidden" name="<?= $csrfTn ?>" value="<?= htmlspecialchars($csrf) ?>">
-                        <input type="hidden" name="_redirect_to" value="<?= htmlspecialchars('/clients/custom-fields?profile=' . rawurlencode($selectedProfileKey ?? '')) ?>">
-                        <input type="hidden" name="is_active" value="1">
+            <?php if ($showSidebarSave): ?>
+            <button type="submit" form="cf-form-layout-save" class="cfe-sidebar__save">Save layout</button>
+            <span class="cfe-save-state" data-cf-save-state aria-live="polite" aria-atomic="true"></span>
+            <?php endif; ?>
+        </aside>
 
-                        <div class="cfe-new-field-row">
-                            <label class="cfe-new-field-label" for="cf-new-field-label">Label</label>
-                            <input id="cf-new-field-label" type="text" name="label" class="cfe-new-field-input" placeholder="e.g. Skin type" maxlength="150" required autocomplete="off">
-                        </div>
-                        <div class="cfe-new-field-row">
-                            <label class="cfe-new-field-label" for="cf-new-field-type">Type</label>
-                            <select id="cf-new-field-type" name="field_type" class="cfe-new-field-select">
-                                <option value="text">Single line text</option>
-                                <option value="textarea">Paragraph text</option>
-                                <option value="number">Number</option>
-                                <option value="date">Date</option>
-                                <option value="phone">Phone</option>
-                                <option value="email">Email</option>
-                                <option value="select">Picklist</option>
-                                <option value="multiselect">Multiselect</option>
-                                <option value="boolean">Yes / No</option>
-                                <option value="address">Address block</option>
-                            </select>
-                        </div>
-                        <div class="cfe-new-field-actions">
-                            <button type="submit" class="cfe-new-field-submit">Create field</button>
-                            <button type="button" class="cfe-new-field-cancel" data-cf-new-field-close>Cancel</button>
-                        </div>
-                    </form>
-                </div>
-            </details>
+        <section class="cfe-main">
+            <nav class="cfe-main__profiles ds-segmented ds-segmented--ios ds-segmented--pill-track ds-segmented--thumb" aria-label="Layout profiles" data-ds-segmented-thumb>
+                <span class="ds-segmented__thumb" aria-hidden="true"></span>
+                <?php foreach (($profiles ?? []) as $p): ?>
+                <?php $pk = (string) ($p['profile_key'] ?? ''); $active = $pk === ($selectedProfileKey ?? ''); ?>
+                <a href="<?= htmlspecialchars($profileUrl($pk)) ?>" class="ds-segmented__link<?= $active ? ' is-active' : '' ?>"<?= $active ? ' aria-current="page"' : '' ?>><?= htmlspecialchars((string) ($p['display_label'] ?? $pk)) ?></a>
+                <?php endforeach; ?>
+            </nav>
+
+            <?php if (!$canEditClientFields): ?>
+            <p class="cfe-read-only-banner" role="status">You can review how client forms are structured. Ask an administrator for <strong>clients.edit</strong> to change layouts or custom fields.</p>
             <?php endif; ?>
 
-            <!-- Save area -->
-            <?php if ($showToolbarActions): ?>
-            <div class="cfe-save-area">
-                <span class="cfe-save-state" data-cf-save-state>Saved</span>
-                <button type="submit" form="cf-form-layout-save" class="cfe-btn-save">
-                    <span class="cfe-btn-ic" aria-hidden="true"><?= $iconSvg('checkmark') ?></span>
-                    <span>Save changes</span>
-                </button>
-                <a class="cfe-btn-reload" href="<?= htmlspecialchars($profileUrl($selectedProfileKey ?? '')) ?>" aria-label="Reload layout">
-                    <span class="cfe-btn-ic" aria-hidden="true"><?= $iconSvg('arrowClockwise') ?></span>
-                </a>
+            <?php if (($layoutStorageReady ?? true) === false): ?>
+            <div class="cfe-warn-panel" role="alert">
+                <strong>Layout storage is not available.</strong>
+                <?= htmlspecialchars(\Modules\Clients\Services\ClientPageLayoutService::LAYOUT_STORAGE_REQUIRES_MIGRATION_MESSAGE) ?>
+                <p class="hint" style="margin:0.5rem 0 0">From the <code>system/</code> directory run <code>php scripts/migrate.php</code> to apply pending migrations.</p>
             </div>
-            <?php endif; ?>
-        </div>
-    </header>
-    <!-- /page-head -->
 
-    <?php if (!$canEditClientFields): ?>
-    <p class="cfe-read-only-banner" role="status">You can review how client forms are structured. Ask an administrator for <strong>clients.edit</strong> to change layouts or custom fields.</p>
-    <?php endif; ?>
+            <?php else: ?>
 
-    <?php if (($layoutStorageReady ?? true) === false): ?>
-    <div class="cfe-warn-panel" role="alert">
-        <strong>Layout storage is not available.</strong>
-        <?= htmlspecialchars(\Modules\Clients\Services\ClientPageLayoutService::LAYOUT_STORAGE_REQUIRES_MIGRATION_MESSAGE) ?>
-        <p class="hint" style="margin:0.5rem 0 0">From the <code>system/</code> directory run <code>php scripts/migrate.php</code> to apply pending migrations.</p>
-    </div>
-
-    <?php else: ?>
-
-    <!-- ── 2. SECONDARY TOOL ENTRY POINTS ── -->
-    <!-- These are compact disclosure triggers, not permanently expanded blocks -->
-    <?php if ($canEditClientFields): ?>
-    <div class="cfe-tools-bar" aria-label="Composer tools">
-
-        <?php if ($anyAdd): ?>
-        <!-- Mount: add-field panel -->
-        <details class="cfe-tool-item" data-cf-add-disclosure data-cfe-mount-add-panel>
-            <summary class="cfe-tool-trigger">
-                <span class="cfe-tool-ic" aria-hidden="true"><?= $iconSvg('plusCircleFill') ?></span>
-                <span>Add field</span>
-            </summary>
-            <div class="cfe-tool-panel">
-                <label class="cfe-tool-search-wrap" for="cfe-add-search">
-                    <span class="wr-pro__visually-hidden">Search fields to add</span>
-                    <input id="cfe-add-search" type="search" class="cfe-tool-search" placeholder="Search available fields" autocomplete="off" data-cf-add-search>
-                </label>
-                <div class="cfe-palette">
-                    <?php foreach (['text', 'phone', 'address', 'date'] as $bucketKey): ?>
-                    <?php $bKeys = $addMenuBuckets[$bucketKey] ?? []; ?>
-                    <div class="cfe-palette-group" data-cf-add-group data-cf-group-label="<?= htmlspecialchars(strtolower($addMenuLabels[$bucketKey] ?? $bucketKey), ENT_QUOTES, 'UTF-8') ?>">
-                        <p class="cfe-palette-cap">
-                            <?= $iconSvg($addMenuIconKeys[$bucketKey] ?? 'alignLeft') ?>
-                            <span><?= htmlspecialchars($addMenuLabels[$bucketKey] ?? $bucketKey) ?></span>
-                        </p>
-                        <?php if ($bKeys === []): ?>
-                        <p class="cfe-palette-empty">All added</p>
-                        <?php else: ?>
-                        <div class="cfe-palette-chips">
-                            <?php foreach ($bKeys as $ak): ?>
-                            <form method="post" action="/clients/custom-fields/layouts/add-item" class="cfe-palette-chip-form" data-cf-add-item data-cf-add-label="<?= htmlspecialchars(strtolower((string) ($fieldLabels[$ak] ?? $ak)), ENT_QUOTES, 'UTF-8') ?>">
-                                <input type="hidden" name="<?= $csrfTn ?>" value="<?= htmlspecialchars($csrf) ?>">
-                                <input type="hidden" name="profile_key" value="<?= htmlspecialchars($selectedProfileKey ?? '') ?>">
-                                <input type="hidden" name="field_key" value="<?= htmlspecialchars($ak) ?>">
-                                <button type="submit" class="cfe-palette-chip"><?= htmlspecialchars($fieldLabels[$ak] ?? $ak) ?></button>
-                            </form>
-                            <?php endforeach; ?>
-                        </div>
-                        <?php endif; ?>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-        </details>
-        <?php endif; ?>
-
-        <!-- Mount: field library manager -->
-        <details class="cfe-tool-item cfe-tool-item--quiet" id="cf-composer-library" data-cfe-mount-library>
-            <summary class="cfe-tool-trigger cfe-tool-trigger--quiet">
-                <span class="cfe-tool-ic" aria-hidden="true"><?= $iconSvg('docText') ?></span>
-                <span>Field library</span>
-            </summary>
-            <div class="cfe-tool-panel">
-                <?php if ($canEditClientFields): ?>
-                <a href="/clients/custom-fields/create" class="cfe-create-btn">
-                    <?= $iconSvg('plus') ?><span>Create custom field</span>
-                </a>
-                <?php endif; ?>
-                <?php if (!empty($definitions)): ?>
-                <div class="cfe-lib-list">
-                    <?php foreach ($definitions as $d): ?>
-                    <div class="cfe-lib-item">
-                        <span class="cfe-lib-name"><?= htmlspecialchars((string) $d['label']) ?></span>
-                        <span class="cfe-lib-type"><?= htmlspecialchars($humanizeFieldType((string) ($d['field_type'] ?? ''))) ?></span>
-                        <?php if ($canEditClientFields): ?>
-                        <div class="cfe-lib-controls">
-                            <form method="post" action="/clients/custom-fields/<?= (int) $d['id'] ?>" class="cfe-lib-toggle-form">
-                                <input type="hidden" name="<?= htmlspecialchars(config('app.csrf_token_name', 'csrf_token')) ?>" value="<?= htmlspecialchars($csrf) ?>">
-                                <input type="hidden" name="label" value="<?= htmlspecialchars((string) $d['label']) ?>">
-                                <input type="hidden" name="field_type" value="<?= htmlspecialchars((string) $d['field_type']) ?>">
-                                <input type="hidden" name="sort_order" value="<?= (int) ($d['sort_order'] ?? 0) ?>">
-                                <input type="hidden" name="is_required" value="<?= (int) ($d['is_required'] ?? 0) === 1 ? '1' : '' ?>">
-                                <button type="submit" class="cfe-lib-toggle">
-                                    <input type="checkbox" name="is_active" value="1" <?= (int) ($d['is_active'] ?? 0) === 1 ? 'checked' : '' ?>>
-                                    <?= (int) ($d['is_active'] ?? 0) === 1 ? 'Active' : 'Inactive' ?>
-                                </button>
-                            </form>
-                            <form method="post" action="/clients/custom-fields/<?= (int) $d['id'] ?>/delete" class="cfe-lib-delete-form" data-cf-confirm-remove>
-                                <input type="hidden" name="<?= htmlspecialchars(config('app.csrf_token_name', 'csrf_token')) ?>" value="<?= htmlspecialchars($csrf) ?>">
-                                <button type="button" class="cfe-lib-delete cfe-action-btn--confirm-trigger" aria-label="Delete <?= htmlspecialchars((string) $d['label']) ?>"><?= $iconSvg('trash') ?></button>
-                                <button type="submit" class="cfe-lib-delete cfe-action-btn--confirm-ok" aria-label="Confirm delete <?= htmlspecialchars((string) $d['label']) ?>" hidden><?= $iconSvg('checkmark') ?></button>
-                            </form>
-                        </div>
-                        <?php endif; ?>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-                <?php else: ?>
-                <p class="cfe-lib-empty">No custom fields yet.</p>
-                <?php endif; ?>
-                <?php if (!empty($systemCatalog)): ?>
-                <details class="cfe-sub-disclosure">
-                    <summary class="cfe-sub-cap">Built-in fields</summary>
-                    <div class="cfe-lib-list">
-                        <?php foreach (($systemCatalog ?? []) as $skey => $smeta): ?>
-                        <div class="cfe-lib-item">
-                            <span class="cfe-lib-name"><?= htmlspecialchars((string) ($smeta['label'] ?? $skey)) ?></span>
-                            <span class="cfe-lib-type"><?= htmlspecialchars($humanizeFieldType((string) ($smeta['admin_field_type'] ?? ''))) ?></span>
-                            <span class="cfe-lib-lock"><?= $iconSvg('lock') ?></span>
-                        </div>
-                        <?php endforeach; ?>
-                    </div>
-                </details>
-                <?php endif; ?>
-            </div>
-        </details>
-
-        <!-- Mount: row inspector (placeholder for next phase) -->
-        <!-- data-cfe-mount-inspector is intentionally empty — future task wires this -->
-
-    </div>
-    <!-- /tools-bar -->
-    <?php endif; ?>
-
-    <!-- ── 3. PRIMARY EDITOR CANVAS ── -->
-    <!-- One dominant surface. Contains composed form rows only. No sidebars. -->
-    <div class="cfe-canvas" data-cfe-mount-inspector>
+            <div class="cfe-canvas" data-cfe-mount-inspector>
 
         <?php if ($canEditClientFields): ?>
             <?php if (!empty($layoutItemsSorted)): ?>
@@ -701,19 +546,21 @@ $lockedStackCount = count($lockedStackLabels);
                         <div class="cfe-field-row cfe-locked-summary-row__inner">
                             <span class="cfe-grip cfe-grip--locked" aria-hidden="true"><?= $iconSvg('lock') ?></span>
                             <div class="cfe-field-center cfe-locked-summary-row__body">
-                                <div class="cfe-field-identity">
+                                <div class="cfe-field-identity cfe-field-identity--summary">
                                     <span class="cfe-field-name">Fixed fields</span>
                                     <span class="cfe-lock-tag"><?= (int) $lockedStackCount ?></span>
+                                    <span class="cfe-locked-summary-row__inline-hint" id="cf-readonly-details-hint"><?= htmlspecialchars($lockedHintLine) ?></span>
                                 </div>
-                                <p class="cfe-locked-summary-row__hint" id="cf-readonly-details-hint"><?= htmlspecialchars($lockedHintLine) ?></p>
                             </div>
                             <div class="cfe-field-actions cfe-locked-summary-row__actions">
                                 <button type="button"
                                     class="cfe-readonly-details-toggle"
                                     data-cf-readonly-details-toggle
-                                    aria-expanded="false"
+                                    aria-label="<?= $cfeFixedExpandedDefault ? 'Hide fixed fields' : 'Show fixed fields' ?>"
+                                    aria-expanded="<?= $cfeFixedExpandedDefault ? 'true' : 'false' ?>"
                                     aria-describedby="cf-readonly-details-hint">
-                                    <span class="cfe-readonly-details-toggle__label">Show fixed fields</span>
+                                    <span class="wr-pro__visually-hidden cfe-readonly-details-toggle__label"><?= $cfeFixedExpandedDefault ? 'Hide fixed fields' : 'Show fixed fields' ?></span>
+                                    <span class="cfe-readonly-details-toggle__chev" aria-hidden="true"><?= $iconSvg('chevronDown') ?></span>
                                 </button>
                             </div>
                         </div>
@@ -732,6 +579,7 @@ $lockedStackCount = count($lockedStackLabels);
                     if ($fk === 'first_name' && $nextFk === 'last_name') {
                         $va = $composerRowView($row);
                         $vb = $composerRowView($layoutRows[$li + 1]);
+                        $pairBadge = ['label' => 'Name', 'class' => 'name', 'icon' => '', 'glyph' => 'N'];
                         $pairGripLocked = $va['rowLocked'] || $vb['rowLocked'];
                         $pairBothLocked = $va['rowLocked'] && $vb['rowLocked'];
                         $li++;
@@ -750,7 +598,7 @@ $lockedStackCount = count($lockedStackLabels);
                             <div class="cfe-field-center cf-composer__group-row-body cf-composer__group-row-body--pair">
                                 <div class="cfe-field-identity">
                                     <span class="cfe-field-name"><?= htmlspecialchars($va['effectiveDisplayLabel']) ?> · <?= htmlspecialchars($vb['effectiveDisplayLabel']) ?></span>
-                                    <span class="cfe-type-badge cfe-type-badge--name">Name</span>
+                                    <?php $renderFieldTypeBadge($pairBadge); ?>
                                 </div>
                                 <div class="cfe-field-preview">
                                     <div class="cf-composer__preview-cols">
@@ -767,16 +615,22 @@ $lockedStackCount = count($lockedStackLabels);
                                     <input type="hidden" name="profile_key" value="<?= htmlspecialchars($selectedProfileKey ?? '') ?>">
                                     <input type="hidden" name="field_key" value="<?= htmlspecialchars($vx['fk']) ?>">
                                     <button type="button" class="cfe-action-btn cfe-action-btn--remove cfe-action-btn--confirm-trigger" aria-label="Remove <?= htmlspecialchars($vx['catalogLabel']) ?> from layout"><?= $iconSvg('trash') ?></button>
-                                    <button type="submit" class="cfe-action-btn cfe-action-btn--remove cfe-action-btn--confirm-ok" aria-label="Confirm remove <?= htmlspecialchars($vx['catalogLabel']) ?>" hidden><?= $iconSvg('checkmark') ?></button>
+                                    <button type="submit" class="cfe-action-btn cfe-action-btn--remove cfe-action-btn--confirm-ok" aria-label="Confirm remove <?= htmlspecialchars($vx['catalogLabel']) ?>" hidden><?= $iconSvg('checkmark') ?><span class="cfe-confirm-ok-label">Remove</span></button>
                                 </form>
                                 <?php endif; ?>
                                 <?php if (!$vx['rowLocked']): ?>
                                 <button type="button"
-                                    class="cfe-action-btn cfe-action-btn--settings cf-composer__field-edit-btn"
+                                    class="cfe-action-btn cfe-action-btn--done cf-composer__field-close-btn"
+                                    data-cf-close-key="<?= htmlspecialchars($vx['fk'], ENT_QUOTES) ?>"
+                                    aria-label="Done editing <?= htmlspecialchars($vx['catalogLabel']) ?>"><?= $iconSvg('checkmark') ?></button>
+                                <?php endif; ?>
+                                <?php if (!$vx['rowLocked']): ?>
+                                <button type="button"
+                                    class="cfe-action-btn cfe-action-btn--toggle cf-composer__field-edit-btn"
                                     data-cf-settings-key="<?= htmlspecialchars($vx['fk'], ENT_QUOTES) ?>"
-                                    aria-label="Settings for <?= htmlspecialchars($vx['catalogLabel']) ?>"
+                                    aria-label="Configure <?= htmlspecialchars($vx['catalogLabel']) ?>"
                                     aria-expanded="false"
-                                    aria-controls="<?= htmlspecialchars($vx['settingsId'], ENT_QUOTES) ?>"><?= $iconSvg('infoCircle') ?></button>
+                                    aria-controls="<?= htmlspecialchars($vx['settingsId'], ENT_QUOTES) ?>"><span class="cfe-action-btn__chev" aria-hidden="true"><?= $iconSvg('chevronDown') ?></span></button>
                                 <?php endif; ?>
                                 <?php endforeach; ?>
                             </div>
@@ -818,7 +672,7 @@ $lockedStackCount = count($lockedStackLabels);
                             <div class="cfe-field-center cf-composer__group-row-body">
                                 <div class="cfe-field-identity">
                                     <span class="cfe-field-name"><?= htmlspecialchars($v['effectiveDisplayLabel']) ?></span>
-                                    <span class="cfe-type-badge cfe-type-badge--<?= htmlspecialchars($badge['class']) ?>"><?= htmlspecialchars($badge['label']) ?></span>
+                                <?php $renderFieldTypeBadge($badge); ?>
                                 </div>
                                 <div class="cfe-field-preview">
                                     <?php $renderComposerBlockBody($row, true, $v['effectiveDisplayLabel']); ?>
@@ -830,17 +684,23 @@ $lockedStackCount = count($lockedStackLabels);
                                     <input type="hidden" name="<?= $csrfTn ?>" value="<?= htmlspecialchars($csrf) ?>">
                                     <input type="hidden" name="profile_key" value="<?= htmlspecialchars($selectedProfileKey ?? '') ?>">
                                     <input type="hidden" name="field_key" value="<?= htmlspecialchars($v['fk']) ?>">
-                                    <button type="button" class="cfe-action-btn cfe-action-btn--remove cfe-action-btn--confirm-trigger" aria-label="Remove field from layout"><?= $iconSvg('trash') ?></button>
-                                    <button type="submit" class="cfe-action-btn cfe-action-btn--remove cfe-action-btn--confirm-ok" aria-label="Confirm remove" hidden><?= $iconSvg('checkmark') ?></button>
+                                    <button type="button" class="cfe-action-btn cfe-action-btn--remove cfe-action-btn--confirm-trigger" aria-label="Remove <?= htmlspecialchars($v['catalogLabel']) ?> from layout"><?= $iconSvg('trash') ?></button>
+                                    <button type="submit" class="cfe-action-btn cfe-action-btn--remove cfe-action-btn--confirm-ok" aria-label="Confirm remove <?= htmlspecialchars($v['catalogLabel']) ?>" hidden><?= $iconSvg('checkmark') ?><span class="cfe-confirm-ok-label">Remove</span></button>
                                 </form>
                                 <?php endif; ?>
                                 <?php if (!$v['rowLocked']): ?>
                                 <button type="button"
-                                    class="cfe-action-btn cfe-action-btn--settings cf-composer__field-edit-btn"
+                                    class="cfe-action-btn cfe-action-btn--done cf-composer__field-close-btn"
+                                    data-cf-close-key="<?= htmlspecialchars($v['fk'], ENT_QUOTES) ?>"
+                                    aria-label="Done editing <?= htmlspecialchars($v['catalogLabel']) ?>"><?= $iconSvg('checkmark') ?></button>
+                                <?php endif; ?>
+                                <?php if (!$v['rowLocked']): ?>
+                                <button type="button"
+                                    class="cfe-action-btn cfe-action-btn--toggle cf-composer__field-edit-btn"
                                     data-cf-settings-key="<?= htmlspecialchars($v['fk'], ENT_QUOTES) ?>"
-                                    aria-label="Field settings"
+                                    aria-label="Configure <?= htmlspecialchars($v['catalogLabel']) ?>"
                                     aria-expanded="false"
-                                    aria-controls="<?= htmlspecialchars($v['settingsId'], ENT_QUOTES) ?>"><?= $iconSvg('infoCircle') ?></button>
+                                    aria-controls="<?= htmlspecialchars($v['settingsId'], ENT_QUOTES) ?>"><span class="cfe-action-btn__chev" aria-hidden="true"><?= $iconSvg('chevronDown') ?></span></button>
                                 <?php endif; ?>
                             </div>
                         </div>
@@ -862,16 +722,10 @@ $lockedStackCount = count($lockedStackLabels);
                 ?>
             </ul>
 
-            <?php if (!$anyAdd): ?>
-            <p class="cfe-hint">All catalog fields are on this profile.</p>
-            <?php endif; ?>
-
             <?php else: ?>
             <div class="cfe-empty-state">
-                <p>No fields on this profile yet.</p>
-                <?php if ($anyAdd): ?>
-                <p class="cfe-hint">Use <strong>Add field</strong> above to start composing this profile.</p>
-                <?php endif; ?>
+                <p class="cfe-empty-state__title">No fields on this profile yet.</p>
+                <p class="cfe-empty-state__hint">Open the <strong>Field library</strong> below to add fields, or <a href="/clients/custom-fields/create" class="cfe-empty-state__link">create a custom field</a>.</p>
             </div>
             <?php endif; ?>
 
@@ -882,6 +736,7 @@ $lockedStackCount = count($lockedStackLabels);
                 <?php
                 $roRows = array_values($layoutItemsSorted);
                 $roN = count($roRows);
+                $roPairBadge = ['label' => 'Name', 'class' => 'name', 'icon' => '', 'glyph' => 'N'];
                 for ($ri = 0; $ri < $roN; $ri++) {
                     $rrow = $roRows[$ri];
                     $rfk = (string) $rrow['field_key'];
@@ -897,7 +752,7 @@ $lockedStackCount = count($lockedStackLabels);
                         <div class="cfe-field-center cf-composer__group-row-body cf-composer__group-row-body--pair">
                             <div class="cfe-field-identity">
                                 <span class="cfe-field-name"><?= htmlspecialchars($va['effectiveDisplayLabel']) ?> · <?= htmlspecialchars($vb['effectiveDisplayLabel']) ?></span>
-                                <span class="cfe-type-badge cfe-type-badge--name">Name</span>
+                                <?php $renderFieldTypeBadge($roPairBadge); ?>
                             </div>
                             <div class="cfe-field-preview">
                                 <div class="cf-composer__preview-cols">
@@ -921,7 +776,7 @@ $lockedStackCount = count($lockedStackLabels);
                         <div class="cfe-field-center cf-composer__group-row-body">
                             <div class="cfe-field-identity">
                                 <span class="cfe-field-name"><?= htmlspecialchars($roView['effectiveDisplayLabel']) ?></span>
-                                <span class="cfe-type-badge cfe-type-badge--<?= htmlspecialchars($roBadge['class']) ?>"><?= htmlspecialchars($roBadge['label']) ?></span>
+                                <?php $renderFieldTypeBadge($roBadge); ?>
                             </div>
                             <div class="cfe-field-preview">
                                 <?php $renderComposerBlockBody($rrow, false); ?>
@@ -935,14 +790,120 @@ $lockedStackCount = count($lockedStackLabels);
                 ?>
             </ul>
             <?php else: ?>
-            <div class="cfe-empty-state"><p>No layout rows for this profile.</p></div>
+            <div class="cfe-empty-state"><p class="cfe-empty-state__title">No layout rows for this profile.</p></div>
             <?php endif; ?>
 
         <?php endif; ?>
 
-    </div><!-- /.cfe-canvas -->
+                <?php if ($canEditClientFields): ?>
+                <div class="cfe-card-footer">
+                    <details class="cfe-footer-library" id="cf-composer-library" data-cf-add-disclosure>
+                        <summary class="cfe-footer-library__summary">
+                            <?= $iconSvg('plusCircleFill', 'cfe-footer-library__summary-ic') ?>
+                            <span>Field library</span>
+                            <span class="cfe-footer-library__summary-chev" aria-hidden="true"><?= $iconSvg('chevronDown') ?></span>
+                        </summary>
+                        <div class="cfe-footer-library__panel">
+                            <?php if ($anyAdd): ?>
+                            <div class="cfe-footer-library__section">
+                                <p class="cfe-footer-library__cap">Add field</p>
+                                <label class="cfe-tool-search-wrap" for="cfe-add-search">
+                                    <span class="wr-pro__visually-hidden">Search fields to add</span>
+                                    <input id="cfe-add-search" type="search" class="cfe-tool-search" placeholder="Search available fields" autocomplete="off" data-cf-add-search>
+                                </label>
+                                <div class="cfe-palette">
+                                    <?php foreach (['text', 'phone', 'address', 'date'] as $bucketKey): ?>
+                                    <?php $bKeys = $addMenuBuckets[$bucketKey] ?? []; ?>
+                                    <div class="cfe-palette-group" data-cf-add-group data-cf-group-label="<?= htmlspecialchars(strtolower($addMenuLabels[$bucketKey] ?? $bucketKey), ENT_QUOTES, 'UTF-8') ?>">
+                                        <p class="cfe-palette-cap">
+                                            <?= $iconSvg($addMenuIconKeys[$bucketKey] ?? 'alignLeft') ?>
+                                            <span><?= htmlspecialchars($addMenuLabels[$bucketKey] ?? $bucketKey) ?></span>
+                                        </p>
+                                        <?php if ($bKeys === []): ?>
+                                        <p class="cfe-palette-empty">All added</p>
+                                        <?php else: ?>
+                                        <div class="cfe-palette-chips">
+                                            <?php foreach ($bKeys as $ak): ?>
+                                            <form method="post" action="/clients/custom-fields/layouts/add-item" class="cfe-palette-chip-form" data-cf-add-item data-cf-add-label="<?= htmlspecialchars(strtolower((string) ($fieldLabels[$ak] ?? $ak)), ENT_QUOTES, 'UTF-8') ?>">
+                                                <input type="hidden" name="<?= $csrfTn ?>" value="<?= htmlspecialchars($csrf) ?>">
+                                                <input type="hidden" name="profile_key" value="<?= htmlspecialchars($selectedProfileKey ?? '') ?>">
+                                                <input type="hidden" name="field_key" value="<?= htmlspecialchars($ak) ?>">
+                                                <button type="submit" class="cfe-palette-chip"><?= htmlspecialchars($fieldLabels[$ak] ?? $ak) ?></button>
+                                            </form>
+                                            <?php endforeach; ?>
+                                        </div>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                            <?php endif; ?>
 
-    <?php endif; ?>
+                            <div class="cfe-footer-library__section">
+                                <?php if ($canEditClientFields): ?>
+                                <a href="/clients/custom-fields/create" class="cfe-create-btn">
+                                    <?= $iconSvg('plus') ?><span>Create custom field</span>
+                                </a>
+                                <?php endif; ?>
+                                <?php if (!empty($definitions)): ?>
+                                <div class="cfe-lib-list">
+                                    <?php foreach ($definitions as $d): ?>
+                                    <div class="cfe-lib-item">
+                                        <span class="cfe-lib-name"><?= htmlspecialchars((string) $d['label']) ?></span>
+                                        <span class="cfe-lib-type"><?= htmlspecialchars($humanizeFieldType((string) ($d['field_type'] ?? ''))) ?></span>
+                                        <?php if ($canEditClientFields): ?>
+                                        <div class="cfe-lib-controls">
+                                            <form method="post" action="/clients/custom-fields/<?= (int) $d['id'] ?>" class="cfe-lib-toggle-form">
+                                                <input type="hidden" name="<?= htmlspecialchars(config('app.csrf_token_name', 'csrf_token')) ?>" value="<?= htmlspecialchars($csrf) ?>">
+                                                <input type="hidden" name="label" value="<?= htmlspecialchars((string) $d['label']) ?>">
+                                                <input type="hidden" name="field_type" value="<?= htmlspecialchars((string) ($d['field_type'] ?? '')) ?>">
+                                                <input type="hidden" name="sort_order" value="<?= (int) ($d['sort_order'] ?? 0) ?>">
+                                                <?php if ((int) ($d['is_required'] ?? 0) === 1): ?><input type="hidden" name="is_required" value="1"><?php endif; ?>
+                                                <?php $isActive = (int) ($d['is_active'] ?? 0) === 1; ?>
+                                                <?php if (!$isActive): ?><input type="hidden" name="is_active" value="1"><?php endif; ?>
+                                                <button type="submit" class="cfe-lib-toggle cfe-lib-toggle--<?= $isActive ? 'active' : 'inactive' ?>" aria-label="<?= $isActive ? 'Deactivate' : 'Activate' ?> <?= htmlspecialchars((string) $d['label']) ?>">
+                                                    <?= $isActive ? 'Active' : 'Inactive' ?>
+                                                </button>
+                                            </form>
+                                            <form method="post" action="/clients/custom-fields/<?= (int) $d['id'] ?>/delete" class="cfe-lib-delete-form" data-cf-confirm-remove>
+                                                <input type="hidden" name="<?= htmlspecialchars(config('app.csrf_token_name', 'csrf_token')) ?>" value="<?= htmlspecialchars($csrf) ?>">
+                                                <button type="button" class="cfe-lib-delete cfe-action-btn--confirm-trigger" aria-label="Delete <?= htmlspecialchars((string) $d['label']) ?>"><?= $iconSvg('trash') ?></button>
+                                                <button type="submit" class="cfe-lib-delete cfe-lib-delete--confirm cfe-action-btn--confirm-ok" aria-label="Confirm delete <?= htmlspecialchars((string) $d['label']) ?>" hidden><?= $iconSvg('checkmark') ?><span class="cfe-confirm-ok-label">Delete</span></button>
+                                            </form>
+                                        </div>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                                <?php else: ?>
+                                <p class="cfe-lib-empty">No custom fields yet.</p>
+                                <?php endif; ?>
+
+                                <?php if (!empty($systemCatalog)): ?>
+                                <details class="cfe-sub-disclosure">
+                                    <summary class="cfe-sub-cap">Built-in profile fields</summary>
+                                    <div class="cfe-lib-list">
+                                        <?php foreach (($systemCatalog ?? []) as $skey => $smeta): ?>
+                                        <div class="cfe-lib-item">
+                                            <span class="cfe-lib-name"><?= htmlspecialchars((string) ($smeta['label'] ?? $skey)) ?></span>
+                                            <span class="cfe-lib-type"><?= htmlspecialchars($humanizeFieldType((string) ($smeta['admin_field_type'] ?? ''))) ?></span>
+                                            <span class="cfe-lib-lock"><?= $iconSvg('lock') ?></span>
+                                        </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </details>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </details>
+                    <p class="cfe-card-footer__status"><?= htmlspecialchars($catalogStatusText) ?></p>
+                </div>
+                <?php endif; ?>
+            </div><!-- /.cfe-canvas -->
+
+            <?php endif; ?>
+        </section>
+    </div>
 
 </div><!-- /.cfe-root -->
 <script>
@@ -959,7 +920,7 @@ $lockedStackCount = count($lockedStackLabels);
     function setDirty(next) {
         if (!saveState) return;
         isDirty = !!next;
-        saveState.textContent = isDirty ? 'Unsaved changes' : 'Saved';
+        saveState.textContent = isDirty ? 'Unsaved changes' : '';
         saveState.classList.toggle('is-dirty', isDirty);
     }
 
@@ -970,8 +931,19 @@ $lockedStackCount = count($lockedStackLabels);
         });
         saveForm.addEventListener('submit', function () {
             setDirty(false);
+            if (saveState) {
+                saveState.textContent = 'Saving…';
+            }
         });
         setDirty(false);
+        /* Show "Saved" briefly on fresh page load after a successful save */
+        var successFlash = root.querySelector('.flash-success');
+        if (successFlash && saveState) {
+            saveState.textContent = 'Saved';
+            window.setTimeout(function () {
+                if (!isDirty) saveState.textContent = '';
+            }, 3000);
+        }
     }
 
     (function initAddFieldFilter() {
@@ -1013,17 +985,15 @@ $lockedStackCount = count($lockedStackLabels);
         if (!btn) return;
         var on = root.classList.contains('cfe-readonly-details-expanded');
         btn.setAttribute('aria-expanded', on ? 'true' : 'false');
+        btn.setAttribute('aria-label', on ? 'Hide fixed fields' : 'Show fixed fields');
         var lab = btn.querySelector('.cfe-readonly-details-toggle__label');
         if (lab) lab.textContent = on ? 'Hide fixed fields' : 'Show fixed fields';
     }
 
     function applyComposerEditState() {
-        var readonlyExpanded = root.classList.contains('cfe-readonly-details-expanded');
         root.querySelectorAll('[data-cf-field-settings-panel]').forEach(function (panel) {
             var owner = panel.getAttribute('data-cf-settings-owner');
-            var ro = panel.getAttribute('data-cf-settings-readonly') === '1';
-            var open = (owner !== null && activeEditFieldId !== null && owner === activeEditFieldId)
-                || (readonlyExpanded && ro);
+            var open = owner !== null && activeEditFieldId !== null && owner === activeEditFieldId;
             panel.classList.toggle('is-open', open);
             panel.setAttribute('aria-hidden', open ? 'false' : 'true');
         });
@@ -1085,6 +1055,14 @@ $lockedStackCount = count($lockedStackLabels);
                 return;
             }
 
+            var closeBtn = e.target.closest('.cf-composer__field-close-btn');
+            if (closeBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                setActiveEditFieldId(null);
+                return;
+            }
+
             var editBtn = e.target.closest('.cf-composer__field-edit-btn');
             if (editBtn) {
                 e.preventDefault();
@@ -1115,6 +1093,7 @@ $lockedStackCount = count($lockedStackLabels);
     });
 
     applyComposerEditState();
+    syncReadonlyMasterToggle();
 
     /* Locked rows: one control expands all read-only previews + core-field notes */
     root.addEventListener('click', function (e) {
@@ -1127,157 +1106,515 @@ $lockedStackCount = count($lockedStackLabels);
         setActiveEditFieldId(null);
     });
 
-    /* ── Drag-and-drop sort ── */
+    /* ── Drag-and-drop sort — placeholder-based, stable geometry ── */
     (function initFieldSort() {
         var list = root.querySelector('[data-cf-field-sortable]');
         if (!list) return;
 
-        var placeholder = document.createElement('li');
-        placeholder.className = 'cf-composer__sort-placeholder';
-        placeholder.setAttribute('aria-hidden', 'true');
+        var ds = null;
+        var pending = null;
+        var rafId = null;
+        var lastX = 0;
+        var lastY = 0;
+        var suppressClicksUntil = 0;
+        var DRAG_START_SLOP = 6;
+        var DROP_HYSTERESIS = 10;
+        var AUTO_SCROLL_ZONE = 96;
+        var AUTO_SCROLL_MAX = 12;
 
-        var dragging = null, dropSucceeded = false, dragItemHeight = 0;
-        var emptyDragImg = new Image();
-        emptyDragImg.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+        list.addEventListener('dragstart', function (e) { e.preventDefault(); });
 
-        function cleanupDragVisuals(el) {
-            if (!el) return;
-            el.classList.remove('cf-composer__field-item--dragging', 'cf-composer__field-item--drag-source');
-            el.style.opacity = '';
+        function reducedMotion() {
+            try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (_) { return false; }
         }
 
-        function scrollSnapshot() { return { x: window.scrollX || 0, y: window.scrollY || 0 }; }
-        function restoreScroll(s) { if (s) window.requestAnimationFrame(function () { window.scrollTo(s.x, s.y); }); }
-        function removePlaceholder() { if (placeholder.parentNode) placeholder.parentNode.removeChild(placeholder); }
-
-        function isFieldItem(el) {
-            return el.classList && (el.classList.contains('cfe-field-item') || el.classList.contains('cf-composer__field-item')) && el.getAttribute('data-cf-non-sortable') !== '1';
+        function isSortable(el) {
+            return el != null
+                && el.nodeType === 1
+                && (el.classList.contains('cfe-field-item') || el.classList.contains('cf-composer__group-row'))
+                && el.getAttribute('data-cf-non-sortable') !== '1'
+                && !el.classList.contains('cfe-dnd-placeholder')
+                && !el.classList.contains('cfe-field-item--is-placeholder');
         }
 
-        function fieldItemsInList(ul) {
-            return Array.prototype.slice.call(ul.children).filter(isFieldItem);
+        function sortableItems() {
+            return Array.prototype.filter.call(list.children, isSortable);
         }
 
-        function movePlaceholder(clientY) {
-            var snap = scrollSnapshot();
-            removePlaceholder();
-            placeholder.style.minHeight = Math.max(dragItemHeight || 0, dragging ? dragging.offsetHeight || 0 : 0, 100) + 'px';
-            var allRows = Array.prototype.slice.call(list.children).filter(function (el) { return isFieldItem(el) && el !== dragging; });
-            var rowsVisible = allRows.filter(function (el) {
-                var r = el.getBoundingClientRect();
-
-                return r.height > 0.5;
-            });
-            var insertBefore = null;
-            for (var i = 0; i < rowsVisible.length; i++) {
-                var r = rowsVisible[i].getBoundingClientRect();
-                if (clientY < r.top + r.height / 2) { insertBefore = rowsVisible[i]; break; }
-            }
-            if (dragging && dragging.getAttribute('data-cf-field-locked') !== '1') {
-                var boundary = 0;
-                for (var bi = 0; bi < allRows.length; bi++) { if (allRows[bi].getAttribute('data-cf-field-locked') === '1') boundary++; else break; }
-                if (insertBefore) {
-                    var insIdx = allRows.indexOf(insertBefore);
-                    if (insIdx !== -1 && insIdx < boundary) insertBefore = boundary < allRows.length ? allRows[boundary] : null;
+        function lockedCount(items) {
+            var count = 0;
+            for (var i = 0; i < items.length; i++) {
+                if (items[i].getAttribute('data-cf-field-locked') === '1') {
+                    count++;
+                    continue;
                 }
+                break;
             }
-            if (insertBefore) list.insertBefore(placeholder, insertBefore);
-            else list.appendChild(placeholder);
-            restoreScroll(snap);
+            return count;
         }
 
-        function updatePositions() {
-            var snap = scrollSnapshot(), pos = 0;
-            Array.prototype.slice.call(list.children).forEach(function (el) {
-                if (!isFieldItem(el)) return;
-                el.querySelectorAll('input[name*="[position]"]').forEach(function (inp) { inp.value = String(pos++); });
+        function syncPositions() {
+            var pos = 0;
+            Array.prototype.forEach.call(list.children, function (el) {
+                if (!isSortable(el)) return;
+                el.querySelectorAll('input[name*="[position]"]').forEach(function (inp) {
+                    inp.value = String(pos++);
+                });
             });
-            restoreScroll(snap);
         }
 
-        function prefersReducedMotion() { return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
-
-        function runFlipReorderAfterDrop(ul, firstRects, droppedRow) {
-            if (prefersReducedMotion()) return;
-            var items = fieldItemsInList(ul), invert = new Map();
-            items.forEach(function (el) {
-                if (!firstRects.has(el)) return;
-                var a = firstRects.get(el), b = el.getBoundingClientRect();
-                var dx = a.left - b.left, dy = a.top - b.top;
-                if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
-                invert.set(el, { dx: dx, dy: dy });
-            });
-            if (!invert.size) return;
-            var dur = 380, ease = 'cubic-bezier(0.32, 0.72, 0, 1)';
-            invert.forEach(function (inv, el) { el.style.transformOrigin = 'center top'; el.style.willChange = 'transform'; el.style.transition = 'none'; el.style.transform = 'translate3d(' + inv.dx + 'px,' + inv.dy + 'px,0)'; });
-            window.requestAnimationFrame(function () { window.requestAnimationFrame(function () {
-                invert.forEach(function (inv, el) { el.style.transition = 'transform ' + dur + 'ms ' + ease; el.style.transform = 'translate3d(0,0,0)'; });
-            }); });
+        function settleDroppedItem(item) {
+            if (reducedMotion() || !item) return;
+            item.classList.remove('cfe-field-item--drop-settle');
+            void item.offsetWidth;
+            item.classList.add('cfe-field-item--drop-settle');
             window.setTimeout(function () {
-                invert.forEach(function (inv, el) { el.style.transition = el.style.transform = el.style.transformOrigin = el.style.willChange = ''; });
-                if (droppedRow && droppedRow.parentNode && !prefersReducedMotion()) {
-                    droppedRow.classList.add('cf-composer__field-item--drop-settle');
-                    window.setTimeout(function () { droppedRow.classList && droppedRow.classList.remove('cf-composer__field-item--drop-settle'); }, 420);
-                }
-            }, dur + 50);
+                item.classList.remove('cfe-field-item--drop-settle');
+            }, 650);
         }
 
-        list.addEventListener('dragstart', function (e) {
+        function flipSettle(allItems, firstRects, dropped) {
+            if (reducedMotion()) {
+                settleDroppedItem(dropped);
+                return;
+            }
+            var inverts = new Map();
+            allItems.forEach(function (el) {
+                if (el === dropped || !firstRects.has(el)) return;
+                var a = firstRects.get(el);
+                var b = el.getBoundingClientRect();
+                var dy = a.top - b.top;
+                var dx = a.left - b.left;
+                if (Math.abs(dy) < 0.5 && Math.abs(dx) < 0.5) return;
+                inverts.set(el, { dx: dx, dy: dy });
+            });
+
+            var DUR = 280;
+            var EASE = 'cubic-bezier(0.32,0.72,0,1)';
+            if (inverts.size) {
+                inverts.forEach(function (inv, el) {
+                    el.style.willChange = 'transform';
+                    el.style.transition = 'none';
+                    el.style.transform = 'translate3d(' + inv.dx + 'px,' + inv.dy + 'px,0)';
+                });
+                window.requestAnimationFrame(function () {
+                    window.requestAnimationFrame(function () {
+                        inverts.forEach(function (inv, el) {
+                            el.style.transition = 'transform ' + DUR + 'ms ' + EASE;
+                            el.style.transform = 'translate3d(0,0,0)';
+                        });
+                        window.setTimeout(function () {
+                            inverts.forEach(function (inv, el) {
+                                el.style.transition = '';
+                                el.style.transform = '';
+                                el.style.willChange = '';
+                            });
+                        }, DUR + 16);
+                    });
+                });
+            }
+
+            settleDroppedItem(dropped);
+        }
+
+        function createGhost(item, rect) {
+            var ghost = item.cloneNode(true);
+            ghost.classList.add('cfe-field-item--drag-active');
+            /* Strip transient state classes that would look wrong on a floating clone */
+            ghost.classList.remove(
+                'cfe-field-item--settings-open',
+                'cfe-field-item--is-placeholder',
+                'cfe-field-item--drop-settle'
+            );
+            ghost.style.width = rect.width + 'px';
+            ghost.style.minWidth = rect.width + 'px';
+            ghost.style.left = '0';
+            ghost.style.top = '0';
+            /* Start at scale(1) — lift spring applied on next frame */
+            ghost.style.transform = 'translate3d(' + Math.round(rect.left) + 'px,' + Math.round(rect.top) + 'px,0) scale(1)';
+            ghost.style.pointerEvents = 'none';
+            ghost.setAttribute('aria-hidden', 'true');
+            ghost.setAttribute('inert', '');
+            /* Hide interactive UI elements that belong to the list, not the ghost */
+            var actions = ghost.querySelector('.cfe-field-actions');
+            if (actions) { actions.style.cssText = 'opacity:0!important;pointer-events:none!important'; }
+            var grip = ghost.querySelector('.cfe-grip');
+            if (grip) { grip.style.cssText = 'opacity:0!important'; }
+            var settingsPanel = ghost.querySelector('[data-cf-field-settings-panel]');
+            if (settingsPanel) { settingsPanel.style.cssText = 'display:none!important'; }
+            document.body.appendChild(ghost);
+            return ghost;
+        }
+
+        function styleAsPlaceholder(item) {
+            item.classList.add('cfe-field-item--is-placeholder');
+        }
+
+        function restoreItem(item) {
+            item.classList.remove('cfe-field-item--is-placeholder');
+        }
+
+        function movableItems() {
+            return sortableItems().filter(function (el) {
+                return !ds || el !== ds.item;
+            });
+        }
+
+        function normalizedTop(rect, candidate) {
+            if (!ds || !ds.item || !ds.item.parentNode) {
+                return rect.top;
+            }
+            if (!(ds.item.compareDocumentPosition(candidate) & Node.DOCUMENT_POSITION_FOLLOWING)) {
+                return rect.top;
+            }
+            var placeholderRect = ds.item.getBoundingClientRect();
+            var placeholderHeight = placeholderRect.height > 0
+                ? placeholderRect.height
+                : 68;
+            return rect.top - placeholderHeight;
+        }
+
+        function midpointForRect(rect, item) {
+            var midpoint = normalizedTop(rect, item) + rect.height * 0.5;
+            if (!ds || ds.lastTarget !== item) {
+                return midpoint;
+            }
+            if (ds.dragDirection > 0) {
+                return midpoint + DROP_HYSTERESIS;
+            }
+            if (ds.dragDirection < 0) {
+                return midpoint - DROP_HYSTERESIS;
+            }
+            return midpoint;
+        }
+
+        function resolveInsertBefore(clientY) {
+            var items = movableItems();
+            var minIdx = lockedCount(items);
+            for (var i = minIdx; i < items.length; i++) {
+                var candidate = items[i];
+                var rect = candidate.getBoundingClientRect();
+                if (rect.height < 0.5) continue;
+                if (clientY < midpointForRect(rect, candidate)) {
+                    return candidate;
+                }
+            }
+            return null;
+        }
+
+        function movePlaceholder(insertBefore) {
+            if (!ds || !ds.item) return;
+            if (insertBefore === ds.lastTarget) return;
+            ds.lastTarget = insertBefore;
+            if (insertBefore && insertBefore.parentNode === list) {
+                list.insertBefore(ds.item, insertBefore);
+                return;
+            }
+            list.appendChild(ds.item);
+        }
+
+        function updateDraggedPosition() {
+            if (!ds) return;
+            var x = Math.round(lastX - ds.offsetX);
+            var y = Math.round(lastY - ds.offsetY);
+            ds.ghost.style.transform = 'translate3d(' + x + 'px,' + y + 'px,0) scale(1.03)';
+        }
+
+        function autoScroll() {
+            if (!ds) return;
+            var viewportHeight = window.innerHeight;
+            if (lastY < AUTO_SCROLL_ZONE) {
+                window.scrollBy(0, -Math.min(AUTO_SCROLL_MAX, AUTO_SCROLL_MAX * Math.pow(1 - lastY / AUTO_SCROLL_ZONE, 1.6)));
+            } else if (lastY > viewportHeight - AUTO_SCROLL_ZONE) {
+                window.scrollBy(0, Math.min(AUTO_SCROLL_MAX, AUTO_SCROLL_MAX * Math.pow((lastY - viewportHeight + AUTO_SCROLL_ZONE) / AUTO_SCROLL_ZONE, 1.6)));
+            }
+        }
+
+        function tick() {
+            if (!ds) {
+                rafId = null;
+                return;
+            }
+            updateDraggedPosition();
+            movePlaceholder(resolveInsertBefore(lastY));
+            autoScroll();
+            rafId = window.requestAnimationFrame(tick);
+        }
+
+        function stopTick() {
+            if (rafId) {
+                window.cancelAnimationFrame(rafId);
+                rafId = null;
+            }
+        }
+
+        function cleanupPointerListeners() {
+            document.removeEventListener('pointermove', onMove);
+            document.removeEventListener('pointerup', onUp);
+            document.removeEventListener('pointercancel', onCancel);
+        }
+
+        function clearPending() {
+            pending = null;
+        }
+
+        function isInteractiveDragBlocker(target) {
+            if (!target) return false;
+            return !!target.closest('a, button, input, textarea, select, label, .cfe-field-actions, [data-cf-field-settings-panel], [data-cf-delivery-block], .cf-composer__ios-switch, .cfe-remove-form');
+        }
+
+        function startDrag(e, item, anchorX, anchorY) {
+            var rect = item.getBoundingClientRect();
+            var gripAnchorX = anchorX == null ? e.clientX : anchorX;
+            var gripAnchorY = anchorY == null ? e.clientY : anchorY;
+
+            lastX = e.clientX;
+            lastY = e.clientY;
+
+            var ghost = createGhost(item, rect);
+            styleAsPlaceholder(item);
+
+            ds = {
+                item: item,
+                ghost: ghost,
+                originalNextSibling: item.nextSibling,
+                pointerId: e.pointerId,
+                offsetX: gripAnchorX - rect.left,
+                offsetY: gripAnchorY - rect.top,
+                dragDirection: 0,
+                lastTarget: null
+            };
+
+            clearPending();
+            if (activeEditFieldId !== null) {
+                setActiveEditFieldId(null);
+            }
+
+            list.classList.add('cfe-field-list--is-dragging');
+            root.classList.add('cfe-dnd-active');
+
+            /* Lift spring: next frame transitions ghost from scale(1) → scale(1.03) */
+            window.requestAnimationFrame(function () {
+                if (!ds || ds.ghost !== ghost) return;
+                ghost.style.transition = 'transform 160ms cubic-bezier(0.34,1.56,0.64,1)';
+                ghost.style.transform = 'translate3d(' +
+                    Math.round(lastX - ds.offsetX) + 'px,' +
+                    Math.round(lastY - ds.offsetY) + 'px,0) scale(1.03)';
+                /* After lift completes, hand back to the rAF tick loop */
+                window.setTimeout(function () {
+                    if (ds && ds.ghost === ghost) {
+                        ghost.style.transition = '';
+                    }
+                }, 180);
+            });
+
+            /* Note: NO premature movePlaceholder() call here — item is already
+               at its correct original position. The tick loop handles reordering. */
+            rafId = window.requestAnimationFrame(tick);
+
+            document.addEventListener('pointermove', onMove, { passive: false });
+            document.addEventListener('pointerup', onUp);
+            document.addEventListener('pointercancel', onCancel);
+        }
+
+        function finishDrag(shouldCommit) {
+            if (!ds) return;
+
+            var session = ds;
+            ds = null;
+            stopTick();
+            cleanupPointerListeners();
+
+            /* Return cursor to normal immediately — don't wait for snap animation */
+            root.classList.remove('cfe-dnd-active');
+            /* Suppress accidental post-drop clicks immediately */
+            suppressClicksUntil = Date.now() + 220;
+
+            function cleanup() {
+                if (session.ghost && session.ghost.parentNode) {
+                    session.ghost.parentNode.removeChild(session.ghost);
+                }
+                restoreItem(session.item);
+                list.classList.remove('cfe-field-list--is-dragging');
+            }
+
+            if (!shouldCommit) {
+                /* Restore item to its original position */
+                if (session.originalNextSibling && session.originalNextSibling.parentNode === list) {
+                    list.insertBefore(session.item, session.originalNextSibling);
+                } else if (!session.originalNextSibling) {
+                    list.appendChild(session.item);
+                }
+                cleanup();
+                return;
+            }
+
+            if (!reducedMotion()) {
+                var placeholderRect = session.item.getBoundingClientRect();
+                var tx = Math.round(placeholderRect.left);
+                var ty = Math.round(placeholderRect.top);
+                var done = false;
+
+                function onSnapped() {
+                    if (done) return;
+                    done = true;
+                    session.ghost.removeEventListener('transitionend', onSnapped);
+                    cleanup();
+                    syncPositions();
+                    setDirty(true);
+                    settleDroppedItem(session.item);
+                }
+
+                session.ghost.style.transition =
+                    'transform 380ms cubic-bezier(0.2,1,0.2,1)';
+                session.ghost.style.transform =
+                    'translate3d(' + tx + 'px,' + ty + 'px,0) scale(1)';
+                session.ghost.addEventListener('transitionend', onSnapped);
+                window.setTimeout(onSnapped, 500);
+            } else {
+                cleanup();
+                syncPositions();
+                setDirty(true);
+                settleDroppedItem(session.item);
+            }
+        }
+
+        function onDown(e) {
+            if (ds) return;
+            var target = e.target;
+            var grip = target.closest('.cf-composer__field-grip');
+            var item = target.closest('.cfe-field-item, .cf-composer__group-row');
+            if (!item || !list.contains(item)) return;
+            if (item.getAttribute('data-cf-field-locked') === '1') return;
+            if (item.getAttribute('data-cf-non-sortable') === '1') return;
+            if (e.pointerType === 'mouse' && e.button !== 0) return;
+            if (!grip && isInteractiveDragBlocker(target)) return;
+
+            if (grip) {
+                e.preventDefault();
+                e.stopPropagation();
+                startDrag(e, item);
+                return;
+            }
+
+            pending = {
+                item: item,
+                pointerId: e.pointerId,
+                startX: e.clientX,
+                startY: e.clientY
+            };
+
+            document.addEventListener('pointermove', onMove, { passive: false });
+            document.addEventListener('pointerup', onUp);
+            document.addEventListener('pointercancel', onCancel);
+        }
+
+        function onMove(e) {
+            if (ds) {
+                if (e.pointerId !== ds.pointerId) return;
+                e.preventDefault();
+                ds.dragDirection = e.clientY > lastY ? 1 : (e.clientY < lastY ? -1 : ds.dragDirection);
+                lastX = e.clientX;
+                lastY = e.clientY;
+                return;
+            }
+            if (!pending || e.pointerId !== pending.pointerId) return;
+
+            var dx = e.clientX - pending.startX;
+            var dy = e.clientY - pending.startY;
+            if (Math.sqrt(dx * dx + dy * dy) < DRAG_START_SLOP) {
+                return;
+            }
+
+            e.preventDefault();
+            startDrag(e, pending.item, pending.startX, pending.startY);
+        }
+
+        function onUp(e) {
+            if (ds) {
+                if (e.pointerId !== ds.pointerId) return;
+                finishDrag(true);
+                return;
+            }
+            if (!pending || e.pointerId !== pending.pointerId) return;
+            clearPending();
+            cleanupPointerListeners();
+        }
+
+        function onCancel(e) {
+            if (ds) {
+                if (!e || e.pointerId === undefined || e.pointerId === ds.pointerId) {
+                    finishDrag(false);
+                }
+                return;
+            }
+            if (!pending || (e && e.pointerId !== undefined && e.pointerId !== pending.pointerId)) return;
+            clearPending();
+            cleanupPointerListeners();
+        }
+
+        list.addEventListener('pointerdown', onDown);
+
+        root.addEventListener('click', function (e) {
+            if (Date.now() < suppressClicksUntil && root.contains(e.target)) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }, true);
+
+        list.addEventListener('keydown', function (e) {
+            if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
             var grip = e.target.closest('.cf-composer__field-grip');
             if (!grip) return;
-            var item = e.target.closest('.cfe-field-item, .cf-composer__field-item');
-            if (!item || !list.contains(item) || item.getAttribute('data-cf-field-locked') === '1') { e.preventDefault(); return; }
-            dragging = item;
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', item.getAttribute('data-cf-field-key') || '');
-            try { e.dataTransfer.setData('application/x-cf-field', '1'); } catch (_) {}
-            dropSucceeded = false;
-            dragItemHeight = item.offsetHeight;
-            placeholder.style.minHeight = dragItemHeight + 'px';
-            list.insertBefore(placeholder, item);
-            item.classList.add('cf-composer__field-item--dragging', 'cf-composer__field-item--drag-source');
-            list.classList.add('cf-composer__grouped-list--is-dragging');
-            try { e.dataTransfer.setDragImage(emptyDragImg, 0, 0); } catch (_) {}
+            var item = grip.closest('.cfe-field-item, .cf-composer__group-row');
+            if (!item || !list.contains(item)) return;
+            if (item.getAttribute('data-cf-field-locked') === '1') return;
+
+            e.preventDefault();
+
+            var all = sortableItems();
+            var idx = all.indexOf(item);
+            if (idx === -1) return;
+
+            var others = all.filter(function (el) { return el !== item; });
+            var minIdx = lockedCount(others);
+            var target = e.key === 'ArrowUp'
+                ? Math.max(minIdx, idx - 1)
+                : Math.min(all.length - 1, idx + 1);
+
+            if (target === idx) return;
+
+            var firstRects = new Map();
+            if (!reducedMotion()) {
+                all.forEach(function (el) {
+                    var rect = el.getBoundingClientRect();
+                    if (rect.height > 0.5) {
+                        firstRects.set(el, { top: rect.top, left: rect.left });
+                    }
+                });
+            }
+
+            if (target < idx) {
+                list.insertBefore(item, all[target]);
+            } else {
+                var after = all[target + 1];
+                if (after) {
+                    list.insertBefore(item, after);
+                } else {
+                    list.appendChild(item);
+                }
+            }
+
+            syncPositions();
+            setDirty(true);
+            flipSettle(all, firstRects, item);
+            grip.focus();
         });
 
-        function commitDrop(e) {
-            if (!dragging) return;
-            e.preventDefault();
-            var snap = scrollSnapshot();
-            if (typeof e.clientY === 'number' && !placeholder.parentNode) movePlaceholder(e.clientY);
-            if (placeholder.parentNode) {
-                var firstRects = new Map();
-                if (!prefersReducedMotion()) fieldItemsInList(list).forEach(function (el) {
-                    var r = el.getBoundingClientRect();
-                    if (r.height < 0.5) return;
-                    firstRects.set(el, { top: r.top, left: r.left });
-                });
-                var dropped = dragging;
-                list.insertBefore(dragging, placeholder);
-                removePlaceholder();
-                dropSucceeded = true;
-                cleanupDragVisuals(dragging);
-                if (firstRects.size) runFlipReorderAfterDrop(list, firstRects, dropped);
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && ds) {
+                finishDrag(false);
             }
-            updatePositions();
-            setDirty(true);
-            restoreScroll(snap);
-        }
-
-        list.addEventListener('dragenter', function (e) { if (dragging) e.preventDefault(); });
-        list.addEventListener('dragover', function (e) { if (!dragging) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; movePlaceholder(e.clientY); });
-        placeholder.addEventListener('dragenter', function (e) { if (dragging) e.preventDefault(); });
-        placeholder.addEventListener('dragover', function (e) { if (!dragging) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; });
-        list.addEventListener('drop', commitDrop);
-        placeholder.addEventListener('drop', function (e) { commitDrop(e); e.stopPropagation(); });
-        list.addEventListener('dragend', function () {
-            var snap = scrollSnapshot();
-            list.classList.remove('cf-composer__grouped-list--is-dragging');
-            if (dragging) { if (!dropSucceeded) removePlaceholder(); cleanupDragVisuals(dragging); }
-            removePlaceholder();
-            dragging = null; dropSucceeded = false; dragItemHeight = 0;
-            updatePositions();
-            restoreScroll(snap);
         });
     })();
 
@@ -1307,14 +1644,27 @@ $lockedStackCount = count($lockedStackLabels);
         var PENDING_CLASS = 'cfe-confirm-pending';
         var pendingForm = null;
         var pendingTimer = null;
+        var pendingBarTimer = null;
+        var TIMEOUT_MS = 4000;
 
         function resetConfirm(form) {
             if (!form) return;
             form.classList.remove(PENDING_CLASS);
-            var ok = form.querySelector('.cfe-action-btn--confirm-ok, .cfe-lib-delete.cfe-action-btn--confirm-ok');
+            var ok = form.querySelector('.cfe-action-btn--confirm-ok, .cfe-lib-delete.cfe-action-btn--confirm-ok, .cfe-lib-delete--confirm');
             var trigger = form.querySelector('.cfe-action-btn--confirm-trigger, .cfe-lib-delete.cfe-action-btn--confirm-trigger');
-            if (ok) ok.hidden = true;
+            if (ok) { ok.hidden = true; ok.style.setProperty('--cfe-confirm-progress', '100%'); }
             if (trigger) trigger.hidden = false;
+        }
+
+        function animateConfirmBar(ok) {
+            if (!ok) return;
+            ok.style.setProperty('--cfe-confirm-progress', '100%');
+            window.requestAnimationFrame(function () {
+                window.requestAnimationFrame(function () {
+                    ok.style.setProperty('--cfe-confirm-progress', '0%');
+                    ok.style.setProperty('--cfe-confirm-progress-duration', TIMEOUT_MS + 'ms');
+                });
+            });
         }
 
         function resetAllExcept(except) {
@@ -1331,16 +1681,17 @@ $lockedStackCount = count($lockedStackLabels);
                 e.preventDefault();
                 e.stopPropagation();
                 if (pendingTimer) clearTimeout(pendingTimer);
+                if (pendingBarTimer) clearTimeout(pendingBarTimer);
                 resetAllExcept(form);
                 form.classList.add(PENDING_CLASS);
-                var ok = form.querySelector('.cfe-action-btn--confirm-ok, .cfe-lib-delete.cfe-action-btn--confirm-ok');
-                if (ok) ok.hidden = false;
+                var ok = form.querySelector('.cfe-action-btn--confirm-ok, .cfe-lib-delete--confirm');
+                if (ok) { ok.hidden = false; animateConfirmBar(ok); }
                 trigger.hidden = true;
                 pendingForm = form;
                 pendingTimer = setTimeout(function () {
                     resetConfirm(form);
                     pendingForm = null;
-                }, 4000);
+                }, TIMEOUT_MS);
                 return;
             }
 
@@ -1357,6 +1708,25 @@ $lockedStackCount = count($lockedStackLabels);
                 resetConfirm(pendingForm);
                 pendingForm = null;
             }
+        });
+    })();
+
+    /* ── Palette chip: save scroll position across add-field POST/redirect ── */
+    (function initPaletteChipScroll() {
+        var SCROLL_KEY = 'cfe_scroll_restore';
+        var disclosure = root.querySelector('[data-cf-add-disclosure]');
+        if (!disclosure) return;
+        var scrollY = sessionStorage.getItem(SCROLL_KEY);
+        if (scrollY !== null) {
+            sessionStorage.removeItem(SCROLL_KEY);
+            window.requestAnimationFrame(function () {
+                window.scrollTo(0, parseInt(scrollY, 10) || 0);
+            });
+        }
+        disclosure.querySelectorAll('.cfe-palette-chip-form').forEach(function (form) {
+            form.addEventListener('submit', function () {
+                sessionStorage.setItem(SCROLL_KEY, String(window.scrollY || 0));
+            });
         });
     })();
 

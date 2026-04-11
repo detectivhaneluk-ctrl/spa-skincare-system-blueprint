@@ -50,6 +50,13 @@
     thumb.style.transition = '';
   }
 
+  /** Active tab box relative to segmented root (matches visual layout; avoids offsetLeft drift with flex). */
+  function thumbSlotGeometry(root, el) {
+    var rr = root.getBoundingClientRect();
+    var er = el.getBoundingClientRect();
+    return { x: er.left - rr.left, w: er.width };
+  }
+
   function syncThumb(root) {
     var thumb = root.querySelector(THUMB_SEL);
     if (!thumb) {
@@ -62,10 +69,9 @@
       root.classList.remove(READY);
       return;
     }
-    var w = active.offsetWidth;
-    var x = active.offsetLeft;
-    thumb.style.width     = w + 'px';
-    thumb.style.transform = 'translateX(' + x + 'px)';
+    var g = thumbSlotGeometry(root, active);
+    thumb.style.width     = g.w + 'px';
+    thumb.style.transform = 'translateX(' + g.x + 'px)';
     root.classList.add(READY);
   }
 
@@ -93,8 +99,9 @@
       return;
     }
 
-    var targetW = active.offsetWidth;
-    var targetX = active.offsetLeft;
+    var tg = thumbSlotGeometry(root, active);
+    var targetW = tg.w;
+    var targetX = tg.x;
 
     /* Try to read the saved departure geometry */
     var stored = null;
@@ -137,9 +144,10 @@
             /* Read position from current active, not the clicked link yet */
             var act = findActive(root);
             if (act) {
+              var geo = thumbSlotGeometry(root, act);
               sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
-                x: act.offsetLeft,
-                w: act.offsetWidth
+                x: geo.x,
+                w: geo.w
               }));
             }
           }

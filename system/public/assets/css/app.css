@@ -3677,6 +3677,13 @@ body:has(.calendar-workspace) {
   /* Avoid transform on this wrapper: it can create a compositor layer that clips descendant shadows */
   animation: ds-toolbar-fade-up-in var(--ds-duration-toolbar-entrance, 350ms) var(--ds-ease-spring, ease) forwards;
 }
+/* Wide viewports: do not let the header row squeeze mode tabs + CTA below their intrinsic width */
+@media (min-width: 960px) {
+  .appts-workspace-header__controls {
+    flex-shrink: 0;
+    min-width: min-content;
+  }
+}
 .appts-workspace-header__action {
   margin-left: 0;
   overflow: visible;
@@ -3688,40 +3695,93 @@ body:has(.calendar-workspace) {
   white-space: nowrap;
 }
 
+/* Day calendar: "New appointment" — same frosted pill language as .appts-view-switch */
+.calendar-workspace .appts-workspace-header__new.ds-btn--toolbar {
+  min-height: 46px;
+  height: 46px;
+  max-height: 46px;
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  color: var(--ds-color-sapphire);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(18px) saturate(145%);
+  -webkit-backdrop-filter: blur(18px) saturate(145%);
+  transition: transform 0.18s var(--ds-ease-spring, ease), box-shadow 0.18s var(--ds-ease-spring, ease),
+    background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+.calendar-workspace .appts-workspace-header__new.ds-btn--toolbar:hover {
+  background: rgba(255, 255, 255, 0.78);
+  border-color: rgba(15, 23, 42, 0.1);
+  color: var(--ds-color-sapphire-black);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.88), 0 10px 28px rgba(19, 33, 61, 0.08);
+  transform: translateY(-1px);
+}
+.calendar-workspace .appts-workspace-header__new.ds-btn--toolbar:active {
+  transform: translateY(0);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+html[data-app-theme="dark"] .calendar-workspace .appts-workspace-header__new.ds-btn--toolbar {
+  background: rgba(42, 42, 48, 0.72);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: var(--ds-color-brand);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+}
+html[data-app-theme="dark"] .calendar-workspace .appts-workspace-header__new.ds-btn--toolbar:hover {
+  background: rgba(52, 52, 58, 0.82);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #e8eef7;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+@media (prefers-reduced-motion: reduce) {
+  .calendar-workspace .appts-workspace-header__new.ds-btn--toolbar,
+  .calendar-workspace .appts-workspace-header__new.ds-btn--toolbar:hover,
+  .calendar-workspace .appts-workspace-header__new.ds-btn--toolbar:active {
+    transition-duration: 0.01ms;
+    transform: none;
+  }
+  .calendar-workspace .appts-workspace-header__new.ds-btn--toolbar:hover svg {
+    transform: none;
+  }
+}
+
 /*
- * APPOINTMENTS-VIEW-SWITCH-APPLE-2026-REBUILD-02
- * Dedicated appointments chrome control (not ds-segmented). Markup: workspace-shell.php;
- * thumb motion: appts-view-switch.js
+ * APPOINTMENTS-VIEW-SWITCH — appointments day preview parity (glass track + pill thumb).
+ * Markup: workspace-shell.php; thumb motion: appts-view-switch.js
  */
 .appts-view-switch {
-  --avs-r-outer: 9px;
-  --avs-r-inner: 7px;
-  --avs-pad: 2px;
+  --avs-r-outer: var(--ds-radius-pill);
+  --avs-r-inner: var(--ds-radius-pill);
+  --avs-pad: 7px;
+  /* Hard floor per tab (Waitlist + padding); avoids min-content quirks with column + ::after phantom */
+  --avs-segment-min: 7.75rem;
   position: relative;
   display: inline-flex;
   align-items: stretch;
   flex-shrink: 0;
   box-sizing: border-box;
-  height: var(--ds-workspace-control-height);
+  /* Comfortable tap target; inner row matches segment line-height */
+  min-height: 46px;
+  height: 46px;
   max-width: 100%;
   padding: var(--avs-pad);
   border-radius: var(--avs-r-outer);
   overflow: hidden;
   -webkit-overflow-scrolling: touch;
-  /* Quiet desktop chrome: layered light neutral, not a flat gray capsule */
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.94) 0%,
-    rgba(248, 250, 252, 0.99) 45%,
-    rgba(241, 245, 249, 1) 100%
-  );
-  border: 1px solid rgba(15, 23, 42, 0.055);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 0 0 0.5px rgba(15, 23, 42, 0.018);
+  /* Frosted track (parity with appointments HTML preview .view-switch) */
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(18px) saturate(145%);
+  -webkit-backdrop-filter: blur(18px) saturate(145%);
 }
 html[data-app-theme="dark"] .appts-view-switch {
-  background: linear-gradient(180deg, #35353a 0%, #2a2a2f 55%, #242428 100%);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 0 0 0.5px rgba(0, 0, 0, 0.25);
+  background: rgba(42, 42, 48, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
 }
 
 .appts-view-switch__thumb {
@@ -3734,16 +3794,15 @@ html[data-app-theme="dark"] .appts-view-switch {
   z-index: 0;
   pointer-events: none;
   transform: translateX(0);
-  /* Seated, machined selection — brighter than shell, crisp rim, micro depth only */
-  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-  border: 1px solid rgba(15, 23, 42, 0.065);
-  box-shadow: inset 0 1px 0 #ffffff, 0 0.5px 1px rgba(15, 23, 42, 0.05);
-  transition: transform 135ms ease, width 135ms ease;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(15, 23, 42, 0.05);
+  box-shadow: 0 10px 30px rgba(19, 33, 61, 0.06), inset 0 0 0 1px rgba(15, 23, 42, 0.05);
+  transition: transform 180ms ease, width 180ms ease;
 }
 html[data-app-theme="dark"] .appts-view-switch__thumb {
-  background: linear-gradient(180deg, #f8f8fa 0%, #ececf0 100%);
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  box-shadow: inset 0 1px 0 #ffffff, 0 1px 2px rgba(0, 0, 0, 0.22);
+  background: rgba(248, 248, 250, 0.94);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 @media (prefers-reduced-motion: reduce) {
   .appts-view-switch__thumb {
@@ -3755,15 +3814,15 @@ html[data-app-theme="dark"] .appts-view-switch__thumb {
   position: relative;
   z-index: 1;
   flex: 1 1 0;
-  min-width: 0;
+  min-width: var(--avs-segment-min);
   box-sizing: border-box;
   display: inline-flex;
   flex-direction: column;
   justify-content: center;
-  align-items: center;
+  align-items: stretch;
   height: 100%;
   margin: 0;
-  padding: 0 clamp(0.5rem, 1.1vw, 0.72rem);
+  padding: 0 clamp(12px, 1.8vw, 22px);
   border: none;
   border-radius: var(--avs-r-inner);
   background: transparent;
@@ -3772,15 +3831,16 @@ html[data-app-theme="dark"] .appts-view-switch__thumb {
   font-family: var(--ds-font-sans);
   font-size: 0.8125rem;
   font-weight: var(--ds-font-medium);
-  letter-spacing: -0.012em;
+  letter-spacing: -0.02em;
   line-height: 1.08;
-  color: #475569;
+  color: rgba(16, 33, 59, 0.66);
   white-space: nowrap;
+  text-align: center;
   cursor: pointer;
   transition: color 0.12s ease, background-color 0.12s ease, opacity 0.1s ease, box-shadow 0.12s ease;
 }
 html[data-app-theme="dark"] .appts-view-switch__segment {
-  color: #b6bcc9;
+  color: rgba(226, 232, 240, 0.72);
 }
 /* Phantom line reserves semibold width — zero layout shift between routes */
 .appts-view-switch__segment::after {
@@ -3794,12 +3854,13 @@ html[data-app-theme="dark"] .appts-view-switch__segment {
   pointer-events: none;
   user-select: none;
   flex-shrink: 0;
+  text-align: center;
 }
 .appts-view-switch:not(.is-appts-view-switch-ready) .appts-view-switch__segment.is-active,
 .appts-view-switch:not(.is-appts-view-switch-ready) .appts-view-switch__segment[aria-current='page'] {
-  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
-  border: 1px solid rgba(15, 23, 42, 0.06);
-  box-shadow: inset 0 1px 0 #ffffff;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(15, 23, 42, 0.05);
+  box-shadow: 0 10px 30px rgba(19, 33, 61, 0.06), inset 0 0 0 1px rgba(15, 23, 42, 0.05);
 }
 .appts-view-switch.is-appts-view-switch-ready .appts-view-switch__segment.is-active,
 .appts-view-switch.is-appts-view-switch-ready .appts-view-switch__segment[aria-current='page'] {
@@ -3807,20 +3868,20 @@ html[data-app-theme="dark"] .appts-view-switch__segment {
   border-color: transparent;
   box-shadow: none;
 }
-/* Selected: authority = weight + ink + thumb (not hue alone) */
+/* Selected label: sapphire ink (preview .view-switch button.active) */
 .appts-view-switch__segment.is-active,
 .appts-view-switch__segment[aria-current='page'] {
-  color: #070b14;
+  color: var(--ds-color-sapphire);
   font-weight: var(--ds-font-semibold);
-  letter-spacing: -0.016em;
+  letter-spacing: -0.02em;
 }
 html[data-app-theme="dark"] .appts-view-switch__segment.is-active,
 html[data-app-theme="dark"] .appts-view-switch__segment[aria-current='page'] {
-  color: #0a0e18;
+  color: var(--ds-color-brand);
 }
 .appts-view-switch__segment:hover:not(.is-active):not([aria-current='page']) {
-  color: #1e293b;
-  background-color: rgba(255, 255, 255, 0.38);
+  color: rgba(16, 33, 59, 0.88);
+  background-color: rgba(255, 255, 255, 0.35);
 }
 html[data-app-theme="dark"] .appts-view-switch__segment:hover:not(.is-active):not([aria-current='page']) {
   color: #f1f5f9;
@@ -3830,7 +3891,7 @@ html[data-app-theme="dark"] .appts-view-switch__segment:hover:not(.is-active):no
   transition-duration: 0.07s;
 }
 .appts-view-switch__segment:active:not(.is-active):not([aria-current='page']) {
-  background-color: rgba(15, 23, 42, 0.06);
+  background-color: rgba(15, 23, 42, 0.05);
 }
 .appts-view-switch.is-appts-view-switch-ready .appts-view-switch__segment.is-active:active,
 .appts-view-switch.is-appts-view-switch-ready .appts-view-switch__segment[aria-current='page']:active {
@@ -3843,7 +3904,7 @@ html[data-app-theme="dark"] .appts-view-switch__segment:hover:not(.is-active):no
 }
 
 /* Entrance-animation bypass: navigating between Calendar / List / Waitlist
-   shows controls instantly ? no slide/fade on every tab click */
+   shows controls instantly — no slide/fade on every tab click */
 [data-ds-appts-tab-nav] .appts-workspace-header__controls {
   animation: none;
   opacity: 1;
@@ -3860,6 +3921,10 @@ html[data-app-theme="dark"] .appts-view-switch__segment:hover:not(.is-active):no
   .appts-view-switch {
     flex-shrink: 1;
     width: 100%;
+  }
+  .appts-view-switch__segment {
+    min-width: 0;
+    flex: 1 1 0;
   }
 }
 

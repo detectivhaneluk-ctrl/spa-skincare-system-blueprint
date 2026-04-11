@@ -1,5 +1,6 @@
 <?php
-/** @var list<string> $detailsLayoutKeys */
+/** @var list<array{field_key: string, layout_span?: int}>|null $detailsLayoutRows */
+/** @var list<string>|null $detailsLayoutKeys Legacy: used only when $detailsLayoutRows is empty */
 /** @var array<string, mixed> $client */
 /** @var array<string, mixed> $errors */
 /** @var array<string, mixed> $marketing */
@@ -20,6 +21,30 @@ $err = static function (string $key) use ($errors): string {
 $useDetailsSections = !empty($clientRefDedicatedDetails);
 $detailsSectionOpen = false;
 $detailsPrevSection = null;
+$detailsLayoutGridOpen = false;
+
+$detailsLayoutRows = $detailsLayoutRows ?? [];
+if ($detailsLayoutRows === [] && isset($detailsLayoutKeys) && is_array($detailsLayoutKeys)) {
+    foreach ($detailsLayoutKeys as $legacyKey) {
+        $detailsLayoutRows[] = ['field_key' => (string) $legacyKey, 'layout_span' => 3];
+    }
+}
+
+/** Must match composer $customerDetailsLayoutFlowForceFullKeys — only true full-width rows. */
+$detailsLayoutForceFullWidthKeys = [
+    'phone_contact_block',
+    'summary_primary_phone',
+];
+
+/** layout_span tier → grid units on a 6-column row: 1→2, 2→3, 3→6 (tier 1 legacy; service normalizes 1→ tier 2). */
+$detailsLayoutSpanToGridUnits = static function (int $layoutSpan1to3): int {
+    return match (max(1, min(3, $layoutSpan1to3))) {
+        1 => 2,
+        2 => 3,
+        3 => 6,
+        default => 6,
+    };
+};
 
 /** @return array<string, string> */
 $detailsSectionLabels = static fn (): array => [
@@ -52,7 +77,21 @@ $resolveSystemDetailsSection = static function (string $layoutKey): ?string {
 
 $sectionLabels = $detailsSectionLabels();
 
-foreach ($detailsLayoutKeys as $layoutKey) {
+if (!$useDetailsSections) {
+    echo '<div class="client-ref-details-layout-grid">';
+    $detailsLayoutGridOpen = true;
+}
+
+foreach ($detailsLayoutRows as $rowEntry) {
+    $layoutKey = trim((string) ($rowEntry['field_key'] ?? ''));
+    if ($layoutKey === '') {
+        continue;
+    }
+    $layoutSpan = (int) ($rowEntry['layout_span'] ?? 3);
+    if ($layoutSpan < 1 || $layoutSpan > 3) {
+        $layoutSpan = 3;
+    }
+
     $customId = $fieldCatalog->parseCustomFieldId($layoutKey);
     $nextSection = null;
     if ($useDetailsSections) {
@@ -68,6 +107,10 @@ foreach ($detailsLayoutKeys as $layoutKey) {
     }
 
     if ($useDetailsSections && $nextSection !== null && $nextSection !== $detailsPrevSection) {
+        if ($detailsLayoutGridOpen) {
+            echo '</div>';
+            $detailsLayoutGridOpen = false;
+        }
         if ($detailsSectionOpen) {
             echo '</div>';
             $detailsSectionOpen = false;
@@ -75,8 +118,15 @@ foreach ($detailsLayoutKeys as $layoutKey) {
         $sl = $sectionLabels[$nextSection] ?? $nextSection;
         echo '<div class="client-ref-details-field-group" data-section="' . htmlspecialchars($nextSection) . '">';
         echo '<h3 class="client-ref-details-field-group-title">' . htmlspecialchars($sl) . '</h3>';
+        echo '<div class="client-ref-details-layout-grid">';
+        $detailsLayoutGridOpen = true;
         $detailsSectionOpen = true;
         $detailsPrevSection = $nextSection;
+    }
+
+    if ($useDetailsSections && !$detailsLayoutGridOpen) {
+        echo '<div class="client-ref-details-layout-grid">';
+        $detailsLayoutGridOpen = true;
     }
 
     if ($customId !== null) {
@@ -90,6 +140,8 @@ foreach ($detailsLayoutKeys as $layoutKey) {
         $ft = (string) ($def['field_type'] ?? 'text');
         $cfFull = $ft === 'textarea' || $ft === 'address' || $ft === 'multiselect' || $ft === 'boolean'
             || ($ft === 'select' && !empty($def['options_json']));
+        $cellSpan = $cfFull ? 6 : $detailsLayoutSpanToGridUnits($layoutSpan);
+        echo '<div class="client-ref-hig-cell" style="grid-column: span ' . (int) $cellSpan . '">';
         ?>
         <div class="form-row client-ref-hig-field<?= $cfFull ? ' client-ref-hig-field--full' : '' ?>">
             <label for="cf_<?= $fid ?>"><?= htmlspecialchars((string) $def['label']) ?><?= (int) ($def['is_required'] ?? 0) === 1 ? ' *' : '' ?></label>
@@ -118,8 +170,14 @@ foreach ($detailsLayoutKeys as $layoutKey) {
             <?php if (!empty($errors['custom_field_' . $fid])): ?><span class="error"><?= htmlspecialchars((string) $errors['custom_field_' . $fid]) ?></span><?php endif; ?>
         </div>
         <?php
+        echo '</div>';
         continue;
     }
+
+    $systemCellSpan = in_array($layoutKey, $detailsLayoutForceFullWidthKeys, true)
+        ? 6
+        : $detailsLayoutSpanToGridUnits($layoutSpan);
+    echo '<div class="client-ref-hig-cell" style="grid-column: span ' . (int) $systemCellSpan . '">';
 
     switch ($layoutKey) {
         case 'phone_contact_block':
@@ -357,9 +415,22 @@ foreach ($detailsLayoutKeys as $layoutKey) {
         default:
             break;
     }
+
+    echo '</div>';
 }
 
-if ($useDetailsSections && $detailsSectionOpen) {
+if (!$useDetailsSections && $detailsLayoutGridOpen) {
     echo '</div>';
-    $detailsSectionOpen = false;
+    $detailsLayoutGridOpen = false;
+}
+
+if ($useDetailsSections) {
+    if ($detailsLayoutGridOpen) {
+        echo '</div>';
+        $detailsLayoutGridOpen = false;
+    }
+    if ($detailsSectionOpen) {
+        echo '</div>';
+        $detailsSectionOpen = false;
+    }
 }

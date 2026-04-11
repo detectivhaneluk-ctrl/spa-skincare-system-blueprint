@@ -14,8 +14,15 @@ $useClientsStyleModuleHead = ($shellModifier === 'workspace-shell--create');
 $maxTabLabel = '';
 foreach ($tabs as $_t) {
     $_lbl = (string) ($_t['label'] ?? '');
-    if (mb_strlen($_lbl, 'UTF-8') > mb_strlen($maxTabLabel, 'UTF-8')) {
+    $_len = mb_strlen($_lbl, 'UTF-8');
+    $curLen = mb_strlen($maxTabLabel, 'UTF-8');
+    if ($_len > $curLen) {
         $maxTabLabel = $_lbl;
+    } elseif ($_len === $curLen && $_lbl !== '') {
+        /* Same glyph count (e.g. Calendar vs Waitlist): pick stable tie-break so phantom reserves enough width */
+        if ($maxTabLabel === '' || strcmp($_lbl, $maxTabLabel) > 0) {
+            $maxTabLabel = $_lbl;
+        }
     }
 }
 $maxTabLabelAttr = htmlspecialchars($maxTabLabel, ENT_QUOTES, 'UTF-8');

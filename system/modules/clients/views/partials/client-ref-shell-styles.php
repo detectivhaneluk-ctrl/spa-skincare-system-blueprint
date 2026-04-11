@@ -9,10 +9,10 @@
   --cr-surface: rgba(255, 255, 255, 0.78);
   --cr-border: rgba(15, 23, 42, 0.09);
   --cr-border-strong: rgba(15, 23, 42, 0.14);
-  --cr-text: #0f172a;
+  --cr-text: #1e293b;
   --cr-muted: #64748b;
-  --cr-accent: #0d9488;
-  --cr-accent-soft: rgba(13, 148, 136, 0.12);
+  --cr-accent: #1a6359;
+  --cr-accent-soft: rgba(26, 99, 89, 0.12);
   --cr-radius: 14px;
   --cr-ease: cubic-bezier(0.25, 0.1, 0.25, 1);
 }
@@ -1918,6 +1918,30 @@ main.app-shell__main.main.client-resume-page.client-ref--details-page {
   line-height: 1.2;
 }
 
+.client-ref-details-layout-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 20px 24px;
+  align-items: start;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.client-ref--details-page.client-ref-surface .client-ref-details-fields--hig .client-ref-details-field-group > .client-ref-details-layout-grid {
+  grid-column: 1 / -1;
+}
+
+.client-ref-hig-cell {
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.client-ref-hig-cell .client-ref-hig-address-panel,
+.client-ref-hig-cell .client-ref-hig-delivery-panel {
+  grid-column: unset;
+  width: 100%;
+}
+
 .client-ref-hig-field {
   margin: 0 !important;
   padding: 0 !important;
@@ -2092,6 +2116,14 @@ main.app-shell__main.main.client-resume-page.client-ref--details-page {
   .client-ref--details-page.client-ref-surface .client-ref-details-fields--hig .client-ref-details-field-group,
   .client-ref-hig-panel-grid {
     grid-template-columns: 1fr;
+  }
+
+  .client-ref-details-layout-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .client-ref-hig-cell {
+    grid-column: 1 / -1 !important;
   }
 
   .client-ref-hig-field--full,

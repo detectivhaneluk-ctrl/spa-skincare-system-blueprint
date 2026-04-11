@@ -37,7 +37,17 @@
     btn.setAttribute('aria-label', on ? 'Exit full screen' : 'Enter full screen');
     if (btnLabel) { btnLabel.textContent = on ? 'Exit full screen' : 'Full screen'; }
     if (btnIcon) {
-      btnIcon.querySelector('use').setAttribute('href', on ? '#bi-fullscreen-exit' : '#bi-fullscreen');
+      var enter = btnIcon.querySelector('[data-calendar-fs-icon="enter"]');
+      var exit = btnIcon.querySelector('[data-calendar-fs-icon="exit"]');
+      if (enter && exit) {
+        enter.style.display = on ? 'none' : '';
+        exit.style.display = on ? '' : 'none';
+      } else {
+        var useEl = btnIcon.querySelector('use');
+        if (useEl) {
+          useEl.setAttribute('href', on ? '#bi-fullscreen-exit' : '#bi-fullscreen');
+        }
+      }
     }
   }
 

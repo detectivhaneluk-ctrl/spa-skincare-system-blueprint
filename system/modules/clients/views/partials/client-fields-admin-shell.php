@@ -20,6 +20,6 @@ require base_path('modules/clients/views/partials/clients-workspace-data.php');
 <div class="flash flash-error" role="alert">
     <strong>Client page layouts storage is not available.</strong>
     <?= htmlspecialchars(\Modules\Clients\Services\ClientPageLayoutService::LAYOUT_STORAGE_REQUIRES_MIGRATION_MESSAGE) ?>
-    <p class="hint" style="margin:0.5rem 0 0">From the <code>system/</code> directory run <code>php scripts/migrate.php</code> so pending migrations (including <code>113_clients_fields_layouts_and_extended_columns.sql</code>) are applied.</p>
+    <p class="hint" style="margin:0.5rem 0 0">From the <code>system/</code> directory run <code>php scripts/migrate.php</code> so pending migrations are applied (including <code>113_clients_fields_layouts_and_extended_columns.sql</code>, <code>144_client_page_layout_items_label_required.sql</code>, and <code>145_client_page_layout_items_layout_span.sql</code>).</p>
 </div>
 <?php endif; ?>

@@ -54,13 +54,6 @@ ob_start();
                 </div>
             </div>
             <p class="appts-cal-card__summary-status" id="appts-cal-summary-status" role="status" aria-live="polite" hidden></p>
-            <div class="appts-cal-card__hero" aria-hidden="true">
-                <p class="appts-cal-card__hero-kicker" id="appts-cal-hero-kicker">Selected</p>
-                <div class="appts-cal-card__hero-line">
-                    <span class="appts-cal-card__hero-day" id="appts-cal-hero-day">—</span>
-                    <span class="appts-cal-card__hero-weekday" id="appts-cal-hero-weekday"></span>
-                </div>
-            </div>
             <div class="appts-cal-card__body appts-cal-card__body--week" id="appts-cal-body-week">
                 <div class="appts-cal-card__weekday-ribbon" aria-hidden="true">
                     <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
@@ -94,8 +87,10 @@ ob_start();
                 <button type="button" class="cal-tools-tab cal-tools-tab--active" role="tab"
                         data-tools-tab="waitlist" aria-selected="true" aria-controls="cal-tools-waitlist"
                         title="Waitlist">
-                    <svg class="cal-tools-tab__ic cal-tools-tab__ic--bi" width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false">
-                        <use href="#bi-list-task"/>
+                    <svg class="cal-tools-tab__ic cal-tools-tab__ic--lucide" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                        <path d="M3 5h18"/>
+                        <path d="M3 12h18"/>
+                        <path d="M3 19h18"/>
                     </svg>
                     <span id="cal-tools-waitlist-badge" class="cal-tools-badge" hidden></span>
                 </button>
@@ -189,7 +184,11 @@ ob_start();
                     <?php if (count($branches) === 1): ?>
                     <span class="appts-cal-toolbar-branch-pill appts-cal-toolbar-branch-pill--static" title="Active branch">
                         <span class="appts-cal-toolbar-branch-pill__salon" aria-hidden="true">
-                            <svg class="appts-cal-toolbar-branch-pill__salon-svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-building"/></svg>
+                            <svg class="appts-cal-toolbar-branch-pill__salon-svg appts-cal-toolbar-branch-pill__salon-svg--lucide" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                <path d="M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5"/>
+                                <path d="M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244"/>
+                                <path d="M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05"/>
+                            </svg>
                         </span>
                         <span class="appts-cal-toolbar-branch-pill__name"><?= htmlspecialchars($branches[0]['name']) ?></span>
                     </span>
@@ -197,7 +196,11 @@ ob_start();
                     <label class="visually-hidden" for="calendar-branch">Branch</label>
                     <div class="appts-cal-toolbar-branch-pill">
                         <span class="appts-cal-toolbar-branch-pill__salon" aria-hidden="true">
-                            <svg class="appts-cal-toolbar-branch-pill__salon-svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-building"/></svg>
+                            <svg class="appts-cal-toolbar-branch-pill__salon-svg appts-cal-toolbar-branch-pill__salon-svg--lucide" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                                <path d="M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5"/>
+                                <path d="M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244"/>
+                                <path d="M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05"/>
+                            </svg>
                         </span>
                         <select class="appts-cal-toolbar-branch-select" id="calendar-branch" name="branch_id" form="calendar-filter-form" title="Switch branch">
                             <?php foreach ($branches as $b): ?>
@@ -216,12 +219,21 @@ ob_start();
                 <?php endif; ?>
             </div>
             <div class="appts-cal-context-anchor" id="cal-toolbar-context-anchor">
-                <button type="button" class="appts-cal-toolbar-ghost-btn" id="calendar-blocked-time-btn">
-                    <svg class="appts-cal-toolbar-ghost-btn__ic" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-slash-circle"/></svg>
-                    <span>Blocked time</span>
-                </button>
                 <button type="button" class="appts-cal-toolbar-ghost-btn" id="calendar-fullscreen-btn" aria-label="Enter full screen" aria-pressed="false">
-                    <svg class="appts-cal-toolbar-ghost-btn__ic" id="calendar-fullscreen-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-fullscreen"/></svg>
+                    <svg class="appts-cal-toolbar-ghost-btn__ic appts-cal-toolbar-ghost-btn__ic--lucide" id="calendar-fullscreen-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                        <g class="calendar-fullscreen-icon__enter" data-calendar-fs-icon="enter">
+                            <path d="M8 3H5a2 2 0 0 0-2 2v3"/>
+                            <path d="M21 8V5a2 2 0 0 0-2-2h-3"/>
+                            <path d="M3 16v3a2 2 0 0 0 2 2h3"/>
+                            <path d="M16 21h3a2 2 0 0 0 2-2v-3"/>
+                        </g>
+                        <g class="calendar-fullscreen-icon__exit" data-calendar-fs-icon="exit" style="display: none">
+                            <path d="M8 3v3a2 2 0 0 1-2 2H3"/>
+                            <path d="M21 8h-3a2 2 0 0 1-2-2V3"/>
+                            <path d="M3 16h3a2 2 0 0 1 2 2v3"/>
+                            <path d="M16 21v-3a2 2 0 0 1 2-2h3"/>
+                        </g>
+                    </svg>
                     <span class="appts-cal-fullscreen-label">Full screen</span>
                 </button>
                 <div class="appts-cal-staff-pan" id="calendar-staff-pan-controls" role="group" aria-label="Scroll staff columns" hidden style="display:none">
@@ -238,7 +250,12 @@ ob_start();
                 <div id="calendar-toolbar-context" class="appts-cal-toolbar__context" aria-label="Column visibility summary"></div>
                 <div class="appts-cal-tools-dropdown">
                 <button type="button" class="appts-cal-toolbar-ghost-btn appts-cal-tools-toggle" id="cal-toolbar-tools-toggle" aria-expanded="false" aria-controls="cal-toolbar-tools-panel" aria-haspopup="true">
-                    <svg class="appts-cal-toolbar-ghost-btn__ic appts-cal-tools-toggle__icon appts-cal-toolbar__icon appts-cal-toolbar__icon--bi" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-sliders"/></svg>
+                    <svg class="appts-cal-toolbar-ghost-btn__ic appts-cal-toolbar-ghost-btn__ic--lucide appts-cal-tools-toggle__icon appts-cal-toolbar__icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+                        <path d="M14 17H5"/>
+                        <path d="M19 7h-9"/>
+                        <circle cx="17" cy="17" r="3"/>
+                        <circle cx="7" cy="7" r="3"/>
+                    </svg>
                     <span class="appts-cal-tools-toggle__label" id="cal-toolbar-tools-toggle-text">Tools</span>
                 </button>
                 <div id="cal-toolbar-tools-panel" class="appts-cal-tools-panel" role="region" aria-labelledby="cal-toolbar-tools-toggle-text" hidden>

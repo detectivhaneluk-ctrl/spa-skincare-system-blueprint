@@ -1,46 +1,59 @@
 /**
- * Global desktop design tokens — SPA Admin
+ * Global desktop design tokens — SPA Admin / Ollira
  * Single source for color, space, radius, type, elevation, controls.
  * Modules consume via var(--ds-*); avoid page-local hex for shared UI.
  */
 :root {
-  /* —— Monochrome base —— */
-  --ds-color-bg-page: #f5f5f7;
+  /* Strict app aliases (use alongside --ds-* tokens) */
+  --primary-bg: #f4f4f5;
+  --card-bg: #ffffff;
+  --accent-sapphire: #0d3b66;
+  --text-main: #111827;
+  --text-muted: #6b7280;
+
+  /* —— Ollira light surfaces —— neutral cool gray (no warm linen) */
+  --ds-color-brand: #0d3b66;
+  --ds-color-bg-page: #f4f4f5;
   --ds-color-bg-canvas: #ffffff;
-  --ds-color-bg-subtle: #fafafa;
-  --ds-color-bg-muted: #f0f0f3;
+  /* Hover / selected chrome */
+  --ds-color-bg-subtle: #ededed;
+  --ds-color-bg-muted: #e4e4e7;
 
-  --ds-color-text: #1d1d1f;
-  --ds-color-text-secondary: #86868b;
-  --ds-color-text-tertiary: #aeaeb2;
+  --ds-color-text: #111827;
+  --ds-color-text-secondary: #6b7280;
+  --ds-color-text-tertiary: #9ca3af;
 
-  --ds-color-border: rgba(0, 0, 0, 0.08);
-  --ds-color-border-light: rgba(0, 0, 0, 0.05);
-  --ds-color-divider: rgba(0, 0, 0, 0.06);
+  --ds-color-border: #d4d4d8;
+  --ds-color-border-light: rgba(212, 212, 216, 0.88);
+  --ds-color-divider: #e4e4e7;
 
-  /* —— Brand mark (tenant shell: dark tile + orange bolt) —— */
-  --ds-color-brand-logo-bg: #171717;
-  --ds-color-brand-bolt: #f97316;
+  /* Secondary accents (deep sapphire) */
+  --ds-color-sapphire: #0d3b66;
+  --ds-color-sapphire-black: #092a47;
+
+  /* —— Brand mark (logo tile + icon: mineral sapphire) —— */
+  --ds-color-brand-logo-bg: rgba(13, 59, 102, 0.08);
+  --ds-color-brand-bolt: #0d3b66;
 
   /* —— Tenant main column max width —— */
   --ds-content-max-width: 1320px;
 
-  /* —— Accent: ink black — links, active chrome, primary CTA (Apple-style) —— */
+  /* —— Accent: deep charcoal — primary nav text, key emphasis —— */
   --ds-color-accent: #111827;
-  --ds-color-accent-hover: #000000;
+  --ds-color-accent-hover: #030712;
   --ds-color-accent-muted: rgba(17, 24, 39, 0.08);
-  --ds-color-accent-border: rgba(0, 0, 0, 0.2);
-  --ds-color-focus-ring: rgba(0, 0, 0, 0.28);
+  --ds-color-accent-border: rgba(17, 24, 39, 0.18);
+  --ds-color-focus-ring: rgba(13, 59, 102, 0.35);
   /* UI controls (segmented inset / toolbar double ring) */
-  --ds-color-focus-ring-ui: #111827;
+  --ds-color-focus-ring-ui: #0d3b66;
 
   /* —— Semantic (still restrained) —— */
   --ds-color-danger: #b00020;
   --ds-color-danger-bg: rgba(176, 0, 32, 0.06);
   --ds-color-success: #1b7f3a;
   --ds-color-success-bg: rgba(27, 127, 58, 0.08);
-  /* Apple HIG system green (live / status dots); distinct from brand semantic success */
-  --ds-color-apple-system-green: #34c759;
+  /* Primary UI toggles / active chrome — mineral sapphire (not clinical green) */
+  --ds-color-apple-system-green: #0d3b66;
   --ds-color-warning-bg: #fff8e6;
   --ds-color-warning-text: #6b5a1a;
 
@@ -96,18 +109,24 @@
   /* Inline buttons: flat at rest, lift on hover */
   --ds-shadow-control-rest: 0 1px 2px rgba(0, 0, 0, 0.03);
   --ds-shadow-control-hover: 0 4px 14px rgba(15, 23, 42, 0.1);
-  /* Segmented track + sliding thumb (layered shadow, reference parity) */
+  /* Segmented track + sliding thumb (layered shadow, iOS-style elevated thumb) */
   --ds-shadow-segmented-active: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
-  --ds-shadow-segmented-thumb: var(--ds-shadow-segmented-active);
+  --ds-shadow-segmented-thumb: 0 0 1px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.08),
+    0 3px 10px rgba(15, 23, 42, 0.1);
   --ds-color-segmented-track: #f3f4f6;
   --ds-color-segmented-track-strong: #e5e7eb;
   --ds-segmented-track-padding: 4px;
   --ds-segmented-thumb-inset: 2px;
   --ds-segmented-thumb-inset-pill: 4px;
-  /* Dark pill toolbar CTA: no “floating card” at rest; depth on hover only */
-  --ds-shadow-toolbar-cta: none;
-  --ds-shadow-toolbar-cta-hover: 0 8px 22px rgba(17, 24, 39, 0.18);
-  --ds-shadow-toolbar-cta-active: 0 2px 8px rgba(17, 24, 39, 0.12);
+  /* Split pill: accent cap + uppercase label (KPI / mode badge) */
+  --ds-split-pill-border: rgba(15, 23, 42, 0.08);
+  --ds-split-pill-body-bg: #ffffff;
+  --ds-split-pill-accent-from: #5ee984;
+  --ds-split-pill-accent-to: #16a34a;
+  /* Dark pill toolbar CTA: subtle depth at rest (toolbar reference parity) */
+  --ds-shadow-toolbar-cta: 0 2px 10px rgba(9, 42, 71, 0.22);
+  --ds-shadow-toolbar-cta-hover: 0 8px 22px rgba(15, 23, 42, 0.18);
+  --ds-shadow-toolbar-cta-active: 0 2px 8px rgba(15, 23, 42, 0.12);
 
   /* —— Control sizes (desktop) —— */
   --ds-control-height: 2.25rem;
@@ -142,13 +161,20 @@
   --ds-glass-blur: blur(24px) saturate(140%);
   --ds-glass-blur-strong: blur(32px) saturate(160%);
 
-  /* Workspace toolbar CTA + mini-calendar selected day (light = ink; dark theme overrides) */
-  --ds-color-toolbar-cta-bg: #111827;
-  --ds-color-toolbar-cta-border: #111827;
-  --ds-color-toolbar-cta-bg-hover: #111827;
-  --ds-color-toolbar-cta-border-hover: #111827;
-  --ds-color-selection-fill: #111827;
-  --ds-color-selection-shadow: rgba(17, 24, 39, 0.22);
+  /* Workspace toolbar CTA + mini-calendar selected day (dark theme overrides) */
+  --ds-color-toolbar-cta-bg: #092a47;
+  --ds-color-toolbar-cta-border: #092a47;
+  --ds-color-toolbar-cta-bg-hover: #071f35;
+  --ds-color-toolbar-cta-border-hover: #071f35;
+  --ds-color-toolbar-cta-text: #f4f4f5;
+  --ds-color-selection-fill: #0d3b66;
+  --ds-color-selection-shadow: rgba(13, 59, 102, 0.28);
+}
+
+/* Native controls: brand jade for checkboxes/radios (see accent tokens for CTAs/text). */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--ds-color-brand);
 }
 
 /*
@@ -157,6 +183,7 @@
  */
 html[data-app-theme="dark"] {
   color-scheme: dark;
+  --ds-color-brand: #5b8ec4;
   --ds-color-bg-page: #0a0a0b;
   --ds-color-bg-canvas: #141416;
   --ds-color-bg-subtle: #1a1a1d;
@@ -175,16 +202,28 @@ html[data-app-theme="dark"] {
   --ds-color-focus-ring-ui: #e5e5ea;
   --ds-color-segmented-track: #2a2a2e;
   --ds-color-segmented-track-strong: #343438;
+  --ds-shadow-segmented-thumb: 0 0 1px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.35),
+    0 4px 14px rgba(0, 0, 0, 0.35);
   --ds-glass-bg: rgba(28, 28, 32, 0.82);
   --ds-glass-bg-strong: rgba(22, 22, 26, 0.92);
   --ds-glass-border: rgba(255, 255, 255, 0.08);
 
-  --ds-color-toolbar-cta-bg: #2563eb;
-  --ds-color-toolbar-cta-border: #1d4ed8;
-  --ds-color-toolbar-cta-bg-hover: #3b82f6;
-  --ds-color-toolbar-cta-border-hover: #60a5fa;
+  --ds-color-brand-logo-bg: #1a2229;
+  --ds-color-brand-bolt: var(--ds-color-brand);
+
+  --ds-color-toolbar-cta-bg: #092a47;
+  --ds-color-toolbar-cta-border: #092a47;
+  --ds-color-toolbar-cta-bg-hover: #0a3354;
+  --ds-color-toolbar-cta-border-hover: #0a3354;
+  --ds-color-toolbar-cta-text: #f4f4f5;
+  --ds-shadow-toolbar-cta: 0 2px 14px rgba(0, 0, 0, 0.4);
   /* Distinct from --ds-color-accent (used for nav chrome / links on dark) */
-  --ds-color-selection-fill: #2563eb;
-  --ds-color-selection-shadow: rgba(37, 99, 235, 0.42);
-  --ds-color-apple-system-green: #30d158;
+  --ds-color-selection-fill: #5b8ec4;
+  --ds-color-selection-shadow: rgba(91, 142, 196, 0.42);
+  --ds-color-apple-system-green: #5b8ec4;
+
+  --ds-split-pill-border: rgba(255, 255, 255, 0.12);
+  --ds-split-pill-body-bg: var(--ds-color-bg-canvas);
+  --ds-split-pill-accent-from: #34d399;
+  --ds-split-pill-accent-to: #059669;
 }

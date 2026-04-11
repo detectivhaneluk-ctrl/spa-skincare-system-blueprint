@@ -469,11 +469,27 @@ final class ClientService
             $fieldKey = trim((string) ($data['field_key'] ?? ''));
             $label = trim((string) ($data['label'] ?? ''));
             $fieldType = trim((string) ($data['field_type'] ?? 'text'));
-            if ($fieldKey === '' || $label === '') {
-                throw new \InvalidArgumentException('field_key and label are required.');
+            if ($label === '') {
+                throw new \InvalidArgumentException('label is required.');
             }
             if (!in_array($fieldType, self::allowedCustomFieldTypes(), true)) {
                 throw new \InvalidArgumentException('Invalid field_type.');
+            }
+            $resolvedBranchId = isset($data['branch_id']) && $data['branch_id'] !== '' ? (int) $data['branch_id'] : null;
+            if ($resolvedBranchId === null) {
+                $resolvedBranchId = $scope['branch_id'] ?? null;
+            }
+            if ($fieldKey === '') {
+                $fieldKey = $this->allocateUniqueClientFieldKey(
+                    $resolvedBranchId,
+                    self::slugifyClientFieldKeyFromLabel($label)
+                );
+            } else {
+                $normalizedKey = self::normalizeClientFieldKey($fieldKey);
+                if ($normalizedKey === null) {
+                    throw new \InvalidArgumentException('Invalid field_key.');
+                }
+                $fieldKey = $normalizedKey;
             }
             $userId = $this->currentUserId();
             $optionsRaw = trim((string) ($data['options_json'] ?? ''));
@@ -620,6 +636,73 @@ final class ClientService
         $clean = array_values(array_unique($clean));
 
         return json_encode($clean, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
+    /**
+     * Lowercase slug from label (a–z, 0–9, underscores). Matches composer JS rules; max 100 chars (DB limit).
+     */
+    private static function slugifyClientFieldKeyFromLabel(string $label): string
+    {
+        $s = mb_strtolower(trim($label), 'UTF-8');
+        $s = preg_replace('/[^a-z0-9]+/', '_', $s) ?? '';
+        $s = trim($s, '_');
+        if (strlen($s) > 100) {
+            $s = substr($s, 0, 100);
+            $s = rtrim($s, '_');
+        }
+
+        return $s !== '' ? $s : 'custom_field';
+    }
+
+    private static function normalizeClientFieldKey(string $key): ?string
+    {
+        $key = strtolower(trim($key));
+        if ($key === '' || strlen($key) > 100 || !preg_match('/^[a-z0-9_]+$/', $key)) {
+            return null;
+        }
+
+        return $key;
+    }
+
+    /**
+     * Ensures (branch_id, field_key) is unique among non-deleted definitions for that branch.
+     */
+    private function allocateUniqueClientFieldKey(?int $branchId, string $base): string
+    {
+        $base = self::normalizeClientFieldKey($base) ?? 'custom_field';
+        if (strlen($base) > 100) {
+            $base = substr($base, 0, 100);
+            $base = rtrim($base, '_');
+        }
+        if ($base === '') {
+            $base = 'custom_field';
+        }
+        $existing = [];
+        foreach ($this->fieldDefinitions->list($branchId, false) as $row) {
+            $fk = (string) ($row['field_key'] ?? '');
+            if ($fk !== '') {
+                $existing[$fk] = true;
+            }
+        }
+        $key = $base;
+        $n = 2;
+        while (isset($existing[$key])) {
+            $suffix = '_' . $n;
+            $maxBaseLen = 100 - strlen($suffix);
+            if ($maxBaseLen < 1) {
+                $key = 'f' . $suffix;
+            } else {
+                $trunc = substr($base, 0, $maxBaseLen);
+                $trunc = rtrim($trunc, '_');
+                if ($trunc === '') {
+                    $trunc = 'field';
+                }
+                $key = $trunc . $suffix;
+            }
+            $n++;
+        }
+
+        return $key;
     }
 
     /**

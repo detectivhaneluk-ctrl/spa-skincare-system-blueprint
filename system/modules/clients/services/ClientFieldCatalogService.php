@@ -51,7 +51,7 @@ final class ClientFieldCatalogService
             'last_name' => $s('Last name', 'last_name', 'single_line_text', false) + ['details_profile_default' => true],
             'email' => $s('Email', 'email', 'email', true, true, true),
             'phone_contact_block' => [
-                'label' => 'Phone numbers (home, mobile, work, ext, operator)',
+                'label' => 'Phone numbers',
                 'kind' => 'block',
                 'block' => 'phone_contact',
                 'admin_field_type' => 'summary_read_only',

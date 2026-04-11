@@ -29,7 +29,7 @@ final class ClientPageLayoutItemRepository
     }
 
     /**
-     * @param list<array{field_key:string, position:int, is_enabled:int, display_label?:string|null, is_required?:int|null}> $rows
+     * @param list<array{field_key:string, position:int, is_enabled:int, display_label?:string|null, is_required?:int|null, layout_span?:int}> $rows
      */
     public function insertRows(int $profileId, array $rows): void
     {
@@ -39,7 +39,7 @@ final class ClientPageLayoutItemRepository
         $values = [];
         $params = [];
         foreach ($rows as $row) {
-            $values[] = '(?, ?, ?, ?, ?, ?)';
+            $values[] = '(?, ?, ?, ?, ?, ?, ?)';
             $params[] = $profileId;
             $params[] = (string) $row['field_key'];
             $params[] = (int) $row['position'];
@@ -51,8 +51,16 @@ final class ClientPageLayoutItemRepository
             } else {
                 $params[] = null;
             }
+            $span = (int) ($row['layout_span'] ?? 3);
+            if ($span < 1) {
+                $span = 1;
+            }
+            if ($span > 3) {
+                $span = 3;
+            }
+            $params[] = $span;
         }
-        $sql = 'INSERT INTO client_page_layout_items (profile_id, field_key, position, is_enabled, display_label, is_required) VALUES '
+        $sql = 'INSERT INTO client_page_layout_items (profile_id, field_key, position, is_enabled, display_label, is_required, layout_span) VALUES '
             . implode(', ', $values);
         $this->db->query($sql, $params);
     }

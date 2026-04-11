@@ -67,34 +67,24 @@ final class ClientController
 
     /**
      * @param list<array<string, mixed>> $customFieldDefinitions
-     * @return list<string>
+     * @return list<array{field_key: string, layout_span: int}>
      */
-    private function detailsLayoutKeysForForm(array $customFieldDefinitions): array
+    private function detailsLayoutRowsForForm(array $customFieldDefinitions): array
     {
-        $base = $this->pageLayouts->tryDetailsLayoutKeys();
-
-        return $this->mergeDetailsLayoutWithRequiredCustom($base, $customFieldDefinitions);
-    }
-
-    /**
-     * @param list<string> $baseKeys
-     * @param list<array<string, mixed>> $customFieldDefinitions
-     * @return list<string>
-     */
-    private function mergeDetailsLayoutWithRequiredCustom(array $baseKeys, array $customFieldDefinitions): array
-    {
-        $extra = [];
+        $rows = $this->pageLayouts->tryDetailsLayoutRows();
+        $keys = array_map(static fn (array $r): string => (string) $r['field_key'], $rows);
         foreach ($customFieldDefinitions as $def) {
             if ((int) ($def['is_required'] ?? 0) !== 1) {
                 continue;
             }
             $ck = $this->fieldCatalog->customFieldLayoutKey((int) $def['id']);
-            if (!in_array($ck, $baseKeys, true)) {
-                $extra[] = $ck;
+            if (!in_array($ck, $keys, true)) {
+                $rows[] = ['field_key' => $ck, 'layout_span' => 3];
+                $keys[] = $ck;
             }
         }
 
-        return array_merge($baseKeys, $extra);
+        return $rows;
     }
 
     public function index(): void
@@ -983,7 +973,7 @@ final class ClientController
         $customFieldDefinitions = $this->service->getCustomFieldDefinitions($this->customFieldDefinitionsBranchFilter($client), true);
         $customFieldValues = $this->service->getClientCustomFieldValuesMap($id);
         $fieldCatalog = $this->fieldCatalog;
-        $detailsLayoutKeys = $this->detailsLayoutKeysForForm($customFieldDefinitions);
+        $detailsLayoutRows = $this->detailsLayoutRowsForForm($customFieldDefinitions);
         $sidebarLayoutKeys = $this->pageLayouts->trySidebarLayoutKeys();
         require base_path('modules/clients/views/edit.php');
     }
@@ -1015,7 +1005,7 @@ final class ClientController
             $customFieldDefinitions = $this->service->getCustomFieldDefinitions($this->customFieldDefinitionsBranchFilter($client), true);
             $customFieldValues = is_array($data['custom_fields'] ?? null) ? $data['custom_fields'] : [];
             $fieldCatalog = $this->fieldCatalog;
-            $detailsLayoutKeys = $this->detailsLayoutKeysForForm($customFieldDefinitions);
+            $detailsLayoutRows = $this->detailsLayoutRowsForForm($customFieldDefinitions);
             $sidebarLayoutKeys = $this->pageLayouts->trySidebarLayoutKeys();
             require base_path('modules/clients/views/edit.php');
             return;
@@ -1152,6 +1142,36 @@ final class ClientController
 
     public function customFieldsIndex(): void
     {
+        if ($_SERVER['REQUEST_METHOD'] === 'GET' && (string) ($_GET['__apl_debug_get'] ?? '') === '1') {
+            $rawPayload = (string) ($_GET['payload'] ?? '');
+            if ($rawPayload !== '') {
+                $line = trim($rawPayload);
+                if ($line !== '') {
+                    $debugLogPath = dirname(__DIR__, 4) . DIRECTORY_SEPARATOR . 'debug-dd5021.log';
+                    @file_put_contents($debugLogPath, $line . PHP_EOL, FILE_APPEND);
+                }
+            }
+            header('Content-Type: image/gif');
+            http_response_code(200);
+            echo "GIF89a\x01\x00\x01\x00\x80\x00\x00\x00\x00\x00\xFF\xFF\xFF!\xF9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;";
+            exit;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['__apl_debug_log'] ?? '') === '1') {
+            $rawPayload = (string) ($_POST['payload'] ?? '');
+            if ($rawPayload !== '') {
+                $line = trim($rawPayload);
+                if ($line !== '') {
+                    $debugLogPath = dirname(__DIR__, 4) . DIRECTORY_SEPARATOR . 'debug-dd5021.log';
+                    @file_put_contents($debugLogPath, $line . PHP_EOL, FILE_APPEND);
+                }
+            }
+            header('Content-Type: application/json; charset=utf-8');
+            http_response_code(200);
+            echo '{"ok":true}';
+            exit;
+        }
+
         $sessionAuth = Application::container()->get(\Core\Auth\SessionAuth::class);
         $uid = $sessionAuth->id();
         $perm = Application::container()->get(PermissionService::class);
@@ -1226,7 +1246,22 @@ final class ClientController
             ? $this->fieldCatalog->customerDetailsImmutablePrefixKeys()
             : [];
 
-        require base_path('modules/clients/views/custom-fields-composer.php');
+        $debugLogPath = dirname(__DIR__, 4) . DIRECTORY_SEPARATOR . 'debug-dd5021.log';
+        @file_put_contents(
+            $debugLogPath,
+            json_encode([
+                'sessionId' => 'dd5021',
+                'runId' => 'server-render-' . (string) round(microtime(true) * 1000),
+                'hypothesisId' => 'HS',
+                'location' => 'ClientController.php:customFieldsIndex:render',
+                'message' => 'composer render executed',
+                'data' => ['profile' => (string) $selectedProfileKey],
+                'timestamp' => (int) round(microtime(true) * 1000),
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . PHP_EOL,
+            FILE_APPEND
+        );
+
+        require base_path('modules/clients/views/custom-fields-composer-refactored.php');
     }
 
     public function customFieldsLayouts(): void
@@ -1262,6 +1297,16 @@ final class ClientController
                 if ($fk === '') {
                     continue;
                 }
+                $span = (int) ($row['layout_span'] ?? 3);
+                if ($span < 1) {
+                    $span = 2;
+                }
+                if ($span > 3) {
+                    $span = 3;
+                }
+                if ($span === 1) {
+                    $span = 2;
+                }
                 $rows[] = [
                     'field_key' => $fk,
                     'position' => (int) ($row['position'] ?? 0),
@@ -1270,6 +1315,7 @@ final class ClientController
                     'is_required' => array_key_exists('is_required', $row)
                         ? (!empty($row['is_required']) ? 1 : 0)
                         : null,
+                    'layout_span' => $span,
                 ];
             }
             usort($rows, static fn (array $a, array $b) => $a['position'] <=> $b['position']);
@@ -1281,8 +1327,14 @@ final class ClientController
             $this->pageLayouts->saveLayout($orgId, $profileKey, $rows);
             flash('success', 'Page layout saved.');
         } catch (\Throwable $e) {
-            slog('error', 'clients.layout_save', $e->getMessage(), []);
-            flash('error', $this->operatorSafeErrorMessage($e));
+            $msg = $e->getMessage();
+            if (str_contains($msg, 'Unknown column') && (str_contains($msg, 'display_label') || str_contains($msg, 'layout_span'))) {
+                slog('error', 'clients.layout_save', $msg, ['hint' => 'migrations_144_145']);
+                flash('error', ClientPageLayoutService::LAYOUT_STORAGE_REQUIRES_MIGRATION_MESSAGE);
+            } else {
+                slog('error', 'clients.layout_save', $msg, []);
+                flash('error', $this->operatorSafeErrorMessage($e));
+            }
         }
         $pk = $profileKey !== '' ? $profileKey : 'customer_details';
         header('Location: /clients/custom-fields?profile=' . rawurlencode($pk));
@@ -1322,6 +1374,7 @@ final class ClientController
                 'is_enabled' => 1,
                 'display_label' => null,
                 'is_required' => null,
+                'layout_span' => 3,
             ];
             usort($rows, static fn (array $a, array $b) => $a['position'] <=> $b['position']);
             $p = 0;
@@ -1383,15 +1436,117 @@ final class ClientController
 
     public function customFieldsDestroy(int $id): void
     {
+        $redirectTo = '/clients/custom-fields';
+        $raw = trim((string)($_POST['_redirect_to'] ?? ''));
+        if ($raw !== '' && str_starts_with($raw, '/clients/custom-fields')) {
+            $redirectTo = $raw;
+        }
+
         try {
             $this->service->deleteCustomFieldDefinition($id);
-            flash('success', 'Custom field removed.');
+            flash('success', 'Custom field deleted.');
         } catch (\Throwable $e) {
             slog('error', 'clients.custom_field_delete', $e->getMessage(), ['id' => $id]);
             flash('error', $this->operatorSafeErrorMessage($e));
         }
-        header('Location: /clients/custom-fields');
+        header('Location: ' . $redirectTo);
         exit;
+    }
+
+    /**
+     * When creating a field from the layout composer (Customer details profile), append it to that layout with the chosen form row width when valid.
+     *
+     * @return bool True if the new field was saved onto the Customer details layout
+     */
+    private function tryAppendNewCustomFieldToCustomerDetailsLayout(int $definitionId, string $redirectTo, int $preferredSpan): bool
+    {
+        $parts = parse_url($redirectTo);
+        $query = [];
+        if (!empty($parts['query']) && is_string($parts['query'])) {
+            parse_str($parts['query'], $query);
+        }
+        $profileKey = trim((string) ($query['profile'] ?? ''));
+        if ($profileKey !== 'customer_details') {
+            return false;
+        }
+
+        try {
+            $orgId = $this->pageLayouts->requireOrganizationId();
+        } catch (\Throwable) {
+            return false;
+        }
+
+        if (!$this->pageLayouts->isLayoutStorageReady()) {
+            return false;
+        }
+
+        $fieldKey = $this->fieldCatalog->customFieldLayoutKey($definitionId);
+        $items = $this->pageLayouts->listLayoutItems($orgId, $profileKey);
+        foreach ($items as $it) {
+            if ((string) ($it['field_key'] ?? '') === $fieldKey) {
+                return false;
+            }
+        }
+
+        $preferredSpan = max(1, min(3, $preferredSpan));
+        if ($preferredSpan === 1) {
+            $preferredSpan = 2;
+        }
+        $spansToTry = $preferredSpan === 3 ? [3] : [$preferredSpan, 3];
+
+        foreach ($spansToTry as $span) {
+            $rows = [];
+            $maxPos = 0;
+            foreach ($items as $it) {
+                $maxPos = max($maxPos, (int) ($it['position'] ?? 0));
+                $rows[] = $this->pageLayouts->layoutRowFromStoredItem($it, (int) ($it['position'] ?? 0));
+            }
+            $rows[] = [
+                'field_key' => $fieldKey,
+                'position' => $maxPos + 1,
+                'is_enabled' => 1,
+                'display_label' => null,
+                'is_required' => null,
+                'layout_span' => $span,
+            ];
+            usort($rows, static fn (array $a, array $b): int => $a['position'] <=> $b['position']);
+            $p = 0;
+            foreach ($rows as &$r) {
+                $r['position'] = $p++;
+            }
+            unset($r);
+
+            try {
+                $this->pageLayouts->saveLayout($orgId, $profileKey, $rows);
+                if ($span !== $preferredSpan) {
+                    flash(
+                        'warning',
+                        'The new field was placed at full row width because the chosen width would not fit the current row. You can change it in the field list.'
+                    );
+                }
+
+                return true;
+            } catch (\InvalidArgumentException $e) {
+                if ($span < 3 && str_contains($e->getMessage(), 'Form row width')) {
+                    continue;
+                }
+                slog('warning', 'clients.custom_field_layout_append', $e->getMessage(), [
+                    'definition_id' => $definitionId,
+                    'layout_span' => $span,
+                ]);
+
+                return false;
+            } catch (\Throwable $e) {
+                slog('warning', 'clients.custom_field_layout_append', $e->getMessage(), [
+                    'definition_id' => $definitionId,
+                    'layout_span' => $span,
+                ]);
+
+                return false;
+            }
+        }
+
+        return false;
     }
 
     public function customFieldsCreate(): void
@@ -1420,8 +1575,15 @@ final class ClientController
         }
 
         try {
-            $this->service->createCustomFieldDefinition($payload);
-            flash('success', 'Custom field created.');
+            $id = $this->service->createCustomFieldDefinition($payload);
+            $preferredSpan = (int) ($_POST['composer_initial_layout_span'] ?? 3);
+            $appended = $this->tryAppendNewCustomFieldToCustomerDetailsLayout($id, $redirectTo, $preferredSpan);
+            flash(
+                'success',
+                $appended
+                    ? 'Custom field created and added to the Customer details layout.'
+                    : 'Custom field created.'
+            );
             header('Location: ' . $redirectTo);
             exit;
         } catch (\Throwable $e) {
@@ -1436,21 +1598,28 @@ final class ClientController
     public function customFieldsUpdate(int $id): void
     {
         $payload = [
-            'label' => trim((string) ($_POST['label'] ?? '')),
-            'field_type' => trim((string) ($_POST['field_type'] ?? 'text')),
-            'options_json' => trim((string) ($_POST['options_json'] ?? '')) ?: null,
-            'is_required' => isset($_POST['is_required']) ? 1 : 0,
-            'is_active' => isset($_POST['is_active']) ? 1 : 0,
-            'sort_order' => (int) ($_POST['sort_order'] ?? 0),
+            'label'        => trim((string)($_POST['label']        ?? '')),
+            'field_type'   => trim((string)($_POST['field_type']   ?? 'text')),
+            'options_json' => trim((string)($_POST['options_json'] ?? '')) ?: null,
+            'is_required'  => isset($_POST['is_required']) ? 1 : 0,
+            'is_active'    => isset($_POST['is_active'])   ? 1 : 0,
+            'sort_order'   => (int)($_POST['sort_order']   ?? 0),
         ];
+
+        $redirectTo = '/clients/custom-fields';
+        $raw = trim((string)($_POST['_redirect_to'] ?? ''));
+        if ($raw !== '' && str_starts_with($raw, '/clients/custom-fields')) {
+            $redirectTo = $raw;
+        }
+
         try {
             $this->service->updateCustomFieldDefinition($id, $payload);
-            flash('success', 'Custom field updated.');
+            flash('success', 'Field updated.');
         } catch (\Throwable $e) {
             slog('error', 'clients.custom_field_update', $e->getMessage(), ['id' => $id]);
             flash('error', $this->operatorSafeErrorMessage($e));
         }
-        header('Location: /clients/custom-fields');
+        header('Location: ' . $redirectTo);
         exit;
     }
 
@@ -1899,6 +2068,10 @@ final class ClientController
     {
         if ($e instanceof SafeDomainException) {
             return $e->publicMessage;
+        }
+        // Explicit domain failures (e.g. layout migration gate) must surface to operators, not a generic toast.
+        if ($e instanceof \DomainException) {
+            return $e->getMessage();
         }
 
         return 'Operation failed. Please try again or contact support.';

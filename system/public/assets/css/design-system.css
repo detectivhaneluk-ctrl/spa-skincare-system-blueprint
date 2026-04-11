@@ -469,6 +469,87 @@ html[data-app-theme="dark"] .ds-segmented--ios .ds-segmented__link:hover {
   }
 }
 
+/*
+ * Split pill — accent segment + label (reference: KPI chip with green cap).
+ * Markup:
+ *   <span class="ds-split-pill">
+ *     <span class="ds-split-pill__accent">5.0 ★</span>
+ *     <span class="ds-split-pill__label">Avg. rating</span>
+ *   </span>
+ * Use <a href="…"> or <button type="button"> with the same inner spans when interactive.
+ */
+.ds-split-pill {
+  display: inline-flex;
+  align-items: stretch;
+  vertical-align: middle;
+  max-width: 100%;
+  border-radius: var(--ds-radius-pill);
+  overflow: hidden;
+  box-shadow: var(--ds-shadow-xs);
+  border: 1px solid var(--ds-split-pill-border);
+  background: var(--ds-split-pill-body-bg);
+}
+
+.ds-split-pill__accent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  padding: 0.3125rem 0.625rem;
+  font-size: var(--ds-text-sm);
+  font-weight: var(--ds-font-semibold);
+  line-height: 1.2;
+  color: #ffffff;
+  background: linear-gradient(
+    180deg,
+    var(--ds-split-pill-accent-from) 0%,
+    var(--ds-split-pill-accent-to) 100%
+  );
+  white-space: nowrap;
+}
+
+.ds-split-pill__label {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3125rem 0.75rem;
+  font-size: var(--ds-text-xs);
+  font-weight: var(--ds-font-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ds-color-text);
+  background: var(--ds-split-pill-body-bg);
+  white-space: nowrap;
+}
+
+a.ds-split-pill,
+button.ds-split-pill {
+  appearance: none;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  margin: 0;
+}
+
+a.ds-split-pill:focus-visible,
+button.ds-split-pill:focus-visible {
+  outline: 2px solid var(--ds-color-focus-ring-ui);
+  outline-offset: 2px;
+}
+
+a.ds-split-pill:hover,
+button.ds-split-pill:hover {
+  filter: brightness(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  a.ds-split-pill:hover,
+  button.ds-split-pill:hover {
+    filter: none;
+  }
+}
+
 /* —— Page sub-header (module title + actions; reuse on any workspace) —— */
 .ds-page-subheader {
   margin-bottom: var(--ds-space-4);

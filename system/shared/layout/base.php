@@ -35,6 +35,7 @@
     <link rel="stylesheet" href="/assets/css/design-tokens.css">
     <link rel="stylesheet" href="/assets/css/design-system.css">
     <link rel="stylesheet" href="/assets/css/app.css">
+    <script src="/assets/js/app-constraint-validation.js" defer></script>
     <script src="/assets/js/client-create-delivery.js" defer></script>
     <script src="/assets/js/client-create-phone-dedupe.js" defer></script>
     <script src="/assets/js/app-drawer.js" defer></script>
@@ -135,6 +136,13 @@
             }
         ));
     }
+    /* Day grid page: workspace header already has Calendar | List | Waitlist — omit duplicate L1 "Calendar". */
+    if (str_starts_with($navPath, '/appointments/calendar/day') && ! str_starts_with($navPath, '/appointments/calendar/day/print')) {
+        $navAllItems = array_values(array_filter(
+            $navAllItems,
+            static fn (array $item): bool => ($item[0] ?? '') !== '/appointments/calendar/day'
+        ));
+    }
     // Split into the 3-element render array and the parallel icon array.
     $navItems = array_map(static fn (array $i): array => [$i[0], $i[1], $i[2]], $navAllItems);
     $navSideIcons = array_map(static fn (array $i): string => (string) ($i[4] ?? 'M4 6h16M4 12h16M4 18h16'), $navAllItems);
@@ -167,14 +175,9 @@
     <div class="app-shell">
         <header class="app-shell__header app-shell__header--top">
             <a class="app-shell__brand" href="/dashboard">
-                <span class="app-shell__brand-logo" aria-hidden="true">
-                    <svg class="app-shell__brand-logo-svg" width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" focusable="false" aria-hidden="true">
-                        <path class="app-shell__brand-logo-bolt" fill="currentColor" d="M13 2L3 14h8l-1 8 10-12h-8l1-8z"/>
-                    </svg>
-                </span>
-                <span class="app-shell__brand-text">
+                <span class="app-shell__brand-inner">
                     <span class="app-shell__brand-name">Ollira</span>
-                    <span class="app-shell__brand-role">Admin</span>
+                    <span class="app-shell__brand-tagline">Beyond Booking</span>
                 </span>
             </a>
             <nav class="app-shell__nav" aria-label="Main modules">
@@ -198,12 +201,10 @@
                 </svg>
             </button>
             <a class="app-shell__brand app-shell__brand--mobile" href="/dashboard">
-                <span class="app-shell__brand-logo" aria-hidden="true">
-                    <svg class="app-shell__brand-logo-svg" width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" focusable="false" aria-hidden="true">
-                        <path class="app-shell__brand-logo-bolt" fill="currentColor" d="M13 2L3 14h8l-1 8 10-12h-8l1-8z"/>
-                    </svg>
+                <span class="app-shell__brand-inner">
+                    <span class="app-shell__brand-name">Ollira</span>
+                    <span class="app-shell__brand-tagline">Beyond Booking</span>
                 </span>
-                <span class="app-shell__brand-name">Ollira</span>
             </a>
         </header>
 
@@ -213,14 +214,9 @@
             <div class="app-shell__sidebar-inner">
                 <div class="app-shell__sidebar-top">
                     <a class="app-shell__brand app-shell__sidebar-brand" href="/dashboard">
-                        <span class="app-shell__brand-logo" aria-hidden="true">
-                            <svg class="app-shell__brand-logo-svg" width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" focusable="false" aria-hidden="true">
-                                <path class="app-shell__brand-logo-bolt" fill="currentColor" d="M13 2L3 14h8l-1 8 10-12h-8l1-8z"/>
-                            </svg>
-                        </span>
-                        <span class="app-shell__brand-text app-shell__sidebar-brand-text">
+                        <span class="app-shell__brand-inner">
                             <span class="app-shell__brand-name">Ollira</span>
-                            <span class="app-shell__brand-role">Admin</span>
+                            <span class="app-shell__brand-tagline">Beyond Booking</span>
                         </span>
                     </a>
                     <button type="button" class="app-shell__sidebar-collapse-btn" data-app-shell-sidebar-collapse aria-pressed="false" aria-label="Collapse sidebar" title="Collapse sidebar">

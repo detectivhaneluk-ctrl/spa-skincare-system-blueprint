@@ -372,6 +372,7 @@ CREATE TABLE client_page_layout_items (
     is_enabled TINYINT(1) NOT NULL DEFAULT 1,
     display_label VARCHAR(150) NULL DEFAULT NULL,
     is_required TINYINT(1) NULL DEFAULT NULL,
+    layout_span TINYINT UNSIGNED NOT NULL DEFAULT 3,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY uk_client_page_layout_items_profile_field (profile_id, field_key),

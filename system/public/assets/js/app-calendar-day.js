@@ -12,9 +12,6 @@
   const calTwoMonthsLabel1 = document.getElementById('appts-cal-two-months-label-1');
   const calTwoMonthsLabel2 = document.getElementById('appts-cal-two-months-label-2');
   const calContextMonth = document.getElementById('appts-cal-context-month');
-  const calHeroDay = document.getElementById('appts-cal-hero-day');
-  const calHeroWeekday = document.getElementById('appts-cal-hero-weekday');
-  const calHeroKicker = document.getElementById('appts-cal-hero-kicker');
   const calModeWeek = document.getElementById('appts-cal-mode-week');
   const calModeMonth = document.getElementById('appts-cal-mode-month');
   const calModeTwoMonths = document.getElementById('appts-cal-mode-two-months');
@@ -34,7 +31,6 @@
   const branchHoursIndicatorEl = document.getElementById('calendar-branch-hours-indicator');
   const wrap = document.getElementById('calendar-day-wrap');
   const newAppointmentBtns = document.querySelectorAll('[data-calendar-new-appt]');
-  const blockedTimeBtn = document.getElementById('calendar-blocked-time-btn');
   const calendarHorizontalNavControls = document.getElementById('calendar-staff-pan-controls');
   const calendarHorizontalNavPrev = document.getElementById('calendar-staff-pan-prev');
   const calendarHorizontalNavNext = document.getElementById('calendar-staff-pan-next');
@@ -1567,14 +1563,12 @@
   }
 
   function updateHero() {
-    if (!calHeroDay || !calHeroWeekday || !calContextMonth || !dateEl) return;
+    if (!calContextMonth || !dateEl) return;
     const cur = String(dateEl.value || '').trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(cur)) return;
-    const todayStr = getBranchNow().dateStr;
     const y = parseInt(cur.slice(0, 4), 10);
     const mo = parseInt(cur.slice(5, 7), 10);
-    const dayNum = parseInt(cur.slice(8, 10), 10);
-    const refUtc = new Date(Date.UTC(y, mo - 1, dayNum));
+    const refUtc = new Date(Date.UTC(y, mo - 1, parseInt(cur.slice(8, 10), 10)));
     if (calendarMode === 'week') {
       const ws = weekStartMondayIso(cur);
       const we = shiftIsoDate(ws, 6);
@@ -1597,11 +1591,6 @@
       calContextMonth.textContent = left + ' \u2013 ' + right;
     } else {
       calContextMonth.textContent = refUtc.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
-    }
-    calHeroDay.textContent = String(dayNum);
-    calHeroWeekday.textContent = refUtc.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
-    if (calHeroKicker) {
-      calHeroKicker.textContent = cur === todayStr ? 'Today' : 'Selected';
     }
   }
 
@@ -5443,11 +5432,6 @@
     const params = currentCalendarQuery();
     window.location.href = '/appointments/create?' + params.toString();
   }));
-  if (blockedTimeBtn) {
-    blockedTimeBtn.addEventListener('click', async () => {
-      await openDrawerUrl(buildBlockedTimeUrl());
-    });
-  }
   window.addEventListener('app:appointments-calendar-refresh', () => {
     refreshCalendarSummaries();
     load();

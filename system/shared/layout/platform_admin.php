@@ -6,6 +6,7 @@
     <title><?= htmlspecialchars($title ?? 'Founder') ?></title>
     <link rel="stylesheet" href="/assets/css/design-tokens.css">
     <link rel="stylesheet" href="/assets/css/app.css">
+    <script src="/assets/js/app-constraint-validation.js" defer></script>
     <script src="/assets/js/app-toast.js" defer></script>
 </head>
 <body>

@@ -48,7 +48,13 @@ $integrationsUrl = '/settings?section=hardware';
                 <div class="app-shell__account-head-text">
                     <div class="app-shell__account-head-row">
                         <span class="app-shell__account-head-name" title="<?= $name ?>"><?= $name ?></span>
-                        <span class="app-shell__account-badge">ADMIN</span>
+                        <span class="app-shell__account-badge app-shell__account-badge--verified" role="img" aria-label="Verified admin account" title="Verified admin account">
+                            <?php /* Meta-style verified mark: filled circle + check (Lucide circle-check affordance) */ ?>
+                            <svg class="app-shell__account-verified-icon" width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                                <circle cx="12" cy="12" r="10" fill="var(--acc-verified-badge, #1877f2)"/>
+                                <path d="M9 12l2 2 4-4" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </span>
                     </div>
                     <span class="app-shell__account-head-email"><?= $email !== '' ? $email : '—' ?></span>
                 </div>

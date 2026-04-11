@@ -49,7 +49,7 @@ ob_start();
                 <div class="client-ref-details-fields client-ref-details-fields--hig">
                 <div class="client-ref-hig-card">
                 <?php
-                $detailsLayoutKeys = $detailsLayoutKeys ?? [];
+                $detailsLayoutRows = $detailsLayoutRows ?? [];
                 require base_path('modules/clients/views/partials/client-details-layout-render.php');
                 ?>
                 </div>

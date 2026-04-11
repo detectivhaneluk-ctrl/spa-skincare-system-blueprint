@@ -13,8 +13,9 @@ ob_start();
 <form method="post" action="/clients/custom-fields" class="entity-form">
     <input type="hidden" name="<?= htmlspecialchars(config('app.csrf_token_name', 'csrf_token')) ?>" value="<?= htmlspecialchars($csrf) ?>">
     <div class="form-row">
-        <label for="field_key">Field Key *</label>
-        <input id="field_key" name="field_key" required value="<?= htmlspecialchars((string) ($field['field_key'] ?? '')) ?>" placeholder="loyalty_tier">
+        <label for="field_key">Field key (optional)</label>
+        <input id="field_key" name="field_key" value="<?= htmlspecialchars((string) ($field['field_key'] ?? '')) ?>" placeholder="Leave blank to generate from label">
+        <p class="form-hint" style="font-size:0.85rem;color:#666;margin:0.25rem 0 0">If empty, a unique key is created from the label automatically.</p>
     </div>
     <div class="form-row">
         <label for="label">Label *</label>
