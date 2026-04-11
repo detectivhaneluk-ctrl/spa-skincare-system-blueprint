@@ -41,6 +41,7 @@
     <script src="/assets/js/app-toast.js" defer></script>
     <script src="/assets/js/app-shell-nav.js" defer></script>
     <script src="/assets/js/ds-segmented-thumb.js" defer></script>
+    <script src="/assets/js/appts-view-switch.js" defer></script>
 </head>
 <body>
     <?php

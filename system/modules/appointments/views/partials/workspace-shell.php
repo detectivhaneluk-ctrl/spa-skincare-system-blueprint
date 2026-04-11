@@ -8,6 +8,7 @@ $newAppointmentUrl = (string) ($workspace['new_appointment_url'] ?? '/appointmen
 $useCalendarNewAppointmentBtn = ($shellModifier === 'workspace-shell--calendar');
 $canCreate = (bool) ($workspace['can_create'] ?? false);
 $hasApptsModeNav = $tabs !== [];
+$useClientsStyleModuleHead = ($shellModifier === 'workspace-shell--create');
 /* Find the visually widest label so every tab's phantom reserves the same space.
    This keeps the track width identical across all three pages. */
 $maxTabLabel = '';
@@ -18,7 +19,6 @@ foreach ($tabs as $_t) {
     }
 }
 $maxTabLabelAttr = htmlspecialchars($maxTabLabel, ENT_QUOTES, 'UTF-8');
-$useClientsStyleModuleHead = ($shellModifier === 'workspace-shell--create');
 ?>
 <div class="ds-workspace <?= $shellClass ?><?= $useClientsStyleModuleHead ? ' appointments-wizard-workspace-shell' : '' ?>">
     <?php if ($useClientsStyleModuleHead): ?>
@@ -38,8 +38,8 @@ $useClientsStyleModuleHead = ($shellModifier === 'workspace-shell--create');
             <?php if ($hasApptsModeNav || $canCreate): ?>
             <div class="appts-workspace-header__controls ds-page-subheader__controls">
                 <?php if ($hasApptsModeNav): ?>
-                <nav class="appts-workspace-header__modes appts-workspace-header__segmented-track ds-segmented ds-segmented--ios ds-segmented--pill-track ds-segmented--thumb" aria-label="Appointments sections" data-ds-segmented-thumb>
-                    <span class="ds-segmented__thumb" aria-hidden="true"></span>
+                <nav class="appts-workspace-header__modes appts-view-switch" aria-label="Appointments sections" data-appts-view-switch>
+                    <span class="appts-view-switch__thumb" aria-hidden="true"></span>
                     <?php foreach ($tabs as $tab): ?>
                     <?php
                     $tabId = (string) ($tab['id'] ?? '');
@@ -47,7 +47,7 @@ $useClientsStyleModuleHead = ($shellModifier === 'workspace-shell--create');
                     $tabUrl = (string) ($tab['url'] ?? '/appointments');
                     ?>
                     <a href="<?= htmlspecialchars($tabUrl) ?>"
-                       class="ds-segmented__link appts-workspace-header__mode-link<?= $isActive ? ' is-active' : '' ?>"<?= $isActive ? ' aria-current="page"' : '' ?>
+                       class="appts-view-switch__segment<?= $isActive ? ' is-active' : '' ?>"<?= $isActive ? ' aria-current="page"' : '' ?>
                        data-text="<?= htmlspecialchars((string) ($tab['label'] ?? 'Tab')) ?>"
                        data-max-tab-text="<?= $maxTabLabelAttr ?>">
                         <?= htmlspecialchars((string) ($tab['label'] ?? 'Tab')) ?>
