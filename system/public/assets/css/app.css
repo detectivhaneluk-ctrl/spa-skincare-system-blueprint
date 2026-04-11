@@ -5305,13 +5305,39 @@ html:not([data-app-theme='dark']) .calendar-workspace #cal-tools-panel .cal-tool
   -webkit-backdrop-filter: blur(12px) saturate(112%);
 }
 
-/* Rail footer / primary links — same warm-neutral family as mini-calendar chrome. */
+/*
+ * Rail footer — "Open full waitlist" etc.: secondary liquid pill (same family as
+ * .cal-tools-tabs / mini-calendar chrome), not a flat placeholder block.
+ */
 html:not([data-app-theme='dark']) .calendar-workspace #cal-tools-panel .cal-tools-link--primary {
-  background: rgba(238, 228, 216, 0.55);
-  color: var(--ds-color-accent);
+  border-radius: var(--ds-radius-pill);
+  color: rgba(15, 23, 42, 0.78);
+  border: 1px solid rgba(245, 238, 228, 0.48);
+  background:
+    linear-gradient(180deg, rgba(255, 252, 248, 0.52) 0%, rgba(255, 246, 236, 0.2) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.52),
+    0 2px 8px rgba(15, 23, 42, 0.045),
+    0 1px 2px rgba(15, 23, 42, 0.028);
+  -webkit-backdrop-filter: blur(12px) saturate(118%);
+  backdrop-filter: blur(12px) saturate(118%);
+  transition: color 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
 }
+
 html:not([data-app-theme='dark']) .calendar-workspace #cal-tools-panel .cal-tools-link--primary:hover {
-  background: rgba(246, 238, 228, 0.72);
+  color: rgba(15, 23, 42, 0.9);
+  border-color: rgba(245, 238, 228, 0.62);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.58) 0%, rgba(255, 250, 244, 0.28) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.62),
+    0 4px 14px rgba(15, 23, 42, 0.065),
+    0 1px 2px rgba(15, 23, 42, 0.035);
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace #cal-tools-panel .cal-tools-link--primary:focus-visible {
+  outline: 2px solid var(--ds-color-focus-ring);
+  outline-offset: 2px;
 }
 
 html[data-app-theme='dark'] .calendar-workspace #cal-tools-panel .cal-tools-tabs {
