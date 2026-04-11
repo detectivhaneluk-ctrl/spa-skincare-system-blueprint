@@ -183,8 +183,28 @@
   --ds-cal-atmos-bg-bottom: #dde8f5;
   --ds-cal-atmos-orb-a: linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(151, 191, 255, 0.24));
   --ds-cal-atmos-orb-b: linear-gradient(135deg, rgba(184, 216, 255, 0.24), rgba(255, 255, 255, 0.52));
+  /* Legacy single-layer fill; calendar chrome uses --ds-cal-liquid-* instead */
   --ds-cal-atmos-body-surface: rgba(255, 255, 255, 0.78);
   --ds-cal-atmos-body-blur: blur(18px) saturate(142%);
+
+  /*
+   * Day calendar — liquid glass panels (Apple-like: low-alpha stack, not milky white + extra ::before).
+   * Use as background: var(--ds-cal-liquid-fill-lifted) etc.
+   */
+  --ds-cal-liquid-fill: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.34) 0%,
+    rgba(255, 255, 255, 0.16) 48%,
+    rgba(255, 255, 255, 0.1) 100%
+  );
+  --ds-cal-liquid-fill-lifted: linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, transparent 38%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0.15) 52%, rgba(255, 255, 255, 0.09) 100%);
+  --ds-cal-liquid-action-fill: linear-gradient(180deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0.14) 100%);
+  --ds-cal-liquid-action-fill-hover: linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.18) 100%);
+  --ds-cal-liquid-stroke-soft: rgba(255, 255, 255, 0.2);
+  --ds-cal-liquid-blur: blur(22px) saturate(180%) brightness(1.06);
+  --ds-cal-liquid-outer-shadow: 0 12px 32px rgba(15, 23, 42, 0.08), 0 3px 10px rgba(15, 23, 42, 0.05);
+  --ds-cal-liquid-inset-rim: inset 0 1px 0 rgba(255, 255, 255, 0.64), inset 0 -1px 0 rgba(255, 255, 255, 0.1);
 }
 
 /* Native controls: brand jade for checkboxes/radios (see accent tokens for CTAs/text). */
