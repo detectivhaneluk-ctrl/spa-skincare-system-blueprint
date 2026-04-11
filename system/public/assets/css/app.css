@@ -4302,11 +4302,15 @@ html:not([data-app-theme='dark']) .calendar-workspace .appts-cal-card {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  border: 1px solid var(--ds-cal-liquid-stroke-soft);
-  -webkit-backdrop-filter: var(--ds-cal-liquid-blur);
-  backdrop-filter: var(--ds-cal-liquid-blur);
+  /* Slightly warm stroke + lower saturate blur so the rail does not read icy vs main grid. */
+  border: 1px solid rgba(245, 238, 228, 0.42);
+  -webkit-backdrop-filter: blur(26px) saturate(148%);
+  backdrop-filter: blur(26px) saturate(148%);
   box-shadow: var(--ds-cal-liquid-outer-shadow), var(--ds-cal-liquid-inset-rim);
-  background: var(--ds-cal-liquid-fill-lifted), rgba(255, 255, 255, 0.12);
+  background:
+    linear-gradient(165deg, rgba(255, 248, 240, 0.2) 0%, transparent 44%),
+    var(--ds-cal-liquid-fill-lifted),
+    rgba(252, 248, 242, 0.09);
 }
 
 /*
@@ -4329,11 +4333,11 @@ html:not([data-app-theme='dark']) .calendar-workspace #appts-cal-card .appts-cal
   overflow: hidden;
   -webkit-overflow-scrolling: touch;
   isolation: isolate;
-  background-color: rgba(255, 255, 255, 0.04);
+  background-color: rgba(252, 249, 244, 0.06);
   background-image:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.34) 0%, transparent 44%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0.16) 52%, rgba(255, 255, 255, 0.09) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.48);
+    linear-gradient(180deg, rgba(255, 252, 246, 0.3) 0%, transparent 44%),
+    linear-gradient(180deg, rgba(255, 250, 244, 0.28) 0%, rgba(255, 248, 242, 0.14) 52%, rgba(252, 246, 236, 0.08) 100%);
+  border: 1px solid rgba(245, 238, 228, 0.5);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.58),
     inset 0 -1px 0 rgba(15, 23, 42, 0.025),
@@ -4368,7 +4372,7 @@ html:not([data-app-theme='dark'])
   #appts-cal-card
   .appts-cal-card__mode-btn:hover:not(.appts-cal-card__mode-btn--active) {
   color: rgba(15, 23, 42, 0.7);
-  background-color: rgba(255, 255, 255, 0.14);
+  background-color: rgba(255, 250, 244, 0.22);
 }
 
 html:not([data-app-theme='dark'])
@@ -4382,14 +4386,14 @@ html:not([data-app-theme='dark']) .calendar-workspace #appts-cal-card .appts-cal
   color: rgba(15, 23, 42, 0.9);
   font-weight: 600;
   letter-spacing: var(--ds-appts-header-tracking);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.56) 0%, rgba(255, 255, 255, 0.22) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.58);
+  background: linear-gradient(180deg, rgba(255, 252, 248, 0.52) 0%, rgba(255, 246, 236, 0.2) 100%);
+  border: 1px solid rgba(245, 238, 228, 0.55);
   box-shadow:
     0 3px 10px rgba(15, 23, 42, 0.042),
-    inset 0 1px 0 rgba(255, 255, 255, 0.82),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.14);
-  backdrop-filter: blur(12px) saturate(118%);
-  -webkit-backdrop-filter: blur(12px) saturate(118%);
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    inset 0 -1px 0 rgba(255, 252, 246, 0.12);
+  backdrop-filter: blur(12px) saturate(112%);
+  -webkit-backdrop-filter: blur(12px) saturate(112%);
 }
 
 html[data-app-theme='dark'] .calendar-workspace #appts-cal-card .appts-cal-card__mode {
@@ -4493,14 +4497,14 @@ html:not([data-app-theme='dark']) .calendar-workspace #appts-cal-card .appts-cal
   border-radius: var(--ds-radius-pill);
   overflow: hidden;
   isolation: isolate;
-  background-color: rgba(255, 255, 255, 0.04);
+  background-color: rgba(252, 249, 244, 0.05);
   background-image:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.34) 0%, transparent 44%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0.16) 52%, rgba(255, 255, 255, 0.09) 100%);
-  border: 1px solid var(--ds-cal-liquid-stroke-soft);
+    linear-gradient(180deg, rgba(255, 252, 246, 0.3) 0%, transparent 44%),
+    linear-gradient(180deg, rgba(255, 250, 244, 0.28) 0%, rgba(255, 248, 242, 0.14) 52%, rgba(252, 246, 236, 0.08) 100%);
+  border: 1px solid rgba(245, 238, 228, 0.42);
   box-shadow: var(--ds-cal-liquid-outer-shadow), var(--ds-cal-liquid-inset-rim), inset 0 -1px 0 rgba(15, 23, 42, 0.03);
-  backdrop-filter: var(--ds-cal-liquid-blur);
-  -webkit-backdrop-filter: var(--ds-cal-liquid-blur);
+  -webkit-backdrop-filter: blur(26px) saturate(148%);
+  backdrop-filter: blur(26px) saturate(148%);
 }
 
 html:not([data-app-theme='dark']) .calendar-workspace #appts-cal-card .appts-cal-card__chev {
@@ -5243,14 +5247,14 @@ html:not([data-app-theme='dark']) .calendar-workspace #cal-tools-panel .cal-tool
   border-radius: var(--ds-radius-pill);
   overflow: hidden;
   isolation: isolate;
-  background-color: rgba(255, 255, 255, 0.04);
+  background-color: rgba(252, 249, 244, 0.05);
   background-image:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.34) 0%, transparent 44%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0.16) 52%, rgba(255, 255, 255, 0.09) 100%);
-  border: 1px solid var(--ds-cal-liquid-stroke-soft);
+    linear-gradient(180deg, rgba(255, 252, 246, 0.3) 0%, transparent 44%),
+    linear-gradient(180deg, rgba(255, 250, 244, 0.28) 0%, rgba(255, 248, 242, 0.14) 52%, rgba(252, 246, 236, 0.08) 100%);
+  border: 1px solid rgba(245, 238, 228, 0.42);
   box-shadow: var(--ds-cal-liquid-outer-shadow), var(--ds-cal-liquid-inset-rim), inset 0 -1px 0 rgba(15, 23, 42, 0.03);
-  backdrop-filter: var(--ds-cal-liquid-blur);
-  -webkit-backdrop-filter: var(--ds-cal-liquid-blur);
+  -webkit-backdrop-filter: blur(26px) saturate(148%);
+  backdrop-filter: blur(26px) saturate(148%);
 }
 
 html:not([data-app-theme='dark']) .calendar-workspace #cal-tools-panel .cal-tools-tab {
@@ -5277,7 +5281,7 @@ html:not([data-app-theme='dark'])
   #cal-tools-panel
   .cal-tools-tab:hover:not(.cal-tools-tab--active) {
   color: rgba(15, 23, 42, 0.72);
-  background-color: rgba(255, 255, 255, 0.14);
+  background-color: rgba(255, 250, 244, 0.22);
 }
 
 html:not([data-app-theme='dark'])
@@ -5291,14 +5295,23 @@ html:not([data-app-theme='dark']) .calendar-workspace #cal-tools-panel .cal-tool
   color: rgba(15, 23, 42, 0.9);
   font-weight: 600;
   letter-spacing: var(--ds-appts-header-tracking);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.56) 0%, rgba(255, 255, 255, 0.22) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.58);
+  background: linear-gradient(180deg, rgba(255, 252, 248, 0.52) 0%, rgba(255, 248, 240, 0.2) 100%);
+  border: 1px solid rgba(245, 238, 228, 0.55);
   box-shadow:
     0 3px 10px rgba(15, 23, 42, 0.042),
-    inset 0 1px 0 rgba(255, 255, 255, 0.82),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.14);
-  backdrop-filter: blur(12px) saturate(118%);
-  -webkit-backdrop-filter: blur(12px) saturate(118%);
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    inset 0 -1px 0 rgba(255, 252, 246, 0.12);
+  backdrop-filter: blur(12px) saturate(112%);
+  -webkit-backdrop-filter: blur(12px) saturate(112%);
+}
+
+/* Rail footer / primary links — same warm-neutral family as mini-calendar chrome. */
+html:not([data-app-theme='dark']) .calendar-workspace #cal-tools-panel .cal-tools-link--primary {
+  background: rgba(238, 228, 216, 0.55);
+  color: var(--ds-color-accent);
+}
+html:not([data-app-theme='dark']) .calendar-workspace #cal-tools-panel .cal-tools-link--primary:hover {
+  background: rgba(246, 238, 228, 0.72);
 }
 
 html[data-app-theme='dark'] .calendar-workspace #cal-tools-panel .cal-tools-tabs {
@@ -5720,8 +5733,9 @@ html[data-app-theme='dark']
  * The rail's glass-card children (.appts-cal-card) carry the actual liquid blur.
  */
 html:not([data-app-theme='dark']) .calendar-workspace .appts-calendar-rail {
-  background: rgba(255, 255, 255, 0.30);
-  border-right-color: rgba(255, 255, 255, 0.20);
+  /* Linen-tinted column: matches warm-neutral workspace ramp (not cool white over blue body). */
+  background: rgba(250, 246, 240, 0.34);
+  border-right-color: rgba(232, 224, 212, 0.42);
 }
 
 /* ?? Calendar tools panel (below mini-calendar rail) ?????????????????????? */
