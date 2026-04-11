@@ -4253,16 +4253,35 @@ html:not([data-app-theme='dark']) .calendar-workspace .appts-calendar-body {
   box-shadow: var(--ds-cal-liquid-outer-shadow), var(--ds-cal-liquid-inset-rim);
 }
 
+/*
+ * Smart calendar rail card: liquid glass (ID + shorthand beats later .appts-cal-card { background: canvas }).
+ */
+html:not([data-app-theme='dark']) .calendar-workspace #appts-cal-card.appts-cal-card,
 html:not([data-app-theme='dark']) .calendar-workspace .appts-cal-card {
   position: relative;
   isolation: isolate;
   overflow: hidden;
   border: 1px solid var(--ds-cal-liquid-stroke-soft);
-  background-color: transparent;
-  background-image: var(--ds-cal-liquid-fill-lifted);
-  backdrop-filter: var(--ds-cal-liquid-blur);
   -webkit-backdrop-filter: var(--ds-cal-liquid-blur);
+  backdrop-filter: var(--ds-cal-liquid-blur);
   box-shadow: var(--ds-cal-liquid-outer-shadow), var(--ds-cal-liquid-inset-rim);
+  background: var(--ds-cal-liquid-fill-lifted), rgba(255, 255, 255, 0.12);
+}
+
+/* Week/Month toggles: softer track + glassy active chip (still readable on frosted card) */
+html:not([data-app-theme='dark']) .calendar-workspace #appts-cal-card .appts-cal-card__mode {
+  background: rgba(15, 23, 42, 0.05);
+  border: 1px solid var(--ds-cal-liquid-stroke-soft);
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace #appts-cal-card .appts-cal-card__mode-btn--active {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0.38) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  box-shadow:
+    0 2px 8px rgba(15, 23, 42, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75);
 }
 
 html:not([data-app-theme='dark']) .calendar-workspace .ops-calendar {
