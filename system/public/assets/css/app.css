@@ -4280,9 +4280,9 @@ html:not([data-app-theme='dark']) .calendar-workspace .appts-calendar-body {
   box-shadow: none;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
-  /* Ghost grid lines — premium, not spreadsheet. */
-  --appts-cal-grid-line: rgba(15, 23, 42, 0.036);
-  --appts-cal-grid-line-strong: rgba(15, 23, 42, 0.058);
+  /* Ghost grid lines — softer than spreadsheet defaults; hour lines stay stronger via --strong. */
+  --appts-cal-grid-line: rgba(15, 23, 42, 0.028);
+  --appts-cal-grid-line-strong: rgba(15, 23, 42, 0.048);
 }
 
 html[data-app-theme='dark'] .calendar-workspace .appts-calendar-body {
@@ -5443,19 +5443,19 @@ html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-
 
 html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-lane {
   background: transparent;
-  border-right-color: rgba(15, 23, 42, 0.06);
+  border-right-color: rgba(15, 23, 42, 0.042);
 }
 
 html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-lane:nth-child(even) {
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.045);
 }
 
 html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-lane:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.09);
 }
 
 html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-lane:nth-child(even):hover {
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-lane--selected {
@@ -5522,16 +5522,27 @@ html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-
 }
 
 html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-grid-line {
-  border-top-color: rgba(15, 23, 42, 0.045);
+  border-top-color: rgba(15, 23, 42, 0.03);
 }
 
 html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-grid-line--hour {
-  border-top-color: rgba(15, 23, 42, 0.078);
+  border-top-color: rgba(15, 23, 42, 0.056);
 }
 
 html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-grid-line--half {
-  border-top-color: rgba(15, 23, 42, 0.04);
-  opacity: 0.85;
+  border-top-color: rgba(15, 23, 42, 0.026);
+  opacity: 0.72;
+}
+
+/* Time gutter: match ghost dividers so the axis does not read like a hard table frame */
+html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-time-labels {
+  border-right-color: rgba(15, 23, 42, 0.042);
+  box-shadow: inset -1px 0 0 rgba(15, 23, 42, 0.028);
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-time-label--hour {
+  color: var(--ds-color-text);
+  font-weight: var(--ds-font-semibold);
 }
 
 /*
