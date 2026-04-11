@@ -1635,46 +1635,50 @@ body {
   padding-right: var(--ds-space-6);
 }
 
-/* Light theme: liquid glass top rail (same language as calendar workspace — not flat gray film) */
-html:not([data-app-theme='dark']) .app-shell__header--top:not(.app-shell__header--founder) {
-  border-bottom: 1px solid rgba(15, 23, 42, 0.065);
+/*
+ * Light / dark top rail: same liquid stack as calendar (--ds-cal-liquid-*).
+ * Chained .app-shell__header.app-shell__header--top beats base .app-shell__header { background } shorthand.
+ */
+html:not([data-app-theme='dark']) .app-shell__header.app-shell__header--top:not(.app-shell__header--founder) {
+  isolation: isolate;
+  border-bottom: 1px solid var(--ds-cal-liquid-stroke-soft);
   box-shadow: var(--ds-cal-liquid-outer-shadow), var(--ds-cal-liquid-inset-rim);
-  background-color: transparent;
-  background-image: var(--ds-cal-liquid-fill-lifted);
+  background: var(--ds-cal-liquid-fill-lifted);
   -webkit-backdrop-filter: var(--ds-cal-liquid-blur);
   backdrop-filter: var(--ds-cal-liquid-blur);
 }
 
-html[data-app-theme='dark'] .app-shell__header--top:not(.app-shell__header--founder) {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 4px 18px rgba(0, 0, 0, 0.45);
-  background-color: rgba(20, 20, 22, 0.88);
-  background-image: none;
-  -webkit-backdrop-filter: saturate(180%) blur(24px);
-  backdrop-filter: saturate(180%) blur(24px);
+html[data-app-theme='dark'] .app-shell__header.app-shell__header--top:not(.app-shell__header--founder) {
+  isolation: isolate;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.2) inset,
+    0 8px 28px rgba(0, 0, 0, 0.42);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, transparent 40%),
+    linear-gradient(180deg, rgba(40, 40, 44, 0.92) 0%, rgba(20, 20, 22, 0.9) 100%);
+  -webkit-backdrop-filter: saturate(180%) blur(28px);
+  backdrop-filter: saturate(180%) blur(28px);
 }
 
 @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-  html:not([data-app-theme='dark']) .app-shell__header--top:not(.app-shell__header--founder) {
-    background-color: var(--ds-color-bg-canvas);
-    background-image: none;
+  html:not([data-app-theme='dark']) .app-shell__header.app-shell__header--top:not(.app-shell__header--founder) {
+    background: var(--ds-color-bg-canvas);
   }
-  html[data-app-theme='dark'] .app-shell__header--top:not(.app-shell__header--founder) {
-    background-color: rgba(20, 20, 22, 0.96);
-    background-image: none;
+  html[data-app-theme='dark'] .app-shell__header.app-shell__header--top:not(.app-shell__header--founder) {
+    background: rgba(20, 20, 22, 0.96);
   }
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  html:not([data-app-theme='dark']) .app-shell__header--top:not(.app-shell__header--founder) {
-    background-color: var(--ds-color-bg-canvas);
-    background-image: none;
+  html:not([data-app-theme='dark']) .app-shell__header.app-shell__header--top:not(.app-shell__header--founder) {
+    background: var(--ds-color-bg-canvas);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
-  html[data-app-theme='dark'] .app-shell__header--top:not(.app-shell__header--founder) {
-    background-color: var(--ds-color-bg-canvas);
-    background-image: none;
+  html[data-app-theme='dark'] .app-shell__header.app-shell__header--top:not(.app-shell__header--founder) {
+    background: var(--ds-color-bg-canvas);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
