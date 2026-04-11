@@ -3663,7 +3663,6 @@ body:has(.calendar-workspace) {
 }
 /* Title / subtitle / segmented track: .ds-page-subheader__* + .ds-segmented--ios */
 .appts-workspace-header__controls {
-  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -3677,32 +3676,6 @@ body:has(.calendar-workspace) {
   margin-top: 8px;
   /* Avoid transform on this wrapper: it can create a compositor layer that clips descendant shadows */
   animation: ds-toolbar-fade-up-in var(--ds-duration-toolbar-entrance, 350ms) var(--ds-ease-spring, ease) forwards;
-}
-
-/* Micro-polish: ultra-soft local plane — controls sit slightly above page (no visible blob / glow) */
-.appts-workspace-header__controls::before {
-  content: '';
-  position: absolute;
-  z-index: 0;
-  left: 50%;
-  top: -2px;
-  bottom: -6px;
-  width: min(100%, 28rem);
-  transform: translateX(-50%);
-  border-radius: 22px;
-  pointer-events: none;
-  background: radial-gradient(ellipse 92% 78% at 50% 64%, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.05) 48%, transparent 72%);
-  box-shadow: 0 14px 38px rgba(15, 23, 42, 0.032);
-}
-
-html[data-app-theme='dark'] .appts-workspace-header__controls::before {
-  background: radial-gradient(ellipse 92% 78% at 50% 64%, rgba(255, 255, 255, 0.055) 0%, transparent 68%);
-  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.22);
-}
-
-.appts-workspace-header__controls > * {
-  position: relative;
-  z-index: 1;
 }
 /* Wide viewports: do not let the header row squeeze mode tabs + CTA below their intrinsic width */
 @media (min-width: 960px) {
