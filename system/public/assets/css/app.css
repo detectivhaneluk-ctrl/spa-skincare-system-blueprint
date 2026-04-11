@@ -3663,6 +3663,7 @@ body:has(.calendar-workspace) {
 }
 /* Title / subtitle / segmented track: .ds-page-subheader__* + .ds-segmented--ios */
 .appts-workspace-header__controls {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -3676,6 +3677,32 @@ body:has(.calendar-workspace) {
   margin-top: 8px;
   /* Avoid transform on this wrapper: it can create a compositor layer that clips descendant shadows */
   animation: ds-toolbar-fade-up-in var(--ds-duration-toolbar-entrance, 350ms) var(--ds-ease-spring, ease) forwards;
+}
+
+/* Micro-polish: ultra-soft local plane — controls sit slightly above page (no visible blob / glow) */
+.appts-workspace-header__controls::before {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  left: 50%;
+  top: -2px;
+  bottom: -6px;
+  width: min(100%, 28rem);
+  transform: translateX(-50%);
+  border-radius: 22px;
+  pointer-events: none;
+  background: radial-gradient(ellipse 92% 78% at 50% 64%, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.05) 48%, transparent 72%);
+  box-shadow: 0 14px 38px rgba(15, 23, 42, 0.032);
+}
+
+html[data-app-theme='dark'] .appts-workspace-header__controls::before {
+  background: radial-gradient(ellipse 92% 78% at 50% 64%, rgba(255, 255, 255, 0.055) 0%, transparent 68%);
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.22);
+}
+
+.appts-workspace-header__controls > * {
+  position: relative;
+  z-index: 1;
 }
 /* Wide viewports: do not let the header row squeeze mode tabs + CTA below their intrinsic width */
 @media (min-width: 960px) {
@@ -3703,24 +3730,27 @@ body:has(.calendar-workspace) {
   min-height: var(--ds-appts-header-control-height);
   height: var(--ds-appts-header-control-height);
   max-height: var(--ds-appts-header-control-height);
-  padding: 0 var(--ds-space-6);
-  gap: var(--ds-space-2);
-  color: rgba(24, 42, 66, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.58);
-  background-color: transparent;
+  padding: 0 1.25rem;
+  gap: 0.375rem;
+  font-weight: var(--ds-font-medium);
+  letter-spacing: var(--ds-appts-header-tracking);
+  color: rgba(15, 23, 42, 0.93);
+  border: 1px solid rgba(255, 255, 255, 0.64);
+  background-color: rgba(255, 255, 255, 0.08);
   background-image:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.62) 0%, rgba(255, 255, 255, 0.2) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.58) 0%, rgba(255, 255, 255, 0.16) 100%),
     linear-gradient(
       180deg,
-      rgba(214, 228, 242, 0.56) 0%,
-      rgba(255, 255, 255, 0.3) 52%,
-      rgba(205, 221, 236, 0.28) 100%
-    );
+      rgba(218, 230, 244, 0.38) 0%,
+      rgba(255, 255, 255, 0.26) 50%,
+      rgba(208, 222, 236, 0.22) 100%
+    ),
+    linear-gradient(180deg, rgba(232, 240, 250, 0.18) 0%, transparent 58%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.72),
-    inset 0 -1px 0 rgba(15, 23, 42, 0.04),
-    0 4px 14px rgba(15, 23, 42, 0.05),
-    0 2px 6px rgba(15, 23, 42, 0.03);
+    inset 0 1px 0 rgba(255, 255, 255, 0.78),
+    inset 0 -1px 0 rgba(15, 23, 42, 0.045),
+    0 5px 16px rgba(15, 23, 42, 0.055),
+    0 1px 3px rgba(15, 23, 42, 0.04);
   backdrop-filter: var(--ds-appts-header-blur);
   -webkit-backdrop-filter: var(--ds-appts-header-blur);
   transition:
@@ -3738,20 +3768,22 @@ body:has(.calendar-workspace) {
 }
 
 .appts-workspace-header .appts-workspace-header__new.ds-btn--toolbar:hover {
-  color: rgba(18, 34, 54, 0.96);
-  border-color: rgba(255, 255, 255, 0.62);
+  color: rgba(12, 22, 38, 0.96);
+  border-color: rgba(255, 255, 255, 0.72);
+  background-color: rgba(255, 255, 255, 0.1);
   background-image:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.68) 0%, rgba(255, 255, 255, 0.24) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.64) 0%, rgba(255, 255, 255, 0.2) 100%),
     linear-gradient(
       180deg,
-      rgba(214, 228, 242, 0.58) 0%,
-      rgba(255, 255, 255, 0.34) 52%,
-      rgba(205, 221, 236, 0.32) 100%
-    );
+      rgba(218, 230, 244, 0.44) 0%,
+      rgba(255, 255, 255, 0.3) 50%,
+      rgba(208, 222, 236, 0.28) 100%
+    ),
+    linear-gradient(180deg, rgba(232, 240, 250, 0.22) 0%, transparent 55%);
   box-shadow:
     0 10px 24px rgba(15, 23, 42, 0.07),
     0 3px 10px rgba(15, 23, 42, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.74);
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
   transform: translateY(-1px);
 }
 
@@ -3777,37 +3809,42 @@ body:has(.calendar-workspace) {
 }
 
 html[data-app-theme="dark"] .appts-workspace-header .appts-workspace-header__new.ds-btn--toolbar {
-  color: rgba(236, 240, 247, 0.92);
-  border-color: rgba(255, 255, 255, 0.16);
+  color: rgba(236, 240, 247, 0.93);
+  border-color: rgba(255, 255, 255, 0.2);
+  background-color: rgba(255, 255, 255, 0.04);
   background-image:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.03) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.03) 100%),
     linear-gradient(
       180deg,
-      rgba(110, 140, 175, 0.22) 0%,
-      rgba(42, 48, 58, 0.42) 48%,
-      rgba(55, 68, 88, 0.32) 100%
-    );
+      rgba(105, 135, 168, 0.2) 0%,
+      rgba(44, 50, 60, 0.46) 48%,
+      rgba(52, 64, 82, 0.36) 100%
+    ),
+    linear-gradient(180deg, rgba(200, 215, 235, 0.08) 0%, transparent 55%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.35),
-    0 4px 16px rgba(0, 0, 0, 0.35);
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.32),
+    0 5px 18px rgba(0, 0, 0, 0.38),
+    0 1px 3px rgba(0, 0, 0, 0.22);
 }
 
 html[data-app-theme="dark"] .appts-workspace-header .appts-workspace-header__new.ds-btn--toolbar:hover {
-  color: rgba(245, 247, 252, 0.96);
-  border-color: rgba(255, 255, 255, 0.22);
+  color: rgba(245, 247, 252, 0.97);
+  border-color: rgba(255, 255, 255, 0.26);
+  background-color: rgba(255, 255, 255, 0.06);
   background-image:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.04) 100%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.04) 100%),
     linear-gradient(
       180deg,
-      rgba(120, 155, 195, 0.26) 0%,
-      rgba(48, 54, 64, 0.48) 48%,
-      rgba(58, 72, 92, 0.38) 100%
-    );
+      rgba(115, 148, 185, 0.24) 0%,
+      rgba(48, 54, 64, 0.5) 48%,
+      rgba(58, 72, 92, 0.4) 100%
+    ),
+    linear-gradient(180deg, rgba(200, 215, 235, 0.1) 0%, transparent 52%);
   box-shadow:
     0 10px 24px rgba(0, 0, 0, 0.4),
     0 3px 10px rgba(0, 0, 0, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
   transform: translateY(-1px);
 }
 
@@ -3856,35 +3893,38 @@ html[data-app-theme="dark"] .appts-workspace-header .appts-workspace-header__new
   overflow: hidden;
   -webkit-overflow-scrolling: touch;
   isolation: isolate;
-  /* Near-colorless track — not a gray slab */
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.44) 0%,
-    rgba(255, 255, 255, 0.22) 50%,
-    rgba(255, 255, 255, 0.14) 100%
-  );
-  border: 1px solid rgba(255, 255, 255, 0.52);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05), 0 2px 8px rgba(15, 23, 42, 0.03);
+  /* Quieter glass — less milky fill, more air + optical edge */
+  background-color: rgba(255, 255, 255, 0.04);
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.34) 0%, transparent 44%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.34) 0%, rgba(255, 255, 255, 0.16) 52%, rgba(255, 255, 255, 0.09) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.48);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.58),
+    inset 0 -1px 0 rgba(15, 23, 42, 0.025),
+    0 10px 28px rgba(15, 23, 42, 0.042),
+    0 2px 8px rgba(15, 23, 42, 0.028);
   backdrop-filter: var(--ds-appts-header-blur);
   -webkit-backdrop-filter: var(--ds-appts-header-blur);
 }
 
 html[data-app-theme="dark"] .appts-view-switch {
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.1) 0%,
-    rgba(255, 255, 255, 0.04) 55%,
-    rgba(255, 255, 255, 0.02) 100%
-  );
-  background-color: rgba(28, 28, 32, 0.42);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.22);
+  background-color: rgba(24, 24, 28, 0.36);
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.09) 0%, transparent 46%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.03) 55%, rgba(255, 255, 255, 0.015) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.22),
+    0 10px 28px rgba(0, 0, 0, 0.32),
+    0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .appts-view-switch__thumb {
   position: absolute;
-  top: var(--avs-pad);
-  bottom: var(--avs-pad);
+  top: calc(var(--avs-pad) + 1px);
+  bottom: calc(var(--avs-pad) + 1px);
   left: 0;
   width: 0;
   border-radius: var(--avs-r-inner);
@@ -3892,32 +3932,32 @@ html[data-app-theme="dark"] .appts-view-switch {
   pointer-events: none;
   transform: translateX(0);
   isolation: isolate;
-  /* Brighter translucent glass — not chalk white */
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0.34) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.66);
+  /* Suspended bright glass — translucency survives, less chalk */
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.56) 0%, rgba(255, 255, 255, 0.22) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.58);
   box-shadow:
-    0 4px 12px rgba(15, 23, 42, 0.05),
-    inset 0 1px 0 rgba(255, 255, 255, 0.85),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.18);
-  backdrop-filter: blur(12px) saturate(125%);
-  -webkit-backdrop-filter: blur(12px) saturate(125%);
+    0 3px 10px rgba(15, 23, 42, 0.042),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(12px) saturate(118%);
+  -webkit-backdrop-filter: blur(12px) saturate(118%);
   transition: transform 0.2s var(--ds-ease-spring), width 0.2s var(--ds-ease-spring);
 }
 
 html[data-app-theme="dark"] .appts-view-switch__thumb {
   background: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.26) 0%,
-    rgba(255, 255, 255, 0.1) 55%,
-    rgba(255, 255, 255, 0.05) 100%
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(255, 255, 255, 0.08) 56%,
+    rgba(255, 255, 255, 0.04) 100%
   );
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.32),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(12px) saturate(118%);
-  -webkit-backdrop-filter: blur(12px) saturate(118%);
+    0 3px 10px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px) saturate(112%);
+  -webkit-backdrop-filter: blur(12px) saturate(112%);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -3938,7 +3978,7 @@ html[data-app-theme="dark"] .appts-view-switch__thumb {
   align-items: stretch;
   height: 100%;
   margin: 0;
-  padding: 0 clamp(12px, 1.8vw, 22px);
+  padding: 0 clamp(11px, 1.65vw, 20px);
   border: none;
   border-radius: var(--avs-r-inner);
   background: transparent;
@@ -3949,7 +3989,7 @@ html[data-app-theme="dark"] .appts-view-switch__thumb {
   font-weight: var(--ds-font-medium);
   letter-spacing: var(--ds-appts-header-tracking);
   line-height: 1.06;
-  color: rgba(15, 23, 42, 0.56);
+  color: rgba(15, 23, 42, 0.58);
   white-space: nowrap;
   text-align: center;
   cursor: pointer;
@@ -3957,7 +3997,7 @@ html[data-app-theme="dark"] .appts-view-switch__thumb {
 }
 
 html[data-app-theme="dark"] .appts-view-switch__segment {
-  color: rgba(226, 232, 240, 0.56);
+  color: rgba(226, 232, 240, 0.58);
 }
 
 /* Phantom line reserves semibold width — zero layout shift between routes */
@@ -3977,12 +4017,12 @@ html[data-app-theme="dark"] .appts-view-switch__segment {
 
 .appts-view-switch:not(.is-appts-view-switch-ready) .appts-view-switch__segment.is-active,
 .appts-view-switch:not(.is-appts-view-switch-ready) .appts-view-switch__segment[aria-current='page'] {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0.34) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.66);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.56) 0%, rgba(255, 255, 255, 0.22) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.58);
   box-shadow:
-    0 4px 12px rgba(15, 23, 42, 0.05),
-    inset 0 1px 0 rgba(255, 255, 255, 0.85),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.18);
+    0 3px 10px rgba(15, 23, 42, 0.042),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.14);
 }
 
 html[data-app-theme="dark"] .appts-view-switch:not(.is-appts-view-switch-ready) .appts-view-switch__segment.is-active,
@@ -4004,19 +4044,19 @@ html[data-app-theme="dark"] .appts-view-switch:not(.is-appts-view-switch-ready) 
 
 .appts-view-switch__segment.is-active,
 .appts-view-switch__segment[aria-current='page'] {
-  color: rgba(15, 23, 42, 0.92);
-  font-weight: var(--ds-font-semibold);
+  color: rgba(15, 23, 42, 0.9);
+  font-weight: 600;
   letter-spacing: var(--ds-appts-header-tracking);
 }
 
 html[data-app-theme="dark"] .appts-view-switch__segment.is-active,
 html[data-app-theme="dark"] .appts-view-switch__segment[aria-current='page'] {
-  color: rgba(244, 244, 247, 0.92);
+  color: rgba(244, 244, 247, 0.9);
 }
 
 .appts-view-switch__segment:hover:not(.is-active):not([aria-current='page']) {
-  color: rgba(15, 23, 42, 0.72);
-  background-color: rgba(255, 255, 255, 0.2);
+  color: rgba(15, 23, 42, 0.7);
+  background-color: rgba(255, 255, 255, 0.14);
 }
 
 html[data-app-theme="dark"] .appts-view-switch__segment:hover:not(.is-active):not([aria-current='page']) {
