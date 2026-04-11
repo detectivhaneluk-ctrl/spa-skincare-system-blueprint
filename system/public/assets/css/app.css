@@ -2966,17 +2966,6 @@ html:not([data-app-theme='dark']) .app-shell__main.app-shell__main--calendar-wor
   margin-bottom: var(--ds-space-2);
 }
 
-/* Appointments title row: glass panel so controls blur the same body atmosphere as the shell */
-html:not([data-app-theme='dark']) .calendar-workspace .appts-workspace-header.ds-page-subheader {
-  border-radius: var(--ds-radius-xl);
-  border: 1px solid var(--ds-cal-liquid-stroke-soft);
-  padding: var(--ds-space-2) var(--ds-space-3);
-  background-color: rgba(255, 255, 255, 0.16);
-  background-image: var(--ds-cal-liquid-fill-lifted);
-  -webkit-backdrop-filter: var(--ds-cal-liquid-blur);
-  backdrop-filter: var(--ds-cal-liquid-blur);
-  box-shadow: var(--ds-cal-liquid-outer-shadow), var(--ds-cal-liquid-inset-rim);
-}
 .calendar-workspace .appts-workspace-header__controls {
   padding: 6px 0 10px;
   margin-top: 4px;
