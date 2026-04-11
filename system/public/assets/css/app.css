@@ -1503,13 +1503,17 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* App shell: full-width operational layout */
+/* App shell: full-width operational layout (opaque chrome only on rails that are not liquid top) */
 .app-shell__header {
   display: grid;
   grid-template-columns: minmax(0, auto) minmax(0, 1fr) minmax(0, auto);
   align-items: center;
   gap: var(--ds-space-2) var(--ds-space-4);
   padding: var(--ds-space-3) var(--ds-shell-pad-x);
+}
+
+.app-shell__header:not(.app-shell__header--top),
+.app-shell__header.app-shell__header--founder {
   background: var(--ds-color-bg-canvas);
   border-bottom: 1px solid #e5e7eb;
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.75) inset, 0 2px 8px rgba(15, 23, 42, 0.04);
@@ -1643,7 +1647,9 @@ html:not([data-app-theme='dark']) .app-shell__header.app-shell__header--top:not(
   isolation: isolate;
   border-bottom: 1px solid var(--ds-cal-liquid-stroke-soft);
   box-shadow: var(--ds-cal-liquid-outer-shadow), var(--ds-cal-liquid-inset-rim);
-  background: var(--ds-cal-liquid-fill-lifted);
+  /* Tint + gradients so backdrop blur reads (especially when body is flat gray) */
+  background-color: rgba(255, 255, 255, 0.2);
+  background-image: var(--ds-cal-liquid-fill-lifted);
   -webkit-backdrop-filter: var(--ds-cal-liquid-blur);
   backdrop-filter: var(--ds-cal-liquid-blur);
 }
@@ -2874,9 +2880,11 @@ body:has(.calendar-workspace) {
   padding-bottom: var(--ds-space-2);
 }
 
-/* Liquid atmosphere (light) — matches Apple-like preview: radials + ramp + soft orbs */
-html:not([data-app-theme='dark']) .app-shell__main:has(.calendar-workspace),
-html:not([data-app-theme='dark']) .app-shell__main.app-shell__main--calendar-workspace {
+/*
+ * Liquid atmosphere (light) — on body (not only main) so sticky app header backdrop-filter
+ * samples radials + ramp. Main stays transparent to avoid double-painting.
+ */
+html:not([data-app-theme='dark']) body:has(.calendar-workspace) {
   position: relative;
   isolation: isolate;
   background-color: transparent;
@@ -2892,8 +2900,7 @@ html:not([data-app-theme='dark']) .app-shell__main.app-shell__main--calendar-wor
     );
 }
 
-html:not([data-app-theme='dark']) .app-shell__main:has(.calendar-workspace)::before,
-html:not([data-app-theme='dark']) .app-shell__main.app-shell__main--calendar-workspace::before {
+html:not([data-app-theme='dark']) body:has(.calendar-workspace)::before {
   content: '';
   position: absolute;
   z-index: 0;
@@ -2908,8 +2915,7 @@ html:not([data-app-theme='dark']) .app-shell__main.app-shell__main--calendar-wor
   pointer-events: none;
 }
 
-html:not([data-app-theme='dark']) .app-shell__main:has(.calendar-workspace)::after,
-html:not([data-app-theme='dark']) .app-shell__main.app-shell__main--calendar-workspace::after {
+html:not([data-app-theme='dark']) body:has(.calendar-workspace)::after {
   content: '';
   position: absolute;
   z-index: 0;
@@ -2924,8 +2930,13 @@ html:not([data-app-theme='dark']) .app-shell__main.app-shell__main--calendar-wor
   pointer-events: none;
 }
 
-html:not([data-app-theme='dark']) body:has(.calendar-workspace) {
-  background: var(--ds-cal-atmos-bg-mid);
+html:not([data-app-theme='dark']) .app-shell__main:has(.calendar-workspace),
+html:not([data-app-theme='dark']) .app-shell__main.app-shell__main--calendar-workspace {
+  position: relative;
+  isolation: isolate;
+  background: none;
+  background-color: transparent;
+  background-image: none;
 }
 
 .app-shell__main:has(.calendar-workspace) > .calendar-workspace,
@@ -2953,6 +2964,18 @@ html:not([data-app-theme='dark']) body:has(.calendar-workspace) {
 }
 .calendar-workspace .appts-workspace-header.ds-page-subheader {
   margin-bottom: var(--ds-space-2);
+}
+
+/* Appointments title row: glass panel so controls blur the same body atmosphere as the shell */
+html:not([data-app-theme='dark']) .calendar-workspace .appts-workspace-header.ds-page-subheader {
+  border-radius: var(--ds-radius-xl);
+  border: 1px solid var(--ds-cal-liquid-stroke-soft);
+  padding: var(--ds-space-2) var(--ds-space-3);
+  background-color: rgba(255, 255, 255, 0.16);
+  background-image: var(--ds-cal-liquid-fill-lifted);
+  -webkit-backdrop-filter: var(--ds-cal-liquid-blur);
+  backdrop-filter: var(--ds-cal-liquid-blur);
+  box-shadow: var(--ds-cal-liquid-outer-shadow), var(--ds-cal-liquid-inset-rim);
 }
 .calendar-workspace .appts-workspace-header__controls {
   padding: 6px 0 10px;
