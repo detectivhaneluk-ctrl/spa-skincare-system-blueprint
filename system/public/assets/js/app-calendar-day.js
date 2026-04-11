@@ -86,6 +86,7 @@
   let calendarHorizontalNavAnimationRaf = null;
   let calendarOverlayHeadEl = null;
   let calendarOverlayHeadScrollEl = null;
+  const staffMenuPortalOrigins = new WeakMap();
   /**
    * Per-tab: user moved time zoom (or applied a saved view) for this branch — block auto-fit until DB row exists.
    * Survives refresh within the session; keyed by branch in sessionStorage.
@@ -591,12 +592,42 @@
     }
   }
 
+  function portalStaffMenuToBody(menu) {
+    if (!(menu instanceof HTMLElement)) return;
+    if (menu.parentElement === document.body) return;
+    staffMenuPortalOrigins.set(menu, {
+      parent: menu.parentElement,
+      nextSibling: menu.nextSibling,
+    });
+    document.body.appendChild(menu);
+  }
+
+  function restoreStaffMenuFromBody(menu) {
+    if (!(menu instanceof HTMLElement)) return;
+    const origin = staffMenuPortalOrigins.get(menu);
+    if (!origin) return;
+    staffMenuPortalOrigins.delete(menu);
+
+    const parent = origin.parent;
+    const nextSibling = origin.nextSibling;
+    if (!(parent instanceof HTMLElement) || !parent.isConnected) {
+      menu.remove();
+      return;
+    }
+    if (nextSibling && nextSibling.parentNode === parent) {
+      parent.insertBefore(menu, nextSibling);
+      return;
+    }
+    parent.appendChild(menu);
+  }
+
   function openStaffMenuForTrigger(staffId, trigger, menu) {
     if (!(trigger instanceof HTMLElement) || !(menu instanceof HTMLElement)) return false;
     const wasOpen = menu.classList.contains('ops-staff-menu--open');
     closeAllStaffMenus();
     if (wasOpen) return false;
 
+    portalStaffMenuToBody(menu);
     positionStaffMenuFixed(trigger, menu);
     menu.classList.add('ops-staff-menu--open');
     menu.removeAttribute('inert');
@@ -2072,6 +2103,7 @@
       const staffId = m.dataset.staffId || (head instanceof HTMLElement ? head.dataset.staffId : '');
       syncStaffHeaderOpenState(staffId, false);
       delete m.dataset.staffId;
+      restoreStaffMenuFromBody(m);
     });
   }
 
@@ -3498,6 +3530,7 @@
     lastCalendarPayload = payload && typeof payload === 'object' ? payload : null;
     flushDeferredHiddenStaffIdsIfReady();
     refreshCalendarHorizontalScrollEls();
+    closeAllStaffMenus();
     /* Responsive: recalculate column width from current viewport every render. */
     if (staffColumnsPerView != null) {
       columnWidthPx = computeColumnWidthFromStaffCount(staffColumnsPerView);
@@ -5310,6 +5343,7 @@
 
   async function load() {
     pendingDeferredHiddenStaffIds = null;
+    closeAllStaffMenus();
     const date = dateEl.value;
     if (!date) return;
     const params = new URLSearchParams();
@@ -5506,7 +5540,7 @@
 
   document.addEventListener('click', (e) => {
     if (!(e.target instanceof Element)) return;
-    if (!e.target.closest('.ops-staff-head') && !e.target.closest('.ops-calendar-head-overlay__cell')) closeAllStaffMenus();
+    if (!e.target.closest('.ops-staff-head') && !e.target.closest('.ops-calendar-head-overlay__cell') && !e.target.closest('.ops-staff-menu')) closeAllStaffMenus();
     if (!e.target.closest('#cal-appt-ctx-menu')) closeApptContextMenu();
   });
   document.addEventListener('keydown', (e) => {
