@@ -176,6 +176,15 @@
   --ds-appts-header-font-size: 0.9375rem;
   --ds-appts-header-tracking: -0.032em;
   --ds-appts-header-blur: blur(22px) saturate(114%);
+
+  /* Day calendar workspace — liquid atmosphere (radials + base ramp; see app.css) */
+  --ds-cal-atmos-bg-top: #f8fbff;
+  --ds-cal-atmos-bg-mid: #edf4ff;
+  --ds-cal-atmos-bg-bottom: #dde8f5;
+  --ds-cal-atmos-orb-a: linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(151, 191, 255, 0.24));
+  --ds-cal-atmos-orb-b: linear-gradient(135deg, rgba(184, 216, 255, 0.24), rgba(255, 255, 255, 0.52));
+  --ds-cal-atmos-body-surface: rgba(255, 255, 255, 0.78);
+  --ds-cal-atmos-body-blur: blur(18px) saturate(142%);
 }
 
 /* Native controls: brand jade for checkboxes/radios (see accent tokens for CTAs/text). */
