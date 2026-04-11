@@ -5439,13 +5439,25 @@ html:not([data-app-theme='dark']) .calendar-workspace .ops-calendar {
 /*
  * Day grid: one liquid shell (#appts-calendar-grid). Inner .ops-calendar drops its own box
  * so we do not stack two frosted panels (was flat white rim + inner glass).
+ *
+ * Data plane neutralization (light): atmosphere lives on body/main; the working grid must
+ * not sample horizontal blue/warm radials through translucent glass. Opaque-ish neutral
+ * stack + vertical-only fill; mild blur (not the heavy workspace liquid blur).
  */
 html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid.appts-calendar-grid {
+  --appts-cal-data-plane-surface: rgb(247, 248, 250);
+  --appts-cal-data-plane-fill: linear-gradient(
+    180deg,
+    rgb(250, 251, 253) 0%,
+    rgb(246, 247, 250) 52%,
+    rgb(243, 245, 248) 100%
+  );
   border: 1px solid var(--ds-cal-liquid-stroke-soft);
-  background: var(--ds-cal-liquid-fill-lifted), rgba(255, 255, 255, 0.06);
+  background-color: rgba(247, 248, 250, 0.94);
+  background-image: var(--appts-cal-data-plane-fill);
   box-shadow: var(--ds-cal-liquid-outer-shadow), var(--ds-cal-liquid-inset-rim);
-  -webkit-backdrop-filter: var(--ds-cal-liquid-blur);
-  backdrop-filter: var(--ds-cal-liquid-blur);
+  -webkit-backdrop-filter: blur(6px) saturate(112%);
+  backdrop-filter: blur(6px) saturate(112%);
   isolation: isolate;
 }
 
@@ -5491,27 +5503,35 @@ html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-
 
 html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-calendar-head,
 html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-calendar-head-nav-slot {
-  /* Workspace header strip: airy, not a boxed table band */
-  background: rgba(252, 251, 249, 0.58);
+  /* Same neutral system as grid shell — no horizontal tint vs staff columns. */
+  background-color: var(--appts-cal-data-plane-surface, rgb(247, 248, 250));
+  background-image: linear-gradient(
+    180deg,
+    rgba(250, 251, 253, 0.98) 0%,
+    rgba(245, 246, 249, 0.99) 100%
+  );
   border-bottom: 1px solid rgba(15, 23, 42, 0.042);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
 }
 
 html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-calendar-head-nav-slot {
   border-left: 1px solid rgba(15, 23, 42, 0.045);
-  background: linear-gradient(90deg, rgba(15, 23, 42, 0.018) 0%, rgba(252, 251, 249, 0.62) 22%);
 }
 
 html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-calendar-head-overlay,
 html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-calendar-head-overlay__nav {
-  background: rgba(252, 251, 249, 0.58);
+  background-color: var(--appts-cal-data-plane-surface, rgb(247, 248, 250));
+  background-image: linear-gradient(
+    180deg,
+    rgba(250, 251, 253, 0.98) 0%,
+    rgba(245, 246, 249, 0.99) 100%
+  );
   border-bottom: 1px solid rgba(15, 23, 42, 0.042);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
 }
 
 html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-calendar-head-overlay__nav {
   border-left: 1px solid rgba(15, 23, 42, 0.045);
-  background: linear-gradient(90deg, rgba(15, 23, 42, 0.018) 0%, rgba(252, 251, 249, 0.62) 22%);
 }
 
 html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-calendar-head-overlay__cell {
@@ -5562,8 +5582,28 @@ html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-
 
 /* Time gutter: match ghost dividers so the axis does not read like a hard table frame */
 html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-time-labels {
+  background-color: var(--appts-cal-data-plane-surface, rgb(247, 248, 250));
+  background-image: linear-gradient(
+    180deg,
+    rgba(250, 251, 253, 0.98) 0%,
+    rgba(245, 246, 249, 0.99) 100%
+  );
   border-right-color: rgba(15, 23, 42, 0.042);
   box-shadow: inset -1px 0 0 rgba(15, 23, 42, 0.028);
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-time-head {
+  background-color: var(--appts-cal-data-plane-surface, rgb(247, 248, 250));
+  background-image: linear-gradient(
+    180deg,
+    rgba(250, 251, 253, 0.98) 0%,
+    rgba(245, 246, 249, 0.99) 100%
+  );
+}
+
+html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-calendar-body {
+  background-color: var(--appts-cal-data-plane-surface, rgb(247, 248, 250));
+  background-image: var(--appts-cal-data-plane-fill, linear-gradient(180deg, rgb(250, 251, 253) 0%, rgb(243, 245, 248) 100%));
 }
 
 html:not([data-app-theme='dark']) .calendar-workspace #appts-calendar-grid .ops-time-label--hour {
