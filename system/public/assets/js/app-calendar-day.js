@@ -1,40 +1,52 @@
 (() => {
   const dateEl = document.getElementById('calendar-date');
+  const calendarWorkspaceRoot = document.getElementById('calendar-workspace-root');
   const calendarToolbarDateLabel = document.getElementById('calendar-toolbar-date-label');
   const calendarToolbarDateFocus = document.getElementById('calendar-toolbar-date-focus');
+  const calendarToolbarDatePanel = document.getElementById('calendar-toolbar-date-panel');
   const calendarToolbarPrevDay = document.getElementById('calendar-toolbar-prev-day');
   const calendarToolbarNextDay = document.getElementById('calendar-toolbar-next-day');
   const calCard = document.getElementById('appts-cal-card');
-  const calStrip = document.getElementById('appts-cal-strip');
   const calMonthGrid = document.getElementById('appts-cal-month-grid');
   const calTwoMonthsGrid1 = document.getElementById('appts-cal-two-months-grid-1');
   const calTwoMonthsGrid2 = document.getElementById('appts-cal-two-months-grid-2');
   const calTwoMonthsLabel1 = document.getElementById('appts-cal-two-months-label-1');
   const calTwoMonthsLabel2 = document.getElementById('appts-cal-two-months-label-2');
   const calContextMonth = document.getElementById('appts-cal-context-month');
-  const calModeWeek = document.getElementById('appts-cal-mode-week');
+  const calContextYear = document.getElementById('appts-cal-context-year');
+  const calContextMonthBtn = document.getElementById('appts-cal-context-month-btn');
+  const calContextYearBtn = document.getElementById('appts-cal-context-year-btn');
+  const calMonthPicker = document.getElementById('appts-cal-month-picker');
+  const calYearPicker = document.getElementById('appts-cal-year-picker');
+  const calBodyMonthPicker = document.getElementById('appts-cal-body-month-picker');
+  const calBodyYearPicker = document.getElementById('appts-cal-body-year-picker');
+  const calYearRangeLabel = document.getElementById('appts-cal-year-range-label');
+  const calPrevYearRange = document.getElementById('appts-cal-prev-year-range');
+  const calNextYearRange = document.getElementById('appts-cal-next-year-range');
   const calModeMonth = document.getElementById('appts-cal-mode-month');
   const calModeTwoMonths = document.getElementById('appts-cal-mode-two-months');
-  const calNavWeek = document.getElementById('appts-cal-nav-week');
   const calNavMonth = document.getElementById('appts-cal-nav-month');
-  const calBodyWeek = document.getElementById('appts-cal-body-week');
   const calBodyMonth = document.getElementById('appts-cal-body-month');
   const calBodyTwoMonths = document.getElementById('appts-cal-body-two-months');
-  const calPrevWeek = document.getElementById('appts-cal-prev-week');
-  const calNextWeek = document.getElementById('appts-cal-next-week');
   const calPrevMonth = document.getElementById('appts-cal-prev-month');
   const calNextMonth = document.getElementById('appts-cal-next-month');
-  const calTodayWeek = document.getElementById('appts-cal-today-week');
   const calTodayMonth = document.getElementById('appts-cal-today-month');
   const branchEl = document.getElementById('calendar-branch');
   const statusEl = document.getElementById('calendar-status');
   const branchHoursIndicatorEl = document.getElementById('calendar-branch-hours-indicator');
   const wrap = document.getElementById('calendar-day-wrap');
+  const calendarGridEl = document.getElementById('appts-calendar-grid');
+  const clipboardSidecarEl = document.getElementById('cal-clipboard-sidecar');
+  const clipboardSidePanelEl = document.getElementById('cal-clipboard-side-panel');
+  const clipboardToggleEl = document.getElementById('cal-clipboard-side-toggle');
+  const clipboardToolbarBtn = document.getElementById('cal-toolbar-clipboard-btn');
+  const clipboardCloseEl = document.getElementById('cal-clipboard-side-close');
   const newAppointmentBtns = document.querySelectorAll('[data-calendar-new-appt]');
   const calendarHorizontalNavControls = document.getElementById('calendar-staff-pan-controls');
   const calendarHorizontalNavPrev = document.getElementById('calendar-staff-pan-prev');
   const calendarHorizontalNavNext = document.getElementById('calendar-staff-pan-next');
   const summaryRailEl = document.getElementById('appts-cal-summary-status');
+  const calendarWeekStrip = document.getElementById('calendar-week-strip');
   const BASE_PIXELS_PER_MINUTE = 1.4;
   /** Canonical min/max time zoom — must match CalendarToolbarUiService + calendar-day.php range input. */
   const MIN_TIME_ZOOM_PERCENT = 25;
@@ -43,7 +55,7 @@
    * Vertical scroll: #appts-calendar-grid. Horizontal pan: .ops-calendar-head-scroll + .ops-calendar-lanes-scroll
    * (scrollLeft kept in sync in JS) so the 84px time gutter never uses position:sticky — labels and grid lines
    * stay aligned while scrolling vertically.
-   * Bounded viewport via layout + syncCalendarViewportHeight. Implicit fit may shrink time zoom
+   * Bounded viewport via flex (.appts-calendar-main / #appts-calendar-grid) + resize observers. Implicit fit may shrink time zoom
    * to fit the workday but must not use zoom bumps to manufacture overflow; Tools ▸ Fit is explicit zoom only.
    */
   let timeZoomPercent = 100;
@@ -125,9 +137,12 @@
   const DEFAULT_BOOKING_DURATION_MINUTES = 30;
   /** Branch-effective IANA timezone, validated client-side. Falls back to 'UTC' if Intl rejects the identifier. */
   const BRANCH_TIMEZONE = (() => {
-    const raw = document.getElementById('appts-calendar-grid')?.dataset?.branchTimezone || 'UTC';
+    const raw = calendarGridEl?.dataset?.branchTimezone || 'UTC';
     try { new Intl.DateTimeFormat([], { timeZone: raw }); return raw; } catch (e) { return 'UTC'; }
   })();
+  const ALLOW_PAST_BOOKING = calendarGridEl?.dataset?.calAllowPastBooking === '1';
+  const MIN_LEAD_MINUTES = Math.max(0, Number(calendarGridEl?.dataset?.calMinLeadMinutes || '0') || 0);
+  const MAX_DAYS_AHEAD = Math.max(0, Number(calendarGridEl?.dataset?.calMaxDaysAhead || '0') || 0);
   /**
    * Vertical padding inside the day body (px): breathing room before the first slot and after the last,
    * so hour labels are not flush with the grid edges. Also keeps the first label clear of the sticky header
@@ -136,11 +151,33 @@
   const GRID_TOP_INSET_PX = 20;
   const GRID_BOTTOM_INSET_PX = 20;
   const GRID_VERTICAL_INSETS_PX = GRID_TOP_INSET_PX + GRID_BOTTOM_INSET_PX;
+  const CLIPBOARD_PANEL_TRANSITION_MS = 480;
+  const CLIPBOARD_ADD_ANIMATION_MS = 720;
   /** Viewport clearance from #appts-calendar-grid top — below this, flip time bubble under the + chip. */
   const SLOT_PREVIEW_FLIP_CLEARANCE_PX = 100;
 
+  /**
+   * #appts-calendar-grid may use transform (e.g. clipboard open). Fixed descendants are positioned in that
+   * transformed box while getBoundingClientRect() is viewport — mismatch moves the slot preview. Portal to body fixes it.
+   */
+  function restoreSlotPreviewToLane(p) {
+    if (!(p instanceof HTMLElement) || p.parentNode !== document.body) return;
+    const sid = p.dataset.ownerStaffId;
+    if (!sid || !calendarGridEl) return;
+    const lane = calendarGridEl.querySelector('.ops-lane[data-staff-id="' + String(sid).replace(/"/g, '') + '"]');
+    if (lane) {
+      lane.insertBefore(p, lane.firstChild);
+    }
+  }
+
+  function ensureSlotPreviewPortaledToBody(hoverPreview) {
+    if (!(hoverPreview instanceof HTMLElement) || hoverPreview.parentNode === document.body) return;
+    document.body.appendChild(hoverPreview);
+  }
+
   function clearSlotPreviewViewportPin(p) {
     if (!(p instanceof HTMLElement)) return;
+    restoreSlotPreviewToLane(p);
     p.style.position = '';
     p.style.left = '';
     p.style.width = '';
@@ -151,14 +188,16 @@
   /**
    * Pin slot preview to viewport coords so it stacks above .ops-now-line (a sibling of .ops-calendar-lanes-scroll).
    * Clamps horizontal extent to #appts-calendar-grid so the bubble does not spill past the calendar surface.
+   * @param {number} offsetFromLaneTopPx — Y within the lane box (clamped to lane height); paired with viewport lane rect.
    */
-  function positionSlotPreviewInViewport(hoverPreview, lane, topPx) {
+  function positionSlotPreviewInViewport(hoverPreview, lane, offsetFromLaneTopPx) {
     const laneRect = lane.getBoundingClientRect();
     const gridEl = document.getElementById('appts-calendar-grid');
     const gridR = gridEl ? gridEl.getBoundingClientRect() : null;
     let left = laneRect.left;
     let width = laneRect.width;
-    const top = laneRect.top + topPx;
+    const off = Number(offsetFromLaneTopPx) || 0;
+    const top = laneRect.top + off;
     if (gridR && Number.isFinite(left) && Number.isFinite(width)) {
       const pad = 6;
       const gLeft = gridR.left + pad;
@@ -204,17 +243,154 @@
     });
   }
 
+  /**
+   * Premium micro-interaction tick when the snapped time changes (Web Audio).
+   * Goal: softer, more polished, and less synthetic than a raw oscillator blip:
+   * Camera-shutter click sample (mixkit-camera-shutter-click-1133.wav).
+   * On by default; respects prefers-reduced-motion.
+   * Mute: localStorage `appts_cal_slot_hover_sound` = `0`, or `?cal_slot_sounds=0`.
+   * Un-mute: `?cal_slot_sounds=1`. Requires a pointer gesture on the grid once.
+   */
+  const SLOT_HOVER_SOUND_LS_KEY = 'appts_cal_slot_hover_sound';
+  const SLOT_HOVER_SOUND_URL = '/assets/audio/mixkit-camera-shutter-click-1133.wav';
+  const SLOT_HOVER_SOUND_MIN_INTERVAL_MS = 60;
+  let slotHoverAudioCtx = null;
+  let slotHoverOutputNode = null;
+  let slotHoverSampleBuffer = null;
+  let slotHoverSampleLoadPromise = null;
+  let slotHoverSoundLastAt = 0;
+
+  function isSlotHoverSoundFeatureEnabled() {
+    try {
+      return window.localStorage.getItem(SLOT_HOVER_SOUND_LS_KEY) !== '0';
+    } catch (_e) {
+      return true;
+    }
+  }
+
+  function initSlotHoverSoundGateFromUrl() {
+    try {
+      const v = new URLSearchParams(window.location.search).get('cal_slot_sounds');
+      if (v === '0' || v === 'false') window.localStorage.setItem(SLOT_HOVER_SOUND_LS_KEY, '0');
+      if (v === '1' || v === 'true') window.localStorage.removeItem(SLOT_HOVER_SOUND_LS_KEY);
+    } catch (_e) { /* ignore */ }
+  }
+
+  function ensureSlotHoverAudioContext() {
+    if (slotHoverAudioCtx) return slotHoverAudioCtx;
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return null;
+      slotHoverAudioCtx = new Ctx();
+    } catch (_e) {
+      slotHoverAudioCtx = null;
+    }
+    return slotHoverAudioCtx;
+  }
+
+  function resumeSlotHoverAudioIfNeeded() {
+    if (!slotHoverAudioCtx || slotHoverAudioCtx.state !== 'suspended') return;
+    void slotHoverAudioCtx.resume().catch(() => {});
+  }
+
+  function ensureSlotHoverOutputNode(ctx) {
+    if (slotHoverOutputNode) return slotHoverOutputNode;
+    try {
+      const comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = -18;
+      comp.knee.value = 6;
+      comp.ratio.value = 3;
+      comp.attack.value = 0.001;
+      comp.release.value = 0.06;
+      comp.connect(ctx.destination);
+      slotHoverOutputNode = comp;
+    } catch (_e) {
+      slotHoverOutputNode = ctx.destination;
+    }
+    return slotHoverOutputNode;
+  }
+
+  function decodeAudioArrayBuffer(ctx, arr) {
+    return new Promise((resolve, reject) => {
+      try {
+        ctx.decodeAudioData(arr, resolve, reject);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  function primeSlotHoverSampleLoad() {
+    const ctx = ensureSlotHoverAudioContext();
+    if (!ctx || ctx.state === 'closed') {
+      return Promise.resolve(null);
+    }
+    if (slotHoverSampleBuffer) {
+      return Promise.resolve(slotHoverSampleBuffer);
+    }
+    if (slotHoverSampleLoadPromise) {
+      return slotHoverSampleLoadPromise;
+    }
+    slotHoverSampleLoadPromise = (async () => {
+      try {
+        const res = await fetch(SLOT_HOVER_SOUND_URL, {
+          credentials: 'same-origin',
+          headers: { Accept: 'audio/wav,audio/*;q=0.9,*/*;q=0.1' },
+        });
+        if (!res.ok) {
+          throw new Error('Failed to load slot sound.');
+        }
+        const raw = await res.arrayBuffer();
+        const decoded = await decodeAudioArrayBuffer(ctx, raw.slice(0));
+        slotHoverSampleBuffer = decoded || null;
+      } catch (_e) {
+        slotHoverSampleBuffer = null;
+      } finally {
+        slotHoverSampleLoadPromise = null;
+      }
+      return slotHoverSampleBuffer;
+    })();
+    return slotHoverSampleLoadPromise;
+  }
+
+  function maybePlaySlotHoverSound(snappedLabel) {
+    if (!isSlotHoverSoundFeatureEnabled()) return;
+    try {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    } catch (_e) { /* ignore */ }
+    const now = performance.now();
+    if (now - slotHoverSoundLastAt < SLOT_HOVER_SOUND_MIN_INTERVAL_MS) return;
+    if (!slotHoverSampleBuffer) return;
+    const ctx = ensureSlotHoverAudioContext();
+    if (!ctx || ctx.state !== 'running') return;
+    slotHoverSoundLastAt = now;
+    try {
+      const minuteOfHour = (((toMinutes(snappedLabel) % 60) + 60) % 60);
+      const gain = minuteOfHour === 0 ? 0.52 : minuteOfHour === 30 ? 0.46 : 0.4;
+      const playbackRate = minuteOfHour === 0 ? 0.95 : minuteOfHour === 30 ? 0.98 : 1.0;
+      const out = ensureSlotHoverOutputNode(ctx);
+      const t = ctx.currentTime + 0.001;
+      const gainNode = ctx.createGain();
+      const source = ctx.createBufferSource();
+      gainNode.gain.setValueAtTime(gain, t);
+      source.buffer = slotHoverSampleBuffer;
+      source.playbackRate.setValueAtTime(playbackRate, t);
+      source.connect(gainNode);
+      gainNode.connect(out);
+      const dur = Math.min(slotHoverSampleBuffer.duration, 0.18);
+      source.start(t, 0, dur);
+    } catch (_e) { /* ignore */ }
+  }
+
   let selectedSlot = null;
+  let clipboardPanelOpen = false;
+  let clipboardRecentlyAddedId = null;
+  let clipboardAddAnimationTimer = null;
   /** AbortController for the in-flight /calendar/day fetch. Cancelled when a newer load() starts. */
   let currentLoadAbort = null;
-  /** AbortController for GET /calendar/week-summary (stale-response safe). */
-  let weekSummaryAbort = null;
-  /** Last applied week summary payload; null until bootstrap or fetch. */
-  let latestWeekSummary = null;
   /** AbortController for GET /calendar/month-summary. */
   let monthSummaryAbort = null;
   let latestMonthSummary = null;
-  let weekSummaryErrorText = '';
   let monthSummaryErrorText = '';
   let twoMonthsSummaryErrorText = '';
   let twoMonthsSummarySeq = 0;
@@ -339,8 +515,7 @@
   function refreshSummaryRailVisible() {
     if (!summaryRailEl) return;
     let msg = '';
-    if (calendarMode === 'week') msg = weekSummaryErrorText;
-    else if (calendarMode === 'month') msg = monthSummaryErrorText;
+    if (calendarMode === 'month') msg = monthSummaryErrorText;
     else msg = twoMonthsSummaryErrorText;
     if (!msg) {
       summaryRailEl.textContent = '';
@@ -380,18 +555,13 @@
   }
 
   const CAL_MODE_KEY = 'appts_cal_card_mode';
-  let calendarMode = (function () {
-    try {
-      const s = sessionStorage.getItem(CAL_MODE_KEY);
-      if (s === 'month' || s === 'two-months') return s;
-      return 'week';
-    } catch (e) {
-      return 'week';
-    }
-  })();
+  let calendarMode = 'month';
+  let calendarDatePickerView = 'days';
+  let calendarYearRangeStart = null;
+  const CAL_YEAR_RANGE_SIZE = 12;
 
   function setCalendarMode(mode) {
-    if (mode !== 'week' && mode !== 'month' && mode !== 'two-months') return;
+    if (mode !== 'month' && mode !== 'two-months') return;
     calendarMode = mode;
     try {
       sessionStorage.setItem(CAL_MODE_KEY, mode);
@@ -402,22 +572,35 @@
   }
 
   function syncModeChrome() {
-    const isWeek = calendarMode === 'week';
     const isMonth = calendarMode === 'month';
     const isTwoMonths = calendarMode === 'two-months';
-    if (calModeWeek && calModeMonth && calModeTwoMonths) {
-      calModeWeek.classList.toggle('appts-cal-card__mode-btn--active', isWeek);
-      calModeWeek.setAttribute('aria-pressed', isWeek ? 'true' : 'false');
+    if (calModeMonth && calModeTwoMonths) {
       calModeMonth.classList.toggle('appts-cal-card__mode-btn--active', isMonth);
       calModeMonth.setAttribute('aria-pressed', isMonth ? 'true' : 'false');
       calModeTwoMonths.classList.toggle('appts-cal-card__mode-btn--active', isTwoMonths);
       calModeTwoMonths.setAttribute('aria-pressed', isTwoMonths ? 'true' : 'false');
     }
-    calNavWeek?.classList.toggle('is-cal-hidden', !isWeek);
-    calNavMonth?.classList.toggle('is-cal-hidden', isWeek);
-    calBodyWeek?.classList.toggle('is-cal-hidden', !isWeek);
-    calBodyMonth?.classList.toggle('is-cal-hidden', !isMonth);
+    calNavMonth?.classList.remove('is-cal-hidden');
+    const showDayGrid = isMonth && calendarDatePickerView === 'days';
+    const showMonthPicker = isMonth && calendarDatePickerView === 'months';
+    const showYearPicker = isMonth && calendarDatePickerView === 'years';
+    calBodyMonth?.classList.toggle('is-cal-hidden', !showDayGrid);
+    calBodyMonthPicker?.classList.toggle('is-cal-hidden', !showMonthPicker);
+    calBodyYearPicker?.classList.toggle('is-cal-hidden', !showYearPicker);
     calBodyTwoMonths?.classList.toggle('is-cal-hidden', !isTwoMonths);
+    if (calContextMonthBtn) {
+      calContextMonthBtn.setAttribute('aria-pressed', showMonthPicker ? 'true' : 'false');
+    }
+    if (calContextYearBtn) {
+      calContextYearBtn.setAttribute('aria-pressed', showYearPicker ? 'true' : 'false');
+    }
+    if (calendarToolbarDatePanel instanceof HTMLElement) {
+      if (isTwoMonths) {
+        calendarToolbarDatePanel.dataset.calPanelMode = 'two-months';
+      } else {
+        delete calendarToolbarDatePanel.dataset.calPanelMode;
+      }
+    }
   }
 
   /** now-line: current grid vm reference; null when no calendar is rendered. */
@@ -1157,33 +1340,15 @@
   }
 
   /**
-   * Bounded height for #appts-calendar-grid: subtract fixed rows inside .appts-calendar-main from
-   * its client height, set --appts-day-grid-viewport-h on the page host (CSS consumes it).
+   * Day grid height is driven by flex (.appts-calendar-main > #appts-calendar-grid). This hook
+   * remains so resize / layout observers still refresh horizontal staff navigation after reflow.
    */
   function syncCalendarViewportHeight() {
     const host = document.querySelector('.appointments-workspace-page.appts-calendar-page');
-    const mainCol = document.querySelector('.appts-calendar-main');
-    const grid = document.getElementById('appts-calendar-grid');
-    if (!host || !mainCol || !grid) return;
-
-    const mainH = mainCol.clientHeight;
-    if (mainH < 8) return;
-
-    const kids = Array.from(mainCol.children);
-    let fixed = 0;
-    for (const el of kids) {
-      if (el === grid) continue;
-      if (!(el instanceof HTMLElement)) continue;
-      if (el.hidden) continue;
-      const st = window.getComputedStyle(el);
-      if (st.display === 'none') continue;
-      fixed += el.offsetHeight;
+    if (host instanceof HTMLElement) {
+      host.style.removeProperty('--appts-day-grid-viewport-h');
     }
-    const cs = window.getComputedStyle(mainCol);
-    const gap = parseFloat(cs.rowGap) || 0;
-    const nGaps = Math.max(0, kids.length - 1);
-    const gridH = Math.max(120, Math.floor(mainH - fixed - gap * nGaps));
-    host.style.setProperty('--appts-day-grid-viewport-h', gridH + 'px');
+    scheduleCalendarHorizontalNavStateSync();
   }
 
   function scheduleSyncCalendarViewportHeight() {
@@ -1232,6 +1397,205 @@
     }
   }
 
+  function syncClipboardPanelLayout() {
+    scheduleCalendarHorizontalNavStateSync();
+    window.dispatchEvent(new CustomEvent('calendar-workspace:grid-updated'));
+  }
+
+  function hasClipboardItems() {
+    return getClipboard().length > 0;
+  }
+
+  function syncClipboardPanelState() {
+    const hasItems = hasClipboardItems();
+    if (!hasItems) {
+      clipboardPanelOpen = false;
+    }
+    const isOpen = !!clipboardPanelOpen && hasItems;
+    if (calendarWorkspaceRoot) {
+      calendarWorkspaceRoot.classList.toggle('is-clipboard-panel-open', isOpen);
+    }
+    if (clipboardSidecarEl) {
+      clipboardSidecarEl.classList.toggle('is-open', isOpen);
+      /*
+       * Keep the sidecar in the layout even when empty so the day grid width does not "jump"
+       * when the first clipboard item appears. The floating toggle is hidden via CSS; the drawer
+       * still opens programmatically when items exist.
+       */
+      clipboardSidecarEl.hidden = false;
+    }
+    if (clipboardSidePanelEl) {
+      clipboardSidePanelEl.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+    }
+    if (clipboardToggleEl) {
+      clipboardToggleEl.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      clipboardToggleEl.setAttribute('aria-label', isOpen ? 'Collapse clipboard' : 'Open clipboard');
+    }
+    if (clipboardToolbarBtn) {
+      clipboardToolbarBtn.setAttribute('aria-pressed', isOpen ? 'true' : 'false');
+      clipboardToolbarBtn.setAttribute(
+        'aria-label',
+        isOpen ? 'Close clipboard' : ('Clipboard' + (hasItems ? ' (' + String(getClipboard().length) + ')' : '')),
+      );
+    }
+    syncClipboardPanelLayout();
+    window.setTimeout(syncClipboardPanelLayout, CLIPBOARD_PANEL_TRANSITION_MS + 40);
+  }
+
+  function openClipboardPanel() {
+    if (!hasClipboardItems()) {
+      return;
+    }
+    if (clipboardPanelOpen) {
+      syncClipboardPanelLayout();
+      return;
+    }
+    clipboardPanelOpen = true;
+    syncClipboardPanelState();
+  }
+
+  function closeClipboardPanel() {
+    if (!clipboardPanelOpen) {
+      return;
+    }
+    clipboardPanelOpen = false;
+    syncClipboardPanelState();
+  }
+
+  function toggleClipboardPanel() {
+    if (clipboardPanelOpen) {
+      closeClipboardPanel();
+      return;
+    }
+    openClipboardPanel();
+  }
+
+  function initClipboardSidePanel() {
+    if (clipboardToggleEl) {
+      clipboardToggleEl.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleClipboardPanel();
+      });
+    }
+    if (clipboardToolbarBtn) {
+      clipboardToolbarBtn.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleClipboardPanel();
+      });
+    }
+    if (clipboardCloseEl) {
+      clipboardCloseEl.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        closeClipboardPanel();
+      });
+    }
+    if (clipboardSidePanelEl) {
+      clipboardSidePanelEl.addEventListener('dragenter', (e) => {
+        if (!Array.from(e.dataTransfer.types).includes('text/plain')) return;
+        e.preventDefault();
+        openClipboardPanel();
+        clipboardSidePanelEl.classList.add('cal-clipboard-drag-over');
+      });
+      clipboardSidePanelEl.addEventListener('dragover', (e) => {
+        if (!Array.from(e.dataTransfer.types).includes('text/plain')) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+      });
+      clipboardSidePanelEl.addEventListener('dragleave', (e) => {
+        if (!clipboardSidePanelEl.contains(e.relatedTarget)) clipboardSidePanelEl.classList.remove('cal-clipboard-drag-over');
+      });
+      clipboardSidePanelEl.addEventListener('drop', (e) => {
+        e.preventDefault();
+        clipboardSidePanelEl.classList.remove('cal-clipboard-drag-over');
+        let data;
+        try { data = JSON.parse(e.dataTransfer.getData('text/plain')); } catch (err) { return; }
+        if (!data || !data.id) return;
+        openClipboardPanel();
+        addToClipboard(data.id, data.title || '', data.meta || '', data.time || '', data.status || '', data.rawStartAt || '');
+      });
+    }
+    if (calendarGridEl) {
+      calendarGridEl.addEventListener('click', (event) => {
+        if (!clipboardPanelOpen) {
+          return;
+        }
+        if (!(event.target instanceof Element)) {
+          return;
+        }
+        if (event.target.closest('#cal-appt-ctx-menu')) {
+          return;
+        }
+        closeClipboardPanel();
+      }, true);
+    }
+    syncClipboardPanelState();
+  }
+
+  function isoDateToDaySerial(iso) {
+    const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return null;
+    const utcMs = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return Number.isFinite(utcMs) ? Math.floor(utcMs / 86400000) : null;
+  }
+
+  function hhmmToMinutes(raw) {
+    const m = String(raw || '').match(/^(\d{2}):(\d{2})$/);
+    if (!m) return null;
+    return Number(m[1]) * 60 + Number(m[2]);
+  }
+
+  /** Top-right {@see OlliraToast} for calendar slot policy (same host as base layout). */
+  function pushCalendarToast(kind, text) {
+    if (!text || typeof text !== 'string') {
+      return;
+    }
+    const T = window.OlliraToast;
+    if (!T) {
+      return;
+    }
+    if (kind === 'error' && typeof T.error === 'function') {
+      T.error(text);
+      return;
+    }
+    if (kind === 'success' && typeof T.success === 'function') {
+      T.success(text);
+      return;
+    }
+    if (typeof T.show === 'function') {
+      T.show({ type: kind === 'error' ? 'error' : 'success', message: text });
+    }
+  }
+
+  function getCalendarSlotBookingViolation(slotDate, slotTime) {
+    const daySerial = isoDateToDaySerial(slotDate);
+    const slotMinutes = hhmmToMinutes(slotTime);
+    if (daySerial === null || slotMinutes === null) {
+      return '';
+    }
+    const branchNow = getBranchNow();
+    const nowDaySerial = isoDateToDaySerial(branchNow.dateStr);
+    if (nowDaySerial === null) {
+      return '';
+    }
+    const slotTotalMinutes = daySerial * 1440 + slotMinutes;
+    const nowTotalMinutes = nowDaySerial * 1440 + branchNow.minutes;
+
+    if (!ALLOW_PAST_BOOKING && slotTotalMinutes < nowTotalMinutes) {
+      return 'Booking in the past is not allowed.';
+    }
+    if (slotTotalMinutes < nowTotalMinutes + MIN_LEAD_MINUTES) {
+      return 'Booking must be at least ' + MIN_LEAD_MINUTES + ' minute(s) in advance.';
+    }
+    if (daySerial > nowDaySerial + MAX_DAYS_AHEAD) {
+      return 'Booking cannot be more than ' + MAX_DAYS_AHEAD + ' days ahead.';
+    }
+
+    return '';
+  }
+
   function countAppointmentsInPayload(payload) {
     const g = payload && payload.appointments_by_staff;
     if (!g || typeof g !== 'object') return 0;
@@ -1267,11 +1631,6 @@
     return sun0 === 0 ? 6 : sun0 - 1;
   }
 
-  function weekStartMondayIso(iso) {
-    const off = mondayOffsetFromIso(iso);
-    return shiftIsoDate(iso, -off);
-  }
-
   function visibleMonthFromDateEl() {
     const cur = String(dateEl && dateEl.value ? dateEl.value : '').trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(cur)) return null;
@@ -1297,39 +1656,29 @@
     return out.getUTCFullYear() + '-' + String(out.getUTCMonth() + 1).padStart(2, '0') + '-' + String(out.getUTCDate()).padStart(2, '0');
   }
 
+  function setCalendarDatePickerView(nextView) {
+    const view = nextView === 'months' || nextView === 'years' ? nextView : 'days';
+    calendarDatePickerView = view;
+    syncModeChrome();
+  }
+
+  function shiftCalendarYearRange(delta) {
+    if (!Number.isFinite(delta) || delta === 0) return;
+    const vm = visibleMonthFromDateEl();
+    if (!vm) return;
+    if (!Number.isFinite(calendarYearRangeStart)) {
+      calendarYearRangeStart = vm.y - Math.floor(CAL_YEAR_RANGE_SIZE / 2);
+    }
+    calendarYearRangeStart += CAL_YEAR_RANGE_SIZE * (delta > 0 ? 1 : -1);
+    renderYearPicker();
+  }
+
   function daysInMonthUtc(y, m) {
     return new Date(Date.UTC(y, m, 0)).getUTCDate();
   }
 
   function ymFirstIso(y, m) {
     return y + '-' + String(m).padStart(2, '0') + '-01';
-  }
-
-  function scrollStripToSelected() {
-    if (!calStrip) return;
-    const sel = calStrip.querySelector('.appts-cal-card__dow--selected');
-    if (!sel) return;
-    let reduced = false;
-    try {
-      reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    } catch (e) { reduced = false; }
-    sel.scrollIntoView({ block: 'nearest', inline: 'center', behavior: reduced ? 'auto' : 'smooth' });
-  }
-
-  function clearWeekSummaryDecorations() {
-    if (!calStrip) return;
-    calStrip.querySelectorAll('.appts-cal-card__dow').forEach((el) => {
-      el.classList.remove(
-        'appts-cal-card__dow--closed',
-        'appts-cal-card__dow--has-appts',
-        'appts-cal-card__dow--has-blocked',
-        'appts-cal-card__dow--busy-steady',
-        'appts-cal-card__dow--busy-heavy',
-        'appts-cal-card__dow--past',
-        'appts-cal-card__dow--future'
-      );
-      el.querySelectorAll('.appts-cal-card__dow-count').forEach((n) => n.remove());
-    });
   }
 
   function clearMonthGridDecorations() {
@@ -1364,115 +1713,6 @@
       );
       el.querySelectorAll('.appts-cal-month__cell-count').forEach((n) => n.remove());
     });
-  }
-
-  function applyWeekSummaryPayload(payload) {
-    if (!payload || typeof payload !== 'object' || !payload.week_summary_contract || !calStrip || !branchEl || !dateEl) {
-      return;
-    }
-    const bid = parseInt(String(branchEl.value || '0'), 10) || 0;
-    if ((Number(payload.branch_id) || 0) !== bid) {
-      return;
-    }
-    const cur = String(dateEl.value || '').trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(cur)) return;
-    const wk = payload.week;
-    if (!wk || String(wk.week_start) !== weekStartMondayIso(cur)) {
-      clearWeekSummaryDecorations();
-      latestWeekSummary = null;
-      return;
-    }
-    latestWeekSummary = payload;
-    clearWeekSummaryDecorations();
-    const byDate = {};
-    const list = Array.isArray(payload.days) ? payload.days : [];
-    for (let i = 0; i < list.length; i++) {
-      const row = list[i];
-      if (row && row.date) byDate[row.date] = row;
-    }
-    calStrip.querySelectorAll('.appts-cal-card__dow').forEach((btn) => {
-      const iso = btn.dataset.date;
-      const row = byDate[iso];
-      if (!row) return;
-      if (row.branch_closed) btn.classList.add('appts-cal-card__dow--closed');
-      const ac = Number(row.appointment_count) || 0;
-      if (ac > 0) {
-        btn.classList.add('appts-cal-card__dow--has-appts');
-        const span = document.createElement('span');
-        span.className = 'appts-cal-card__dow-count';
-        span.textContent = ac > 99 ? '99+' : String(ac);
-        span.setAttribute('aria-label', ac + ' appointments');
-        btn.appendChild(span);
-      }
-      if (row.has_blocked) btn.classList.add('appts-cal-card__dow--has-blocked');
-      if (row.busy_level === 'steady') btn.classList.add('appts-cal-card__dow--busy-steady');
-      if (row.busy_level === 'heavy') btn.classList.add('appts-cal-card__dow--busy-heavy');
-      if (row.is_past) btn.classList.add('appts-cal-card__dow--past');
-      if (row.is_future) btn.classList.add('appts-cal-card__dow--future');
-    });
-  }
-
-  async function loadWeekSummary() {
-    if (!dateEl) return;
-    const cur = String(dateEl.value || '').trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(cur)) return;
-    if (weekSummaryAbort) weekSummaryAbort.abort();
-    weekSummaryAbort = new AbortController();
-    const weekCtrl = weekSummaryAbort;
-    const weekDeadline = bindAbortDeadline(weekCtrl, CALENDAR_FETCH_TIMEOUT_MS);
-    const params = new URLSearchParams();
-    params.set('date', cur);
-    if (branchEl && branchEl.value) params.set('branch_id', branchEl.value);
-    try {
-      const res = await fetch('/calendar/week-summary?' + params.toString(), {
-        headers: { Accept: 'application/json' },
-        signal: weekCtrl.signal,
-      });
-      let payload;
-      try {
-        payload = await res.json();
-      } catch (parseErr) {
-        weekSummaryErrorText = 'Week summary: invalid response.';
-        clearWeekSummaryDecorations();
-        latestWeekSummary = null;
-        refreshSummaryRailVisible();
-        return;
-      }
-      const err = payload && typeof payload === 'object' ? payload.error : undefined;
-      const errMsg = typeof err === 'string' ? err : err && typeof err === 'object' && typeof err.message === 'string' ? err.message : null;
-      if (!res.ok || errMsg) {
-        weekSummaryErrorText = 'Week summary: ' + (errMsg || 'could not load.');
-        clearWeekSummaryDecorations();
-        latestWeekSummary = null;
-        refreshSummaryRailVisible();
-        return;
-      }
-      if (payload && payload.week_summary_contract) {
-        weekSummaryErrorText = '';
-        refreshSummaryRailVisible();
-        applyWeekSummaryPayload(payload);
-      } else {
-        weekSummaryErrorText = 'Week summary: unexpected response.';
-        clearWeekSummaryDecorations();
-        latestWeekSummary = null;
-        refreshSummaryRailVisible();
-      }
-    } catch (e) {
-      if (e && e.name === 'AbortError') {
-        if (weekSummaryAbort !== weekCtrl) return;
-        weekSummaryErrorText = 'Week summary: timed out.';
-        clearWeekSummaryDecorations();
-        latestWeekSummary = null;
-        refreshSummaryRailVisible();
-        return;
-      }
-      weekSummaryErrorText = 'Week summary: network error.';
-      clearWeekSummaryDecorations();
-      latestWeekSummary = null;
-      refreshSummaryRailVisible();
-    } finally {
-      clearTimeout(weekDeadline);
-    }
   }
 
   function applyMonthSummaryPayload(payload, targetGrid, targetMonth) {
@@ -1653,14 +1893,11 @@
 
   function updateRailDayMeta(vm, apptCount) {
     if (!vm) return;
-    if (calendarMode === 'week' && latestWeekSummary) return;
     if (calendarMode === 'month' && latestMonthSummary) return;
     if (calendarMode === 'two-months') return;
-    const closedCls = calendarMode === 'week' ? 'appts-cal-card__dow--closed' : 'appts-cal-month__cell--closed';
-    const apptCls = calendarMode === 'week' ? 'appts-cal-card__dow--has-appts' : 'appts-cal-month__cell--has-appts';
-    const sel = calendarMode === 'week'
-      ? calStrip?.querySelector('.appts-cal-card__dow--selected')
-      : calMonthGrid?.querySelector('.appts-cal-month__cell--selected');
+    const closedCls = 'appts-cal-month__cell--closed';
+    const apptCls = 'appts-cal-month__cell--has-appts';
+    const sel = calMonthGrid?.querySelector('.appts-cal-month__cell--selected');
     if (!sel) return;
     sel.classList.remove(closedCls, apptCls);
     const closed = (vm.branchHours && vm.branchHours.isClosedDay)
@@ -1676,40 +1913,82 @@
     const y = parseInt(cur.slice(0, 4), 10);
     const mo = parseInt(cur.slice(5, 7), 10);
     const refUtc = new Date(Date.UTC(y, mo - 1, parseInt(cur.slice(8, 10), 10)));
-    if (calendarMode === 'week') {
-      const ws = weekStartMondayIso(cur);
-      const we = shiftIsoDate(ws, 6);
-      const wsY = parseInt(ws.slice(0, 4), 10), wsM = parseInt(ws.slice(5, 7), 10), wsD = parseInt(ws.slice(8, 10), 10);
-      const weY = parseInt(we.slice(0, 4), 10), weM = parseInt(we.slice(5, 7), 10), weD = parseInt(we.slice(8, 10), 10);
-      const startDate = new Date(Date.UTC(wsY, wsM - 1, wsD));
-      const endDate = new Date(Date.UTC(weY, weM - 1, weD));
-      if (wsM === weM && wsY === weY) {
-        const monthStr = startDate.toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' });
-        calContextMonth.textContent = monthStr + ' ' + wsD + ' \u2013 ' + weD + ', ' + wsY;
-      } else {
-        const s = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-        const e = endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-        calContextMonth.textContent = s + ' \u2013 ' + e + ', ' + weY;
-      }
-    } else if (calendarMode === 'two-months') {
+    if (calendarMode === 'two-months' && !calContextYear) {
       const next = new Date(Date.UTC(y, mo, 1));
       const left = refUtc.toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
       const right = next.toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
       calContextMonth.textContent = left + ' \u2013 ' + right;
-    } else {
-      calContextMonth.textContent = refUtc.toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+      return;
+    }
+    calContextMonth.textContent = refUtc.toLocaleDateString('en-US', { month: 'long', timeZone: 'UTC' });
+    if (calContextYear) {
+      calContextYear.textContent = refUtc.toLocaleDateString('en-US', { year: 'numeric', timeZone: 'UTC' });
     }
   }
 
   function formatIsoDateForToolbarDisplay(iso) {
     const s = String(iso || '').trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '';
-    return s.slice(8, 10) + '.' + s.slice(5, 7) + '.' + s.slice(0, 4);
+    const utcDate = new Date(Date.UTC(Number(s.slice(0, 4)), Number(s.slice(5, 7)) - 1, Number(s.slice(8, 10))));
+    return utcDate.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      timeZone: 'UTC',
+    });
   }
 
   function syncCalendarToolbarDateLabel() {
     if (!calendarToolbarDateLabel || !dateEl) return;
     calendarToolbarDateLabel.textContent = formatIsoDateForToolbarDisplay(dateEl.value);
+  }
+
+  function formatIsoWeekdayLabel(iso) {
+    const s = String(iso || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '';
+    return new Date(Date.UTC(Number(s.slice(0, 4)), Number(s.slice(5, 7)) - 1, Number(s.slice(8, 10))))
+      .toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' });
+  }
+
+  function renderWeekStrip() {
+    if (!calendarWeekStrip || !dateEl) return;
+    const selectedIso = String(dateEl.value || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(selectedIso)) {
+      calendarWeekStrip.innerHTML = '';
+      return;
+    }
+    const mondayOffset = mondayOffsetFromIso(selectedIso);
+    const weekStartIso = shiftIsoDate(selectedIso, -mondayOffset);
+    const branchTodayIso = getBranchNow().dateStr;
+    calendarWeekStrip.innerHTML = '';
+    for (let i = 0; i < 7; i++) {
+      const iso = shiftIsoDate(weekStartIso, i);
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'appts-calendar-week-strip__day';
+      if (iso === selectedIso) {
+        btn.classList.add('appts-calendar-week-strip__day--active');
+        btn.setAttribute('aria-current', 'date');
+      }
+      if (iso === branchTodayIso) {
+        btn.classList.add('appts-calendar-week-strip__day--today');
+      }
+      btn.setAttribute('aria-label', formatIsoDateForToolbarDisplay(iso));
+      btn.dataset.date = iso;
+      const weekday = document.createElement('span');
+      weekday.className = 'appts-calendar-week-strip__weekday';
+      weekday.textContent = formatIsoWeekdayLabel(iso);
+      const dayNum = document.createElement('span');
+      dayNum.className = 'appts-calendar-week-strip__daynum';
+      dayNum.textContent = String(parseInt(iso.slice(8, 10), 10));
+      btn.appendChild(weekday);
+      btn.appendChild(dayNum);
+      btn.addEventListener('click', () => {
+        pickDateAndReload(iso);
+      });
+      calendarWeekStrip.appendChild(btn);
+    }
   }
 
   function shiftCalendarDayBy(deltaDays) {
@@ -1730,69 +2009,6 @@
     renderSmartCard();
     pushCalendarHistoryIfChanged();
     load();
-  }
-
-  function renderWeekStrip() {
-    if (!calStrip || !dateEl) return;
-    const cur = String(dateEl.value || '').trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(cur)) return;
-    const todayStr = getBranchNow().dateStr;
-    const ws = weekStartMondayIso(cur);
-    calStrip.innerHTML = '';
-    calStrip.setAttribute('aria-label', 'Week of ' + ws);
-    for (let i = 0; i < 7; i++) {
-      const iso = shiftIsoDate(ws, i);
-      const py = parseInt(iso.slice(0, 4), 10);
-      const pm = parseInt(iso.slice(5, 7), 10);
-      const pd = parseInt(iso.slice(8, 10), 10);
-      const cellUtc = new Date(Date.UTC(py, pm - 1, pd));
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'appts-cal-card__dow';
-      btn.dataset.date = iso;
-      btn.setAttribute('aria-label', cellUtc.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' }));
-      if (iso === cur) {
-        btn.classList.add('appts-cal-card__dow--selected');
-        btn.setAttribute('aria-current', 'date');
-      }
-      if (iso === todayStr) btn.classList.add('appts-cal-card__dow--today');
-      const num = document.createElement('span');
-      num.className = 'appts-cal-card__dow-num';
-      num.textContent = String(pd);
-      const dot = document.createElement('span');
-      dot.className = 'appts-cal-card__dow-dot';
-      dot.setAttribute('aria-hidden', 'true');
-      btn.appendChild(num);
-      btn.appendChild(dot);
-      btn.addEventListener('click', () => pickDateAndReload(iso));
-      calStrip.appendChild(btn);
-    }
-    const bootEl = document.getElementById('appts-calendar-week-summary-bootstrap');
-    if (bootEl && bootEl.textContent) {
-      try {
-        const boot = JSON.parse(bootEl.textContent);
-        if (boot && boot.week_summary_contract) {
-          weekSummaryErrorText = '';
-          refreshSummaryRailVisible();
-          applyWeekSummaryPayload(boot);
-        } else {
-          weekSummaryErrorText = 'Week summary: incomplete data from server.';
-          clearWeekSummaryDecorations();
-          latestWeekSummary = null;
-          refreshSummaryRailVisible();
-        }
-      } catch (e) {
-        weekSummaryErrorText = 'Week summary: could not read server data.';
-        clearWeekSummaryDecorations();
-        latestWeekSummary = null;
-        refreshSummaryRailVisible();
-      }
-      bootEl.remove();
-    } else if (latestWeekSummary) {
-      applyWeekSummaryPayload(latestWeekSummary);
-    }
-    requestAnimationFrame(scrollStripToSelected);
-    loadWeekSummary();
   }
 
   function renderMonthGridCells(grid, y, m, selectedIso, todayStr) {
@@ -1876,6 +2092,67 @@
     loadMonthSummary();
   }
 
+  function renderMonthPicker() {
+    if (!calMonthPicker || !dateEl) return;
+    const vm = visibleMonthFromDateEl();
+    if (!vm) return;
+    calMonthPicker.innerHTML = '';
+    for (let month = 1; month <= 12; month++) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'appts-cal-picker-grid__btn appts-cal-picker-grid__btn--month';
+      btn.textContent = new Date(Date.UTC(vm.y, month - 1, 1)).toLocaleDateString('en-US', {
+        month: 'short',
+        timeZone: 'UTC',
+      });
+      if (month === vm.m) {
+        btn.classList.add('appts-cal-picker-grid__btn--active');
+        btn.setAttribute('aria-current', 'true');
+      }
+      btn.setAttribute('aria-label', 'Show ' + new Date(Date.UTC(vm.y, month - 1, 1)).toLocaleDateString('en-US', {
+        month: 'long',
+        year: 'numeric',
+        timeZone: 'UTC',
+      }));
+      btn.addEventListener('click', () => {
+        const iso = vm.y + '-' + String(month).padStart(2, '0') + '-01';
+        pickDateAndReload(iso);
+        setCalendarDatePickerView('days');
+      });
+      calMonthPicker.appendChild(btn);
+    }
+  }
+
+  function renderYearPicker() {
+    if (!calYearPicker || !calYearRangeLabel || !dateEl) return;
+    const vm = visibleMonthFromDateEl();
+    if (!vm) return;
+    const start = Number.isFinite(calendarYearRangeStart)
+      ? calendarYearRangeStart
+      : vm.y - Math.floor(CAL_YEAR_RANGE_SIZE / 2);
+    calendarYearRangeStart = start;
+    const end = start + CAL_YEAR_RANGE_SIZE - 1;
+    calYearRangeLabel.textContent = String(start) + ' - ' + String(end);
+    calYearPicker.innerHTML = '';
+    for (let year = start; year <= end; year++) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'appts-cal-picker-grid__btn appts-cal-picker-grid__btn--year';
+      btn.textContent = String(year);
+      if (year === vm.y) {
+        btn.classList.add('appts-cal-picker-grid__btn--active');
+        btn.setAttribute('aria-current', 'true');
+      }
+      btn.setAttribute('aria-label', 'Show year ' + String(year));
+      btn.addEventListener('click', () => {
+        const iso = year + '-' + String(vm.m).padStart(2, '0') + '-01';
+        pickDateAndReload(iso);
+        setCalendarDatePickerView('days');
+      });
+      calYearPicker.appendChild(btn);
+    }
+  }
+
   function renderTwoMonthsGrid() {
     if (!calTwoMonthsGrid1 || !calTwoMonthsGrid2 || !dateEl) return;
     const cur = String(dateEl.value || '').trim();
@@ -1900,24 +2177,14 @@
   function renderSmartCard() {
     updateHero();
     syncModeChrome();
-    if (calendarMode === 'week') {
-      renderWeekStrip();
-    } else if (calendarMode === 'month') {
+    if (calendarMode === 'month') {
       renderMonthGrid();
+      renderMonthPicker();
+      renderYearPicker();
     } else {
       renderTwoMonthsGrid();
     }
-  }
-
-  function shiftCalendarWeek(deltaWeeks) {
-    const cur = dateEl.value;
-    if (!cur) return;
-    selectedSlot = null;
-    dateEl.value = shiftIsoDate(cur, deltaWeeks * 7);
-    syncCalendarToolbarDateLabel();
-    renderSmartCard();
-    pushCalendarHistoryIfChanged();
-    load();
+    renderWeekStrip();
   }
 
   function shiftCalendarMonth(deltaM) {
@@ -1951,9 +2218,7 @@
   }
 
   function refreshCalendarSummaries() {
-    if (calendarMode === 'week') {
-      loadWeekSummary();
-    } else if (calendarMode === 'month') {
+    if (calendarMode === 'month') {
       loadMonthSummary();
     } else {
       loadTwoMonthsSummary();
@@ -2060,6 +2325,7 @@
     if (Number.isFinite(duration) && duration > 0) {
       params.set('slot_minutes', String(duration));
     }
+    params.set('drawer', '1');
     return '/appointments/create?' + params.toString();
   }
 
@@ -2651,35 +2917,6 @@
         });
       });
     });
-
-    // ── Clipboard pane: accept drops from calendar blocks ──────────────────
-    const clipPane = document.getElementById('cal-tools-clipboard');
-    if (clipPane) {
-      clipPane.addEventListener('dragenter', (e) => {
-        if (!Array.from(e.dataTransfer.types).includes('text/plain')) return;
-        e.preventDefault();
-        clipPane.classList.add('cal-clipboard-drag-over');
-        // Auto-switch to clipboard tab so user sees where the item will land
-        const clipTab = panel.querySelector('[data-tools-tab="clipboard"]');
-        if (clipTab && !clipTab.classList.contains('cal-tools-tab--active')) clipTab.click();
-      });
-      clipPane.addEventListener('dragover', (e) => {
-        if (!Array.from(e.dataTransfer.types).includes('text/plain')) return;
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'copy';
-      });
-      clipPane.addEventListener('dragleave', (e) => {
-        if (!clipPane.contains(e.relatedTarget)) clipPane.classList.remove('cal-clipboard-drag-over');
-      });
-      clipPane.addEventListener('drop', (e) => {
-        e.preventDefault();
-        clipPane.classList.remove('cal-clipboard-drag-over');
-        let data;
-        try { data = JSON.parse(e.dataTransfer.getData('text/plain')); } catch (err) { return; }
-        if (!data || !data.id) return;
-        addToClipboard(data.id, data.title || '', data.meta || '', data.time || '', data.status || '', data.rawStartAt || '');
-      });
-    }
   }
 
   async function loadSidePanelData() {
@@ -2791,7 +3028,11 @@
 
   function addToClipboard(apptId, title, meta, time, status, rawStartAt) {
     const items = getClipboard();
-    if (items.some((i) => i.id === Number(apptId))) return; // already there
+    if (items.some((i) => i.id === Number(apptId))) {
+      renderClipboardPane();
+      openClipboardPanel();
+      return;
+    }
     if (items.length >= CLIPBOARD_MAX) items.shift(); // evict oldest to stay within cap
     items.push({
       id:         Number(apptId),
@@ -2803,10 +3044,9 @@
       link:   '/appointments/' + apptId,
     });
     saveClipboard(items);
+    clipboardRecentlyAddedId = Number(apptId);
     renderClipboardPane();
-    // Switch to clipboard tab so user sees the result
-    const clipTab = document.querySelector('[data-tools-tab="clipboard"]');
-    if (clipTab) clipTab.click();
+    openClipboardPanel();
   }
 
   function removeFromClipboard(apptId) {
@@ -2815,32 +3055,40 @@
   }
 
   function renderClipboardPane() {
-    const pane      = document.getElementById('cal-tools-clipboard');
     const listEl    = document.getElementById('cal-clipboard-items');
     const emptyHint = document.getElementById('cal-clipboard-empty-hint');
     const clearBtn  = document.getElementById('cal-clipboard-clear');
-    const badge     = document.getElementById('cal-tools-clipboard-badge');
-    if (!pane || !listEl) return;
+    const badge     = document.getElementById('cal-toolbar-clipboard-badge');
+    if (!listEl) return;
 
     const items = getClipboard();
+    if (clipboardSidecarEl) {
+      clipboardSidecarEl.classList.toggle('is-empty', items.length === 0);
+    }
 
     // Badge
     if (badge) { badge.textContent = String(items.length); badge.hidden = items.length === 0; }
+    if (clipboardToolbarBtn) {
+      clipboardToolbarBtn.hidden = items.length === 0;
+    }
 
     if (items.length === 0) {
+      clipboardPanelOpen = false;
       listEl.hidden = true;
       listEl.innerHTML = '';
       if (emptyHint) emptyHint.hidden = false;
       if (clearBtn)  clearBtn.hidden = true;
+      syncClipboardPanelState();
       return;
     }
 
     if (emptyHint) emptyHint.hidden = true;
     if (clearBtn)  clearBtn.hidden = false;
     listEl.hidden = false;
+    syncClipboardPanelState();
 
     listEl.innerHTML = items.map((item) => `
-      <div class="cal-clipboard-item" data-clipboard-id="${item.id}">
+      <div class="cal-clipboard-item${clipboardRecentlyAddedId === item.id ? ' cal-clipboard-item--just-added' : ''}" data-clipboard-id="${item.id}">
         <div class="cal-clipboard-item__body">
           <span class="cal-clipboard-item__time">${escHtml(item.time)}</span>
           <span class="cal-clipboard-item__name">${escHtml(item.title)}</span>
@@ -2894,9 +3142,32 @@
       itemEl.addEventListener('dragend', () => {
         currentDragSource = null;
         itemEl.classList.remove('cal-clipboard-item--dragging');
-        document.querySelectorAll('.ops-drop-preview').forEach((p) => { p.hidden = true; });
+        document.querySelectorAll('.ops-drop-preview').forEach((p) => {
+          delete p.dataset.snapSoundLabel;
+          p.hidden = true;
+        });
       });
     });
+
+    if (clipboardRecentlyAddedId !== null) {
+      if (clipboardSidePanelEl) {
+        clipboardSidePanelEl.classList.remove('appts-calendar-clipboard-panel--just-added');
+        void clipboardSidePanelEl.offsetWidth;
+        clipboardSidePanelEl.classList.add('appts-calendar-clipboard-panel--just-added');
+      }
+      if (clipboardAddAnimationTimer) {
+        window.clearTimeout(clipboardAddAnimationTimer);
+      }
+      clipboardAddAnimationTimer = window.setTimeout(() => {
+        const animatedItem = listEl.querySelector('.cal-clipboard-item--just-added');
+        if (animatedItem) {
+          animatedItem.classList.remove('cal-clipboard-item--just-added');
+        }
+        clipboardSidePanelEl?.classList.remove('appts-calendar-clipboard-panel--just-added');
+        clipboardRecentlyAddedId = null;
+        clipboardAddAnimationTimer = null;
+      }, CLIPBOARD_ADD_ANIMATION_MS);
+    }
   }
 
   function initClipboardClearBtn() {
@@ -3765,6 +4036,7 @@
       const hoverPreview = document.createElement('div');
       hoverPreview.className = 'ops-slot-preview';
       hoverPreview.setAttribute('aria-hidden', 'true');
+      hoverPreview.dataset.ownerStaffId = String(col.id);
       const hoverLine = document.createElement('div');
       hoverLine.className = 'ops-slot-preview__line';
       hoverPreview.appendChild(hoverLine);
@@ -3961,7 +4233,10 @@
               currentDragSource = null;
               block.classList.remove('ops-block-appt--dragging');
               // Clear any lane drop-preview that may be left if the drag was abandoned
-              document.querySelectorAll('.ops-drop-preview').forEach((p) => { p.hidden = true; });
+              document.querySelectorAll('.ops-drop-preview').forEach((p) => {
+                delete p.dataset.snapSoundLabel;
+                p.hidden = true;
+              });
             });
           }
           lane.appendChild(block);
@@ -3974,16 +4249,23 @@
           return;
         }
         const rect = lane.getBoundingClientRect();
-        const offsetY = e.clientY - rect.top;
-        const snapped = snapTimeFromTop(offsetY, vm.start, vm.step, vm.end);
-        const topPx = Math.max(GRID_TOP_INSET_PX, (toMinutes(snapped) - vm.start) * getPixelsPerMinute() + GRID_TOP_INSET_PX);
-        positionSlotPreviewInViewport(hoverPreview, lane, topPx);
+        const rawOffsetY = e.clientY - rect.top;
+        const offsetY = Math.max(0, Math.min(rect.height, rawOffsetY));
+        const snapped = snapTimeFromTop(rawOffsetY, vm.start, vm.step, vm.end);
+        ensureSlotPreviewPortaledToBody(hoverPreview);
+        positionSlotPreviewInViewport(hoverPreview, lane, offsetY);
         hoverLabel.textContent = snapped;
-        refreshSlotPreviewFlip(hoverPreview, lane, topPx);
+        const prevSnapSound = hoverPreview.dataset.snapSoundLabel || '';
+        if (snapped !== prevSnapSound) {
+          hoverPreview.dataset.snapSoundLabel = snapped;
+          maybePlaySlotHoverSound(snapped);
+        }
+        refreshSlotPreviewFlip(hoverPreview, lane, offsetY);
         hoverPreview.classList.add('is-active');
       });
 
       lane.addEventListener('mouseleave', () => {
+        delete hoverPreview.dataset.snapSoundLabel;
         hoverPreview.classList.remove('is-active', 'is-flipped');
         clearSlotPreviewViewportPin(hoverPreview);
       });
@@ -4006,6 +4288,11 @@
         e.dataTransfer.dropEffect = 'move';
         const rect = lane.getBoundingClientRect();
         const snapped = snapTimeFromTop(e.clientY - rect.top, vm.start, vm.step, vm.end);
+        const prevSnapSound = dropPreview.dataset.snapSoundLabel || '';
+        if (snapped !== prevSnapSound) {
+          dropPreview.dataset.snapSoundLabel = snapped;
+          maybePlaySlotHoverSound(snapped);
+        }
         const topPx = Math.max(GRID_TOP_INSET_PX, (toMinutes(snapped) - vm.start) * getPixelsPerMinute() + GRID_TOP_INSET_PX);
         dropPreview.style.top = topPx + 'px';
         dropPreview.hidden = false;
@@ -4015,12 +4302,16 @@
       });
 
       lane.addEventListener('dragleave', (e) => {
-        if (!lane.contains(e.relatedTarget)) dropPreview.hidden = true;
+        if (!lane.contains(e.relatedTarget)) {
+          delete dropPreview.dataset.snapSoundLabel;
+          dropPreview.hidden = true;
+        }
       });
 
       let dropInFlight = false;
       lane.addEventListener('drop', async (e) => {
         e.preventDefault();
+        delete dropPreview.dataset.snapSoundLabel;
         dropPreview.hidden = true;
         if (dropInFlight) return;
         let data;
@@ -4042,10 +4333,12 @@
         if (!ok) {
           const msg = (payload && payload.error && payload.error.message) || 'Could not reschedule.';
           if (statusEl) statusEl.textContent = '\u26a0 ' + msg;
+          pushCalendarToast('error', msg);
           setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 4000);
           return;
         }
         removeFromClipboard(data.id);
+        closeClipboardPanel();
         if (statusEl) {
           statusEl.textContent = '\u2713 Moved to ' + col.label + ' at ' + snapped;
           setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 3000);
@@ -4057,18 +4350,31 @@
         if (e.target.closest('.ops-block')) return;
         e.preventDefault();
         e.stopPropagation();
+        dismissAllActiveSlotPreviews();
         const rect = lane.getBoundingClientRect();
         const offsetY = e.clientY - rect.top;
+        const snappedTime = snapTimeFromTop(offsetY, vm.start, vm.step, vm.end);
+        const slotViolation = getCalendarSlotBookingViolation(dateEl.value, snappedTime);
+        if (slotViolation) {
+          if (statusEl) {
+            statusEl.textContent = slotViolation;
+          }
+          pushCalendarToast('error', slotViolation);
+          return;
+        }
         selectedSlot = {
           staffId: col.id,
           staffLabel: col.label,
-          time: snapTimeFromTop(offsetY, vm.start, vm.step, vm.end),
+          time: snappedTime,
           bookingDurationMinutes: DEFAULT_BOOKING_DURATION_MINUTES,
         };
         const url = buildNewAppointmentUrl();
         const started = await openDrawerUrl(url);
         if (!started) {
-          if (statusEl) statusEl.textContent = '';
+          if (statusEl) {
+            statusEl.textContent =
+              'Close or save the open side panel first, then try again.';
+          }
           return;
         }
         if (statusEl) {
@@ -4681,6 +4987,8 @@
     const viewPop = document.getElementById('cal-toolbar-views-pop');
     const printBtn = document.getElementById('cal-toolbar-print');
     const printPop = document.getElementById('cal-toolbar-print-pop');
+    const datePanelBtn = document.getElementById('calendar-toolbar-date-focus');
+    const datePanelPop = document.getElementById('calendar-toolbar-date-panel');
 
     const prefersHoverSubmenus =
       typeof window.matchMedia === 'function' &&
@@ -4805,12 +5113,54 @@
     });
     bindToolsMenuFlyout(printBtn, printPop);
 
+    function openCalendarDatePanel(options = {}) {
+      if (!datePanelBtn || !datePanelPop) return;
+      const targetTab = typeof options.tab === 'string' ? options.tab.trim() : '';
+      closeToolsDropdownIfOpen();
+      closeCalendarToolbarPopovers(false);
+      setCalendarDatePickerView('days');
+      calendarYearRangeStart = null;
+      renderSmartCard();
+      datePanelPop.hidden = false;
+      datePanelPop.setAttribute('aria-hidden', 'false');
+      datePanelBtn.setAttribute('aria-expanded', 'true');
+      openToolbarPopover = datePanelPop;
+      openToolbarTrigger = datePanelBtn;
+      if (typeof releasePopoverFocusTrap === 'function') releasePopoverFocusTrap();
+      releasePopoverFocusTrap = installFocusTrap(datePanelPop, () => closeCalendarToolbarPopovers(true));
+      if (targetTab) {
+        const tabBtn = datePanelPop.querySelector('.cal-tools-tab[data-tools-tab="' + targetTab + '"]');
+        if (tabBtn instanceof HTMLElement) tabBtn.click();
+      }
+      const autofocusTarget = targetTab
+        ? datePanelPop.querySelector('.cal-tools-tab[data-tools-tab="' + targetTab + '"]')
+        : datePanelPop.querySelector('button, input, a[href], [tabindex]:not([tabindex="-1"])');
+      if (autofocusTarget && typeof autofocusTarget.focus === 'function') autofocusTarget.focus();
+      syncCalendarContextAnchorActiveState();
+    }
+
+    if (datePanelBtn && datePanelPop) {
+      datePanelBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const wasOpen = datePanelPop.getAttribute('aria-hidden') === 'false';
+        if (wasOpen) {
+          closeCalendarToolbarPopovers(true);
+          return;
+        }
+        openCalendarDatePanel();
+      });
+      datePanelBtn.addEventListener('keydown', (e) => {
+        if (e.key !== 'ArrowDown') return;
+        e.preventDefault();
+        openCalendarDatePanel();
+      });
+    }
+
     const folderBtn = document.getElementById('cal-toolbar-folder');
     if (folderBtn) {
       folderBtn.addEventListener('click', () => {
         closeCalendarToolbarPopovers();
-        const tab = document.querySelector('.cal-tools-tab[data-tools-tab="waitlist"]');
-        if (tab) tab.click();
+        openCalendarDatePanel({ tab: 'waitlist' });
       });
     }
 
@@ -5381,11 +5731,8 @@
           'Calendar response is not valid JSON (HTTP ' + res.status + ')' + snippet
           + '. Often: run DB migration 133 (appointments.appointment_calendar_meta).';
         wrap.innerHTML = '';
-        clearWeekSummaryDecorations();
-        latestWeekSummary = null;
         clearMonthGridDecorations();
         latestMonthSummary = null;
-        weekSummaryErrorText = '';
         monthSummaryErrorText = '';
         refreshSummaryRailVisible();
         return;
@@ -5393,11 +5740,8 @@
       if (!payload || typeof payload !== 'object') {
         statusEl.textContent = 'Invalid calendar payload (HTTP ' + res.status + ').';
         wrap.innerHTML = '';
-        clearWeekSummaryDecorations();
-        latestWeekSummary = null;
         clearMonthGridDecorations();
         latestMonthSummary = null;
-        weekSummaryErrorText = '';
         monthSummaryErrorText = '';
         refreshSummaryRailVisible();
         return;
@@ -5414,11 +5758,8 @@
       if (!res.ok || errMsg) {
         statusEl.textContent = errMsg || ('Failed to load calendar (HTTP ' + res.status + ').');
         wrap.innerHTML = '';
-        clearWeekSummaryDecorations();
-        latestWeekSummary = null;
         clearMonthGridDecorations();
         latestMonthSummary = null;
-        weekSummaryErrorText = '';
         monthSummaryErrorText = '';
         refreshSummaryRailVisible();
         return;
@@ -5478,24 +5819,18 @@
         }
         statusEl.textContent = 'Day calendar request timed out. Check your connection or try again.';
         wrap.innerHTML = '';
-        clearWeekSummaryDecorations();
-        latestWeekSummary = null;
         clearMonthGridDecorations();
         latestMonthSummary = null;
-        weekSummaryErrorText = '';
         monthSummaryErrorText = '';
         refreshSummaryRailVisible();
         return;
       }
       statusEl.textContent = 'Could not load calendar (network or unexpected error).';
-        wrap.innerHTML = '';
-        clearWeekSummaryDecorations();
-        latestWeekSummary = null;
-        clearMonthGridDecorations();
-        latestMonthSummary = null;
-        weekSummaryErrorText = '';
-        monthSummaryErrorText = '';
-        refreshSummaryRailVisible();
+      wrap.innerHTML = '';
+      clearMonthGridDecorations();
+      latestMonthSummary = null;
+      monthSummaryErrorText = '';
+      refreshSummaryRailVisible();
     } finally {
       clearTimeout(dayDeadline);
     }
@@ -5536,12 +5871,16 @@
     loadSidePanelData();
     scheduleCalendarHorizontalNavStateSync();
   });
+  window.addEventListener('app:before-drawer-open', dismissAllActiveSlotPreviews);
   document.addEventListener('fullscreenchange', scheduleCalendarHorizontalNavStateSync);
 
   document.addEventListener('click', (e) => {
     if (!(e.target instanceof Element)) return;
     if (!e.target.closest('.ops-staff-head') && !e.target.closest('.ops-calendar-head-overlay__cell') && !e.target.closest('.ops-staff-menu')) closeAllStaffMenus();
     if (!e.target.closest('#cal-appt-ctx-menu')) closeApptContextMenu();
+    if (clipboardPanelOpen && e.target.closest('#appts-calendar-grid') && !e.target.closest('#cal-appt-ctx-menu')) {
+      closeClipboardPanel();
+    }
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
@@ -5627,7 +5966,6 @@
     if (mainCol && typeof ResizeObserver !== 'undefined') {
       const ro = new ResizeObserver(() => {
         scheduleSyncCalendarViewportHeight();
-        scheduleCalendarHorizontalNavStateSync();
       });
       ro.observe(mainCol);
     }
@@ -5642,23 +5980,15 @@
   })();
 
   initToolsPanel();
+  initClipboardSidePanel();
   renderClipboardPane();
   initClipboardClearBtn();
 
-  if (calModeWeek) {
-    calModeWeek.addEventListener('click', () => setCalendarMode('week'));
-  }
   if (calModeMonth) {
     calModeMonth.addEventListener('click', () => setCalendarMode('month'));
   }
   if (calModeTwoMonths) {
     calModeTwoMonths.addEventListener('click', () => setCalendarMode('two-months'));
-  }
-  if (calPrevWeek) {
-    calPrevWeek.addEventListener('click', () => shiftCalendarWeek(-1));
-  }
-  if (calNextWeek) {
-    calNextWeek.addEventListener('click', () => shiftCalendarWeek(1));
   }
   if (calPrevMonth) {
     calPrevMonth.addEventListener('click', () => shiftCalendarMonth(-1));
@@ -5666,11 +5996,31 @@
   if (calNextMonth) {
     calNextMonth.addEventListener('click', () => shiftCalendarMonth(1));
   }
-  if (calTodayWeek) {
-    calTodayWeek.addEventListener('click', () => goToBranchToday());
-  }
   if (calTodayMonth) {
     calTodayMonth.addEventListener('click', () => goToBranchToday());
+  }
+  if (calContextMonthBtn) {
+    calContextMonthBtn.addEventListener('click', () => {
+      setCalendarDatePickerView('months');
+      renderMonthPicker();
+    });
+  }
+  if (calContextYearBtn) {
+    calContextYearBtn.addEventListener('click', () => {
+      setCalendarDatePickerView('years');
+      calendarYearRangeStart = null;
+      renderYearPicker();
+    });
+  }
+  if (calPrevYearRange) {
+    calPrevYearRange.addEventListener('click', () => {
+      shiftCalendarYearRange(-1);
+    });
+  }
+  if (calNextYearRange) {
+    calNextYearRange.addEventListener('click', () => {
+      shiftCalendarYearRange(1);
+    });
   }
 
   if (calendarToolbarPrevDay) {
@@ -5685,21 +6035,6 @@
   if (calendarHorizontalNavNext) {
     calendarHorizontalNavNext.addEventListener('click', () => scrollCalendarHorizontallyByStaff(1));
   }
-  if (calendarToolbarDateFocus && calCard) {
-    calendarToolbarDateFocus.addEventListener('click', () => {
-      try {
-        calCard.focus({ preventScroll: false });
-      } catch (_e) {
-        calCard.focus();
-      }
-      try {
-        calCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
-      } catch (_e2) {
-        calCard.scrollIntoView();
-      }
-    });
-  }
-
   if (calCard) {
     calCard.addEventListener('keydown', (e) => {
       if (!dateEl || !/^\d{4}-\d{2}-\d{2}$/.test(String(dateEl.value || ''))) return;
@@ -5770,6 +6105,27 @@
   });
 
   replaceCalendarHistoryCanonical();
+
+  initSlotHoverSoundGateFromUrl();
+  if (calendarGridEl) {
+    calendarGridEl.addEventListener(
+      'pointerenter',
+      () => {
+        ensureSlotHoverAudioContext();
+        void primeSlotHoverSampleLoad();
+      },
+      { passive: true, once: true }
+    );
+    calendarGridEl.addEventListener(
+      'pointerdown',
+      () => {
+        ensureSlotHoverAudioContext();
+        resumeSlotHoverAudioIfNeeded();
+        void primeSlotHoverSampleLoad();
+      },
+      { passive: true }
+    );
+  }
 
   syncCalendarToolbarDateLabel();
   renderSmartCard();
