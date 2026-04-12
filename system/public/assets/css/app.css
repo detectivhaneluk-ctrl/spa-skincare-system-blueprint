@@ -9130,8 +9130,7 @@ a.appts-cal-toolbar__menu-item:hover {
   background: var(--ds-color-bg-canvas);
 }
 .calendar-week-wrap,
-.calendar-month-wrap,
-.calendar-year-wrap {
+.calendar-month-wrap {
   margin: 0;
   min-width: 0;
   min-height: 0;
@@ -9140,9 +9139,14 @@ a.appts-cal-toolbar__menu-item:hover {
   background: var(--ds-color-bg-canvas);
 }
 #calendar-week-planner,
-#calendar-month-planner,
-#calendar-year-planner {
+#calendar-month-planner {
   min-height: 24rem;
+}
+.calendar-day-wrap[hidden],
+.calendar-week-wrap[hidden],
+.calendar-month-wrap[hidden],
+.appts-calendar-week-strip[hidden] {
+  display: none !important;
 }
 .fc .fc-toolbar {
   display: none;

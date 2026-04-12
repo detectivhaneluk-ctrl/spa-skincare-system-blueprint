@@ -39,10 +39,8 @@
   const wrap = document.getElementById('calendar-day-wrap');
   const weekWrap = document.getElementById('calendar-week-wrap');
   const monthWrap = document.getElementById('calendar-month-wrap');
-  const yearWrap = document.getElementById('calendar-year-wrap');
   const weekPlannerEl = document.getElementById('calendar-week-planner');
   const monthPlannerEl = document.getElementById('calendar-month-planner');
-  const yearPlannerEl = document.getElementById('calendar-year-planner');
   const calendarGridEl = document.getElementById('appts-calendar-grid');
   const clipboardSidecarEl = document.getElementById('cal-clipboard-sidecar');
   const clipboardSidePanelEl = document.getElementById('cal-clipboard-side-panel');
@@ -566,7 +564,7 @@
   const CALENDAR_VIEW_MODE_DEFAULT = 'day';
   function normalizeCalendarViewMode(modeRaw) {
     const mode = String(modeRaw || '').trim().toLowerCase();
-    if (mode === 'week' || mode === 'month' || mode === 'year' || mode === 'day') return mode;
+    if (mode === 'week' || mode === 'month' || mode === 'day') return mode;
     return CALENDAR_VIEW_MODE_DEFAULT;
   }
   const initialUrlViewMode = (() => {
@@ -583,7 +581,6 @@
   const CAL_YEAR_RANGE_SIZE = 12;
   let plannerWeekCalendar = null;
   let plannerMonthCalendar = null;
-  let plannerYearCalendar = null;
 
   function setCalendarMode(mode) {
     if (mode !== 'month' && mode !== 'two-months') return;
@@ -608,7 +605,9 @@
     if (wrap) wrap.hidden = calendarViewMode !== 'day';
     if (weekWrap) weekWrap.hidden = calendarViewMode !== 'week';
     if (monthWrap) monthWrap.hidden = calendarViewMode !== 'month';
-    if (yearWrap) yearWrap.hidden = calendarViewMode !== 'year';
+    if (calendarWeekStrip) {
+      calendarWeekStrip.hidden = calendarViewMode !== 'day';
+    }
     if (calendarGridEl) {
       calendarGridEl.dataset.calendarViewMode = calendarViewMode;
     }
@@ -2161,17 +2160,6 @@
         setCalendarViewMode('day', { pushHistory: false, load: false });
         pickDateAndReload(String(info.event.startStr).slice(0, 10));
       },
-      datesSet: (arg) => {
-        if (!arg || !arg.start) return;
-        const anchor = arg.start;
-        const iso = anchor.getUTCFullYear() + '-' + String(anchor.getUTCMonth() + 1).padStart(2, '0') + '-' + String(anchor.getUTCDate()).padStart(2, '0');
-        if (/^\d{4}-\d{2}-\d{2}$/.test(iso) && dateEl.value !== iso) {
-          dateEl.value = iso;
-          syncCalendarToolbarDateLabel();
-          renderSmartCard();
-          pushCalendarHistoryIfChanged();
-        }
-      },
     };
   }
 
@@ -2180,7 +2168,6 @@
     const map = {
       week: { el: weekPlannerEl, ref: plannerWeekCalendar, view: 'dayGridWeek' },
       month: { el: monthPlannerEl, ref: plannerMonthCalendar, view: 'dayGridMonth' },
-      year: { el: yearPlannerEl, ref: plannerYearCalendar, view: 'multiMonthYear' },
     };
     const cfg = map[mode];
     if (!cfg || !(cfg.el instanceof HTMLElement)) return null;
@@ -2189,7 +2176,6 @@
     cal.render();
     if (mode === 'week') plannerWeekCalendar = cal;
     if (mode === 'month') plannerMonthCalendar = cal;
-    if (mode === 'year') plannerYearCalendar = cal;
     return cal;
   }
 
@@ -2208,7 +2194,7 @@
 
   async function loadActiveWorkspace() {
     syncCalendarViewModeChrome();
-    if (calendarViewMode === 'week' || calendarViewMode === 'month' || calendarViewMode === 'year') {
+    if (calendarViewMode === 'week' || calendarViewMode === 'month') {
       await loadPlannerWorkspace(calendarViewMode);
       return;
     }
@@ -2222,9 +2208,6 @@
       delta = deltaDays >= 0 ? 7 : -7;
     } else if (calendarViewMode === 'month') {
       shiftCalendarMonth(deltaDays >= 0 ? 1 : -1);
-      return;
-    } else if (calendarViewMode === 'year') {
-      shiftCalendarMonth(deltaDays >= 0 ? 12 : -12);
       return;
     }
     selectedSlot = null;

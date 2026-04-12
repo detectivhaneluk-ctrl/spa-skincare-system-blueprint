@@ -7,7 +7,7 @@ $workspace['shell_modifier'] = 'workspace-shell--calendar';
 $calDateRaw = $date ?? date('Y-m-d');
 $calDate = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $calDateRaw) ? (string) $calDateRaw : date('Y-m-d');
 $calendarViewModeRaw = isset($calendarViewMode) ? (string) $calendarViewMode : trim((string) ($_GET['view'] ?? ''));
-$calendarViewMode = in_array($calendarViewModeRaw, ['day', 'week', 'month', 'year'], true) ? $calendarViewModeRaw : 'day';
+$calendarViewMode = in_array($calendarViewModeRaw, ['day', 'week', 'month'], true) ? $calendarViewModeRaw : 'day';
 $calDateDisplay = $calDate;
 if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $calDate, $calDateM)) {
     $calDateUtc = \DateTimeImmutable::createFromFormat('Y-m-d', $calDateM[0], new \DateTimeZone('UTC'));
@@ -41,7 +41,6 @@ ob_start();
             <button type="button" class="appts-calendar-view-mode__btn<?= $calendarViewMode === 'day' ? ' appts-calendar-view-mode__btn--active' : '' ?>" id="calendar-view-mode-day" data-calendar-view-mode="day" aria-pressed="<?= $calendarViewMode === 'day' ? 'true' : 'false' ?>">Day</button>
             <button type="button" class="appts-calendar-view-mode__btn<?= $calendarViewMode === 'week' ? ' appts-calendar-view-mode__btn--active' : '' ?>" id="calendar-view-mode-week" data-calendar-view-mode="week" aria-pressed="<?= $calendarViewMode === 'week' ? 'true' : 'false' ?>">Week</button>
             <button type="button" class="appts-calendar-view-mode__btn<?= $calendarViewMode === 'month' ? ' appts-calendar-view-mode__btn--active' : '' ?>" id="calendar-view-mode-month" data-calendar-view-mode="month" aria-pressed="<?= $calendarViewMode === 'month' ? 'true' : 'false' ?>">Month</button>
-            <button type="button" class="appts-calendar-view-mode__btn<?= $calendarViewMode === 'year' ? ' appts-calendar-view-mode__btn--active' : '' ?>" id="calendar-view-mode-year" data-calendar-view-mode="year" aria-pressed="<?= $calendarViewMode === 'year' ? 'true' : 'false' ?>">Year</button>
         </div>
         <div class="appts-command-strip appts-command-strip--premium" role="group" aria-label="Date, branch, tools, and blocked time">
             <div class="appts-command-strip__lead">
@@ -456,9 +455,6 @@ ob_start();
                 </div>
                 <div id="calendar-month-wrap" class="calendar-month-wrap" hidden>
                     <div id="calendar-month-planner"></div>
-                </div>
-                <div id="calendar-year-wrap" class="calendar-year-wrap" hidden>
-                    <div id="calendar-year-planner"></div>
                 </div>
             </div>
         </div>
