@@ -39,6 +39,7 @@
   const wrap = document.getElementById('calendar-day-wrap');
   const weekWrap = document.getElementById('calendar-week-wrap');
   const monthWrap = document.getElementById('calendar-month-wrap');
+  const yearWrap = document.getElementById('calendar-year-wrap');
   const weekPlannerEl = document.getElementById('calendar-week-planner');
   const monthPlannerEl = document.getElementById('calendar-month-planner');
   const calendarGridEl = document.getElementById('appts-calendar-grid');
@@ -564,7 +565,7 @@
   const CALENDAR_VIEW_MODE_DEFAULT = 'day';
   function normalizeCalendarViewMode(modeRaw) {
     const mode = String(modeRaw || '').trim().toLowerCase();
-    if (mode === 'week' || mode === 'month' || mode === 'day') return mode;
+    if (mode === 'week' || mode === 'month' || mode === 'year' || mode === 'day') return mode;
     return CALENDAR_VIEW_MODE_DEFAULT;
   }
   const initialUrlViewMode = (() => {
@@ -605,6 +606,7 @@
     if (wrap) wrap.hidden = calendarViewMode !== 'day';
     if (weekWrap) weekWrap.hidden = calendarViewMode !== 'week';
     if (monthWrap) monthWrap.hidden = calendarViewMode !== 'month';
+    if (yearWrap) yearWrap.hidden = calendarViewMode !== 'year';
     if (calendarWeekStrip) {
       calendarWeekStrip.hidden = calendarViewMode !== 'day';
     }
@@ -2192,10 +2194,123 @@
     loadSidePanelData();
   }
 
+  async function fetchYearMonthOverview(year, month) {
+    const params = new URLSearchParams();
+    params.set('year', String(year));
+    params.set('month', String(month));
+    params.set('date', String(dateEl.value || '').trim());
+    if (branchEl.value) params.set('branch_id', branchEl.value);
+    const res = await fetch('/calendar/month-summary?' + params.toString(), {
+      headers: { Accept: 'application/json' },
+    });
+    const payload = await res.json().catch(() => null);
+    if (!res.ok || !payload || !payload.month_summary_contract || !Array.isArray(payload.days)) {
+      throw new Error('Failed to load yearly month overview.');
+    }
+    let totalAppts = 0;
+    let totalBlocked = 0;
+    let closedDays = 0;
+    payload.days.forEach((d) => {
+      totalAppts += Number(d && d.appointment_count ? d.appointment_count : 0);
+      totalBlocked += Number(d && d.blocked_slot_count ? d.blocked_slot_count : 0);
+      if (d && d.branch_closed) closedDays += 1;
+    });
+    return {
+      year,
+      month,
+      totalAppts,
+      totalBlocked,
+      closedDays,
+      monthLabel: new Date(Date.UTC(year, month - 1, 1)).toLocaleDateString('en-US', {
+        month: 'long',
+        year: 'numeric',
+        timeZone: 'UTC',
+      }),
+    };
+  }
+
+  function renderYearWorkspace(year, months) {
+    if (!yearWrap) return;
+    const selectedIso = String(dateEl.value || '').trim();
+    const selectedMonth = /^\d{4}-\d{2}-\d{2}$/.test(selectedIso) ? Number(selectedIso.slice(5, 7)) : 0;
+    const host = document.createElement('section');
+    host.className = 'appts-calendar-year-workspace';
+    const head = document.createElement('header');
+    head.className = 'appts-calendar-year-workspace__head';
+    const title = document.createElement('h3');
+    title.className = 'appts-calendar-year-workspace__title';
+    title.textContent = String(year) + ' Year Overview';
+    head.appendChild(title);
+    host.appendChild(head);
+    const grid = document.createElement('div');
+    grid.className = 'appts-calendar-year-workspace__grid';
+    months.forEach((row) => {
+      const card = document.createElement('article');
+      card.className = 'appts-calendar-year-card';
+      if (row.month === selectedMonth) card.classList.add('appts-calendar-year-card--selected');
+      const label = document.createElement('h4');
+      label.className = 'appts-calendar-year-card__month';
+      label.textContent = row.monthLabel;
+      const metrics = document.createElement('div');
+      metrics.className = 'appts-calendar-year-card__metrics';
+      const appts = document.createElement('p');
+      appts.className = 'appts-calendar-year-card__metric';
+      appts.textContent = row.totalAppts + ' appointments';
+      const blocked = document.createElement('p');
+      blocked.className = 'appts-calendar-year-card__metric';
+      blocked.textContent = row.totalBlocked + ' blocked';
+      const closed = document.createElement('p');
+      closed.className = 'appts-calendar-year-card__metric';
+      closed.textContent = row.closedDays + ' closed days';
+      metrics.appendChild(appts);
+      metrics.appendChild(blocked);
+      metrics.appendChild(closed);
+      const openMonthBtn = document.createElement('button');
+      openMonthBtn.type = 'button';
+      openMonthBtn.className = 'appts-calendar-year-card__open';
+      openMonthBtn.textContent = 'Open month';
+      openMonthBtn.addEventListener('click', () => {
+        const nextIso = row.year + '-' + String(row.month).padStart(2, '0') + '-01';
+        setCalendarViewMode('month', { pushHistory: false, load: false });
+        pickDateAndReload(nextIso);
+      });
+      card.appendChild(label);
+      card.appendChild(metrics);
+      card.appendChild(openMonthBtn);
+      grid.appendChild(card);
+    });
+    host.appendChild(grid);
+    yearWrap.innerHTML = '';
+    yearWrap.appendChild(host);
+  }
+
+  async function loadYearWorkspace() {
+    if (!yearWrap || !dateEl) return;
+    const iso = String(dateEl.value || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return;
+    const year = Number(iso.slice(0, 4));
+    statusEl.textContent = 'Loading year overview…';
+    try {
+      const months = await Promise.all(
+        Array.from({ length: 12 }, (_, i) => fetchYearMonthOverview(year, i + 1))
+      );
+      renderYearWorkspace(year, months);
+      statusEl.textContent = '';
+      loadSidePanelData();
+    } catch (_e) {
+      yearWrap.innerHTML = '<p class="calendar-empty-hint">Could not load year overview.</p>';
+      statusEl.textContent = 'Could not load year overview.';
+    }
+  }
+
   async function loadActiveWorkspace() {
     syncCalendarViewModeChrome();
     if (calendarViewMode === 'week' || calendarViewMode === 'month') {
       await loadPlannerWorkspace(calendarViewMode);
+      return;
+    }
+    if (calendarViewMode === 'year') {
+      await loadYearWorkspace();
       return;
     }
     await loadDayWorkspace();
@@ -2208,6 +2323,9 @@
       delta = deltaDays >= 0 ? 7 : -7;
     } else if (calendarViewMode === 'month') {
       shiftCalendarMonth(deltaDays >= 0 ? 1 : -1);
+      return;
+    } else if (calendarViewMode === 'year') {
+      shiftCalendarMonth(deltaDays >= 0 ? 12 : -12);
       return;
     }
     selectedSlot = null;

@@ -9130,7 +9130,8 @@ a.appts-cal-toolbar__menu-item:hover {
   background: var(--ds-color-bg-canvas);
 }
 .calendar-week-wrap,
-.calendar-month-wrap {
+.calendar-month-wrap,
+.calendar-year-wrap {
   margin: 0;
   min-width: 0;
   min-height: 0;
@@ -9145,6 +9146,7 @@ a.appts-cal-toolbar__menu-item:hover {
 .calendar-day-wrap[hidden],
 .calendar-week-wrap[hidden],
 .calendar-month-wrap[hidden],
+.calendar-year-wrap[hidden],
 .appts-calendar-week-strip[hidden] {
   display: none !important;
 }
@@ -9383,6 +9385,81 @@ a.appts-cal-toolbar__menu-item:hover {
 .appts-calendar-month-workspace__count {
   font-size: 0.68rem;
   color: var(--ds-color-text-secondary);
+}
+.appts-calendar-year-workspace__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.45rem;
+}
+.appts-calendar-year-workspace__title {
+  margin: 0;
+  font-size: 0.94rem;
+  font-weight: var(--ds-font-semibold);
+  color: var(--ds-color-text);
+}
+.appts-calendar-year-workspace__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+@media (max-width: 1280px) {
+  .appts-calendar-year-workspace__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 920px) {
+  .appts-calendar-year-workspace__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.appts-calendar-year-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.55rem;
+  border-radius: var(--ds-radius-lg);
+  border: 1px solid var(--ds-surface-border-subtle);
+  background: var(--ds-surface-canvas);
+}
+.appts-calendar-year-card--selected {
+  border-color: color-mix(in srgb, var(--ds-color-accent) 56%, var(--ds-surface-border-subtle));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ds-color-accent) 20%, transparent);
+}
+.appts-calendar-year-card__month {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--ds-color-text);
+  font-weight: var(--ds-font-semibold);
+}
+.appts-calendar-year-card__metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.appts-calendar-year-card__metric {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--ds-color-text-secondary);
+}
+.appts-calendar-year-card__open {
+  margin-top: 0.1rem;
+  border: 1px solid var(--ds-surface-border-subtle);
+  background: transparent;
+  color: var(--ds-color-text-secondary);
+  border-radius: var(--ds-radius-md);
+  padding: 0.3rem 0.42rem;
+  font-size: 0.72rem;
+  cursor: pointer;
+  font-weight: var(--ds-font-medium);
+}
+.appts-calendar-year-card__open:hover {
+  color: var(--ds-color-text);
+  border-color: color-mix(in srgb, var(--ds-color-accent) 34%, var(--ds-surface-border-subtle));
+}
+.appts-calendar-year-card__open:focus-visible {
+  outline: 2px solid var(--ds-color-focus-ring);
+  outline-offset: 1px;
 }
 /* Keep the operational grid from flex-shrinking below its laid-out day height (scroll stays on #appts-calendar-grid). */
 #appts-calendar-grid.appts-calendar-grid .ops-calendar {
