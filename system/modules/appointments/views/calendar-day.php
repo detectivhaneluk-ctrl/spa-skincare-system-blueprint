@@ -6,6 +6,8 @@ $workspace = isset($workspace) && is_array($workspace) ? $workspace : [];
 $workspace['shell_modifier'] = 'workspace-shell--calendar';
 $calDateRaw = $date ?? date('Y-m-d');
 $calDate = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $calDateRaw) ? (string) $calDateRaw : date('Y-m-d');
+$calendarViewModeRaw = isset($calendarViewMode) ? (string) $calendarViewMode : trim((string) ($_GET['view'] ?? ''));
+$calendarViewMode = in_array($calendarViewModeRaw, ['day', 'week', 'month'], true) ? $calendarViewModeRaw : 'day';
 $calDateDisplay = $calDate;
 if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $calDate, $calDateM)) {
     $calDateUtc = \DateTimeImmutable::createFromFormat('Y-m-d', $calDateM[0], new \DateTimeZone('UTC'));
@@ -30,10 +32,16 @@ ob_start();
         <section class="appts-calendar-control-surface appts-calendar-control-surface--premium" aria-label="Calendar filters and display tools">
         <form method="get" action="/appointments/calendar/day" id="calendar-filter-form" class="appts-cal-filter-sync-form" aria-hidden="true" tabindex="-1">
             <input type="hidden" name="date" id="calendar-date" value="<?= htmlspecialchars($calDate) ?>">
+            <input type="hidden" name="view" id="calendar-view-mode" value="<?= htmlspecialchars($calendarViewMode) ?>">
             <?php if (count($branches) === 1): ?>
             <input type="hidden" name="branch_id" id="calendar-branch" value="<?= (int) $branches[0]['id'] ?>">
             <?php endif; ?>
         </form>
+        <div class="appts-calendar-view-mode" role="group" aria-label="Calendar view mode">
+            <button type="button" class="appts-calendar-view-mode__btn<?= $calendarViewMode === 'day' ? ' appts-calendar-view-mode__btn--active' : '' ?>" id="calendar-view-mode-day" data-calendar-view-mode="day" aria-pressed="<?= $calendarViewMode === 'day' ? 'true' : 'false' ?>">Day</button>
+            <button type="button" class="appts-calendar-view-mode__btn<?= $calendarViewMode === 'week' ? ' appts-calendar-view-mode__btn--active' : '' ?>" id="calendar-view-mode-week" data-calendar-view-mode="week" aria-pressed="<?= $calendarViewMode === 'week' ? 'true' : 'false' ?>">Week</button>
+            <button type="button" class="appts-calendar-view-mode__btn<?= $calendarViewMode === 'month' ? ' appts-calendar-view-mode__btn--active' : '' ?>" id="calendar-view-mode-month" data-calendar-view-mode="month" aria-pressed="<?= $calendarViewMode === 'month' ? 'true' : 'false' ?>">Month</button>
+        </div>
         <div class="appts-command-strip appts-command-strip--premium" role="group" aria-label="Date, branch, tools, and blocked time">
             <div class="appts-command-strip__lead">
                 <div class="appts-cal-toolbar__slot appts-cal-toolbar__slot--date-panel">
@@ -442,6 +450,8 @@ ob_start();
                  data-cal-cap-sales-view="<?= !empty($workspace['sales_view']) ? '1' : '0' ?>"
                  data-cal-cap-appointments-create="<?= !empty($workspace['appointments_create']) ? '1' : '0' ?>">
                 <div id="calendar-day-wrap" class="calendar-day-wrap"></div>
+                <div id="calendar-week-wrap" class="calendar-week-wrap" hidden></div>
+                <div id="calendar-month-wrap" class="calendar-month-wrap" hidden></div>
             </div>
         </div>
     </div>

@@ -34,7 +34,11 @@
   const branchEl = document.getElementById('calendar-branch');
   const statusEl = document.getElementById('calendar-status');
   const branchHoursIndicatorEl = document.getElementById('calendar-branch-hours-indicator');
+  const viewModeEl = document.getElementById('calendar-view-mode');
+  const calendarViewModeButtons = document.querySelectorAll('[data-calendar-view-mode]');
   const wrap = document.getElementById('calendar-day-wrap');
+  const weekWrap = document.getElementById('calendar-week-wrap');
+  const monthWrap = document.getElementById('calendar-month-wrap');
   const calendarGridEl = document.getElementById('appts-calendar-grid');
   const clipboardSidecarEl = document.getElementById('cal-clipboard-sidecar');
   const clipboardSidePanelEl = document.getElementById('cal-clipboard-side-panel');
@@ -555,6 +559,20 @@
   }
 
   const CAL_MODE_KEY = 'appts_cal_card_mode';
+  const CALENDAR_VIEW_MODE_DEFAULT = 'day';
+  function normalizeCalendarViewMode(modeRaw) {
+    const mode = String(modeRaw || '').trim().toLowerCase();
+    if (mode === 'week' || mode === 'month' || mode === 'day') return mode;
+    return CALENDAR_VIEW_MODE_DEFAULT;
+  }
+  const initialUrlViewMode = (() => {
+    try {
+      return new URLSearchParams(window.location.search).get('view');
+    } catch (_e) {
+      return null;
+    }
+  })();
+  let calendarViewMode = normalizeCalendarViewMode((viewModeEl && viewModeEl.value) || initialUrlViewMode);
   let calendarMode = 'month';
   let calendarDatePickerView = 'days';
   let calendarYearRangeStart = null;
@@ -569,6 +587,45 @@
     syncModeChrome();
     renderSmartCard();
     refreshSummaryRailVisible();
+  }
+
+  function syncCalendarViewModeChrome() {
+    if (viewModeEl) {
+      viewModeEl.value = calendarViewMode;
+    }
+    calendarViewModeButtons.forEach((btn) => {
+      const isActive = String(btn.dataset.calendarViewMode || '') === calendarViewMode;
+      btn.classList.toggle('appts-calendar-view-mode__btn--active', isActive);
+      btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+    if (wrap) wrap.hidden = calendarViewMode !== 'day';
+    if (weekWrap) weekWrap.hidden = calendarViewMode !== 'week';
+    if (monthWrap) monthWrap.hidden = calendarViewMode !== 'month';
+    if (calendarGridEl) {
+      calendarGridEl.dataset.calendarViewMode = calendarViewMode;
+    }
+    if (calendarHorizontalNavControls instanceof HTMLElement && calendarViewMode !== 'day') {
+      calendarHorizontalNavControls.hidden = true;
+      calendarHorizontalNavControls.style.display = 'none';
+    }
+    if (calendarViewMode !== 'day') {
+      destroyNowLine();
+    }
+  }
+
+  function setCalendarViewMode(mode, options = {}) {
+    const normalized = normalizeCalendarViewMode(mode);
+    const shouldPushHistory = options.pushHistory !== false;
+    const shouldLoad = options.load !== false;
+    const changed = calendarViewMode !== normalized;
+    calendarViewMode = normalized;
+    syncCalendarViewModeChrome();
+    if (shouldPushHistory && (changed || options.forceHistory === true)) {
+      pushCalendarHistoryIfChanged();
+    }
+    if (shouldLoad) {
+      void loadActiveWorkspace();
+    }
   }
 
   function syncModeChrome() {
@@ -1363,6 +1420,7 @@
   function currentCalendarQuery() {
     const params = new URLSearchParams();
     params.set('date', dateEl.value);
+    params.set('view', calendarViewMode);
     if (branchEl.value) params.set('branch_id', branchEl.value);
     return params;
   }
@@ -1991,6 +2049,248 @@
     }
   }
 
+  function toUtcDateLabel(iso, opts) {
+    const s = String(iso || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '';
+    const d = new Date(Date.UTC(Number(s.slice(0, 4)), Number(s.slice(5, 7)) - 1, Number(s.slice(8, 10))));
+    return d.toLocaleDateString('en-US', Object.assign({ timeZone: 'UTC' }, opts || {}));
+  }
+
+  function renderWeekWorkspace(payload) {
+    if (!weekWrap) return;
+    if (!payload || !Array.isArray(payload.days) || !payload.week_summary_contract) {
+      weekWrap.innerHTML = '<p class="calendar-empty-hint">Unable to render weekly summary.</p>';
+      return;
+    }
+    const days = payload.days.slice(0, 7);
+    const host = document.createElement('section');
+    host.className = 'appts-calendar-week-workspace';
+    const head = document.createElement('header');
+    head.className = 'appts-calendar-week-workspace__head';
+    const title = document.createElement('h3');
+    title.className = 'appts-calendar-week-workspace__title';
+    title.textContent = toUtcDateLabel(payload.week && payload.week.week_start, { month: 'short', day: 'numeric' })
+      + ' - '
+      + toUtcDateLabel(payload.week && payload.week.week_end, { month: 'short', day: 'numeric', year: 'numeric' });
+    head.appendChild(title);
+    host.appendChild(head);
+    const grid = document.createElement('div');
+    grid.className = 'appts-calendar-week-workspace__grid';
+    days.forEach((day) => {
+      const iso = String(day.date || '');
+      const card = document.createElement('article');
+      card.className = 'appts-calendar-week-card';
+      if (iso === String(payload.selected_date || '')) card.classList.add('appts-calendar-week-card--selected');
+      if (day.is_today) card.classList.add('appts-calendar-week-card--today');
+      if (day.branch_closed) card.classList.add('appts-calendar-week-card--closed');
+      const top = document.createElement('div');
+      top.className = 'appts-calendar-week-card__top';
+      const wd = document.createElement('p');
+      wd.className = 'appts-calendar-week-card__weekday';
+      wd.textContent = toUtcDateLabel(iso, { weekday: 'short' });
+      const dt = document.createElement('p');
+      dt.className = 'appts-calendar-week-card__date';
+      dt.textContent = toUtcDateLabel(iso, { month: 'short', day: 'numeric' });
+      top.appendChild(wd);
+      top.appendChild(dt);
+      const meta = document.createElement('div');
+      meta.className = 'appts-calendar-week-card__meta';
+      const appt = Number(day.appointment_count || 0);
+      const blocked = Number(day.blocked_slot_count || 0);
+      const apptText = document.createElement('p');
+      apptText.className = 'appts-calendar-week-card__metric';
+      apptText.textContent = appt + ' appointment' + (appt === 1 ? '' : 's');
+      const blockedText = document.createElement('p');
+      blockedText.className = 'appts-calendar-week-card__metric';
+      blockedText.textContent = blocked + ' blocked';
+      meta.appendChild(apptText);
+      meta.appendChild(blockedText);
+      if (day.branch_closed) {
+        const closedTag = document.createElement('span');
+        closedTag.className = 'appts-calendar-week-card__tag';
+        closedTag.textContent = 'Closed';
+        meta.appendChild(closedTag);
+      }
+      const openBtn = document.createElement('button');
+      openBtn.type = 'button';
+      openBtn.className = 'appts-calendar-week-card__open';
+      openBtn.textContent = appt > 0 ? 'Open appointments' : 'Open day';
+      openBtn.addEventListener('click', () => {
+        setCalendarViewMode('day', { pushHistory: false, load: false });
+        pickDateAndReload(iso);
+      });
+      card.appendChild(top);
+      card.appendChild(meta);
+      card.appendChild(openBtn);
+      grid.appendChild(card);
+    });
+    host.appendChild(grid);
+    weekWrap.innerHTML = '';
+    weekWrap.appendChild(host);
+  }
+
+  function renderMonthWorkspace(payload) {
+    if (!monthWrap) return;
+    if (!payload || !Array.isArray(payload.days) || !payload.month || !payload.month_summary_contract) {
+      monthWrap.innerHTML = '<p class="calendar-empty-hint">Unable to render monthly summary.</p>';
+      return;
+    }
+    const firstIso = String(payload.month.first_date || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(firstIso)) {
+      monthWrap.innerHTML = '<p class="calendar-empty-hint">Invalid monthly summary payload.</p>';
+      return;
+    }
+    const byDate = {};
+    payload.days.forEach((day) => {
+      if (day && day.date) byDate[String(day.date)] = day;
+    });
+    const monthNumber = Number(payload.month.month || 0);
+    const yearNumber = Number(payload.month.year || 0);
+    const lastDay = daysInMonthUtc(yearNumber, monthNumber);
+    const pad = mondayOffsetFromIso(firstIso);
+    const totalCells = Math.ceil((pad + lastDay) / 7) * 7;
+    const host = document.createElement('section');
+    host.className = 'appts-calendar-month-workspace';
+    const head = document.createElement('header');
+    head.className = 'appts-calendar-month-workspace__head';
+    const title = document.createElement('h3');
+    title.className = 'appts-calendar-month-workspace__title';
+    title.textContent = toUtcDateLabel(firstIso, { month: 'long', year: 'numeric' });
+    head.appendChild(title);
+    host.appendChild(head);
+    const dow = document.createElement('div');
+    dow.className = 'appts-calendar-month-workspace__dow';
+    ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach((label) => {
+      const el = document.createElement('span');
+      el.textContent = label;
+      dow.appendChild(el);
+    });
+    host.appendChild(dow);
+    const grid = document.createElement('div');
+    grid.className = 'appts-calendar-month-workspace__grid';
+    for (let cellIndex = 0; cellIndex < totalCells; cellIndex++) {
+      const dayOfMonth = cellIndex - pad + 1;
+      if (cellIndex < pad || dayOfMonth > lastDay) {
+        const padCell = document.createElement('div');
+        padCell.className = 'appts-calendar-month-workspace__cell appts-calendar-month-workspace__cell--pad';
+        padCell.setAttribute('aria-hidden', 'true');
+        grid.appendChild(padCell);
+        continue;
+      }
+      const iso = yearNumber + '-' + String(monthNumber).padStart(2, '0') + '-' + String(dayOfMonth).padStart(2, '0');
+      const intel = byDate[iso] || {};
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'appts-calendar-month-workspace__cell';
+      if (intel.is_today) btn.classList.add('appts-calendar-month-workspace__cell--today');
+      if (intel.branch_closed) btn.classList.add('appts-calendar-month-workspace__cell--closed');
+      if (iso === String(payload.selected_date || '')) btn.classList.add('appts-calendar-month-workspace__cell--selected');
+      const num = document.createElement('span');
+      num.className = 'appts-calendar-month-workspace__daynum';
+      num.textContent = String(dayOfMonth);
+      const count = document.createElement('span');
+      count.className = 'appts-calendar-month-workspace__count';
+      const appt = Number(intel.appointment_count || 0);
+      count.textContent = appt + ' appt';
+      btn.setAttribute('aria-label', toUtcDateLabel(iso, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }));
+      btn.appendChild(num);
+      btn.appendChild(count);
+      btn.addEventListener('click', () => {
+        setCalendarViewMode('day', { pushHistory: false, load: false });
+        pickDateAndReload(iso);
+      });
+      grid.appendChild(btn);
+    }
+    host.appendChild(grid);
+    monthWrap.innerHTML = '';
+    monthWrap.appendChild(host);
+  }
+
+  async function loadWeekWorkspace() {
+    if (!weekWrap) return;
+    if (currentLoadAbort) {
+      currentLoadAbort.abort();
+    }
+    const abortCtrl = new AbortController();
+    currentLoadAbort = abortCtrl;
+    const params = new URLSearchParams();
+    params.set('date', String(dateEl.value || '').trim());
+    if (branchEl.value) params.set('branch_id', branchEl.value);
+    statusEl.textContent = 'Loading weekly calendar…';
+    const deadline = bindAbortDeadline(abortCtrl, CALENDAR_FETCH_TIMEOUT_MS);
+    try {
+      const res = await fetch('/calendar/week-summary?' + params.toString(), {
+        headers: { Accept: 'application/json' },
+        signal: abortCtrl.signal,
+      });
+      const payload = await res.json().catch(() => null);
+      const err = payload && payload.error;
+      const errMsg = typeof err === 'string' ? err : (err && typeof err.message === 'string' ? err.message : '');
+      if (!res.ok || !payload || errMsg) {
+        throw new Error(errMsg || ('Failed to load weekly summary (HTTP ' + res.status + ').'));
+      }
+      renderWeekWorkspace(payload);
+      statusEl.textContent = '';
+      loadSidePanelData();
+    } catch (e) {
+      weekWrap.innerHTML = '<p class="calendar-empty-hint">' + String((e && e.message) || 'Could not load weekly summary.') + '</p>';
+      statusEl.textContent = 'Could not load weekly summary.';
+    } finally {
+      clearTimeout(deadline);
+    }
+  }
+
+  async function loadMonthWorkspace() {
+    if (!monthWrap) return;
+    if (currentLoadAbort) {
+      currentLoadAbort.abort();
+    }
+    const vm = visibleMonthFromDateEl();
+    if (!vm) return;
+    const abortCtrl = new AbortController();
+    currentLoadAbort = abortCtrl;
+    const params = new URLSearchParams();
+    params.set('year', String(vm.y));
+    params.set('month', String(vm.m));
+    params.set('date', String(dateEl.value || '').trim());
+    if (branchEl.value) params.set('branch_id', branchEl.value);
+    statusEl.textContent = 'Loading monthly calendar…';
+    const deadline = bindAbortDeadline(abortCtrl, CALENDAR_FETCH_TIMEOUT_MS);
+    try {
+      const res = await fetch('/calendar/month-summary?' + params.toString(), {
+        headers: { Accept: 'application/json' },
+        signal: abortCtrl.signal,
+      });
+      const payload = await res.json().catch(() => null);
+      const err = payload && payload.error;
+      const errMsg = typeof err === 'string' ? err : (err && typeof err.message === 'string' ? err.message : '');
+      if (!res.ok || !payload || errMsg) {
+        throw new Error(errMsg || ('Failed to load monthly summary (HTTP ' + res.status + ').'));
+      }
+      renderMonthWorkspace(payload);
+      statusEl.textContent = '';
+      loadSidePanelData();
+    } catch (e) {
+      monthWrap.innerHTML = '<p class="calendar-empty-hint">' + String((e && e.message) || 'Could not load monthly summary.') + '</p>';
+      statusEl.textContent = 'Could not load monthly summary.';
+    } finally {
+      clearTimeout(deadline);
+    }
+  }
+
+  async function loadActiveWorkspace() {
+    syncCalendarViewModeChrome();
+    if (calendarViewMode === 'week') {
+      await loadWeekWorkspace();
+      return;
+    }
+    if (calendarViewMode === 'month') {
+      await loadMonthWorkspace();
+      return;
+    }
+    await loadDayWorkspace();
+  }
+
   function shiftCalendarDayBy(deltaDays) {
     if (!dateEl || !/^\d{4}-\d{2}-\d{2}$/.test(String(dateEl.value || ''))) return;
     selectedSlot = null;
@@ -1998,7 +2298,7 @@
     syncCalendarToolbarDateLabel();
     renderSmartCard();
     pushCalendarHistoryIfChanged();
-    load();
+    void loadActiveWorkspace();
   }
 
   function pickDateAndReload(iso) {
@@ -2008,7 +2308,7 @@
     syncCalendarToolbarDateLabel();
     renderSmartCard();
     pushCalendarHistoryIfChanged();
-    load();
+    void loadActiveWorkspace();
   }
 
   function renderMonthGridCells(grid, y, m, selectedIso, todayStr) {
@@ -2195,7 +2495,7 @@
     syncCalendarToolbarDateLabel();
     renderSmartCard();
     pushCalendarHistoryIfChanged();
-    load();
+    void loadActiveWorkspace();
   }
 
   function goToBranchToday() {
@@ -2214,7 +2514,7 @@
     syncCalendarToolbarDateLabel();
     renderSmartCard();
     pushCalendarHistoryIfChanged();
-    load();
+    void loadActiveWorkspace();
   }
 
   function refreshCalendarSummaries() {
@@ -2427,7 +2727,7 @@
       hidden.add(String(staffId));
       setHiddenStaffIds(hidden);
       schedulePersistCalendarPrefs();
-      load();
+      void loadActiveWorkspace();
     }
   }
 
@@ -2454,7 +2754,7 @@
       btn.addEventListener('click', () => {
         setHiddenStaffIds(new Set());
         schedulePersistCalendarPrefs();
-        load();
+        void loadActiveWorkspace();
       });
       slot.appendChild(btn);
     } else {
@@ -4916,7 +5216,7 @@
               activeSavedViewId = Number(v.id) || null;
               syncCalendarToolbarControls();
               schedulePersistCalendarPrefs();
-              load();
+              void loadActiveWorkspace();
             }
           } catch (_e) { /* ignore */ }
           closeCalendarToolbarPopovers();
@@ -4961,7 +5261,7 @@
     if (refreshBtn) {
       refreshBtn.addEventListener('click', () => {
         closeCalendarToolbarPopovers();
-        load();
+        void loadActiveWorkspace();
       });
     }
 
@@ -5691,7 +5991,7 @@
     }
   }
 
-  async function load() {
+  async function loadDayWorkspace() {
     pendingDeferredHiddenStaffIds = null;
     closeAllStaffMenus();
     const date = dateEl.value;
@@ -5841,14 +6141,14 @@
     e.preventDefault();
     renderSmartCard();
     pushCalendarHistoryIfChanged();
-    load();
+    void loadActiveWorkspace();
   });
   dateEl.addEventListener('change', () => {
     selectedSlot = null;
     syncCalendarToolbarDateLabel();
     renderSmartCard();
     pushCalendarHistoryIfChanged();
-    load();
+    void loadActiveWorkspace();
   });
   branchEl.addEventListener('change', () => {
     selectedSlot = null;
@@ -5856,7 +6156,7 @@
     pushCalendarHistoryIfChanged();
     renderSmartCard();
     renderClipboardPane(); // refresh clipboard to show items scoped to the new branch
-    load();
+    void loadActiveWorkspace();
   });
 
   // Toolbar "New Appointment" buttons navigate full-page, not drawer.
@@ -5867,7 +6167,7 @@
   }));
   window.addEventListener('app:appointments-calendar-refresh', () => {
     refreshCalendarSummaries();
-    load();
+    void loadActiveWorkspace();
     loadSidePanelData();
     scheduleCalendarHorizontalNavStateSync();
   });
@@ -5984,6 +6284,13 @@
   renderClipboardPane();
   initClipboardClearBtn();
 
+  calendarViewModeButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const nextMode = normalizeCalendarViewMode(btn.dataset.calendarViewMode || '');
+      setCalendarViewMode(nextMode, { pushHistory: true, load: true });
+    });
+  });
+
   if (calModeMonth) {
     calModeMonth.addEventListener('click', () => setCalendarMode('month'));
   }
@@ -6045,7 +6352,7 @@
         syncCalendarToolbarDateLabel();
         renderSmartCard();
         pushCalendarHistoryIfChanged();
-        load();
+        void loadActiveWorkspace();
       } else if (e.key === 'ArrowRight') {
         e.preventDefault();
         selectedSlot = null;
@@ -6053,7 +6360,7 @@
         syncCalendarToolbarDateLabel();
         renderSmartCard();
         pushCalendarHistoryIfChanged();
-        load();
+        void loadActiveWorkspace();
       }
     });
   }
@@ -6070,6 +6377,7 @@
     const q = new URLSearchParams(window.location.search);
     const d = q.get('date');
     const b = q.get('branch_id');
+    const v = q.get('view');
     if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
       dateEl.value = d;
       syncCalendarToolbarDateLabel();
@@ -6084,9 +6392,11 @@
         branchEl.value = bs;
       }
     }
+    calendarViewMode = normalizeCalendarViewMode(v);
+    syncCalendarViewModeChrome();
     selectedSlot = null;
     renderSmartCard();
-    load();
+    void loadActiveWorkspace();
   });
 
   window.addEventListener('pagehide', () => {
@@ -6104,6 +6414,7 @@
     void persistCalendarPrefs();
   });
 
+  syncCalendarViewModeChrome();
   replaceCalendarHistoryCanonical();
 
   initSlotHoverSoundGateFromUrl();
@@ -6129,5 +6440,5 @@
 
   syncCalendarToolbarDateLabel();
   renderSmartCard();
-  load();
+  void loadActiveWorkspace();
 })();

@@ -9129,6 +9129,220 @@ a.appts-cal-toolbar__menu-item:hover {
   flex-direction: column;
   background: var(--ds-color-bg-canvas);
 }
+.calendar-week-wrap,
+.calendar-month-wrap {
+  margin: 0;
+  min-width: 0;
+  min-height: 0;
+  display: block;
+  padding: 0.5rem 0.25rem 0.75rem;
+  background: var(--ds-color-bg-canvas);
+}
+.appts-calendar-view-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  margin-bottom: 0.5rem;
+  padding: 0.2rem;
+  border-radius: var(--ds-radius-pill);
+  border: 1px solid var(--ds-surface-border-subtle);
+  background: var(--ds-surface-canvas);
+  box-shadow: var(--ds-shadow-control-rest);
+}
+.appts-calendar-view-mode__btn {
+  border: none;
+  background: transparent;
+  color: var(--ds-color-text-secondary);
+  font-size: 0.78rem;
+  font-weight: var(--ds-font-semibold);
+  border-radius: var(--ds-radius-pill);
+  padding: 0.35rem 0.65rem;
+  min-height: 1.95rem;
+  cursor: pointer;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+.appts-calendar-view-mode__btn:hover {
+  background: color-mix(in srgb, var(--ds-color-bg-subtle) 78%, transparent);
+  color: var(--ds-color-text);
+}
+.appts-calendar-view-mode__btn:focus-visible {
+  outline: 2px solid var(--ds-color-focus-ring);
+  outline-offset: 1px;
+}
+.appts-calendar-view-mode__btn--active {
+  background: var(--ds-color-accent);
+  color: #fff;
+}
+.appts-calendar-week-workspace__head,
+.appts-calendar-month-workspace__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.45rem;
+}
+.appts-calendar-week-workspace__title,
+.appts-calendar-month-workspace__title {
+  margin: 0;
+  font-size: 0.94rem;
+  font-weight: var(--ds-font-semibold);
+  color: var(--ds-color-text);
+}
+.appts-calendar-week-workspace__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+@media (max-width: 1280px) {
+  .appts-calendar-week-workspace__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (max-width: 860px) {
+  .appts-calendar-week-workspace__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.appts-calendar-week-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.38rem;
+  padding: 0.5rem;
+  border-radius: var(--ds-radius-lg);
+  border: 1px solid var(--ds-surface-border-subtle);
+  background: var(--ds-surface-canvas);
+}
+.appts-calendar-week-card--selected {
+  border-color: color-mix(in srgb, var(--ds-color-accent) 58%, var(--ds-surface-border-subtle));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ds-color-accent) 20%, transparent);
+}
+.appts-calendar-week-card--today:not(.appts-calendar-week-card--selected) {
+  background: color-mix(in srgb, var(--ds-color-accent-muted) 66%, var(--ds-surface-canvas));
+}
+.appts-calendar-week-card--closed {
+  opacity: 0.82;
+}
+.appts-calendar-week-card__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+.appts-calendar-week-card__weekday {
+  margin: 0;
+  font-size: 0.7rem;
+  color: var(--ds-color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: var(--ds-font-semibold);
+}
+.appts-calendar-week-card__date {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--ds-color-text);
+  font-weight: var(--ds-font-semibold);
+}
+.appts-calendar-week-card__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.appts-calendar-week-card__metric {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--ds-color-text-secondary);
+}
+.appts-calendar-week-card__tag {
+  align-self: flex-start;
+  margin-top: 0.2rem;
+  border-radius: var(--ds-radius-pill);
+  background: color-mix(in srgb, var(--ds-color-danger) 14%, transparent);
+  color: var(--ds-color-danger-strong, var(--ds-color-danger));
+  font-size: 0.64rem;
+  padding: 0.14rem 0.4rem;
+  font-weight: var(--ds-font-semibold);
+}
+.appts-calendar-week-card__open {
+  margin-top: 0.12rem;
+  border: 1px solid var(--ds-surface-border-subtle);
+  background: transparent;
+  color: var(--ds-color-text-secondary);
+  border-radius: var(--ds-radius-md);
+  padding: 0.3rem 0.4rem;
+  font-size: 0.72rem;
+  font-weight: var(--ds-font-medium);
+  cursor: pointer;
+}
+.appts-calendar-week-card__open:hover {
+  color: var(--ds-color-text);
+  border-color: color-mix(in srgb, var(--ds-color-accent) 32%, var(--ds-surface-border-subtle));
+}
+.appts-calendar-week-card__open:focus-visible {
+  outline: 2px solid var(--ds-color-focus-ring);
+  outline-offset: 1px;
+}
+.appts-calendar-month-workspace__dow,
+.appts-calendar-month-workspace__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+.appts-calendar-month-workspace__dow {
+  gap: 0.25rem;
+  margin-bottom: 0.24rem;
+}
+.appts-calendar-month-workspace__dow span {
+  text-align: center;
+  font-size: 0.64rem;
+  text-transform: uppercase;
+  color: var(--ds-color-text-tertiary);
+  letter-spacing: 0.045em;
+  font-weight: var(--ds-font-semibold);
+}
+.appts-calendar-month-workspace__grid {
+  gap: 0.32rem;
+}
+.appts-calendar-month-workspace__cell {
+  min-height: 4rem;
+  border: 1px solid var(--ds-surface-border-subtle);
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-surface-canvas);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 0.34rem 0.38rem;
+  color: var(--ds-color-text);
+  cursor: pointer;
+}
+.appts-calendar-month-workspace__cell--pad {
+  min-height: 4rem;
+  border: 1px solid transparent;
+  background: transparent;
+}
+.appts-calendar-month-workspace__cell:hover:not(.appts-calendar-month-workspace__cell--selected) {
+  border-color: color-mix(in srgb, var(--ds-color-accent) 24%, var(--ds-surface-border-subtle));
+}
+.appts-calendar-month-workspace__cell:focus-visible {
+  outline: 2px solid var(--ds-color-focus-ring);
+  outline-offset: 1px;
+}
+.appts-calendar-month-workspace__cell--today:not(.appts-calendar-month-workspace__cell--selected) {
+  background: color-mix(in srgb, var(--ds-color-accent-muted) 64%, var(--ds-surface-canvas));
+}
+.appts-calendar-month-workspace__cell--selected {
+  border-color: var(--ds-color-accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ds-color-accent) 22%, transparent);
+}
+.appts-calendar-month-workspace__cell--closed {
+  opacity: 0.76;
+}
+.appts-calendar-month-workspace__daynum {
+  font-size: 0.82rem;
+  font-weight: var(--ds-font-semibold);
+}
+.appts-calendar-month-workspace__count {
+  font-size: 0.68rem;
+  color: var(--ds-color-text-secondary);
+}
 /* Keep the operational grid from flex-shrinking below its laid-out day height (scroll stays on #appts-calendar-grid). */
 #appts-calendar-grid.appts-calendar-grid .ops-calendar {
   flex-shrink: 0;
