@@ -9130,13 +9130,50 @@ a.appts-cal-toolbar__menu-item:hover {
   background: var(--ds-color-bg-canvas);
 }
 .calendar-week-wrap,
-.calendar-month-wrap {
+.calendar-month-wrap,
+.calendar-year-wrap {
   margin: 0;
   min-width: 0;
   min-height: 0;
   display: block;
   padding: 0.5rem 0.25rem 0.75rem;
   background: var(--ds-color-bg-canvas);
+}
+#calendar-week-planner,
+#calendar-month-planner,
+#calendar-year-planner {
+  min-height: 24rem;
+}
+.fc .fc-toolbar {
+  display: none;
+}
+.fc .fc-scrollgrid {
+  border-color: var(--ds-surface-border-subtle);
+}
+.fc .fc-col-header-cell-cushion,
+.fc .fc-daygrid-day-number {
+  color: var(--ds-color-text);
+  font-weight: var(--ds-font-medium);
+  text-decoration: none;
+}
+.fc .fc-daygrid-day.fc-day-today {
+  background: color-mix(in srgb, var(--ds-color-accent-muted) 64%, transparent);
+}
+.fc .fc-event.appts-fc-event-appt {
+  background: color-mix(in srgb, var(--ds-color-accent) 24%, transparent);
+  border-color: color-mix(in srgb, var(--ds-color-accent) 48%, transparent);
+  color: var(--ds-color-text);
+}
+.fc .fc-event.appts-fc-event-blocked {
+  background: color-mix(in srgb, var(--ds-color-warning, #f59e0b) 22%, transparent);
+  border-color: color-mix(in srgb, var(--ds-color-warning, #f59e0b) 38%, transparent);
+  color: var(--ds-color-text);
+}
+.fc .appts-fc-bg-closed {
+  background: color-mix(in srgb, var(--ds-color-danger) 16%, transparent);
+}
+.fc .appts-fc-bg-selected {
+  background: color-mix(in srgb, var(--ds-color-accent) 14%, transparent);
 }
 .appts-calendar-view-mode {
   display: inline-flex;
