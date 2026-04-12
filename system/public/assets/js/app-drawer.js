@@ -430,8 +430,18 @@
     const ac = new AbortController();
     const tid = bindAbortDeadline(ac, DRAWER_FETCH_TIMEOUT_MS);
     try {
-      const separator = url.includes('?') ? '&' : '?';
-      const res = await fetch(url + separator + 'drawer=1', {
+      let fetchPath = url;
+      try {
+        const u = new URL(url, window.location.href);
+        if (!u.searchParams.has('drawer')) {
+          u.searchParams.set('drawer', '1');
+        }
+        fetchPath = u.pathname + u.search;
+      } catch (_) {
+        const separator = url.includes('?') ? '&' : '?';
+        fetchPath = url.includes('drawer=') ? url : url + separator + 'drawer=1';
+      }
+      const res = await fetch(fetchPath, {
         headers: {
           'X-App-Drawer': '1',
           'X-Requested-With': 'XMLHttpRequest',
@@ -519,6 +529,9 @@
       return false;
     }
     state.activeUrl = url;
+    /* Calendar day view pins `.ops-slot-preview` to `position:fixed` on `document.body`; without a matching
+       `mouseleave`, it can stay visible after a slot click (lane handler uses `stopPropagation`). */
+    window.dispatchEvent(new CustomEvent('app:before-drawer-open'));
     const skipEnter =
       !drawerEl.hidden && drawerEl.classList.contains('is-open');
     openShell({ skipEnterAnimation: skipEnter });
@@ -749,9 +762,10 @@
       source: form.querySelector('[data-client-detail="source"]'),
     };
 
-    if (!branchEl || !clientEl || !serviceEl || !dateEl || !staffEl || !startEl || !slotsWrap || !statusHintEl || !loadBtn) {
+    if (!branchEl || !clientEl || !serviceEl || !dateEl || !staffEl || !startEl) {
       return;
     }
+    const canLoadAlternateSlots = !!(slotsWrap && statusHintEl && loadBtn);
 
     // ── Staff-scoped category-first data ────────────────────────────────────
     // staffCatalog[categoryKey] = { id, name, services: [{id, name, duration_minutes, description}] }
@@ -1083,6 +1097,9 @@
     };
 
     async function loadSlots() {
+      if (!canLoadAlternateSlots) {
+        return;
+      }
       const serviceId = serviceEl.value;
       const date = dateEl.value;
       if (!serviceId || !date) {
@@ -1157,7 +1174,9 @@
       }
     }
 
-    loadBtn.addEventListener('click', loadSlots);
+    if (loadBtn) {
+      loadBtn.addEventListener('click', loadSlots);
+    }
     if (clientSearchEl) {
       clientSearchEl.addEventListener('input', filterClientOptions);
       clientSearchEl.addEventListener('focus', filterClientOptions);
@@ -1210,7 +1229,9 @@
     form.addEventListener('submit', (event) => {
       if (!startEl.value) {
         event.preventDefault();
-        statusHintEl.textContent = 'Select or keep a start slot first.';
+        if (statusHintEl) {
+          statusHintEl.textContent = 'Select or keep a start slot first.';
+        }
       }
     });
     [serviceEl, dateEl, staffEl, branchEl, roomEl].forEach((el) => {
@@ -1218,6 +1239,9 @@
         return;
       }
       el.addEventListener('change', () => {
+        if (!canLoadAlternateSlots) {
+          return;
+        }
         statusHintEl.textContent = '';
         slotsWrap.innerHTML = '<span class="hint">Load slots to refresh availability.</span>';
       });

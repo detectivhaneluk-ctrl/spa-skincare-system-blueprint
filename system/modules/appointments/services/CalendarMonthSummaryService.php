@@ -44,7 +44,7 @@ final class CalendarMonthSummaryService
         return [
             'week_summary_contract' => [
                 'name' => 'spa.calendar_week_summary',
-                'version' => 1,
+                'version' => 2,
             ],
         ];
     }
@@ -108,6 +108,7 @@ final class CalendarMonthSummaryService
         }
 
         $days = $this->buildDayIntelRows($branchId, $dates, $selectedDate, $todayDate, true);
+        $days = $this->attachWeekHourlyLoad($days, $branchId);
         $selectedMeta = $this->pickSelectedMeta($days, $selectedDate);
 
         try {
@@ -224,6 +225,19 @@ final class CalendarMonthSummaryService
                 $busyLevel = 'steady';
             }
 
+            $trackStart = 8;
+            $trackEndEx = 21;
+            if (!empty($h['branch_hours_available']) && !empty($h['open_time']) && is_string($h['open_time']) && preg_match('/^(\d{1,2})/', $h['open_time'], $om)) {
+                $trackStart = max(0, min(23, (int) $om[1]));
+            }
+            if (!empty($h['branch_hours_available']) && !empty($h['close_time']) && is_string($h['close_time']) && preg_match('/^(\d{1,2})/', $h['close_time'], $cm)) {
+                $trackEndEx = max($trackStart + 1, min(24, (int) $cm[1]));
+            }
+            if ($trackStart >= $trackEndEx) {
+                $trackStart = 8;
+                $trackEndEx = 21;
+            }
+
             $days[] = [
                 'date' => $d,
                 'in_visible_month' => $inScope,
@@ -237,10 +251,91 @@ final class CalendarMonthSummaryService
                 'blocked_slot_count' => $blockedCount,
                 'has_blocked' => $blockedCount > 0,
                 'busy_level' => $busyLevel,
+                'track_hour_start' => $trackStart,
+                'track_hour_end_exclusive' => $trackEndEx,
             ];
         }
 
         return $days;
+    }
+
+    /**
+     * Adds per-day hourly load arrays for week overview (24 buckets per day).
+     *
+     * @param list<array<string, mixed>> $days
+     * @return list<array<string, mixed>>
+     */
+    private function attachWeekHourlyLoad(array $days, int $branchId): array
+    {
+        if ($days === []) {
+            return $days;
+        }
+        $first = (string) ($days[0]['date'] ?? '');
+        $last = (string) ($days[count($days) - 1]['date'] ?? '');
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $first) !== 1 || preg_match('/^\d{4}-\d{2}-\d{2}$/', $last) !== 1) {
+            return $days;
+        }
+
+        $apptByDay = $this->availability->hourAppointmentOverlapCountsByDayInRange($branchId, $first, $last);
+        $blockedRows = $this->blockedSlotRepo->listTimeRowsInDateRange($first, $last, $branchId);
+
+        $blockedByDay = [];
+        foreach ($days as $row) {
+            $d = (string) ($row['date'] ?? '');
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) === 1) {
+                $blockedByDay[$d] = array_fill(0, 24, 0);
+            }
+        }
+
+        foreach ($blockedRows as $br) {
+            $d = (string) ($br['block_date'] ?? '');
+            if (!isset($blockedByDay[$d])) {
+                continue;
+            }
+            $stRaw = substr((string) ($br['start_time'] ?? '00:00:00'), 0, 8);
+            $enRaw = substr((string) ($br['end_time'] ?? '23:59:59'), 0, 8);
+            try {
+                $blockStart = new \DateTimeImmutable($d . ' ' . $stRaw);
+                $blockEnd = new \DateTimeImmutable($d . ' ' . $enRaw);
+            } catch (\Throwable) {
+                continue;
+            }
+            $dayStart = new \DateTimeImmutable($d . ' 00:00:00');
+            $dayEndEx = $dayStart->modify('+1 day');
+            if ($blockEnd <= $blockStart) {
+                $blockEnd = $blockStart->modify('+1 hour');
+            }
+            $clipStart = $blockStart > $dayStart ? $blockStart : $dayStart;
+            $clipEnd = $blockEnd < $dayEndEx ? $blockEnd : $dayEndEx;
+            if ($clipEnd <= $clipStart) {
+                continue;
+            }
+            for ($h = 0; $h < 24; $h++) {
+                $slotStart = $dayStart->modify('+' . $h . ' hours');
+                $slotEnd = $slotStart->modify('+1 hour');
+                if ($clipEnd > $slotStart && $clipStart < $slotEnd) {
+                    $blockedByDay[$d][$h]++;
+                }
+            }
+        }
+
+        $out = [];
+        foreach ($days as $row) {
+            $d = (string) ($row['date'] ?? '');
+            $apptHours = isset($apptByDay[$d]) && is_array($apptByDay[$d]) ? array_map('intval', $apptByDay[$d]) : array_fill(0, 24, 0);
+            $blkHours = $blockedByDay[$d] ?? array_fill(0, 24, 0);
+            if (count($apptHours) !== 24) {
+                $apptHours = array_fill(0, 24, 0);
+            }
+            if (count($blkHours) !== 24) {
+                $blkHours = array_fill(0, 24, 0);
+            }
+            $row['hour_appointment_load'] = $apptHours;
+            $row['hour_blocked_load'] = $blkHours;
+            $out[] = $row;
+        }
+
+        return $out;
     }
 
     /**

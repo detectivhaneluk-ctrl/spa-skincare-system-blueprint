@@ -150,7 +150,7 @@ final class AppointmentController
         }
         $date = $this->queryDateOrNull();
         $clients = $this->clientList->list($branchId);
-        $services = $this->serviceList->list($branchId);
+        $services = $this->listBookableServices($branchId);
         $staff = $this->staffList->list($branchId);
         $rooms = $this->roomList->list($branchId);
         $branches = $this->getBranches();
@@ -1646,19 +1646,10 @@ final class AppointmentController
         $flash = flash();
         $csrf = Application::container()->get(\Core\Auth\SessionAuth::class)->csrfToken();
         $workspace = $this->workspaceContext('calendar', $branchId, $date);
+        $appointmentSettings = $this->settings->getAppointmentSettings($branchId);
         $branchTimezone = \Core\App\ApplicationTimezone::getAppliedIdentifier() ?? 'UTC';
-        $calendarWeekSummaryBootstrap = null;
         $calendarMonthSummaryBootstrap = null;
         if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $date, $md) === 1) {
-            try {
-                $calendarWeekSummaryBootstrap = $this->calendarMonthSummary->buildWeekPayload(
-                    $branchId,
-                    $date,
-                    date('Y-m-d')
-                );
-            } catch (\Throwable) {
-                $calendarWeekSummaryBootstrap = null;
-            }
             try {
                 $calendarMonthSummaryBootstrap = $this->calendarMonthSummary->buildPayload(
                     $branchId,
@@ -2172,7 +2163,7 @@ final class AppointmentController
             $this->respondJson(['success' => false, 'error' => ['message' => $e->getMessage()]], 422);
         }
 
-        $allServices = $this->serviceList->list($branchId);
+        $allServices = $this->listBookableServices($branchId);
 
         // Resolve which service IDs the staff member is directly assigned to (service_staff pivot).
         $serviceRepo = Application::container()->get(\Modules\ServicesResources\Repositories\ServiceRepository::class);
@@ -2470,7 +2461,7 @@ final class AppointmentController
     {
         $branchId = $data['branch_id'] ?? null;
         $clients = $this->clientList->list($branchId);
-        $services = $this->serviceList->list($branchId);
+        $services = $this->listBookableServices($branchId);
         $staff = $this->staffList->list($branchId);
         $rooms = $this->roomList->list($branchId);
         $branches = $this->getBranches();
@@ -2512,6 +2503,32 @@ final class AppointmentController
         }
         require base_path('modules/appointments/views/edit.php');
         exit;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function listBookableServices(?int $branchId): array
+    {
+        $rows = $this->serviceList->list($branchId);
+        $branchScope = $branchId !== null && (int) $branchId > 0 ? (int) $branchId : null;
+        $bookable = [];
+        foreach ($rows as $row) {
+            $serviceId = (int) ($row['id'] ?? 0);
+            if ($serviceId <= 0) {
+                continue;
+            }
+            $active = $this->availability->getActiveServiceForScope($serviceId, $branchScope);
+            if ($active === null) {
+                continue;
+            }
+            if ((int) ($active['duration_minutes'] ?? 0) <= 0) {
+                continue;
+            }
+            $bookable[] = $row;
+        }
+
+        return $bookable;
     }
 
     /**

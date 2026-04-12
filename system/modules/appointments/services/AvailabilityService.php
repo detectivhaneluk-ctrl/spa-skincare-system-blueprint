@@ -787,6 +787,88 @@ final class AvailabilityService
     }
 
     /**
+     * Per calendar day, 24 hourly buckets: count of appointments overlapping each hour window [H:00, H+1:00).
+     * Same overlap rule as {@see countOverlappingAppointmentsPerDayInRange}.
+     *
+     * @return array<string, list<int>> YYYY-MM-DD => list of 24 non-negative integers
+     */
+    public function hourAppointmentOverlapCountsByDayInRange(int $branchId, string $rangeFirst, string $rangeLast): array
+    {
+        if ($branchId <= 0) {
+            return [];
+        }
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $rangeFirst) !== 1 || preg_match('/^\d{4}-\d{2}-\d{2}$/', $rangeLast) !== 1) {
+            return [];
+        }
+
+        $rangeStart = $rangeFirst . ' 00:00:00';
+        $rangeEnd = $rangeLast . ' 23:59:59';
+        $sql = 'SELECT a.start_at, a.end_at
+                FROM appointments a
+                WHERE a.deleted_at IS NULL
+                  AND a.branch_id = ?
+                  AND a.staff_id > 0
+                  AND a.start_at <= ?
+                  AND a.end_at >= ?';
+        $rows = $this->db->forRead()->fetchAll($sql, [$branchId, $rangeEnd, $rangeStart]);
+
+        $out = [];
+        try {
+            $cur = new \DateTimeImmutable($rangeFirst . ' 00:00:00');
+            $end = new \DateTimeImmutable($rangeLast . ' 00:00:00');
+            while ($cur <= $end) {
+                $out[$cur->format('Y-m-d')] = array_fill(0, 24, 0);
+                $cur = $cur->modify('+1 day');
+            }
+        } catch (\Throwable) {
+            return [];
+        }
+
+        if ($out === []) {
+            return [];
+        }
+
+        foreach ($rows as $row) {
+            $startAt = (string) ($row['start_at'] ?? '');
+            $endAt = (string) ($row['end_at'] ?? '');
+            if ($startAt === '' || $endAt === '') {
+                continue;
+            }
+            try {
+                $apptStart = new \DateTimeImmutable($startAt);
+                $apptEnd = new \DateTimeImmutable($endAt);
+            } catch (\Throwable) {
+                continue;
+            }
+            foreach (array_keys($out) as $d) {
+                try {
+                    $dayStart = new \DateTimeImmutable($d . ' 00:00:00');
+                    $dayEndEx = $dayStart->modify('+1 day');
+                } catch (\Throwable) {
+                    continue;
+                }
+                if ($apptEnd <= $dayStart || $apptStart >= $dayEndEx) {
+                    continue;
+                }
+                $clipStart = $apptStart > $dayStart ? $apptStart : $dayStart;
+                $clipEnd = $apptEnd < $dayEndEx ? $apptEnd : $dayEndEx;
+                if ($clipEnd <= $clipStart) {
+                    continue;
+                }
+                for ($h = 0; $h < 24; $h++) {
+                    $slotStart = $dayStart->modify('+' . $h . ' hours');
+                    $slotEnd = $slotStart->modify('+1 hour');
+                    if ($clipEnd > $slotStart && $clipStart < $slotEnd) {
+                        $out[$d][$h]++;
+                    }
+                }
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * Invalidate the day-calendar display cache for a given date and branch after any appointment mutation.
      * This is a best-effort call — cache errors are swallowed; the 30s TTL acts as a safety net.
      * IMPORTANT: this invalidates the DISPLAY cache only. The booking write-path conflict check

@@ -30,6 +30,16 @@
     return !!(d && !d.hasAttribute('hidden'));
   }
 
+  function showBlockedFullscreenFeedback(message) {
+    if (typeof window.showCalendarWorkspaceAlert === 'function') {
+      window.showCalendarWorkspaceAlert(message);
+      return;
+    }
+    if (btn) {
+      btn.title = message;
+    }
+  }
+
   /** Swap button icon + label to reflect current state. */
   function syncButton(on) {
     if (!btn) { return; }
@@ -77,7 +87,11 @@
       if (immersive) {
         setImmersive(false);
       } else {
-        if (!isDrawerOpen()) { setImmersive(true); }
+        if (!isDrawerOpen()) {
+          setImmersive(true);
+        } else {
+          showBlockedFullscreenFeedback('Close the appointment drawer before entering full screen.');
+        }
       }
     });
   }

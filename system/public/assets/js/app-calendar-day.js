@@ -401,6 +401,7 @@
   let monthSummaryErrorText = '';
   let twoMonthsSummaryErrorText = '';
   let twoMonthsSummarySeq = 0;
+  let latestWaitlistUrl = '/appointments/waitlist';
   /** Frees the browser tab loading indicator if the server never responds. */
   const CALENDAR_FETCH_TIMEOUT_MS = 25000;
   function bindAbortDeadline(abortController, ms) {
@@ -518,6 +519,7 @@
     if (el._prefsDismissTimer) clearTimeout(el._prefsDismissTimer);
     el._prefsDismissTimer = setTimeout(clearCalendarPrefsAlert, 10000);
   }
+  window.showCalendarWorkspaceAlert = showCalendarPrefsAlert;
 
   function refreshSummaryRailVisible() {
     if (!summaryRailEl) return;
@@ -595,9 +597,11 @@
   }
 
   function syncCalendarViewModeChrome() {
+    const isDayMode = calendarViewMode === 'day';
     if (viewModeEl) {
       viewModeEl.value = calendarViewMode;
     }
+    syncCalendarToolbarDateLabel();
     calendarViewModeButtons.forEach((btn) => {
       const isActive = String(btn.dataset.calendarViewMode || '') === calendarViewMode;
       btn.classList.toggle('appts-calendar-view-mode__btn--active', isActive);
@@ -612,13 +616,31 @@
     }
     if (calendarGridEl) {
       calendarGridEl.dataset.calendarViewMode = calendarViewMode;
+      const dayOverlayEls = calendarGridEl.querySelectorAll('.ops-calendar-head-overlay');
+      dayOverlayEls.forEach((overlayEl) => {
+        if (!(overlayEl instanceof HTMLElement)) return;
+        overlayEl.hidden = !isDayMode;
+      });
     }
+    if (calendarWorkspaceRoot instanceof HTMLElement) {
+      calendarWorkspaceRoot.dataset.calendarViewMode = calendarViewMode;
+    }
+    document.querySelectorAll('[data-calendar-day-only]').forEach((el) => {
+      if (!(el instanceof HTMLElement)) return;
+      el.hidden = !isDayMode;
+    });
     if (calendarHorizontalNavControls instanceof HTMLElement && calendarViewMode !== 'day') {
       calendarHorizontalNavControls.hidden = true;
       calendarHorizontalNavControls.style.display = 'none';
     }
     if (calendarViewMode !== 'day') {
+      closeClipboardPanel();
+      if (clipboardSidecarEl instanceof HTMLElement) {
+        clipboardSidecarEl.hidden = true;
+      }
       destroyNowLine();
+    } else if (clipboardSidecarEl instanceof HTMLElement) {
+      clipboardSidecarEl.hidden = false;
     }
   }
 
@@ -629,6 +651,10 @@
     const changed = calendarViewMode !== normalized;
     calendarViewMode = normalized;
     syncCalendarViewModeChrome();
+    if (changed) {
+      closeCalendarToolbarPopovers();
+      closeToolsDropdownIfOpen();
+    }
     if (shouldPushHistory && (changed || options.forceHistory === true)) {
       pushCalendarHistoryIfChanged();
     }
@@ -1475,10 +1501,11 @@
 
   function syncClipboardPanelState() {
     const hasItems = hasClipboardItems();
+    const isDayMode = calendarViewMode === 'day';
     if (!hasItems) {
       clipboardPanelOpen = false;
     }
-    const isOpen = !!clipboardPanelOpen && hasItems;
+    const isOpen = !!clipboardPanelOpen && hasItems && isDayMode;
     if (calendarWorkspaceRoot) {
       calendarWorkspaceRoot.classList.toggle('is-clipboard-panel-open', isOpen);
     }
@@ -1489,7 +1516,7 @@
        * when the first clipboard item appears. The floating toggle is hidden via CSS; the drawer
        * still opens programmatically when items exist.
        */
-      clipboardSidecarEl.hidden = false;
+      clipboardSidecarEl.hidden = !isDayMode;
     }
     if (clipboardSidePanelEl) {
       clipboardSidePanelEl.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
@@ -1504,6 +1531,7 @@
         'aria-label',
         isOpen ? 'Close clipboard' : ('Clipboard' + (hasItems ? ' (' + String(getClipboard().length) + ')' : '')),
       );
+      clipboardToolbarBtn.hidden = !isDayMode || !hasItems;
     }
     syncClipboardPanelLayout();
     window.setTimeout(syncClipboardPanelLayout, CLIPBOARD_PANEL_TRANSITION_MS + 40);
@@ -1663,6 +1691,54 @@
     return '';
   }
 
+  function getLanePastMaskMetrics(slotDate, vm) {
+    if (ALLOW_PAST_BOOKING) {
+      return null;
+    }
+    if (!vm || !Number.isFinite(vm.start) || !Number.isFinite(vm.end)) {
+      return null;
+    }
+    const daySerial = isoDateToDaySerial(slotDate);
+    const branchNow = getBranchNow();
+    const nowDaySerial = isoDateToDaySerial(branchNow.dateStr);
+    if (daySerial === null || nowDaySerial === null) {
+      return null;
+    }
+    const fullLaneHeight = Math.max(0, (vm.end - vm.start) * getPixelsPerMinute());
+    if (fullLaneHeight <= 0) {
+      return null;
+    }
+    if (daySerial < nowDaySerial) {
+      return { top: GRID_TOP_INSET_PX, height: fullLaneHeight };
+    }
+    if (daySerial > nowDaySerial) {
+      return null;
+    }
+    const cutoffMinutes = Math.min(vm.end, Math.max(vm.start, branchNow.minutes + MIN_LEAD_MINUTES));
+    if (cutoffMinutes <= vm.start) {
+      return null;
+    }
+    return {
+      top: GRID_TOP_INSET_PX,
+      height: Math.max(0, (cutoffMinutes - vm.start) * getPixelsPerMinute()),
+    };
+  }
+
+  function decorateSlotPreviewState(previewEl, labelEl, snappedTime, violationText) {
+    const blocked = typeof violationText === 'string' && violationText.trim() !== '';
+    if (previewEl instanceof HTMLElement) {
+      previewEl.classList.toggle('is-disabled', blocked);
+    }
+    if (labelEl instanceof HTMLElement) {
+      labelEl.textContent = blocked ? ('Unavailable · ' + snappedTime) : snappedTime;
+      if (blocked) {
+        labelEl.setAttribute('title', violationText);
+      } else {
+        labelEl.removeAttribute('title');
+      }
+    }
+  }
+
   function countAppointmentsInPayload(payload) {
     const g = payload && payload.appointments_by_staff;
     if (!g || typeof g !== 'object') return 0;
@@ -1746,6 +1822,19 @@
 
   function ymFirstIso(y, m) {
     return y + '-' + String(m).padStart(2, '0') + '-01';
+  }
+
+  function isoToUtcDate(iso) {
+    const s = String(iso || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+    return new Date(Date.UTC(Number(s.slice(0, 4)), Number(s.slice(5, 7)) - 1, Number(s.slice(8, 10))));
+  }
+
+  function weekRangeFromIso(iso) {
+    const s = String(iso || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+    const startIso = shiftIsoDate(s, -mondayOffsetFromIso(s));
+    return { startIso, endIso: shiftIsoDate(startIso, 6) };
   }
 
   function clearMonthGridDecorations() {
@@ -1996,7 +2085,8 @@
   function formatIsoDateForToolbarDisplay(iso) {
     const s = String(iso || '').trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '';
-    const utcDate = new Date(Date.UTC(Number(s.slice(0, 4)), Number(s.slice(5, 7)) - 1, Number(s.slice(8, 10))));
+    const utcDate = isoToUtcDate(s);
+    if (!(utcDate instanceof Date) || Number.isNaN(utcDate.getTime())) return '';
     return utcDate.toLocaleDateString('en-US', {
       weekday: 'short',
       month: 'short',
@@ -2006,9 +2096,73 @@
     });
   }
 
+  function formatIsoMonthForToolbarDisplay(iso) {
+    const utcDate = isoToUtcDate(iso);
+    if (!(utcDate instanceof Date) || Number.isNaN(utcDate.getTime())) return '';
+    return utcDate.toLocaleDateString('en-US', {
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'UTC',
+    });
+  }
+
+  function formatIsoYearForToolbarDisplay(iso) {
+    const utcDate = isoToUtcDate(iso);
+    if (!(utcDate instanceof Date) || Number.isNaN(utcDate.getTime())) return '';
+    return utcDate.toLocaleDateString('en-US', {
+      year: 'numeric',
+      timeZone: 'UTC',
+    });
+  }
+
+  function formatIsoWeekForToolbarDisplay(iso) {
+    const range = weekRangeFromIso(iso);
+    if (!range) return '';
+    const start = isoToUtcDate(range.startIso);
+    if (!(start instanceof Date)) return '';
+    const opts = { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' };
+    return 'Week of ' + start.toLocaleDateString('en-US', opts);
+  }
+
+  function formatCalendarToolbarPeriodLabel(iso) {
+    if (calendarViewMode === 'week') return formatIsoWeekForToolbarDisplay(iso);
+    if (calendarViewMode === 'month') return formatIsoMonthForToolbarDisplay(iso);
+    if (calendarViewMode === 'year') return formatIsoYearForToolbarDisplay(iso);
+    return formatIsoDateForToolbarDisplay(iso);
+  }
+
+  function syncCalendarToolbarPeriodNavLabels() {
+    const periodWord = calendarViewMode === 'week'
+      ? 'week'
+      : calendarViewMode === 'month'
+        ? 'month'
+        : calendarViewMode === 'year'
+          ? 'year'
+          : 'day';
+    if (calendarToolbarPrevDay) {
+      calendarToolbarPrevDay.setAttribute('aria-label', 'Previous ' + periodWord);
+      calendarToolbarPrevDay.title = 'Previous ' + periodWord;
+    }
+    if (calendarToolbarNextDay) {
+      calendarToolbarNextDay.setAttribute('aria-label', 'Next ' + periodWord);
+      calendarToolbarNextDay.title = 'Next ' + periodWord;
+    }
+  }
+
   function syncCalendarToolbarDateLabel() {
     if (!calendarToolbarDateLabel || !dateEl) return;
-    calendarToolbarDateLabel.textContent = formatIsoDateForToolbarDisplay(dateEl.value);
+    calendarToolbarDateLabel.textContent = formatCalendarToolbarPeriodLabel(dateEl.value);
+    if (calendarToolbarDateFocus) {
+      const horizonLabel = calendarViewMode === 'week'
+        ? 'Open week date panel'
+        : calendarViewMode === 'month'
+          ? 'Open month date panel'
+          : calendarViewMode === 'year'
+            ? 'Open year date panel'
+            : 'Open calendar panel';
+      calendarToolbarDateFocus.setAttribute('aria-label', horizonLabel);
+    }
+    syncCalendarToolbarPeriodNavLabels();
   }
 
   function formatIsoWeekdayLabel(iso) {
@@ -2063,6 +2217,462 @@
     if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '';
     const d = new Date(Date.UTC(Number(s.slice(0, 4)), Number(s.slice(5, 7)) - 1, Number(s.slice(8, 10))));
     return d.toLocaleDateString('en-US', Object.assign({ timeZone: 'UTC' }, opts || {}));
+  }
+
+  async function fetchWeekSummaryPayload() {
+    const params = new URLSearchParams();
+    params.set('date', String(dateEl && dateEl.value ? dateEl.value : '').trim());
+    if (branchEl && branchEl.value) params.set('branch_id', branchEl.value);
+    const res = await fetch('/calendar/week-summary?' + params.toString(), {
+      headers: { Accept: 'application/json' },
+    });
+    const payload = await res.json().catch(() => null);
+    if (!res.ok || !payload || !payload.week_summary_contract || !Array.isArray(payload.days)) {
+      throw new Error('Failed to load weekly summary.');
+    }
+    return payload;
+  }
+
+  function openCalendarDayFromWorkspace(iso) {
+    const nextIso = String(iso || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(nextIso) || !dateEl) return;
+    setCalendarViewMode('day', { pushHistory: false, load: false });
+    if (dateEl.value === nextIso) {
+      syncCalendarToolbarDateLabel();
+      renderSmartCard();
+      pushCalendarHistoryIfChanged();
+      void loadActiveWorkspace();
+      return;
+    }
+    pickDateAndReload(nextIso);
+  }
+
+  function summarizeWeekPayloadDays(days) {
+    return days.reduce((acc, row) => {
+      const appts = Number(row && row.appointment_count ? row.appointment_count : 0);
+      const blocked = Number(row && row.blocked_slot_count ? row.blocked_slot_count : 0);
+      acc.totalAppts += appts;
+      acc.closedDays += row && row.branch_closed ? 1 : 0;
+      if (row && row.busy_level === 'heavy') acc.heavyDays += 1;
+      if (row && row.busy_level === 'steady') acc.steadyDays += 1;
+      if (blocked > 0) acc.blockedDays += 1;
+      return acc;
+    }, { totalAppts: 0, closedDays: 0, heavyDays: 0, steadyDays: 0, blockedDays: 0 });
+  }
+
+  function summarizeMonthPayloadDays(days) {
+    return days.reduce((acc, row) => {
+      const appts = Number(row && row.appointment_count ? row.appointment_count : 0);
+      const blocked = Number(row && row.blocked_slot_count ? row.blocked_slot_count : 0);
+      acc.totalAppts += appts;
+      acc.totalBlocked += blocked;
+      if (row && row.branch_closed) acc.closedDays += 1;
+      if (row && row.busy_level === 'heavy') acc.heavyDays += 1;
+      if (row && row.busy_level === 'steady') acc.steadyDays += 1;
+      return acc;
+    }, { totalAppts: 0, totalBlocked: 0, closedDays: 0, heavyDays: 0, steadyDays: 0 });
+  }
+
+  function describeLoadSignal(row) {
+    if (row && row.branch_closed) {
+      return { tone: 'closed', label: 'Closed', detail: 'No bookable hours', ratio: 0 };
+    }
+    const apptCount = Number(row && row.appointment_count ? row.appointment_count : 0);
+    const blockedCount = Number(row && row.blocked_slot_count ? row.blocked_slot_count : 0);
+    const apptDetail = apptCount === 1 ? '1 appointment' : apptCount + ' appointments';
+    if (row && row.busy_level === 'heavy') {
+      return { tone: 'heavy', label: 'Heavy', detail: apptDetail, ratio: 1 };
+    }
+    if (row && row.busy_level === 'steady') {
+      return { tone: 'steady', label: 'Steady', detail: apptDetail, ratio: 0.64 };
+    }
+    if (apptCount > 0 || blockedCount > 0) {
+      return { tone: 'quiet', label: 'Light', detail: apptDetail, ratio: 0.34 };
+    }
+    return { tone: 'open', label: 'Open', detail: 'No appointments yet', ratio: 0.14 };
+  }
+
+  function weekHourLoadMaxAcrossDays(days, key) {
+    let m = 0;
+    if (!Array.isArray(days)) return 0;
+    days.forEach((row) => {
+      const a = row && row[key];
+      if (!Array.isArray(a) || a.length !== 24) return;
+      a.forEach((v) => {
+        const n = Number(v);
+        if (Number.isFinite(n) && n > m) m = n;
+      });
+    });
+    return m;
+  }
+
+  function formatWeekRollupLine(summary) {
+    const ap = summary.totalAppts === 1 ? '1 appointment' : summary.totalAppts + ' appointments';
+    const hv = summary.heavyDays;
+    const heavy = hv === 1 ? '1 heavy day' : hv + ' heavy days';
+    const cv = summary.closedDays;
+    const closed = cv === 1 ? '1 closed day' : cv + ' closed days';
+    return ap + ' · ' + heavy + ' · ' + closed;
+  }
+
+  function formatMonthRollupLine(summary) {
+    const parts = [];
+    parts.push(summary.totalAppts === 1 ? '1 appointment' : summary.totalAppts + ' appointments');
+    const blk = Number(summary.totalBlocked || 0);
+    if (blk > 0) {
+      parts.push(blk === 1 ? '1 blocked slot' : blk + ' blocked slots');
+    }
+    const hv = summary.heavyDays;
+    if (hv > 0) {
+      parts.push(hv === 1 ? '1 heavy day' : hv + ' heavy days');
+    }
+    const cv = summary.closedDays;
+    if (cv > 0) {
+      parts.push(cv === 1 ? '1 closed day' : cv + ' closed days');
+    }
+    return parts.join(' · ');
+  }
+
+  function mergePositiveHourRuns(values) {
+    const runs = [];
+    const arr = Array.isArray(values) ? values : [];
+    let i = 0;
+    while (i < 24) {
+      const v = Math.max(0, Number(arr[i]) || 0);
+      if (v <= 0) {
+        i += 1;
+        continue;
+      }
+      const start = i;
+      let peak = v;
+      i += 1;
+      while (i < 24) {
+        const nv = Math.max(0, Number(arr[i]) || 0);
+        if (nv <= 0) break;
+        peak = Math.max(peak, nv);
+        i += 1;
+      }
+      runs.push({ start, endExclusive: i, peak });
+    }
+    return runs;
+  }
+
+  function hourRangeTooltip(startHour, endExclusive) {
+    const startLabel = String(startHour).padStart(2, '0') + ':00';
+    const endLabel = endExclusive >= 24 ? '24:00' : String(endExclusive).padStart(2, '0') + ':00';
+    return startLabel + '–' + endLabel;
+  }
+
+  function appendWeekHourHeatmap(card, row, maxAppt, maxBlk) {
+    const ap = row && row.hour_appointment_load;
+    const bl = row && row.hour_blocked_load;
+    if (!Array.isArray(ap) || ap.length !== 24) return;
+    const blk = Array.isArray(bl) && bl.length === 24 ? bl : new Array(24).fill(0);
+    const ma = Math.max(1, maxAppt);
+    const mb = Math.max(1, maxBlk);
+    let ts = Number(row && row.track_hour_start);
+    let te = Number(row && row.track_hour_end_exclusive);
+    if (!Number.isFinite(ts) || ts < 0 || ts > 23) ts = 8;
+    if (!Number.isFinite(te) || te < 1 || te > 24) te = 21;
+    if (te <= ts) {
+      ts = 8;
+      te = 21;
+    }
+
+    const wrap = document.createElement('div');
+    wrap.className = 'appts-calendar-week-card__hourmap';
+    wrap.setAttribute('aria-hidden', 'true');
+
+    const track = document.createElement('div');
+    track.className = 'appts-calendar-week-card__hourtrack';
+    const band = document.createElement('div');
+    band.className = 'appts-calendar-week-card__hourband';
+    band.style.left = ((ts / 24) * 100).toFixed(3) + '%';
+    band.style.width = (((te - ts) / 24) * 100).toFixed(3) + '%';
+    band.title = 'Typical hours ' + String(ts).padStart(2, '0') + ':00–' + String(te).padStart(2, '0') + ':00';
+
+    const layer = document.createElement('div');
+    layer.className = 'appts-calendar-week-card__hoursegwrap';
+
+    mergePositiveHourRuns(blk).forEach((run) => {
+      const el = document.createElement('span');
+      el.className = 'appts-calendar-week-card__hoursegment appts-calendar-week-card__hoursegment--blocked';
+      el.style.left = ((run.start / 24) * 100).toFixed(3) + '%';
+      el.style.width = (((run.endExclusive - run.start) / 24) * 100).toFixed(3) + '%';
+      const hPct = 22 + Math.round((run.peak / mb) * 38);
+      el.style.height = Math.min(58, Math.max(18, hPct)) + '%';
+      el.title = hourRangeTooltip(run.start, run.endExclusive) + ' · blocked load';
+      layer.appendChild(el);
+    });
+
+    mergePositiveHourRuns(ap).forEach((run) => {
+      const el = document.createElement('span');
+      el.className = 'appts-calendar-week-card__hoursegment appts-calendar-week-card__hoursegment--appt';
+      el.style.left = ((run.start / 24) * 100).toFixed(3) + '%';
+      el.style.width = (((run.endExclusive - run.start) / 24) * 100).toFixed(3) + '%';
+      const hPct = 38 + Math.round((run.peak / ma) * 52);
+      el.style.height = Math.min(96, Math.max(32, hPct)) + '%';
+      el.title =
+        hourRangeTooltip(run.start, run.endExclusive) +
+        ' · overlap peak ' +
+        String(run.peak) +
+        (run.peak === 1 ? ' appt' : ' appts');
+      layer.appendChild(el);
+    });
+
+    track.appendChild(band);
+    track.appendChild(layer);
+    wrap.appendChild(track);
+    card.appendChild(wrap);
+  }
+
+  function renderWeekWorkspace(payload) {
+    if (!(weekPlannerEl instanceof HTMLElement)) return;
+    const days = Array.isArray(payload && payload.days) ? payload.days : [];
+    const summary = summarizeWeekPayloadDays(days);
+    const maxApptH = weekHourLoadMaxAcrossDays(days, 'hour_appointment_load');
+    const maxBlkH = weekHourLoadMaxAcrossDays(days, 'hour_blocked_load');
+    const hasHourMap = days.some((row) => Array.isArray(row && row.hour_appointment_load) && row.hour_appointment_load.length === 24);
+    const host = document.createElement('section');
+    host.className = 'appts-calendar-week-workspace';
+
+    const head = document.createElement('header');
+    head.className = 'appts-calendar-week-workspace__head appts-calendar-week-workspace__head--stacked';
+    const intro = document.createElement('div');
+    intro.className = 'appts-calendar-workspace-intro';
+    const title = document.createElement('h3');
+    title.className = 'appts-calendar-week-workspace__title';
+    title.textContent = 'This Week';
+    const rollup = document.createElement('p');
+    rollup.className = 'appts-calendar-week-workspace__rollup';
+    rollup.textContent = formatWeekRollupLine(summary);
+    intro.appendChild(title);
+    intro.appendChild(rollup);
+    head.appendChild(intro);
+    host.appendChild(head);
+
+    const grid = document.createElement('div');
+    grid.className = 'appts-calendar-week-workspace__grid appts-calendar-week-workspace__grid--platters';
+    days.forEach((row) => {
+      const iso = String(row && row.date ? row.date : '').trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return;
+      const load = describeLoadSignal(row);
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'appts-calendar-week-card appts-calendar-week-card--busy-' + load.tone;
+      if (row && row.is_today) card.classList.add('appts-calendar-week-card--today');
+      if (row && row.branch_closed) card.classList.add('appts-calendar-week-card--closed');
+      if (iso === String(dateEl && dateEl.value ? dateEl.value : '').trim()) card.classList.add('appts-calendar-week-card--selected');
+      card.setAttribute('aria-label', 'Open ' + toUtcDateLabel(iso, { weekday: 'long', month: 'long', day: 'numeric' }) + ' day view');
+
+      const top = document.createElement('div');
+      top.className = 'appts-calendar-week-card__top';
+      
+      const dateWrap = document.createElement('div');
+      dateWrap.className = 'appts-calendar-week-card__date-wrap';
+      const weekday = document.createElement('span');
+      weekday.className = 'appts-calendar-week-card__weekday';
+      weekday.textContent = formatIsoWeekdayLabel(iso).substring(0, 3).toUpperCase();
+      const dateLabel = document.createElement('span');
+      dateLabel.className = 'appts-calendar-week-card__date';
+      dateLabel.textContent = toUtcDateLabel(iso, { day: 'numeric' });
+      dateWrap.appendChild(weekday);
+      dateWrap.appendChild(dateLabel);
+      top.appendChild(dateWrap);
+
+      const metaWrap = document.createElement('div');
+      metaWrap.className = 'appts-calendar-week-card__meta-wrap';
+      if (row.branch_closed) {
+        const closedLabel = document.createElement('span');
+        closedLabel.className = 'appts-calendar-week-card__status appts-calendar-week-card__status--closed';
+        closedLabel.textContent = 'Closed';
+        metaWrap.appendChild(closedLabel);
+      } else {
+        const apptCount = Number(row.appointment_count || 0);
+        const apptLabel = document.createElement('span');
+        apptLabel.className = 'appts-calendar-week-card__status appts-calendar-week-card__status--' + (apptCount > 0 ? 'active' : 'empty');
+        apptLabel.textContent = apptCount === 1 ? '1 appt' : apptCount + ' appts';
+        metaWrap.appendChild(apptLabel);
+      }
+      top.appendChild(metaWrap);
+      card.appendChild(top);
+
+      if (hasHourMap && !row.branch_closed) {
+        appendWeekHourHeatmap(card, row, maxApptH, maxBlkH);
+      }
+
+      card.addEventListener('click', () => {
+        openCalendarDayFromWorkspace(iso);
+      });
+      grid.appendChild(card);
+    });
+    host.appendChild(grid);
+    weekPlannerEl.innerHTML = '';
+    weekPlannerEl.appendChild(host);
+  }
+
+  async function loadWeekWorkspace() {
+    if (!(weekPlannerEl instanceof HTMLElement)) return;
+    statusEl.textContent = 'Loading weekly comparison…';
+    try {
+      const payload = await fetchWeekSummaryPayload();
+      renderWeekWorkspace(payload);
+      statusEl.textContent = '';
+      loadSidePanelData();
+    } catch (_e) {
+      weekPlannerEl.innerHTML = '<p class="calendar-empty-hint">Could not load weekly comparison.</p>';
+      statusEl.textContent = 'Could not load weekly comparison.';
+    }
+  }
+
+  function renderMonthWorkspace(payload) {
+    if (!(monthPlannerEl instanceof HTMLElement) || !payload || !payload.month_summary_contract) return;
+    const days = Array.isArray(payload.days) ? payload.days : [];
+    const summary = summarizeMonthPayloadDays(days);
+    const monthMeta = payload.month || {};
+    const year = Number(monthMeta.year || 0);
+    const month = Number(monthMeta.month || 0);
+    if (!Number.isFinite(year) || !Number.isFinite(month) || year < 1970 || month < 1 || month > 12) {
+      monthPlannerEl.innerHTML = '<p class="calendar-empty-hint">Could not render monthly overview.</p>';
+      return;
+    }
+    const selectedIso = String(dateEl && dateEl.value ? dateEl.value : '').trim();
+    const todayStr = String(payload.today_date || '').trim();
+    const host = document.createElement('section');
+    host.className = 'appts-calendar-month-workspace';
+
+    const head = document.createElement('header');
+    head.className = 'appts-calendar-month-workspace__head appts-calendar-month-workspace__head--stacked';
+    const intro = document.createElement('div');
+    intro.className = 'appts-calendar-workspace-intro';
+    const title = document.createElement('h3');
+    title.className = 'appts-calendar-month-workspace__title';
+    title.textContent = 'Month patterns';
+    const sub = document.createElement('p');
+    sub.className = 'appts-calendar-workspace-intro__sub';
+    sub.textContent = 'Scan for busy, light, and closed days. Open a day only when you need the full schedule.';
+    const rollup = document.createElement('p');
+    rollup.className = 'appts-calendar-month-workspace__rollup';
+    rollup.textContent = formatIsoMonthForToolbarDisplay(ymFirstIso(year, month)) + ' — ' + formatMonthRollupLine(summary);
+    intro.appendChild(title);
+    intro.appendChild(sub);
+    intro.appendChild(rollup);
+    head.appendChild(intro);
+    host.appendChild(head);
+
+    const dow = document.createElement('div');
+    dow.className = 'appts-calendar-month-workspace__dow';
+    ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach((label) => {
+      const span = document.createElement('span');
+      span.textContent = label;
+      dow.appendChild(span);
+    });
+    host.appendChild(dow);
+
+    const byDate = {};
+    days.forEach((row) => {
+      const iso = String(row && row.date ? row.date : '').trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) byDate[iso] = row;
+    });
+
+    const grid = document.createElement('div');
+    grid.className = 'appts-calendar-month-workspace__grid';
+    const firstIso = ymFirstIso(year, month);
+    const pad = mondayOffsetFromIso(firstIso);
+    const last = daysInMonthUtc(year, month);
+    const cells = pad + last;
+    const total = Math.ceil(cells / 7) * 7;
+    for (let i = 0; i < total; i += 1) {
+      const dayIx = i - pad + 1;
+      if (i < pad || dayIx > last) {
+        const padEl = document.createElement('div');
+        padEl.className = 'appts-calendar-month-workspace__cell appts-calendar-month-workspace__cell--pad';
+        padEl.setAttribute('aria-hidden', 'true');
+        grid.appendChild(padEl);
+        continue;
+      }
+      const iso = year + '-' + String(month).padStart(2, '0') + '-' + String(dayIx).padStart(2, '0');
+      const row = byDate[iso] || null;
+      const load = describeLoadSignal(row);
+      const cell = document.createElement('button');
+      cell.type = 'button';
+      cell.className = 'appts-calendar-month-workspace__cell appts-calendar-month-workspace__cell--busy-' + load.tone;
+      if (row && row.branch_closed) cell.classList.add('appts-calendar-month-workspace__cell--closed');
+      if (row && row.is_past) cell.classList.add('appts-calendar-month-workspace__cell--past');
+      if (row && row.is_future) cell.classList.add('appts-calendar-month-workspace__cell--future');
+      if (iso === selectedIso) cell.classList.add('appts-calendar-month-workspace__cell--selected');
+      if (iso === todayStr || (row && row.is_today)) cell.classList.add('appts-calendar-month-workspace__cell--today');
+      cell.setAttribute('aria-label', 'Open ' + toUtcDateLabel(iso, { weekday: 'long', month: 'long', day: 'numeric' }) + ' day view');
+
+      const top = document.createElement('div');
+      top.className = 'appts-calendar-month-workspace__top';
+      const dayNum = document.createElement('span');
+      dayNum.className = 'appts-calendar-month-workspace__daynum';
+      dayNum.textContent = String(dayIx);
+      top.appendChild(dayNum);
+
+      const signal = document.createElement('div');
+      signal.className = 'appts-calendar-month-workspace__signal';
+      const fill = document.createElement('span');
+      fill.className = 'appts-calendar-month-workspace__signal-fill appts-calendar-month-workspace__signal-fill--' + load.tone;
+      fill.style.width = Math.max(10, Math.round(load.ratio * 100)) + '%';
+      signal.appendChild(fill);
+
+      const bottom = document.createElement('div');
+      bottom.className = 'appts-calendar-month-workspace__bottom';
+      const apptCountM = Number(row && row.appointment_count ? row.appointment_count : 0);
+      const blockedCount = Number(row && row.blocked_slot_count ? row.blocked_slot_count : 0);
+      if (row && row.branch_closed) {
+        const count = document.createElement('p');
+        count.className = 'appts-calendar-month-workspace__count';
+        count.textContent = 'Closed';
+        bottom.appendChild(count);
+      } else if (apptCountM > 0) {
+        const count = document.createElement('p');
+        count.className = 'appts-calendar-month-workspace__count';
+        count.textContent = apptCountM === 1 ? '1 appt' : apptCountM + ' appts';
+        bottom.appendChild(count);
+      }
+      if (blockedCount > 0) {
+        const blocked = document.createElement('p');
+        blocked.className = 'appts-calendar-month-workspace__blocked';
+        blocked.textContent = blockedCount + ' blocked';
+        bottom.appendChild(blocked);
+      }
+
+      cell.appendChild(top);
+      cell.appendChild(signal);
+      cell.appendChild(bottom);
+      cell.addEventListener('click', () => {
+        openCalendarDayFromWorkspace(iso);
+      });
+      grid.appendChild(cell);
+    }
+
+    host.appendChild(grid);
+    monthPlannerEl.innerHTML = '';
+    monthPlannerEl.appendChild(host);
+  }
+
+  async function loadMonthWorkspace() {
+    if (!(monthPlannerEl instanceof HTMLElement)) return;
+    statusEl.textContent = 'Loading monthly pattern map…';
+    const vm = visibleMonthFromDateEl();
+    if (!vm) {
+      monthPlannerEl.innerHTML = '<p class="calendar-empty-hint">Could not load monthly pattern map.</p>';
+      statusEl.textContent = 'Could not load monthly pattern map.';
+      return;
+    }
+    try {
+      const { payload, error } = await fetchMonthSummaryPayloadFor(vm.y, vm.m);
+      if (error || !payload) throw new Error(error || 'could not load');
+      renderMonthWorkspace(payload);
+      statusEl.textContent = '';
+      loadSidePanelData();
+    } catch (_e) {
+      monthPlannerEl.innerHTML = '<p class="calendar-empty-hint">Could not load monthly pattern map.</p>';
+      statusEl.textContent = 'Could not load monthly pattern map.';
+    }
   }
 
   function enumerateMonthBuckets(startDate, endDate) {
@@ -2136,6 +2746,9 @@
   }
 
   function buildPlannerCalendarConfig(initialView) {
+    const plannerModeClass = initialView === 'dayGridWeek'
+      ? 'appts-planner-view--week'
+      : 'appts-planner-view--month';
     return {
       initialView,
       initialDate: String(dateEl.value || '').trim(),
@@ -2144,6 +2757,16 @@
       headerToolbar: false,
       dayMaxEvents: 2,
       navLinks: true,
+      viewClassNames: ['appts-planner-view', plannerModeClass],
+      dayHeaderClassNames: ['appts-planner-dow'],
+      dayCellClassNames: (arg) => {
+        const classes = ['appts-planner-cell'];
+        if (arg.isToday) classes.push('appts-planner-cell--today');
+        if (arg.isOther) classes.push('appts-planner-cell--outside');
+        if (arg.dateStr === String(dateEl.value || '').trim()) classes.push('appts-planner-cell--selected');
+        return classes;
+      },
+      moreLinkClassNames: ['appts-planner-more'],
       events: async (fetchInfo, successCallback, failureCallback) => {
         try {
           const events = await fetchPlannerEventsRange(fetchInfo.start, fetchInfo.end);
@@ -2223,7 +2846,6 @@
       closedDays,
       monthLabel: new Date(Date.UTC(year, month - 1, 1)).toLocaleDateString('en-US', {
         month: 'long',
-        year: 'numeric',
         timeZone: 'UTC',
       }),
     };
@@ -2233,50 +2855,57 @@
     if (!yearWrap) return;
     const selectedIso = String(dateEl.value || '').trim();
     const selectedMonth = /^\d{4}-\d{2}-\d{2}$/.test(selectedIso) ? Number(selectedIso.slice(5, 7)) : 0;
+    const maxAppts = Math.max(1, ...months.map((m) => m.totalAppts));
     const host = document.createElement('section');
     host.className = 'appts-calendar-year-workspace';
     const head = document.createElement('header');
     head.className = 'appts-calendar-year-workspace__head';
     const title = document.createElement('h3');
     title.className = 'appts-calendar-year-workspace__title';
-    title.textContent = String(year) + ' Year Overview';
+    title.textContent = String(year);
     head.appendChild(title);
     host.appendChild(head);
     const grid = document.createElement('div');
     grid.className = 'appts-calendar-year-workspace__grid';
     months.forEach((row) => {
-      const card = document.createElement('article');
+      const card = document.createElement('button');
+      card.type = 'button';
       card.className = 'appts-calendar-year-card';
+      card.setAttribute('aria-label', 'Open ' + row.monthLabel + ' month view');
       if (row.month === selectedMonth) card.classList.add('appts-calendar-year-card--selected');
+
       const label = document.createElement('h4');
       label.className = 'appts-calendar-year-card__month';
       label.textContent = row.monthLabel;
-      const metrics = document.createElement('div');
-      metrics.className = 'appts-calendar-year-card__metrics';
-      const appts = document.createElement('p');
-      appts.className = 'appts-calendar-year-card__metric';
-      appts.textContent = row.totalAppts + ' appointments';
-      const blocked = document.createElement('p');
-      blocked.className = 'appts-calendar-year-card__metric';
-      blocked.textContent = row.totalBlocked + ' blocked';
-      const closed = document.createElement('p');
-      closed.className = 'appts-calendar-year-card__metric';
-      closed.textContent = row.closedDays + ' closed days';
-      metrics.appendChild(appts);
-      metrics.appendChild(blocked);
-      metrics.appendChild(closed);
-      const openMonthBtn = document.createElement('button');
-      openMonthBtn.type = 'button';
-      openMonthBtn.className = 'appts-calendar-year-card__open';
-      openMonthBtn.textContent = 'Open month';
-      openMonthBtn.addEventListener('click', () => {
+
+      const heat = document.createElement('div');
+      heat.className = 'appts-calendar-year-card__heat';
+      const heatFill = document.createElement('span');
+      heatFill.className = 'appts-calendar-year-card__heat-fill';
+      heatFill.style.width = (row.totalAppts > 0 ? Math.max(8, Math.round((row.totalAppts / maxAppts) * 100)) : 0) + '%';
+      heat.appendChild(heatFill);
+
+      const countEl = document.createElement('p');
+      countEl.className = 'appts-calendar-year-card__count';
+      countEl.textContent = row.totalAppts > 0 ? (row.totalAppts === 1 ? '1 appt' : row.totalAppts + ' appts') : '–';
+
+      const summary = document.createElement('p');
+      summary.className = 'appts-calendar-year-card__summary';
+      const parts = [];
+      if (row.totalAppts > 0) parts.push(row.totalAppts + (row.totalAppts === 1 ? ' appt' : ' appts'));
+      if (row.totalBlocked > 0) parts.push(row.totalBlocked + ' blocked');
+      if (row.closedDays > 0) parts.push(row.closedDays + ' closed');
+      summary.textContent = parts.length > 0 ? parts.join(' · ') : '–';
+
+      card.appendChild(label);
+      card.appendChild(heat);
+      card.appendChild(countEl);
+      card.appendChild(summary);
+      card.addEventListener('click', () => {
         const nextIso = row.year + '-' + String(row.month).padStart(2, '0') + '-01';
         setCalendarViewMode('month', { pushHistory: false, load: false });
         pickDateAndReload(nextIso);
       });
-      card.appendChild(label);
-      card.appendChild(metrics);
-      card.appendChild(openMonthBtn);
       grid.appendChild(card);
     });
     host.appendChild(grid);
@@ -2305,8 +2934,12 @@
 
   async function loadActiveWorkspace() {
     syncCalendarViewModeChrome();
-    if (calendarViewMode === 'week' || calendarViewMode === 'month') {
-      await loadPlannerWorkspace(calendarViewMode);
+    if (calendarViewMode === 'week') {
+      await loadWeekWorkspace();
+      return;
+    }
+    if (calendarViewMode === 'month') {
+      await loadMonthWorkspace();
       return;
     }
     if (calendarViewMode === 'year') {
@@ -3279,6 +3912,7 @@
       }
       if (!body || !body.success) return;
       const data = body.data;
+      latestWaitlistUrl = String((data && data.waitlist_url) || latestWaitlistUrl || '/appointments/waitlist');
       renderWaitlistPane(data);
       renderCheckinPane(data);
     } catch (e) {
@@ -3291,9 +3925,11 @@
   function renderWaitlistPane(data) {
     const pane = document.getElementById('cal-tools-waitlist');
     const badge = document.getElementById('cal-tools-waitlist-badge');
-    if (!pane || !data) return;
+    if (!data) return;
     const count = Number(data.waitlist_count) || 0;
     const url = String(data.waitlist_url || '/appointments/waitlist');
+    latestWaitlistUrl = url;
+    if (!pane) return;
     if (badge) {
       badge.textContent = count > 99 ? '99+' : String(count);
       badge.hidden = count === 0;
@@ -3404,7 +4040,7 @@
     // Badge
     if (badge) { badge.textContent = String(items.length); badge.hidden = items.length === 0; }
     if (clipboardToolbarBtn) {
-      clipboardToolbarBtn.hidden = items.length === 0;
+      clipboardToolbarBtn.hidden = calendarViewMode !== 'day' || items.length === 0;
     }
 
     if (items.length === 0) {
@@ -4368,6 +5004,17 @@
       lane.className = 'ops-lane';
       lane.setAttribute('role', 'presentation');
       lane.dataset.staffId = String(col.id);
+      const lanePastMask = document.createElement('div');
+      lanePastMask.className = 'ops-lane-past-mask';
+      lanePastMask.hidden = true;
+      lanePastMask.setAttribute('aria-hidden', 'true');
+      const pastMaskMetrics = getLanePastMaskMetrics(String(dateEl && dateEl.value ? dateEl.value : ''), vm);
+      if (pastMaskMetrics && pastMaskMetrics.height > 0) {
+        lanePastMask.hidden = false;
+        lanePastMask.style.top = pastMaskMetrics.top + 'px';
+        lanePastMask.style.height = pastMaskMetrics.height + 'px';
+      }
+      lane.appendChild(lanePastMask);
       const hoverPreview = document.createElement('div');
       hoverPreview.className = 'ops-slot-preview';
       hoverPreview.setAttribute('aria-hidden', 'true');
@@ -4587,9 +5234,10 @@
         const rawOffsetY = e.clientY - rect.top;
         const offsetY = Math.max(0, Math.min(rect.height, rawOffsetY));
         const snapped = snapTimeFromTop(rawOffsetY, vm.start, vm.step, vm.end);
+        const slotViolation = getCalendarSlotBookingViolation(String(dateEl && dateEl.value ? dateEl.value : ''), snapped);
         ensureSlotPreviewPortaledToBody(hoverPreview);
         positionSlotPreviewInViewport(hoverPreview, lane, offsetY);
-        hoverLabel.textContent = snapped;
+        decorateSlotPreviewState(hoverPreview, hoverLabel, snapped, slotViolation);
         const prevSnapSound = hoverPreview.dataset.snapSoundLabel || '';
         if (snapped !== prevSnapSound) {
           hoverPreview.dataset.snapSoundLabel = snapped;
@@ -4601,7 +5249,8 @@
 
       lane.addEventListener('mouseleave', () => {
         delete hoverPreview.dataset.snapSoundLabel;
-        hoverPreview.classList.remove('is-active', 'is-flipped');
+        hoverPreview.classList.remove('is-active', 'is-flipped', 'is-disabled');
+        hoverLabel.removeAttribute('title');
         clearSlotPreviewViewportPin(hoverPreview);
       });
 
@@ -4623,6 +5272,8 @@
         e.dataTransfer.dropEffect = 'move';
         const rect = lane.getBoundingClientRect();
         const snapped = snapTimeFromTop(e.clientY - rect.top, vm.start, vm.step, vm.end);
+        const slotViolation = getCalendarSlotBookingViolation(String(dateEl && dateEl.value ? dateEl.value : ''), snapped);
+        const blockedDrop = typeof slotViolation === 'string' && slotViolation.trim() !== '';
         const prevSnapSound = dropPreview.dataset.snapSoundLabel || '';
         if (snapped !== prevSnapSound) {
           dropPreview.dataset.snapSoundLabel = snapped;
@@ -4631,7 +5282,15 @@
         const topPx = Math.max(GRID_TOP_INSET_PX, (toMinutes(snapped) - vm.start) * getPixelsPerMinute() + GRID_TOP_INSET_PX);
         dropPreview.style.top = topPx + 'px';
         dropPreview.hidden = false;
-        dropLabel.textContent = col.label + ' · ' + snapped;
+        dropPreview.classList.toggle('ops-drop-preview--disabled', blockedDrop);
+        dropLabel.textContent = blockedDrop
+          ? (col.label + ' · ' + snapped + ' · unavailable')
+          : (col.label + ' · ' + snapped);
+        if (blockedDrop) {
+          dropLabel.setAttribute('title', slotViolation);
+        } else {
+          dropLabel.removeAttribute('title');
+        }
         hoverPreview.classList.remove('is-active', 'is-flipped');
         clearSlotPreviewViewportPin(hoverPreview);
       });
@@ -4640,6 +5299,8 @@
         if (!lane.contains(e.relatedTarget)) {
           delete dropPreview.dataset.snapSoundLabel;
           dropPreview.hidden = true;
+          dropPreview.classList.remove('ops-drop-preview--disabled');
+          dropLabel.removeAttribute('title');
         }
       });
 
@@ -4648,6 +5309,8 @@
         e.preventDefault();
         delete dropPreview.dataset.snapSoundLabel;
         dropPreview.hidden = true;
+        dropPreview.classList.remove('ops-drop-preview--disabled');
+        dropLabel.removeAttribute('title');
         if (dropInFlight) return;
         let data;
         try { data = JSON.parse(e.dataTransfer.getData('text/plain')); } catch (err) { return; }
@@ -4655,6 +5318,14 @@
         if (!data || !data.id || data.type !== 'clipboard-appt-drag') return;
         const rect = lane.getBoundingClientRect();
         const snapped = snapTimeFromTop(e.clientY - rect.top, vm.start, vm.step, vm.end);
+        const slotViolation = getCalendarSlotBookingViolation(String(dateEl && dateEl.value ? dateEl.value : ''), snapped);
+        if (slotViolation) {
+          if (statusEl) {
+            statusEl.textContent = slotViolation;
+          }
+          pushCalendarToast('error', slotViolation);
+          return;
+        }
         const startTime = (dateEl.value) + ' ' + snapped + ':00';
         if (statusEl) statusEl.textContent = 'Rescheduling…';
         dropInFlight = true;
@@ -5495,7 +6166,7 @@
     if (folderBtn) {
       folderBtn.addEventListener('click', () => {
         closeCalendarToolbarPopovers();
-        openCalendarDatePanel({ tab: 'waitlist' });
+        window.location.href = latestWaitlistUrl || '/appointments/waitlist';
       });
     }
 
@@ -6194,11 +6865,8 @@
     void loadActiveWorkspace();
   });
 
-  // Toolbar "New Appointment" buttons navigate full-page, not drawer.
-  // Empty slot click (lane click handler) is the drawer entry path.
   newAppointmentBtns.forEach((btn) => btn.addEventListener('click', () => {
-    const params = currentCalendarQuery();
-    window.location.href = '/appointments/create?' + params.toString();
+    void openDrawerUrl(buildNewAppointmentUrl());
   }));
   window.addEventListener('app:appointments-calendar-refresh', () => {
     refreshCalendarSummaries();
@@ -6382,20 +7050,10 @@
       if (!dateEl || !/^\d{4}-\d{2}-\d{2}$/.test(String(dateEl.value || ''))) return;
       if (e.key === 'ArrowLeft') {
         e.preventDefault();
-        selectedSlot = null;
-        dateEl.value = shiftIsoDate(dateEl.value, -1);
-        syncCalendarToolbarDateLabel();
-        renderSmartCard();
-        pushCalendarHistoryIfChanged();
-        void loadActiveWorkspace();
+        shiftCalendarDayBy(-1);
       } else if (e.key === 'ArrowRight') {
         e.preventDefault();
-        selectedSlot = null;
-        dateEl.value = shiftIsoDate(dateEl.value, 1);
-        syncCalendarToolbarDateLabel();
-        renderSmartCard();
-        pushCalendarHistoryIfChanged();
-        void loadActiveWorkspace();
+        shiftCalendarDayBy(1);
       }
     });
   }

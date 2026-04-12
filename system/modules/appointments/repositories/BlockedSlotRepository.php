@@ -174,6 +174,43 @@ final class BlockedSlotRepository
     }
 
     /**
+     * Blocked slot time ranges for an inclusive calendar date range (branch + tenant scope).
+     *
+     * @return list<array{block_date:string,start_time:string,end_time:string}>
+     */
+    public function listTimeRowsInDateRange(string $fromDate, string $toDate, ?int $branchId = null): array
+    {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $fromDate) !== 1 || preg_match('/^\d{4}-\d{2}-\d{2}$/', $toDate) !== 1) {
+            return [];
+        }
+
+        $sql = 'SELECT bs.block_date, bs.start_time, bs.end_time
+                FROM appointment_blocked_slots bs
+                WHERE bs.deleted_at IS NULL
+                  AND bs.block_date >= ?
+                  AND bs.block_date <= ?';
+        $params = [$fromDate, $toDate];
+        [$sql, $params] = $this->appendBlockedSlotBranchTenantClause($sql, $params, $branchId);
+        $sql .= ' ORDER BY bs.block_date ASC, bs.start_time ASC, bs.id ASC';
+
+        $rows = $this->db->forRead()->fetchAll($sql, $params);
+        $out = [];
+        foreach ($rows as $row) {
+            $bd = (string) ($row['block_date'] ?? '');
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $bd) !== 1) {
+                continue;
+            }
+            $out[] = [
+                'block_date' => $bd,
+                'start_time' => (string) ($row['start_time'] ?? '00:00:00'),
+                'end_time' => (string) ($row['end_time'] ?? '23:59:59'),
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
      * @param list<mixed> $params
      * @return array{0: string, 1: list<mixed>}
      */

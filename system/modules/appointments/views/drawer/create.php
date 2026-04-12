@@ -160,34 +160,7 @@ $staffScopedMode = $ctxStaffId > 0;
             <textarea id="notes" name="notes" rows="2"><?= htmlspecialchars($appointment['notes'] ?? '') ?></textarea>
         </div>
 
-        <!-- Secondary: change time or add room (collapsed by default) -->
-        <details class="appt-create-secondary">
-            <summary class="appt-create-secondary__toggle">Change time or add room</summary>
-            <div class="appt-create-secondary__body">
-                <div class="form-row appt-create-row--inline">
-                    <button type="button" id="load-slots-btn" class="appt-create-btn appt-create-btn--secondary">Load available slots</button>
-                    <span id="slots-status" class="hint appt-create-slots-status"><?= $prefillTime !== '' ? 'Prefilled from calendar: ' . htmlspecialchars($prefillTime) : 'Select a different time.' ?></span>
-                </div>
-                <div class="form-row">
-                    <div id="slots-container" class="slots-grid appt-create-slots-grid" role="group" aria-label="Available slots">
-                        <span class="hint">Optional: load slots to pick another time.</span>
-                    </div>
-                </div>
-                <?php if (!empty($rooms)): ?>
-                <div class="form-row">
-                    <label for="room_id">Room</label>
-                    <select id="room_id" name="room_id">
-                        <option value="">— None —</option>
-                        <?php foreach ($rooms as $r): ?>
-                        <option value="<?= (int) $r['id'] ?>" <?= ((int) ($appointment['room_id'] ?? 0)) === (int) $r['id'] ? 'selected' : '' ?>><?= htmlspecialchars((string) ($r['name'] ?? '')) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <?php else: ?>
-                <input type="hidden" id="room_id" name="room_id" value="">
-                <?php endif; ?>
-            </div>
-        </details>
+        <input type="hidden" id="room_id" name="room_id" value="<?= !empty($appointment['room_id']) ? (int) $appointment['room_id'] : '' ?>">
 
         <div class="drawer-actions-row drawer-actions-row--appointment">
             <button type="submit" class="drawer-submit">Save appointment</button>

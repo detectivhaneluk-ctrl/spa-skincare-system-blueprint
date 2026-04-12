@@ -1,5 +1,5 @@
 <?php
-$title = 'Appointment Day Calendar';
+$title = 'Appointment Calendar';
 /** Binds calendar workspace flex/scroll layout without relying on :has() (older browsers / edge cases). */
 $mainClass = trim((string) ($mainClass ?? '') . ' app-shell__main--calendar-workspace');
 $workspace = isset($workspace) && is_array($workspace) ? $workspace : [];
@@ -116,26 +116,17 @@ ob_start();
                             </div>
                             <div class="cal-tools-panel" id="cal-tools-panel" aria-label="Calendar tools panel">
                                 <nav class="cal-tools-tabs" role="tablist" aria-label="Calendar tools">
-                                    <button type="button" class="cal-tools-tab cal-tools-tab--active" role="tab"
-                                            data-tools-tab="waitlist" aria-selected="true" aria-controls="cal-tools-waitlist"
-                                            title="Waitlist">
-                                        <svg class="cal-tools-tab__ic cal-tools-tab__ic--lucide" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-                                            <path d="M3 5h18"/>
-                                            <path d="M3 12h18"/>
-                                            <path d="M3 19h18"/>
-                                        </svg>
-                                        <span id="cal-tools-waitlist-badge" class="cal-tools-badge" hidden></span>
-                                    </button>
                                     <button type="button" class="cal-tools-tab" role="tab"
                                             data-tools-tab="checkin" aria-selected="false" aria-controls="cal-tools-checkin"
+                                            data-calendar-day-only
                                             title="Check-in today">
                                         <svg class="cal-tools-tab__ic cal-tools-tab__ic--bi" width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false">
                                             <use href="#bi-check-circle"/>
                                         </svg>
                                         <span id="cal-tools-checkin-badge" class="cal-tools-badge" hidden></span>
                                     </button>
-                                    <button type="button" class="cal-tools-tab" role="tab"
-                                            data-tools-tab="legend" aria-selected="false" aria-controls="cal-tools-legend"
+                                    <button type="button" class="cal-tools-tab cal-tools-tab--active" role="tab"
+                                            data-tools-tab="legend" aria-selected="true" aria-controls="cal-tools-legend"
                                             title="Legend">
                                         <svg class="cal-tools-tab__ic cal-tools-tab__ic--bi" width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false">
                                             <use href="#bi-info-circle"/>
@@ -143,13 +134,10 @@ ob_start();
                                     </button>
                                 </nav>
                                 <div class="cal-tools-body">
-                                    <div id="cal-tools-waitlist" class="cal-tools-pane cal-tools-pane--active" role="tabpanel" tabindex="0">
+                                    <div id="cal-tools-checkin" class="cal-tools-pane" role="tabpanel" tabindex="0" hidden data-calendar-day-only>
                                         <p class="cal-tools-hint">Loading…</p>
                                     </div>
-                                    <div id="cal-tools-checkin" class="cal-tools-pane" role="tabpanel" tabindex="0" hidden>
-                                        <p class="cal-tools-hint">Loading…</p>
-                                    </div>
-                                    <div id="cal-tools-legend" class="cal-tools-pane" role="tabpanel" tabindex="0" hidden>
+                                    <div id="cal-tools-legend" class="cal-tools-pane cal-tools-pane--active" role="tabpanel" tabindex="0">
                                         <ul class="cal-legend-list">
                                             <li class="cal-legend-item"><span class="cal-legend-dot cal-legend-dot--scheduled"></span>Scheduled</li>
                                             <li class="cal-legend-item"><span class="cal-legend-dot cal-legend-dot--confirmed"></span>Confirmed</li>
@@ -178,7 +166,7 @@ ob_start();
                         </div>
                     </div>
                 </div>
-                <div class="appts-cal-toolbar-day-nav" role="group" aria-label="Previous or next day">
+                <div class="appts-cal-toolbar-day-nav" role="group" aria-label="Change visible period">
                     <button type="button" class="appts-cal-toolbar-day-nav__btn" id="calendar-toolbar-prev-day" aria-label="Previous day" title="Previous day">
                         <svg class="appts-cal-chevron-icon appts-cal-toolbar-day-nav__ic" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-chevron-left"/></svg>
                     </button>
@@ -221,11 +209,7 @@ ob_start();
                 </div>
             </div>
             <div class="appts-command-strip__trail">
-            <div class="appts-command-strip__actions appts-command-strip__actions--premium">
-                <?php if ($workspace['can_create'] ?? false): ?>
-                <button type="button" class="ds-btn ds-btn--primary appts-command-strip__new-appt" data-calendar-new-appt>New appointment</button>
-                <?php endif; ?>
-            </div>
+            <div class="appts-command-strip__actions appts-command-strip__actions--premium"></div>
             <div class="appts-cal-context-anchor" id="cal-toolbar-context-anchor">
                 <button type="button" class="appts-cal-toolbar-ghost-btn" id="calendar-fullscreen-btn" aria-label="Enter full screen" aria-pressed="false">
                     <svg class="appts-cal-toolbar-ghost-btn__ic appts-cal-toolbar-ghost-btn__ic--lucide" id="calendar-fullscreen-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
@@ -244,7 +228,7 @@ ob_start();
                     </svg>
                     <span class="appts-cal-fullscreen-label">Full screen</span>
                 </button>
-                <div class="appts-cal-staff-pan" id="calendar-staff-pan-controls" role="group" aria-label="Scroll staff columns" hidden style="display:none">
+                <div class="appts-cal-staff-pan" id="calendar-staff-pan-controls" role="group" aria-label="Scroll staff columns" hidden style="display:none" data-calendar-day-only>
                     <button type="button" class="appts-cal-toolbar-ghost-btn appts-cal-staff-pan__btn" id="calendar-staff-pan-prev" aria-label="Previous staff columns" title="Previous staff columns">
                         <svg class="appts-cal-chevron-icon appts-cal-toolbar-ghost-btn__ic" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-chevron-left"/></svg>
                         <span class="visually-hidden">Previous staff columns</span>
@@ -254,12 +238,12 @@ ob_start();
                         <span class="visually-hidden">Next staff columns</span>
                     </button>
                 </div>
-                <button type="button" class="appts-cal-toolbar-ghost-btn appts-cal-toolbar-clipboard-btn" id="cal-toolbar-clipboard-btn" hidden aria-pressed="false" aria-controls="cal-clipboard-side-panel" aria-label="Clipboard">
+                <button type="button" class="appts-cal-toolbar-ghost-btn appts-cal-toolbar-clipboard-btn" id="cal-toolbar-clipboard-btn" hidden aria-pressed="false" aria-controls="cal-clipboard-side-panel" aria-label="Clipboard" data-calendar-day-only>
                     <svg class="appts-cal-toolbar-ghost-btn__ic appts-cal-toolbar__icon appts-cal-toolbar__icon--bi" width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false"><use href="#bi-clipboard"/></svg>
                     <span id="cal-toolbar-clipboard-badge" class="appts-cal-toolbar-clipboard-btn__badge" hidden aria-hidden="true"></span>
                 </button>
                 <div class="appts-cal-tools-cluster" id="cal-toolbar-tools-cluster">
-                <div id="calendar-toolbar-context" class="appts-cal-toolbar__context" aria-label="Column visibility summary"></div>
+                <div id="calendar-toolbar-context" class="appts-cal-toolbar__context" aria-label="Column visibility summary" data-calendar-day-only></div>
                 <div class="appts-cal-tools-dropdown">
                 <button type="button" class="appts-cal-toolbar-ghost-btn appts-cal-tools-toggle" id="cal-toolbar-tools-toggle" aria-expanded="false" aria-controls="cal-toolbar-tools-panel" aria-haspopup="true">
                     <svg class="appts-cal-toolbar-ghost-btn__ic appts-cal-toolbar-ghost-btn__ic--lucide appts-cal-tools-toggle__icon appts-cal-toolbar__icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
@@ -281,7 +265,7 @@ ob_start();
                         </div>
                         <hr class="appts-cal-tools-menu__sep" aria-hidden="true" />
                         <div class="appts-cal-tools-menu__group" role="group" aria-label="View controls">
-            <div class="appts-cal-toolbar__slot appts-cal-toolbar__slot--tools-menu">
+            <div class="appts-cal-toolbar__slot appts-cal-toolbar__slot--tools-menu" data-calendar-day-only>
                 <button type="button" class="appts-cal-tools-menu__item appts-cal-toolbar__btn" id="cal-toolbar-zoom" aria-expanded="false" aria-haspopup="dialog" aria-controls="cal-toolbar-zoom-pop" aria-label="Zoom">
                     <span class="appts-cal-tools-menu__ic" aria-hidden="true"><svg class="appts-cal-toolbar__icon appts-cal-toolbar__icon--bi" width="18" height="18" viewBox="0 0 16 16" fill="currentColor" focusable="false"><use href="#bi-zoom-in"/></svg></span>
                     <span class="appts-cal-tools-menu__label appts-cal-toolbar__btn-text">Zoom</span>
@@ -327,7 +311,7 @@ ob_start();
                     </label>
                 </div>
             </div>
-            <div class="appts-cal-toolbar__slot appts-cal-toolbar__slot--tools-menu">
+            <div class="appts-cal-toolbar__slot appts-cal-toolbar__slot--tools-menu" data-calendar-day-only>
                 <button type="button" class="appts-cal-tools-menu__item appts-cal-toolbar__btn" id="cal-toolbar-views" aria-expanded="false" aria-haspopup="dialog" aria-controls="cal-toolbar-views-pop" aria-label="Saved views">
                     <span class="appts-cal-tools-menu__ic" aria-hidden="true"><svg class="appts-cal-toolbar__icon appts-cal-toolbar__icon--bi" width="18" height="18" viewBox="0 0 16 16" fill="currentColor" focusable="false"><use href="#bi-bookmarks"/></svg></span>
                     <span class="appts-cal-tools-menu__label appts-cal-toolbar__btn-text">Views</span>
@@ -343,7 +327,7 @@ ob_start();
                         </div>
                         <hr class="appts-cal-tools-menu__sep" aria-hidden="true" />
                         <div class="appts-cal-tools-menu__group" role="group" aria-label="Staff and waitlist">
-            <div class="appts-cal-toolbar__slot appts-cal-toolbar__slot--tools-menu">
+            <div class="appts-cal-toolbar__slot appts-cal-toolbar__slot--tools-menu" data-calendar-day-only>
                 <button type="button" class="appts-cal-tools-menu__item appts-cal-toolbar__btn" id="cal-toolbar-staff" aria-expanded="false" aria-haspopup="dialog" aria-controls="cal-toolbar-staff-pop" aria-label="Staff columns">
                     <span class="appts-cal-tools-menu__ic" aria-hidden="true"><svg class="appts-cal-toolbar__icon appts-cal-toolbar__icon--bi" width="18" height="18" viewBox="0 0 16 16" fill="currentColor" focusable="false"><use href="#bi-people"/></svg></span>
                     <span class="appts-cal-tools-menu__label appts-cal-toolbar__btn-text">Staff</span>
@@ -365,7 +349,7 @@ ob_start();
                         </div>
                         <hr class="appts-cal-tools-menu__sep" aria-hidden="true" />
                         <div class="appts-cal-tools-menu__group" role="group" aria-label="Print">
-            <div class="appts-cal-toolbar__slot appts-cal-toolbar__slot--tools-menu">
+            <div class="appts-cal-toolbar__slot appts-cal-toolbar__slot--tools-menu" data-calendar-day-only>
                 <button type="button" class="appts-cal-tools-menu__item appts-cal-toolbar__btn" id="cal-toolbar-print" aria-expanded="false" aria-haspopup="dialog" aria-controls="cal-toolbar-print-pop" aria-label="Print">
                     <span class="appts-cal-tools-menu__ic" aria-hidden="true"><svg class="appts-cal-toolbar__icon appts-cal-toolbar__icon--bi" width="18" height="18" viewBox="0 0 16 16" fill="currentColor" focusable="false"><use href="#bi-printer"/></svg></span>
                     <span class="appts-cal-tools-menu__label appts-cal-toolbar__btn-text">Print</span>
@@ -409,11 +393,11 @@ ob_start();
         </div>
         <div id="calendar-prefs-alert" class="appts-calendar-prefs-alert" role="alert" hidden></div>
         <div class="appts-calendar-meta">
-            <div id="calendar-status" class="appts-calendar-meta__status" role="status" aria-live="polite">Loading day calendar…</div>
+            <div id="calendar-status" class="appts-calendar-meta__status" role="status" aria-live="polite">Loading calendar…</div>
         </div>
         <div id="calendar-branch-hours-indicator" class="appts-calendar-hours calendar-branch-hours-indicator" role="status" aria-live="polite"></div>
         <div class="appts-calendar-stage" id="appts-calendar-stage">
-            <aside class="appts-calendar-clipboard-sidecar" id="cal-clipboard-sidecar" aria-label="Clipboard workspace">
+            <aside class="appts-calendar-clipboard-sidecar" id="cal-clipboard-sidecar" aria-label="Clipboard workspace" data-calendar-day-only>
                 <button type="button" class="appts-calendar-clipboard-toggle" id="cal-clipboard-side-toggle" aria-expanded="false" aria-controls="cal-clipboard-side-panel" aria-label="Open clipboard">
                     <span class="appts-calendar-clipboard-toggle__ic" aria-hidden="true">
                         <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" focusable="false"><use href="#bi-clipboard"/></svg>
@@ -490,8 +474,6 @@ if (!empty($calendarUiPageBootstrap) && is_array($calendarUiPageBootstrap)) {
 <script type="application/json" id="appts-calendar-ui-bootstrap"><?= $__calUiBootstrapJson ?></script>
 <?php endif; ?>
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.17/index.global.min.css">
-<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.17/index.global.min.js" defer></script>
 <script src="/assets/js/app-calendar-day.js?v=4fa04f-v2" defer></script>
 <script src="/assets/js/app-calendar-immersive.js?v=4fa04f-v2" defer></script>
 <?php
